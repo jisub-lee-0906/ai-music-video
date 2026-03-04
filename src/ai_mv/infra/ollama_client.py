@@ -34,3 +34,23 @@ def generate_json(config: dict, prompt: str) -> dict:
 
     return with_retry(_call)
 
+
+def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
+    integ = config.get("integrations", {})
+    base = integ.get("ollama_base_url", "http://127.0.0.1:11434").rstrip("/")
+    model = integ.get("ollama_model", "qwen2.5:14b-instruct")
+    strict = bool(integ.get("strict_remote", False))
+    if not strict:
+        return {"mock": True, "prompt": prompt[:80], "schema": True}
+
+    def _call() -> dict:
+        res = requests.post(
+            f"{base}/api/generate",
+            json={"model": model, "prompt": prompt, "format": schema, "stream": False},
+            timeout=45,
+        )
+        res.raise_for_status()
+        text = res.json().get("response", "{}")
+        return json.loads(text)
+
+    return with_retry(_call)

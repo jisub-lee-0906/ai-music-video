@@ -36,7 +36,8 @@ def _uso_prompt(item: dict) -> str:
     base = f"consistent cinematic portrait for {item['shot_id']}"
     stype = str(item.get("shot_type", "CHAR_MASTER"))
     style = str(item.get("style_ref", ""))
-    return f"{base}, shot_type={stype}, keyframe={item.get('frame_name', 'start')}, style_ref={style}"
+    delta = str(item.get("delta", "small pose shift"))
+    return f"{base}, shot_type={stype}, keyframe={item.get('frame_name', 'start')}, delta={delta}, style_ref={style}"
 
 
 def _uso_size(config: dict) -> tuple[int, int]:

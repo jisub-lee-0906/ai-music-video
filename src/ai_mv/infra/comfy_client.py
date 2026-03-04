@@ -144,6 +144,8 @@ def _patch_common(cls: str, inputs: dict, b: dict[str, Any]) -> None:
             inputs["seed"] = int(b["shot.seed"])
         if "noise_seed" in inputs:
             inputs["noise_seed"] = int(b["shot.seed"]) + 17
+    if cls in {"KSampler", "KSamplerAdvanced"} and "shot.steps" in b and "steps" in inputs:
+        inputs["steps"] = int(b["shot.steps"])
     if cls in {"EmptySD3LatentImage", "WanFirstLastFrameToVideo"}:
         if "video.width" in b:
             inputs["width"] = int(b["video.width"])
