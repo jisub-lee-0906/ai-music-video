@@ -5,3 +5,14 @@ class PipelineError(RuntimeError):
 class StageFailure(PipelineError):
     pass
 
+
+class ComfyRequestError(PipelineError):
+    pass
+
+
+class WorkflowValidationError(PipelineError):
+    pass
+
+
+class MediaValidationError(PipelineError):
+    pass

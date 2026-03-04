@@ -3,10 +3,19 @@ audio:
   source_wav: master.wav
   sample_rate: 48000
   lyrics_file: lyrics.txt
+  target_duration_sec: 160
+  bpm: 120
+  seed: 31
+  quality: V0
   keywords: [cinematic, performance, kpop]
 video:
   target: "1920x1080@24"
   mezzanine_codec: prores
+render:
+  tti_size: "1024x576"
+  uso_size: "1024x576"
+  wan_size: "640x360"
+  wan_fallback_size: "640x360"
 consistency:
   reference_images:
     - refs/subject_front.jpg
@@ -15,6 +24,8 @@ consistency:
 limits:
   max_retries_per_shot: 3
   timeout_seconds: 180
+  strict_failure: true
+  queue_concurrency: 1
 integrations:
   comfyui_base_url: "http://127.0.0.1:8188"
   ollama_base_url: "http://127.0.0.1:11434"

@@ -4,9 +4,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from ai_mv.core.contracts.errors import StageFailure
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.state.state_store import runs_root
 from ai_mv.engines.wan_2_2_flf2v.mapper import build_concat_plan
+from ai_mv.utils.time_utils import ffprobe_duration
 
 
 def run_merge_mux(stage_input: StageInput) -> StageOutput:
@@ -15,9 +17,21 @@ def run_merge_mux(stage_input: StageInput) -> StageOutput:
     clips = _resolve_clip_paths(merge.get("ordered", []), stage_input.config, run_dir)
     audio = _resolve_audio_path(stage_input.payload.get("music_file", ""), stage_input.config)
     final_video = run_dir / "final_mv.mp4"
+    strict = bool(stage_input.config.get("limits", {}).get("strict_failure", True))
+    if not clips or not audio.exists():
+        if strict:
+            raise StageFailure("merge inputs missing: clips/audio")
+        return StageOutput("merge_mux", "done", {"merge_status": "skipped", "final_video": str(final_video)}, [])
     ok = _run_ffmpeg(clips, audio, final_video, stage_input.config)
-    payload = {"merge_plan": merge, "final_video": str(final_video), "merge_status": "done" if ok else "skipped"}
-    return StageOutput("merge_mux", "done", payload, [str(final_video)] if ok else [])
+    if not ok:
+        if strict:
+            raise StageFailure("ffmpeg merge failed")
+        return StageOutput("merge_mux", "done", {"merge_status": "skipped", "final_video": str(final_video)}, [])
+    vdur = ffprobe_duration(final_video)
+    adur = ffprobe_duration(audio)
+    payload = {"merge_plan": merge, "final_video": str(final_video), "merge_status": "done", "final_duration_sec": vdur,
+               "audio_duration_sec": adur}
+    return StageOutput("merge_mux", "done", payload, [str(final_video)])
 
 
 def _resolve_clip_paths(names: list[str], config: dict, run_dir: Path) -> list[Path]:

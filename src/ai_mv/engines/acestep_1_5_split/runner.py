@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from ai_mv.engines.acestep_1_5_split.mapper import map_audio_workflow
+from ai_mv.engines.acestep_1_5_split.mapper import audio_required_inputs, map_audio_workflow
 from ai_mv.infra.comfy_client import run_workflow
+from ai_mv.utils.time_utils import ffprobe_duration
 
 
 def run_audio_split(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
-    result = run_workflow(config, "audio_ace_step_1_5_tta.api.json", wf)
-    duration = 120.0
+    result = run_workflow(config, "audio_ace_step_1_5_tta.api.json", wf, audio_required_inputs())
+    music_file = _pick_audio_file(result.get("files", []), config)
+    duration = ffprobe_duration(music_file) or float(plan.get("duration", 160))
     return {
         "duration_sec": duration,
-        "bpm_estimate": 120,
+        "bpm_estimate": int(plan.get("bpm", 120)),
         "sections": _sections(duration),
-        "music_file": _pick_audio_file(result.get("files", []), config),
+        "music_file": music_file,
     }
 
 

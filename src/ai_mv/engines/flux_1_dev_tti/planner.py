@@ -3,51 +3,95 @@ from __future__ import annotations
 from ai_mv.engines.flux_1_dev_tti.planner_parts.fallbacks import default_shots
 from ai_mv.infra.ollama_client import generate_json
 
+SHOT_TYPES = ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "DETAIL_INSERT", "ENV_TRANSITION"]
+
 
 def build_tti_plan(config: dict, payload: dict) -> dict:
     audio_map = payload.get("audio_map", {})
     sections = audio_map.get("sections", [])
+    total = float(audio_map.get("duration_sec", 160.0))
     shots = _plan_with_ollama(config, sections)
     if not shots:
-        shots = default_shots(sections, config.get("style", {}).get("guidance", "cinematic"))
-    return {"shots": shots}
+        shots = _fallback_from_sections(sections, config)
+    return {"shots": _normalize_shots(shots, total)}
 
 
 def _plan_with_ollama(config: dict, sections: list[dict]) -> list[dict]:
     guidance = config.get("style", {}).get("guidance", "cinematic")
-    prompt = _planner_prompt(guidance, sections)
     try:
-        out = generate_json(config, prompt)
+        out = generate_json(config, _planner_prompt(guidance, sections))
     except Exception:
         return []
-    shots = out.get("shots", []) if isinstance(out, dict) else []
-    return _normalize_shots(shots)
+    return out.get("shots", []) if isinstance(out, dict) else []
 
 
 def _planner_prompt(guidance: str, sections: list[dict]) -> str:
     return (
-        "Create strict JSON with key 'shots' only. "
-        "Each shot must include shot_id,prompt,negative_prompt,duration_sec,seed. "
-        f"Guidance: {guidance}. Sections: {sections}"
+        "Return strict JSON: {'shots':[]}. Each shot has "
+        "shot_id,prompt,negative_prompt,duration_sec,seed,shot_type,is_chorus. "
+        f"Guidance={guidance}; Sections={sections}"
     )
 
 
-def _normalize_shots(shots: list[dict]) -> list[dict]:
+def _fallback_from_sections(sections: list[dict], config: dict) -> list[dict]:
+    guidance = config.get("style", {}).get("guidance", "cinematic")
+    base = default_shots(sections, guidance)
     out: list[dict] = []
-    for idx, shot in enumerate(shots or []):
-        if not isinstance(shot, dict):
-            continue
-        sid = str(shot.get("shot_id", f"verse_{idx:03d}"))
-        prompt = str(shot.get("prompt", "")).strip()
-        if not prompt:
-            continue
-        out.append(
-            {
-                "shot_id": sid,
-                "prompt": prompt,
-                "negative_prompt": str(shot.get("negative_prompt", "lowres, blur, artifacts")),
-                "duration_sec": float(shot.get("duration_sec", 5.0)),
-                "seed": int(shot.get("seed", 1000 + idx)),
-            }
-        )
+    for idx, shot in enumerate(base):
+        sec = shot["shot_id"].split("_")[0]
+        sec_dur = _section_duration(sections, sec) or 8.0
+        count = max(1, int(round(sec_dur / 4.0)))
+        out.extend(_split_section_shots(shot, count, idx * 100))
     return out
+
+
+def _split_section_shots(shot: dict, count: int, seed_off: int) -> list[dict]:
+    name = shot["shot_id"].split("_")[0]
+    return [
+        {
+            **shot,
+            "shot_id": f"{name}_{i:03d}",
+            "duration_sec": 4.0,
+            "seed": int(shot["seed"]) + seed_off + i,
+            "shot_type": SHOT_TYPES[i % len(SHOT_TYPES)],
+            "is_chorus": name == "chorus",
+        }
+        for i in range(count)
+    ]
+
+
+def _normalize_shots(shots: list[dict], target_total: float) -> list[dict]:
+    parsed = [_parse_shot(s, i) for i, s in enumerate(shots or [])]
+    parsed = [s for s in parsed if s]
+    if not parsed:
+        return []
+    total = sum(float(s["duration_sec"]) for s in parsed) or 1.0
+    scale = target_total / total
+    for shot in parsed:
+        shot["duration_sec"] = max(2.0, round(float(shot["duration_sec"]) * scale, 3))
+    return parsed
+
+
+def _parse_shot(shot: dict, idx: int) -> dict:
+    if not isinstance(shot, dict):
+        return {}
+    prompt = str(shot.get("prompt", "")).strip()
+    if not prompt:
+        return {}
+    stype = str(shot.get("shot_type", SHOT_TYPES[idx % len(SHOT_TYPES)]))
+    return {
+        "shot_id": str(shot.get("shot_id", f"shot_{idx:03d}")),
+        "prompt": prompt,
+        "negative_prompt": str(shot.get("negative_prompt", "lowres, blur, artifacts")),
+        "duration_sec": float(shot.get("duration_sec", 4.0)),
+        "seed": int(shot.get("seed", 1000 + idx)),
+        "shot_type": stype if stype in SHOT_TYPES else SHOT_TYPES[idx % len(SHOT_TYPES)],
+        "is_chorus": bool(shot.get("is_chorus", False)),
+    }
+
+
+def _section_duration(sections: list[dict], name: str) -> float:
+    for sec in sections or []:
+        if str(sec.get("name")) == name:
+            return float(sec.get("end_sec", 0.0)) - float(sec.get("start_sec", 0.0))
+    return 0.0

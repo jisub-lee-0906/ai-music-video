@@ -16,13 +16,20 @@ def run_pipeline(config_path: str, run_id: str = "") -> str:
     stage_input = StageInput(run_id=state["run_id"], config=cfg, payload={})
 
     for name, stage_fn in schedule():
-        result = stage_fn(stage_input)
-        stage_input.payload.update(result.payload)
-        state["completed_stages"].append(name)
-        save_snapshot(state, stage_input.payload)
-        if result.status != "done":
+        state["current_stage"] = name
+        try:
+            result = stage_fn(stage_input)
+            stage_input.payload.update(result.payload)
+            state["completed_stages"].append(name)
+            if result.status != "done":
+                state["status"] = "failed"
+                state["failure_reason"] = result.error or f"stage={name}"
+                break
+        except Exception as exc:
             state["status"] = "failed"
+            state["failure_reason"] = f"{name}: {exc}"
             break
+        save_snapshot(state, stage_input.payload)
 
     state["status"] = "done" if state["status"] != "failed" else "failed"
     save_snapshot(state, stage_input.payload)

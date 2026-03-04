@@ -1,15 +1,31 @@
 from __future__ import annotations
 
+from ai_mv.utils.text_utils import ensure_16_9, parse_size
+
 
 def map_tti_workflow(config: dict, shot: dict) -> dict:
-    target = config.get("video", {}).get("target", "1920x1080@24")
-    dims = target.split("@")[0]
-    w, h = dims.split("x")
+    w, h = _tti_size(config)
     return {
         "shot.prompt": shot["prompt"],
         "shot.negative_prompt": shot["negative_prompt"],
         "shot.seed": shot["seed"],
-        "video.width": int(w),
-        "video.height": int(h),
+        "video.width": w,
+        "video.height": h,
+        "image.filename_prefix": shot.get("filename_prefix", "ComfyUI"),
     }
 
+
+def tti_required_inputs() -> dict[str, list[str]]:
+    return {
+        "CLIPTextEncodeFlux": ["clip_l", "t5xxl"],
+        "KSampler": ["seed"],
+        "EmptySD3LatentImage": ["width", "height"],
+        "SaveImage": ["filename_prefix"],
+    }
+
+
+def _tti_size(config: dict) -> tuple[int, int]:
+    size = str(config.get("render", {}).get("tti_size", "1024x576"))
+    w, h = parse_size(size)
+    ensure_16_9(w, h)
+    return w, h
