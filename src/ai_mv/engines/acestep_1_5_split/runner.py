@@ -6,7 +6,7 @@ from ai_mv.infra.comfy_client import run_workflow
 
 def run_audio_split(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
-    result = run_workflow(config, "audio_ace_step_1_5_split.api.json", wf)
+    result = run_workflow(config, "audio_ace_step_1_5_tta.api.json", wf)
     duration = 120.0
     return {
         "duration_sec": duration,
