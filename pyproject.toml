@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-mv"
+version = "0.1.0"
+description = "ComfyUI + Ollama music-video orchestrator"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "PyYAML==6.0.2",
+  "requests==2.32.3",
+  "jsonschema==4.23.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.5"]
+
+[project.scripts]
+ai-mv = "ai_mv.cli.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

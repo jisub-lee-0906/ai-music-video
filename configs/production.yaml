@@ -1,0 +1,6 @@
+project_name: vf_production
+limits:
+  max_retries_per_shot: 3
+  timeout_seconds: 240
+integrations:
+  strict_remote: true

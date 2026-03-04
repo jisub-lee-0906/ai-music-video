@@ -1,0 +1,12 @@
+from __future__ import annotations
+
+from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.engines.acestep_1_5_split.planner import build_audio_plan
+from ai_mv.engines.acestep_1_5_split.runner import run_audio_split
+
+
+def run_acestep_music(stage_input: StageInput) -> StageOutput:
+    plan = build_audio_plan(stage_input.config, stage_input.payload)
+    audio_map = run_audio_split(stage_input.config, plan)
+    music_file = str(audio_map.get("music_file", stage_input.config.get("audio", {}).get("source_wav", "")))
+    return StageOutput("acestep_music", "done", {"audio_map": audio_map, "music_file": music_file}, [])

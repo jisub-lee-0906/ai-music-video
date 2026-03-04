@@ -1,0 +1,12 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+src/*.egg-info/
+*.egg-info/
+
+artifacts/runs_state/
+artifacts/reports/
+artifacts/dashboards/
+

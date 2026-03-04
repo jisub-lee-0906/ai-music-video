@@ -1,0 +1,24 @@
+project_name: ai_mv_default
+audio:
+  source_wav: master.wav
+  sample_rate: 48000
+  lyrics_file: lyrics.txt
+  keywords: [cinematic, performance, kpop]
+video:
+  target: "1920x1080@24"
+  mezzanine_codec: prores
+consistency:
+  reference_images:
+    - refs/subject_front.jpg
+    - refs/subject_side.jpg
+    - refs/subject_full.jpg
+limits:
+  max_retries_per_shot: 3
+  timeout_seconds: 180
+integrations:
+  comfyui_base_url: "http://127.0.0.1:8188"
+  ollama_base_url: "http://127.0.0.1:11434"
+  ollama_model: "qwen3:14b-instruct"
+  workflows_dir: "workflows"
+  strict_remote: true
+profile: cinematic
