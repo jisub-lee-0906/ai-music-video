@@ -28,7 +28,7 @@ integrations:
   ollama_base_url: "http://127.0.0.1:11434"
   ollama_model: "qwen3:14b"
   ollama_timeout_json_sec: 60
-  ollama_timeout_structured_sec: 120
+  ollama_timeout_structured_sec: 300
   ollama_num_gpu: 0
   ollama_keep_alive: "0s"
   workflows_dir: "workflows"
@@ -41,3 +41,4 @@ runtime:
     image_flux1_dev_tti.api.json: 4604bf1e6c7fe45246b9a2a18d3ab56377725e051c190100cead09c9081134a4
     image_flux1_dev_uso.api.json: 929919d824cb4595d14f2818a3ce5b4c3433fb7ce709e71dde01536369e9ea92
     video_wan_2_2_flf2v.api.json: d13efd85f0109531ab16028a0425bcb951cda7beee0ed8b959197f46e8551339
+

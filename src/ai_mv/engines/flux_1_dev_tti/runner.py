@@ -13,26 +13,12 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
     for shot in shots:
         candidates = _run_candidates(config, shot)
         selected = _select_candidate(candidates)
-        out.append(
-            {
-                "shot_id": shot["shot_id"],
-                "anchor": selected,
-                "anchor_candidates": candidates,
-                "anchor_selected": selected,
-                "shot_type": shot["shot_type"],
-                "duration_sec": float(shot["duration_sec"]),
-                "is_chorus": bool(shot["is_chorus"]),
-                "retry": 0,
-                "error_body": "",
-            }
-        )
+        out.append(_pack_anchor(shot, candidates, selected))
     return out
 
 
 def _run_candidates(config: dict, shot: dict) -> list[str]:
-    a = _run_one(config, shot, 0)
-    b = _run_one(config, shot, 1)
-    return [a, b]
+    return [_run_one(config, shot, 0), _run_one(config, shot, 1)]
 
 
 def _run_one(config: dict, shot: dict, offset: int) -> str:
@@ -63,6 +49,21 @@ def _mutate_shot(shot: dict, retry: int) -> dict:
     out = dict(shot)
     out["seed"] = int(out["seed"]) + retry * 1009
     return out
+
+
+def _pack_anchor(shot: dict, candidates: list[str], selected: str) -> dict:
+    return {
+        "shot_id": shot["shot_id"],
+        "anchor": selected,
+        "anchor_candidates": candidates,
+        "anchor_selected": selected,
+        "shot_type": shot["shot_type"],
+        "section_name": str(shot.get("section_name", "section")),
+        "duration_sec": float(shot["duration_sec"]),
+        "is_chorus": bool(shot["is_chorus"]),
+        "retry": 0,
+        "error_body": "",
+    }
 
 
 def _select_candidate(candidates: list[str]) -> str:

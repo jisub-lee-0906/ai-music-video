@@ -10,23 +10,25 @@ def write_manifest(state: dict, payload: dict) -> None:
         "failure_reason": state["failure_reason"],
         "anchors": _anchor_rows(payload),
         "uso_images": _uso_rows(payload),
-        "clips": payload["clips"],
-        "merge_status": payload["merge_status"],
-        "final_video": payload["final_video"],
+        "clips": list(payload.get("clips", [])),
+        "merge_status": str(payload.get("merge_status", "")),
+        "final_video": str(payload.get("final_video", "")),
     }
     write_json(f"artifacts/runs_state/{state['run_id']}/manifest.json", out)
 
 
 def _anchor_rows(payload: dict) -> list[dict]:
     out: list[dict] = []
-    for row in payload["anchors"]:
+    for row in payload.get("anchors", []):
+        if not isinstance(row, dict):
+            continue
         out.append(
             {
-                "shot_id": row["shot_id"],
-                "anchor_selected": row["anchor_selected"],
-                "anchor_candidates": row["anchor_candidates"],
-                "retry": row["retry"],
-                "error_body": row["error_body"],
+                "shot_id": str(row.get("shot_id", "")),
+                "anchor_selected": str(row.get("anchor_selected", "")),
+                "anchor_candidates": list(row.get("anchor_candidates", [])),
+                "retry": int(row.get("retry", 0)),
+                "error_body": str(row.get("error_body", "")),
             }
         )
     return out
@@ -34,14 +36,16 @@ def _anchor_rows(payload: dict) -> list[dict]:
 
 def _uso_rows(payload: dict) -> list[dict]:
     out: list[dict] = []
-    for row in payload["uso_images"]:
+    for row in payload.get("uso_images", []):
+        if not isinstance(row, dict):
+            continue
         out.append(
             {
-                "shot_id": row["shot_id"],
-                "start": row["start"],
-                "end": row["end"],
-                "retry": row["retry"],
-                "error_body": row["error_body"],
+                "shot_id": str(row.get("shot_id", "")),
+                "start": str(row.get("start", "")),
+                "end": str(row.get("end", "")),
+                "retry": int(row.get("retry", 0)),
+                "error_body": str(row.get("error_body", "")),
             }
         )
     return out

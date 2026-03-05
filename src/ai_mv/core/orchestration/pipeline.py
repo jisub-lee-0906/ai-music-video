@@ -6,6 +6,7 @@ from ai_mv.core.artifacts.dashboard import write_dashboard
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.summary import write_summary
 from ai_mv.core.contracts.stage_io import StageInput
+from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.scheduler import schedule
 from ai_mv.core.quality.release_readiness import readiness_report
 from ai_mv.core.state.state_snapshot import save_snapshot
@@ -20,6 +21,7 @@ def run_pipeline(config_path: str, run_id: str = "") -> str:
     for name, stage_fn in schedule():
         state["current_stage"] = name
         try:
+            validate_stage_input(name, stage_input.payload)
             result = stage_fn(stage_input)
             stage_input.payload.update(result.payload)
             state["completed_stages"].append(name)

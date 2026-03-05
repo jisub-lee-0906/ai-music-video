@@ -21,9 +21,7 @@ def run_uso(config: dict, plan: dict) -> list[dict]:
 
 
 def _resolve_start(config: dict, item: dict, prev_end: str) -> str:
-    if prev_end:
-        return prev_end
-    return _render_start(config, item)
+    return prev_end if prev_end else _render_start(config, item)
 
 
 def _render_start(config: dict, item: dict) -> str:
@@ -54,6 +52,7 @@ def _render_end(config: dict, item: dict, start_ref: str) -> str:
 
 def _run_shot_uso(config: dict, item: dict) -> dict:
     attempts = int(config["limits"]["max_retries_per_shot"])
+
     def _call(retry: int) -> dict:
         payload = dict(item)
         payload["frame_idx"] = int(item["frame_idx"]) + retry
@@ -63,12 +62,14 @@ def _run_shot_uso(config: dict, item: dict) -> dict:
 
 
 def _pack_item(item: dict, start: str, end: str) -> dict:
-    out = {
+    return {
         "shot_id": item["shot_id"],
+        "section_name": str(item.get("section_name", "section")),
+        "shot_type": str(item.get("shot_type", "CHAR_MASTER")),
+        "is_chorus": bool(item.get("is_chorus", False)),
         "duration_sec": item["duration_sec"],
         "retry": 0,
         "error_body": "",
+        "start": start,
+        "end": end,
     }
-    out["start"] = start
-    out["end"] = end
-    return out

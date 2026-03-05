@@ -20,6 +20,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     normalized["source_wav"] = plan["source_wav"]
     normalized["description"] = normalized["genre_description"] or plan["description"]
     normalized["filename_prefix"] = plan["filename_prefix"]
+    normalized["quality"] = plan["quality"]
     return normalized
 
 
