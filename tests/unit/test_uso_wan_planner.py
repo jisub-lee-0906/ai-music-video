@@ -29,6 +29,14 @@ def test_wan_planner_uses_start_end_only(monkeypatch):
     assert out["clips"][0]["shot_id"] == "x"
 
 
+def test_wan_planner_shot_id_coerce(monkeypatch):
+    monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
+    payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 6.0}]}
+    out = build_wan_plan({"video": {"target": "1920x1080@24"}}, payload)
+    assert out["clips"][0]["shot_id"] == "x"
+    assert "kitten" in out["clips"][0]["positive_prompt"].lower()
+
+
 def _anchor(shot_id: str, chorus: bool) -> dict:
     return {
         "shot_id": shot_id,
@@ -75,5 +83,18 @@ def _fake_wan_generate(_config, _prompt, _schema):
     return {
         "clips": [
             {"shot_id": "x", "positive_prompt": "p1", "negative_prompt": "n1", "energy": "normal"},
+        ]
+    }
+
+
+def _fake_wan_generate_mismatch(_config, _prompt, _schema):
+    return {
+        "clips": [
+            {
+                "shot_id": "x_alt",
+                "positive_prompt": "A kitten made of ice crystals is suddenly awakened and begins to transform into a giant beast with vivid fur.",
+                "negative_prompt": "overexposed, static frame, unclear details, low quality",
+                "energy": "high",
+            }
         ]
     }

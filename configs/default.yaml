@@ -7,7 +7,7 @@ audio:
   bpm: 120
   seed: 31
   quality: V0
-  keywords: []
+  tags: []
 profile: ""
 style:
   guidance: ""

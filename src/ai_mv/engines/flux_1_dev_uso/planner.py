@@ -5,14 +5,13 @@ from ai_mv.infra.ollama_client import generate_structured
 
 
 def build_uso_plan(config: dict, payload: dict) -> dict:
-    style_ref = ""
-    style_guidance = str(config["style"]["guidance"]).strip()
     anchors = payload["anchors"]
     if not anchors:
         raise RuntimeError("anchors missing for USO")
+    style_guidance = str(config["style"]["guidance"]).strip()
     spec = _plan_with_ollama(config, anchors)
     rules = normalize_uso_items(spec["items"], anchors)
-    items = [_build_item(anchor, style_ref, style_guidance, rules[anchor["shot_id"]]) for anchor in anchors]
+    items = [_build_item(a, style_guidance, rules[a["shot_id"]]) for a in anchors]
     return {"items": items}
 
 
@@ -25,7 +24,7 @@ def _plan_with_ollama(config: dict, anchors: list[dict]) -> dict:
 
 def _planner_prompt(config: dict, anchors: list[dict]) -> str:
     guidance = str(config["style"]["guidance"]).strip()
-    keywords = _keywords(config)
+    lyrics = _lyrics_excerpt(config)
     summary = _anchor_summary(anchors)
     return (
         "You are a senior image-to-image keyframe director for music videos. "
@@ -38,8 +37,17 @@ def _planner_prompt(config: dict, anchors: list[dict]) -> str:
         "Do not change time period, world setting, or character species. "
         "Use concrete visual language: pose shift, gaze shift, hand motion, cloth motion, light direction, camera feel. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, text watermark, logo, subtitle. "
-        f"Style guidance={guidance}; Profile keywords={keywords}; Anchors={summary}."
+        f"Style guidance={guidance}; Lyrics context={lyrics}; Anchors={summary}."
     )
+
+
+def _lyrics_excerpt(config: dict) -> str:
+    audio = config.get("audio", {}) if isinstance(config, dict) else {}
+    text = str(audio.get("lyrics", "")).strip() if isinstance(audio, dict) else ""
+    if not text:
+        return ""
+    lines = [x.strip() for x in text.splitlines() if x.strip()]
+    return " | ".join(lines[:8])
 
 
 def _coerce_item_ids(items: list[dict], anchors: list[dict]) -> list[dict]:
@@ -79,19 +87,12 @@ def _anchor_summary(anchors: list[dict]) -> str:
     return ", ".join(rows)
 
 
-def _keywords(config: dict) -> str:
-    audio = config.get("audio", {}) if isinstance(config, dict) else {}
-    raw = audio.get("keywords", []) if isinstance(audio, dict) else []
-    vals = [str(x).strip() for x in raw if str(x).strip()]
-    return ", ".join(vals)
-
-
-def _build_item(anchor: dict, style_ref: str, style_guidance: str, rule: dict) -> dict:
+def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
     return {
         "shot_id": anchor["shot_id"],
         "anchor": anchor["anchor"],
         "ref": anchor["anchor"],
-        "style_ref": style_ref,
+        "style_ref": "",
         "delta": str(rule["delta"]),
         "prompt_text": str(rule["prompt_text"]),
         "negative_prompt": str(rule["negative_prompt"]),

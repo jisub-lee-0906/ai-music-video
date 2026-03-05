@@ -29,12 +29,11 @@ def _planner_prompt(config: dict, sections: list[dict]) -> str:
     desc = str(audio["song_description"]).strip()
     lyrics = _lyrics_excerpt(str(audio["lyrics"]))
     section_view = _section_summary(sections)
-    keywords = _keywords(config)
     types = ", ".join(SHOT_TYPES)
     return (
         "You are a senior music-video visual director and FLUX prompt engineer. "
         "Return strict JSON only with shape {\"shots\":[...]}. No prose outside JSON. "
-        "Never force any genre; infer visual language from style guidance, profile keywords, and lyrics context. "
+        "Never force any genre; infer visual language from style guidance and lyrics context. "
         "Each shot item must include: shot_id,prompt_clip_l,prompt_t5xxl,negative_prompt,duration_sec,seed,shot_type,is_chorus. "
         "prompt_clip_l must be 18-36 unique tags, comma+space separated, all lowercase natural phrases. "
         "No snake_case, no brackets, no markdown, no full sentence. "
@@ -52,7 +51,7 @@ def _planner_prompt(config: dict, sections: list[dict]) -> str:
         "Shot count must match section count exactly. "
         f"Use shot_type only from enum: {types}. "
         f"Song title={title}; Song description={desc}; Style guidance={guidance}; "
-        f"Profile keywords={keywords}; Lyrics excerpt={lyrics}; Sections={section_view}."
+        f"Lyrics excerpt={lyrics}; Sections={section_view}."
     )
 
 
@@ -78,11 +77,6 @@ def _valid_prompt_pair(shot: dict) -> bool:
     if not clip_l or not t5:
         return False
     return clip_l.count(",") >= 12
-
-
-def _keywords(config: dict) -> str:
-    arr = [str(x).strip() for x in config["audio"]["keywords"] if str(x).strip()]
-    return ", ".join(arr)
 
 
 def _lyrics_excerpt(text: str) -> str:

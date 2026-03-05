@@ -36,13 +36,12 @@ def ensure_run_style(config: dict, run_dir: Path) -> None:
 def _lyrics_prompt(config: dict) -> str:
     audio = config["audio"]
     duration = int(audio["target_duration_sec"])
-    tags = ", ".join([str(x) for x in audio["keywords"]])
     style = str(config["style"]["guidance"]).strip()
     return (
         "Return strict JSON with title, description, lyrics_blocks[]. "
         "Each block has section,label,lines[]. "
         "Allowed sections: intro,verse,pre_chorus,chorus,bridge,outro. "
-        f"Duration<= {duration}s, tags={tags}, style={style}."
+        f"Duration<= {duration}s, style={style}."
     )
 
 
@@ -69,8 +68,7 @@ def _lyrics_schema() -> dict:
 
 def _style_prompt(config: dict) -> str:
     profile = str(config["profile"])
-    tags = ", ".join([str(x) for x in config["audio"]["keywords"]])
-    return f"Return JSON {{\"guidance\":\"...\"}} for MV visual direction. profile={profile}, keywords={tags}."
+    return f"Return JSON {{\"guidance\":\"...\"}} for MV visual direction. profile={profile}."
 
 
 def _style_schema() -> dict:

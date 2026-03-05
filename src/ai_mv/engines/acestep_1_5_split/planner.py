@@ -11,7 +11,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
         "source_wav": audio["source_wav"],
         "lyrics": str(audio["lyrics"]),
         "description": str(audio["song_description"]),
-        "tags": ", ".join(audio["keywords"]),
+        "tags": _audio_tags(audio),
         "filename_prefix": f"artifacts/runs_state/{payload['run_id']}/audio/music",
     }
     plan.update(audio_policy(config))
@@ -30,13 +30,15 @@ def _plan_with_ollama(config: dict, plan: dict) -> dict:
 
 def _audio_prompt(plan: dict) -> str:
     desc = str(plan["description"]).strip()
+    tags = str(plan["tags"]).strip()
+    tags_clause = f"Input tags={tags}. " if tags else ""
     return (
         "You are an elite songwriter-producer. Return JSON only. "
         "No markdown. No prose outside JSON. "
         "Required top-level keys: genre_description,bpm,seed,duration,lyrics_blocks. "
         "Required lyrics_blocks item keys: section,label,style,lines. "
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,outro. "
-        "Composition target must follow input tags/reference strictly. "
+        "Composition target must follow input reference strictly. "
         "Design aggressive section contrast with distinct diction per section. "
         "Verse: momentum-forward, rhythmic punch, percussive wording, compact bar-like phrasing. "
         "Verse should include concrete sonic/action terms (e.g., click, flash, bass, drop, ignite) without copying examples. "
@@ -55,5 +57,11 @@ def _audio_prompt(plan: dict) -> str:
         "Avoid generic filler and repeated empty slogans. "
         "Do not invent extra sections or fields. "
         f"Target duration={int(plan['duration'])} sec, bpm={int(plan['bpm'])}. "
-        f"Input tags={plan['tags']}. Creative reference={desc}."
+        f"{tags_clause}Creative reference={desc}."
     )
+
+
+def _audio_tags(audio: dict) -> str:
+    raw = audio.get("tags", []) if isinstance(audio, dict) else []
+    vals = [str(x).strip() for x in raw if str(x).strip()]
+    return ", ".join(vals)
