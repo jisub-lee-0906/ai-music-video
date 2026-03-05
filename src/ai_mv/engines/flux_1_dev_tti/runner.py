@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow, tti_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
 
@@ -18,9 +19,9 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
                 "anchor": selected,
                 "anchor_candidates": candidates,
                 "anchor_selected": selected,
-                "shot_type": shot.get("shot_type", "CHAR_MASTER"),
-                "duration_sec": float(shot.get("duration_sec", 4.0)),
-                "is_chorus": bool(shot.get("is_chorus", False)),
+                "shot_type": shot["shot_type"],
+                "duration_sec": float(shot["duration_sec"]),
+                "is_chorus": bool(shot["is_chorus"]),
                 "retry": 0,
                 "error_body": "",
             }
@@ -36,7 +37,7 @@ def _run_candidates(config: dict, shot: dict) -> list[str]:
 
 def _run_one(config: dict, shot: dict, offset: int) -> str:
     payload = dict(shot)
-    payload["seed"] = int(payload.get("seed", 0)) + (offset * 101)
+    payload["seed"] = int(payload["seed"]) + (offset * 101)
     payload["filename_prefix"] = f"anchors/{shot['shot_id']}_{'a' if offset == 0 else 'b'}"
     result = _run_shot_tti(config, payload)
     files = result.get("files", [])
@@ -48,21 +49,20 @@ def _run_one(config: dict, shot: dict, offset: int) -> str:
 
 def _run_shot_tti(config: dict, shot: dict) -> dict:
     attempts = int(config.get("limits", {}).get("max_retries_per_shot", 3))
-    last: Exception | None = None
-    for retry in range(attempts):
-        bindings = map_tti_workflow(config, _mutate_shot(shot, retry))
-        try:
-            return run_workflow(config, "image_flux1_dev_tti.api.json", bindings, tti_required_inputs())
-        except Exception as exc:
-            last = exc
-    raise RuntimeError(f"TTI failed for {shot['shot_id']}: {last}")
+    fn = lambda retry: run_workflow(
+        config,
+        "image_flux1_dev_tti.api.json",
+        map_tti_workflow(config, _mutate_shot(shot, retry)),
+        tti_required_inputs(),
+    )
+    return call_with_retries(attempts, fn, "TTI", shot["shot_id"])
 
 
 def _mutate_shot(shot: dict, retry: int) -> dict:
     if retry == 0:
         return dict(shot)
     out = dict(shot)
-    out["seed"] = int(out.get("seed", 0)) + retry * 1009
+    out["seed"] = int(out["seed"]) + retry * 1009
     return out
 
 

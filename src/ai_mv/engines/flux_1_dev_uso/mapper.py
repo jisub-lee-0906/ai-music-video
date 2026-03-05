@@ -2,17 +2,25 @@ from __future__ import annotations
 
 from ai_mv.utils.text_utils import ensure_16_9
 
+USO_LOAD_IMAGE = "47"
+USO_TEXT_POS = "112:6"
+USO_LATENT = "112:110"
+USO_KSAMPLER = "112:31"
+USO_SAVE = "9"
+
 
 def map_uso_workflow(config: dict, item: dict) -> dict:
-    idx = _shot_index(item.get("shot_id", "0")) + int(item.get("frame_idx", 0))
+    idx = _shot_index(str(item["shot_id"])) + int(item["frame_idx"])
     width, height = _uso_size(config)
+    prompt = _uso_prompt(item)
     return {
-        "shot.prompt": _uso_prompt(item),
-        "shot.seed": 2000 + idx,
-        "shot.reference_image": item["ref"],
-        "video.width": width,
-        "video.height": height,
-        "image.filename_prefix": item.get("filename_prefix", "ComfyUI"),
+        "node.inputs": {
+            USO_LOAD_IMAGE: {"image": item["ref"]},
+            USO_TEXT_POS: {"text": prompt},
+            USO_LATENT: {"width": width, "height": height},
+            USO_KSAMPLER: {"seed": 2000 + idx},
+            USO_SAVE: {"filename_prefix": item["filename_prefix"]},
+        },
     }
 
 
@@ -33,13 +41,13 @@ def _shot_index(shot_id: str) -> int:
 
 
 def _uso_prompt(item: dict) -> str:
-    guidance = str(item.get("style_guidance", "")).strip()
+    guidance = str(item["style_guidance"]).strip()
     base = f"consistent portrait for {item['shot_id']}"
-    stype = str(item.get("shot_type", "CHAR_MASTER"))
-    style = str(item.get("style_ref", ""))
-    delta = str(item.get("delta", "small pose shift"))
+    stype = str(item["shot_type"])
+    style = str(item["style_ref"])
+    delta = str(item["delta"])
     return (
-        f"{base}, shot_type={stype}, keyframe={item.get('frame_name', 'start')}, "
+        f"{base}, shot_type={stype}, keyframe={item['frame_name']}, "
         f"delta={delta}, style_ref={style}, guidance={guidance}"
     )
 

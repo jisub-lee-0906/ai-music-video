@@ -5,6 +5,8 @@ from pathlib import Path
 
 import requests
 
+from ai_mv.core.contracts.errors import MediaValidationError
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -22,18 +24,23 @@ def resolve_project_path(path: str) -> Path:
 def stage_image_for_comfy(config: dict, image_ref: str) -> str:
     ref = str(image_ref or "").strip()
     if not ref:
-        return ref
+        raise MediaValidationError("image ref is empty")
+    strict = bool(config.get("integrations", {}).get("strict_remote", False))
+    if not strict:
+        return Path(ref).as_posix()
     src = _resolve_image_source(config, ref)
     if not src:
         src = _fetch_from_comfy_output(config, ref)
     if not src:
-        return Path(ref).name
+        raise MediaValidationError(f"image source not found: {ref}")
     uploaded = _upload_to_comfy_input(config, src, ref)
     if uploaded:
         return uploaded
     dst = _resolve_comfy_input(config) / Path(ref)
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
+    if not dst.exists():
+        raise MediaValidationError(f"failed to stage image: {dst.as_posix()}")
     return Path(ref).as_posix()
 
 

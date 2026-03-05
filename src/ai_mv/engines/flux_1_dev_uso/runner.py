@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow, uso_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.utils.path_utils import stage_image_for_comfy
@@ -30,15 +31,12 @@ def _render_frame(config: dict, item: dict, frame_name: str, idx: int) -> str:
 
 def _run_shot_uso(config: dict, item: dict) -> dict:
     attempts = int(config.get("limits", {}).get("max_retries_per_shot", 3))
-    last: Exception | None = None
-    for retry in range(attempts):
+    def _call(retry: int) -> dict:
         payload = dict(item)
         payload["frame_idx"] = int(item.get("frame_idx", 0)) + retry
-        try:
-            return run_workflow(config, "image_flux1_dev_uso.api.json", map_uso_workflow(config, payload), uso_required_inputs())
-        except Exception as exc:
-            last = exc
-    raise RuntimeError(f"USO failed for {item['shot_id']}: {last}")
+        return run_workflow(config, "image_flux1_dev_uso.api.json", map_uso_workflow(config, payload), uso_required_inputs())
+
+    return call_with_retries(attempts, _call, "USO", item["shot_id"])
 
 
 def _frame_names(mode: str) -> list[str]:

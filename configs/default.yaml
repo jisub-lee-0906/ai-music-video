@@ -28,6 +28,8 @@ limits:
   queue_concurrency: 1
 integrations:
   comfyui_base_url: "http://127.0.0.1:8188"
+  comfyui_input_dir: "C:/Users/Desktop/Documents/ComfyUI/input"
+  comfyui_output_dir: "C:/Users/Desktop/Documents/ComfyUI/output"
   ollama_base_url: "http://127.0.0.1:11434"
   ollama_model: "qwen3:14b"
   ollama_num_gpu: 0

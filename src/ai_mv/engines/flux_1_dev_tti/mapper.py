@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from ai_mv.utils.text_utils import ensure_16_9, parse_size
 
+TTI_TEXT = "41"
+TTI_KSAMPLER = "31"
+TTI_LATENT = "27"
+TTI_SAVE = "9"
+
 
 def map_tti_workflow(config: dict, shot: dict) -> dict:
     w, h = _tti_size(config)
     return {
-        "shot.prompt": shot["prompt"],
-        "shot.negative_prompt": shot["negative_prompt"],
-        "shot.seed": shot["seed"],
-        "video.width": w,
-        "video.height": h,
-        "image.filename_prefix": shot.get("filename_prefix", "ComfyUI"),
+        "node.inputs": {
+            TTI_TEXT: {"clip_l": shot["prompt"], "t5xxl": shot["prompt"]},
+            TTI_KSAMPLER: {"seed": int(shot["seed"])},
+            TTI_LATENT: {"width": w, "height": h},
+            TTI_SAVE: {"filename_prefix": shot["filename_prefix"]},
+        }
     }
 
 

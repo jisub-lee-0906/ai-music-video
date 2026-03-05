@@ -2,31 +2,43 @@ from __future__ import annotations
 
 from ai_mv.utils.text_utils import ensure_16_9, parse_size
 
+WAN_TEXT_NEG = "78"
+WAN_LOAD_START = "80"
+WAN_LOAD_END = "89"
+WAN_FLF2V = "81"
+WAN_KSAMPLER_A = "84"
+WAN_CREATE = "86"
+WAN_KSAMPLER_B = "87"
+WAN_SAVE = "83"
+WAN_TEXT_POS = "90"
+
 
 def map_wan_workflow(config: dict, clip: dict) -> dict:
     w, h = _wan_size(config, clip)
-    idx = _shot_index(clip.get("shot_id", "0"))
-    seed = 3000 + idx + int(clip.get("seed_offset", 0))
-    steps = _steps_for_energy(str(clip.get("energy", "mid")))
-    guidance = str(config.get("style", {}).get("guidance", "music video")).strip() or "music video"
+    idx = _shot_index(str(clip["shot_id"]))
+    seed = 3000 + idx + int(clip["seed_offset"])
+    steps = _steps_for_energy(str(clip["energy"]))
+    neg = str(clip["negative_prompt"])
+    pos = str(clip["prompt"])
     return {
-        "shot.prompt": str(clip.get("prompt", f"{guidance}, motion for {clip['shot_id']}")),
-        "shot.negative_prompt": str(clip.get("negative_prompt", "flicker, low quality")),
-        "shot.seed": seed,
-        "shot.start_image": clip["start"],
-        "shot.end_image": clip["end"],
-        "shot.length_frames": int(clip.get("frames", 96)),
-        "shot.steps": steps,
-        "video.width": w,
-        "video.height": h,
-        "video.fps": clip["fps"],
-        "video.filename_prefix": clip.get("filename_prefix", "video/ComfyUI"),
+        "node.inputs": {
+            WAN_TEXT_NEG: {"text": neg},
+            WAN_TEXT_POS: {"text": pos},
+            WAN_LOAD_START: {"image": clip["start"]},
+            WAN_LOAD_END: {"image": clip["end"]},
+            WAN_FLF2V: {
+                "width": w,
+                "height": h,
+                "length": int(clip["frames"]),
+                "start_image": clip["start"],
+                "end_image": clip["end"],
+            },
+            WAN_KSAMPLER_A: {"noise_seed": seed, "steps": steps},
+            WAN_KSAMPLER_B: {"noise_seed": seed, "steps": steps},
+            WAN_CREATE: {"fps": int(clip["fps"])},
+            WAN_SAVE: {"filename_prefix": str(clip["filename_prefix"])},
+        },
     }
-
-
-def build_concat_plan(config: dict, payload: dict) -> dict:
-    clips = payload.get("clips", [])
-    return {"ordered": [x["video"] for x in clips]}
 
 
 def _shot_index(shot_id: str) -> int:
@@ -36,7 +48,7 @@ def _shot_index(shot_id: str) -> int:
 
 
 def _wan_size(config: dict, clip: dict) -> tuple[int, int]:
-    size = str(clip.get("wan_size", config.get("render", {}).get("wan_size", "640x360")))
+    size = str(clip["wan_size"])
     w, h = parse_size(size)
     ensure_16_9(w, h)
     return w, h
@@ -58,4 +70,6 @@ def _steps_for_energy(energy: str) -> int:
         return 14
     if energy == "high":
         return 22
-    return 18
+    if energy == "mid":
+        return 18
+    raise ValueError(f"invalid energy: {energy}")

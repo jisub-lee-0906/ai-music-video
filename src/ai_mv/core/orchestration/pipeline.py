@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import traceback
+
 from ai_mv.core.artifacts.dashboard import write_dashboard
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.summary import write_summary
@@ -28,6 +30,7 @@ def run_pipeline(config_path: str, run_id: str = "") -> str:
         except Exception as exc:
             state["status"] = "failed"
             state["failure_reason"] = f"{name}: {exc}"
+            state["failure_traceback"] = traceback.format_exc()
             break
         save_snapshot(state, stage_input.payload)
 
