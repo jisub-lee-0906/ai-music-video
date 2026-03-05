@@ -25,7 +25,7 @@ def generate_json(config: dict, prompt: str) -> dict:
     def _call() -> dict:
         res = requests.post(
             f"{base}/api/generate",
-            json={"model": model, "prompt": prompt, "format": "json", "stream": False},
+            json=_payload(config, model, prompt, "json"),
             timeout=30,
         )
         res.raise_for_status()
@@ -46,7 +46,7 @@ def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
     def _call() -> dict:
         res = requests.post(
             f"{base}/api/generate",
-            json={"model": model, "prompt": prompt, "format": schema, "stream": False},
+            json=_payload(config, model, prompt, schema),
             timeout=45,
         )
         res.raise_for_status()
@@ -54,3 +54,17 @@ def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
         return json.loads(text)
 
     return with_retry(_call)
+
+
+def _payload(config: dict, model: str, prompt: str, fmt: str | dict) -> dict:
+    integ = config.get("integrations", {})
+    num_gpu = int(integ.get("ollama_num_gpu", 0))
+    keep_alive = str(integ.get("ollama_keep_alive", "0s"))
+    return {
+        "model": model,
+        "prompt": prompt,
+        "format": fmt,
+        "stream": False,
+        "keep_alive": keep_alive,
+        "options": {"num_gpu": num_gpu},
+    }

@@ -6,7 +6,10 @@ from ai_mv.infra.comfy_client import run_workflow
 
 def run_tti(config: dict, plan: dict) -> list[dict]:
     out: list[dict] = []
-    for shot in plan.get("shots", []):
+    shots = plan.get("shots", [])
+    if not shots:
+        raise RuntimeError("TTI plan is empty")
+    for shot in shots:
         candidates = _run_candidates(config, shot)
         selected = _select_candidate(candidates)
         out.append(

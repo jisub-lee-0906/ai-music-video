@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow, uso_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
+from ai_mv.utils.path_utils import stage_image_for_comfy
 
 
 def run_uso(config: dict, plan: dict) -> list[dict]:
     out: list[dict] = []
-    for item in plan.get("items", []):
+    items = plan.get("items", [])
+    if not items:
+        raise RuntimeError("USO plan is empty")
+    for item in items:
         frames = _frame_names(item.get("mode", "double"))
         rendered = [_render_frame(config, item, name, idx) for idx, name in enumerate(frames)]
         out.append(_pack_item(item, rendered))
@@ -17,7 +21,7 @@ def _render_frame(config: dict, item: dict, frame_name: str, idx: int) -> str:
     payload = dict(item)
     payload["frame_name"] = frame_name
     payload["frame_idx"] = idx
-    payload["ref"] = payload.get("ref") or payload.get("anchor", "")
+    payload["ref"] = stage_image_for_comfy(config, payload.get("ref") or payload.get("anchor", ""))
     payload["filename_prefix"] = f"uso/{item['shot_id']}_{frame_name}"
     result = _run_shot_uso(config, payload)
     files = result.get("files", [])

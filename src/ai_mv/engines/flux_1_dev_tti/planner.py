@@ -23,7 +23,10 @@ def _plan_with_ollama(config: dict, sections: list[dict]) -> list[dict]:
         out = generate_structured(config, _planner_prompt(guidance, sections), tti_schema())
     except Exception:
         return []
-    return out.get("shots", []) if isinstance(out, dict) else []
+    if not isinstance(out, dict):
+        return []
+    shots = out.get("shots", [])
+    return shots if isinstance(shots, list) else []
 
 
 def _planner_prompt(guidance: str, sections: list[dict]) -> str:
