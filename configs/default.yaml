@@ -27,6 +27,8 @@ integrations:
   comfyui_output_dir: "C:/Users/Desktop/Documents/ComfyUI/output"
   ollama_base_url: "http://127.0.0.1:11434"
   ollama_model: "qwen3:14b"
+  ollama_timeout_json_sec: 60
+  ollama_timeout_structured_sec: 120
   ollama_num_gpu: 0
   ollama_keep_alive: "0s"
   workflows_dir: "workflows"

@@ -41,15 +41,10 @@ def _shot_index(shot_id: str) -> int:
 
 
 def _uso_prompt(item: dict) -> str:
-    guidance = str(item["style_guidance"]).strip()
-    base = f"consistent portrait for {item['shot_id']}"
-    stype = str(item["shot_type"])
-    style = str(item["style_ref"])
-    delta = str(item["delta"])
-    return (
-        f"{base}, shot_type={stype}, keyframe={item['frame_name']}, "
-        f"delta={delta}, style_ref={style}, guidance={guidance}"
-    )
+    text = str(item["prompt_text"]).strip()
+    if not text:
+        raise RuntimeError(f"empty USO prompt_text: {item['shot_id']}")
+    return text
 
 
 def _uso_size(config: dict) -> tuple[int, int]:

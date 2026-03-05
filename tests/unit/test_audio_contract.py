@@ -1,0 +1,19 @@
+from ai_mv.core.contracts.prompt_contract import normalize_audio_fields
+
+
+def test_normalize_audio_fields_renders_lyrics_blocks():
+    raw = {
+        "tags": "jpop, idol",
+        "genre_description": "J-pop idol track with bright synth layers and punchy drums.",
+        "bpm": 128,
+        "seed": 42,
+        "duration": 160,
+        "lyrics_blocks": [
+            {"section": "intro", "label": "Intro", "style": "Synth Rise", "lines": ["yeah", "turn it up"]},
+            {"section": "chorus", "label": "Chorus", "style": "Pop Explosion", "lines": ["boom boom", "we ignite"]},
+        ],
+    }
+    out = normalize_audio_fields(raw)
+    assert out["bpm"] == 128
+    assert "[Intro - Synth Rise]" in out["lyrics"]
+    assert "[Chorus - Pop Explosion]" in out["lyrics"]

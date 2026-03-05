@@ -11,23 +11,44 @@ def run_uso(config: dict, plan: dict) -> list[dict]:
     items = plan["items"]
     if not items:
         raise RuntimeError("USO plan is empty")
+    prev_end = ""
     for item in items:
-        frames = _frame_names(item["mode"])
-        rendered = [_render_frame(config, item, name, idx) for idx, name in enumerate(frames)]
-        out.append(_pack_item(item, rendered))
+        start = _resolve_start(config, item, prev_end)
+        end = _render_end(config, item, start)
+        out.append(_pack_item(item, start, end))
+        prev_end = end
     return out
 
 
-def _render_frame(config: dict, item: dict, frame_name: str, idx: int) -> str:
+def _resolve_start(config: dict, item: dict, prev_end: str) -> str:
+    if prev_end:
+        return prev_end
+    return _render_start(config, item)
+
+
+def _render_start(config: dict, item: dict) -> str:
     payload = dict(item)
-    payload["frame_name"] = frame_name
-    payload["frame_idx"] = idx
+    payload["frame_name"] = "start"
+    payload["frame_idx"] = 0
     payload["ref"] = stage_image_for_comfy(config, payload["ref"])
-    payload["filename_prefix"] = f"uso/{item['shot_id']}_{frame_name}"
+    payload["filename_prefix"] = f"uso/{item['shot_id']}_start"
     result = _run_shot_uso(config, payload)
     files = result["files"]
     if not files:
-        raise RuntimeError(f"USO output missing for {item['shot_id']}/{frame_name}")
+        raise RuntimeError(f"USO output missing for {item['shot_id']}/start")
+    return files[0]
+
+
+def _render_end(config: dict, item: dict, start_ref: str) -> str:
+    payload = dict(item)
+    payload["frame_name"] = "end"
+    payload["frame_idx"] = 1
+    payload["ref"] = stage_image_for_comfy(config, start_ref)
+    payload["filename_prefix"] = f"uso/{item['shot_id']}_end"
+    result = _run_shot_uso(config, payload)
+    files = result["files"]
+    if not files:
+        raise RuntimeError(f"USO output missing for {item['shot_id']}/end")
     return files[0]
 
 
@@ -41,20 +62,13 @@ def _run_shot_uso(config: dict, item: dict) -> dict:
     return call_with_retries(attempts, _call, "USO", item["shot_id"])
 
 
-def _frame_names(mode: str) -> list[str]:
-    return ["start", "mid", "end"] if mode == "triple" else ["start", "end"]
-
-
-def _pack_item(item: dict, frames: list[str]) -> dict:
+def _pack_item(item: dict, start: str, end: str) -> dict:
     out = {
         "shot_id": item["shot_id"],
-        "keyframe_mode": item["mode"],
         "duration_sec": item["duration_sec"],
         "retry": 0,
         "error_body": "",
     }
-    out["start"] = frames[0]
-    out["end"] = frames[-1]
-    if len(frames) == 3:
-        out["mid"] = frames[1]
+    out["start"] = start
+    out["end"] = end
     return out

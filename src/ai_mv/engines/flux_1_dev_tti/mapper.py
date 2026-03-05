@@ -12,7 +12,7 @@ def map_tti_workflow(config: dict, shot: dict) -> dict:
     w, h = _tti_size(config)
     return {
         "node.inputs": {
-            TTI_TEXT: {"clip_l": shot["prompt"], "t5xxl": shot["prompt"]},
+            TTI_TEXT: {"clip_l": shot["prompt_clip_l"], "t5xxl": shot["prompt_t5xxl"]},
             TTI_KSAMPLER: {"seed": int(shot["seed"])},
             TTI_LATENT: {"width": w, "height": h},
             TTI_SAVE: {"filename_prefix": shot["filename_prefix"]},

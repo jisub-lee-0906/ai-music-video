@@ -35,14 +35,10 @@ def _anchor_rows(payload: dict) -> list[dict]:
 def _uso_rows(payload: dict) -> list[dict]:
     out: list[dict] = []
     for row in payload["uso_images"]:
-        mode = row["keyframe_mode"]
-        mid = row["mid"] if mode == "triple" else ""
         out.append(
             {
                 "shot_id": row["shot_id"],
-                "keyframe_mode": mode,
                 "start": row["start"],
-                "mid": mid,
                 "end": row["end"],
                 "retry": row["retry"],
                 "error_body": row["error_body"],

@@ -18,6 +18,7 @@ def generate_json(config: dict, prompt: str) -> dict:
     integ = config["integrations"]
     base = str(integ["ollama_base_url"]).rstrip("/")
     model = str(integ["ollama_model"])
+    timeout = int(integ["ollama_timeout_json_sec"])
     strict = bool(integ["strict_remote"])
     if not strict:
         raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
@@ -26,7 +27,7 @@ def generate_json(config: dict, prompt: str) -> dict:
         res = requests.post(
             f"{base}/api/generate",
             json=_payload(config, model, prompt, "json"),
-            timeout=30,
+            timeout=timeout,
         )
         res.raise_for_status()
         body = res.json()
@@ -40,6 +41,7 @@ def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
     integ = config["integrations"]
     base = str(integ["ollama_base_url"]).rstrip("/")
     model = str(integ["ollama_model"])
+    timeout = int(integ["ollama_timeout_structured_sec"])
     strict = bool(integ["strict_remote"])
     if not strict:
         raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
@@ -48,7 +50,7 @@ def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
         res = requests.post(
             f"{base}/api/generate",
             json=_payload(config, model, prompt, schema),
-            timeout=45,
+            timeout=timeout,
         )
         res.raise_for_status()
         body = res.json()

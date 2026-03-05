@@ -23,7 +23,9 @@ def _plan_with_ollama(config: dict, sections: list[dict]) -> list[dict]:
 def _planner_prompt(guidance: str, sections: list[dict]) -> str:
     return (
         "Return strict JSON: {'shots':[]}. Each shot has "
-        "shot_id,prompt,negative_prompt,duration_sec,seed,shot_type,is_chorus. "
+        "shot_id,prompt_clip_l,prompt_t5xxl,negative_prompt,duration_sec,seed,shot_type,is_chorus. "
+        "prompt_clip_l must be vivid keyword-dense cinematic visual prompt. "
+        "prompt_t5xxl must be natural sentence-style descriptive prompt for same scene. "
         f"Guidance={guidance}; Sections={sections}"
     )
 
@@ -32,7 +34,7 @@ def _normalize_shots(shots: list[dict], target_total: float) -> list[dict]:
     if not isinstance(shots, list):
         raise RuntimeError("shots must be list")
     parsed = [normalize_tti_shot(s, i) for i, s in enumerate(shots) if isinstance(s, dict)]
-    parsed = [s for s in parsed if s and str(s["prompt"]).strip()]
+    parsed = [s for s in parsed if s and str(s["prompt_clip_l"]).strip() and str(s["prompt_t5xxl"]).strip()]
     if not parsed:
         raise RuntimeError("no valid shots from TTI planner")
     total = sum(float(s["duration_sec"]) for s in parsed)

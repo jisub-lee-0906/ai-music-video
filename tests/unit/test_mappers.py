@@ -22,11 +22,18 @@ def test_audio_mapper():
 
 def test_tti_mapper():
     cfg = {"render": {"tti_size": "1024x576"}}
-    shot = {"prompt": "p", "negative_prompt": "n", "seed": 3, "filename_prefix": "anchors/s_001_a"}
+    shot = {
+        "prompt_clip_l": "cinematic portrait, silver hair, magical butterflies, glass roses",
+        "prompt_t5xxl": "A silver-haired girl stands in a dreamy fantasy garden of butterflies and glass roses.",
+        "negative_prompt": "n",
+        "seed": 3,
+        "filename_prefix": "anchors/s_001_a",
+    }
     out = map_tti_workflow(cfg, shot)
     nodes = out["node.inputs"]
     assert nodes["27"]["width"] == 1024
     assert nodes["27"]["height"] == 576
+    assert nodes["41"]["clip_l"] != nodes["41"]["t5xxl"]
 
 
 def test_uso_mapper():
@@ -36,6 +43,8 @@ def test_uso_mapper():
         "frame_idx": 0,
         "frame_name": "start",
         "ref": "a.png",
+        "prompt_text": "A European girl with a heartfelt smile in an endless blooming summer field.",
+        "negative_prompt": "blurry, low detail",
         "shot_type": "CHAR_MASTER",
         "style_ref": "refs/front.png",
         "style_guidance": "clean mv look",
@@ -56,8 +65,8 @@ def test_wan_mapper():
         "end": "b.png",
         "fps": 24,
         "frames": 96,
-        "energy": "mid",
-        "prompt": "mv motion",
+        "energy": "normal",
+        "positive_prompt": "A kitten made of ice crystals wakes and transforms into a giant beast.",
         "negative_prompt": "blur",
         "wan_size": "640x360",
         "seed_offset": 0,

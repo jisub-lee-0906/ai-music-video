@@ -20,7 +20,9 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
 
 def _plan_with_ollama(config: dict, clips: list[dict]) -> dict:
     prompt = (
-        "Return JSON {'clips':[]} with shot_id,prompt,negative_prompt,energy. "
+        "Return strict JSON {'clips':[]} with shot_id,positive_prompt,negative_prompt,energy. "
+        "positive_prompt should describe action/motion scene in 1-3 sentences. "
+        "negative_prompt should be artifact and quality suppression list. "
         f"ShotIds={[c['shot_id'] for c in clips]}"
     )
     return generate_structured(config, prompt, wan_schema())
@@ -29,14 +31,7 @@ def _plan_with_ollama(config: dict, clips: list[dict]) -> dict:
 def _item_to_clips(item: dict, fps: int) -> list[dict]:
     duration = float(item["duration_sec"])
     total = max(24, int(round(duration * fps)))
-    if item["keyframe_mode"] != "triple" or "mid" not in item:
-        return [_clip(item["shot_id"], item["start"], item["end"], fps, total)]
-    first = max(12, total // 2)
-    second = max(12, total - first)
-    return [
-        _clip(f"{item['shot_id']}__a", item["start"], item["mid"], fps, first),
-        _clip(f"{item['shot_id']}__b", item["mid"], item["end"], fps, second),
-    ]
+    return [_clip(item["shot_id"], item["start"], item["end"], fps, total)]
 
 
 def _clip(shot_id: str, start: str, end: str, fps: int, frames: int) -> dict:
@@ -45,7 +40,7 @@ def _clip(shot_id: str, start: str, end: str, fps: int, frames: int) -> dict:
 
 def _apply_prompt(clip: dict, row: dict) -> dict:
     out = dict(clip)
-    out["prompt"] = str(row["prompt"])
+    out["positive_prompt"] = str(row["positive_prompt"])
     out["negative_prompt"] = str(row["negative_prompt"])
     out["energy"] = str(row["energy"])
     return out

@@ -19,7 +19,7 @@ def map_wan_workflow(config: dict, clip: dict) -> dict:
     seed = 3000 + idx + int(clip["seed_offset"])
     steps = _steps_for_energy(str(clip["energy"]))
     neg = str(clip["negative_prompt"])
-    pos = str(clip["prompt"])
+    pos = str(clip["positive_prompt"])
     return {
         "node.inputs": {
             WAN_TEXT_NEG: {"text": neg},
@@ -70,6 +70,6 @@ def _steps_for_energy(energy: str) -> int:
         return 14
     if energy == "high":
         return 22
-    if energy == "mid":
+    if energy == "normal":
         return 18
     raise ValueError(f"invalid energy: {energy}")

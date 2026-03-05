@@ -6,10 +6,20 @@ SHOT_TYPES = ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "DETAIL_INSERT", "ENV
 def tti_schema() -> dict:
     shot = {
         "type": "object",
-        "required": ["shot_id", "prompt", "negative_prompt", "duration_sec", "seed", "shot_type", "is_chorus"],
+        "required": [
+            "shot_id",
+            "prompt_clip_l",
+            "prompt_t5xxl",
+            "negative_prompt",
+            "duration_sec",
+            "seed",
+            "shot_type",
+            "is_chorus",
+        ],
         "properties": {
             "shot_id": {"type": "string"},
-            "prompt": {"type": "string"},
+            "prompt_clip_l": {"type": "string"},
+            "prompt_t5xxl": {"type": "string"},
             "negative_prompt": {"type": "string"},
             "duration_sec": {"type": "number"},
             "seed": {"type": "integer"},
@@ -21,12 +31,26 @@ def tti_schema() -> dict:
 
 
 def audio_schema() -> dict:
+    block = {
+        "type": "object",
+        "required": ["section", "label", "style", "lines"],
+        "properties": {
+            "section": {
+                "type": "string",
+                "enum": ["intro", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"],
+            },
+            "label": {"type": "string"},
+            "style": {"type": "string"},
+            "lines": {"type": "array", "items": {"type": "string"}},
+        },
+    }
     props = {
         "tags": {"type": "string"},
-        "lyrics": {"type": "string"},
+        "genre_description": {"type": "string"},
         "bpm": {"type": "integer"},
         "seed": {"type": "integer"},
         "duration": {"type": "integer"},
+        "lyrics_blocks": {"type": "array", "items": block},
     }
     return {"type": "object", "required": list(props.keys()), "properties": props}
 
@@ -34,11 +58,12 @@ def audio_schema() -> dict:
 def uso_schema() -> dict:
     item = {
         "type": "object",
-        "required": ["shot_id", "mode", "delta"],
+        "required": ["shot_id", "delta", "prompt_text", "negative_prompt"],
         "properties": {
             "shot_id": {"type": "string"},
-            "mode": {"type": "string", "enum": ["double", "triple"]},
             "delta": {"type": "string"},
+            "prompt_text": {"type": "string"},
+            "negative_prompt": {"type": "string"},
         },
     }
     return {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "items": item}}}
@@ -47,12 +72,12 @@ def uso_schema() -> dict:
 def wan_schema() -> dict:
     clip = {
         "type": "object",
-        "required": ["shot_id", "prompt", "negative_prompt", "energy"],
+        "required": ["shot_id", "positive_prompt", "negative_prompt", "energy"],
         "properties": {
             "shot_id": {"type": "string"},
-            "prompt": {"type": "string"},
+            "positive_prompt": {"type": "string"},
             "negative_prompt": {"type": "string"},
-            "energy": {"type": "string", "enum": ["low", "mid", "high"]},
+            "energy": {"type": "string", "enum": ["low", "normal", "high"]},
         },
     }
     return {"type": "object", "required": ["clips"], "properties": {"clips": {"type": "array", "items": clip}}}
@@ -64,7 +89,8 @@ def normalize_tti_shot(raw: dict, idx: int) -> dict:
         raise RuntimeError(f"invalid shot_type at {idx}: {stype}")
     return {
         "shot_id": str(raw["shot_id"]),
-        "prompt": str(raw["prompt"]).strip(),
+        "prompt_clip_l": str(raw["prompt_clip_l"]).strip(),
+        "prompt_t5xxl": str(raw["prompt_t5xxl"]).strip(),
         "negative_prompt": str(raw["negative_prompt"]),
         "duration_sec": float(raw["duration_sec"]),
         "seed": int(raw["seed"]),
@@ -74,13 +100,35 @@ def normalize_tti_shot(raw: dict, idx: int) -> dict:
 
 
 def normalize_audio_fields(raw: dict) -> dict:
+    blocks = raw["lyrics_blocks"]
+    if not isinstance(blocks, list) or not blocks:
+        raise RuntimeError("lyrics_blocks missing")
     return {
         "tags": str(raw["tags"]),
-        "lyrics": str(raw["lyrics"]),
+        "genre_description": str(raw["genre_description"]).strip(),
+        "lyrics_blocks": blocks,
+        "lyrics": _render_lyrics_blocks(blocks),
         "bpm": int(raw["bpm"]),
         "seed": int(raw["seed"]),
         "duration": int(raw["duration"]),
     }
+
+
+def _render_lyrics_blocks(blocks: list[dict]) -> str:
+    lines: list[str] = []
+    for row in blocks:
+        label = str(row["label"]).strip()
+        style = str(row["style"]).strip()
+        arr = [str(x).strip() for x in row["lines"] if str(x).strip()]
+        if not label or not style or not arr:
+            raise RuntimeError("invalid lyrics block")
+        lines.append(f"[{label} - {style}]")
+        lines.extend(arr)
+        lines.append("")
+    text = "\n".join(lines).strip()
+    if not text:
+        raise RuntimeError("rendered lyrics empty")
+    return text
 
 
 def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str, dict]:
@@ -89,13 +137,13 @@ def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str,
     for anchor in anchors:
         sid = str(anchor["shot_id"])
         row = keyed[sid]
-        mode = str(row["mode"])
-        if mode not in {"double", "triple"}:
-            raise RuntimeError(f"invalid uso mode: {mode}")
         out[sid] = {
-            "mode": mode,
             "delta": str(row["delta"]),
+            "prompt_text": str(row["prompt_text"]).strip(),
+            "negative_prompt": str(row["negative_prompt"]).strip(),
         }
+        if not out[sid]["prompt_text"]:
+            raise RuntimeError(f"empty uso prompt_text: {sid}")
     return out
 
 
@@ -106,10 +154,10 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
         sid = str(clip["shot_id"])
         row = keyed[sid]
         energy = str(row["energy"])
-        if energy not in {"low", "mid", "high"}:
+        if energy not in {"low", "normal", "high"}:
             raise RuntimeError(f"invalid wan energy: {energy}")
         out[sid] = {
-            "prompt": str(row["prompt"]),
+            "positive_prompt": str(row["positive_prompt"]),
             "negative_prompt": str(row["negative_prompt"]),
             "energy": energy,
         }
