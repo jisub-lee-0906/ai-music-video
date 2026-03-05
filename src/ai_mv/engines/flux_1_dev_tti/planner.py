@@ -50,14 +50,48 @@ def _normalize_shots(shots: list[dict], sections: list[dict], target_total: floa
     parsed = [s for s in parsed if _valid_prompt_pair(s)]
     if not parsed:
         raise RuntimeError("no valid shots from TTI planner")
-    aligned = _align_section_timing(parsed, sections)
+    if not sections:
+        raise RuntimeError("sections missing for TTI planner")
+    keyed = _select_section_key_shots(parsed, len(sections))
+    aligned = _assign_one_shot_per_section(keyed, sections)
     total = sum(float(x["duration_sec"]) for x in aligned)
     if total <= 0:
         raise RuntimeError("invalid total shot duration")
-    scale = target_total / total
-    for shot in aligned:
-        shot["duration_sec"] = max(2.0, round(float(shot["duration_sec"]) * scale, 3))
+    _rescale_durations(aligned, max(0.001, float(target_total)))
     return aligned
+
+
+def _select_section_key_shots(shots: list[dict], count: int) -> list[dict]:
+    if count <= 0:
+        raise RuntimeError("section count must be positive")
+    if not shots:
+        raise RuntimeError("shots must not be empty")
+    if count == 1:
+        return [dict(shots[0])]
+    if len(shots) == 1:
+        return [dict(shots[0]) for _ in range(count)]
+    last = len(shots) - 1
+    out: list[dict] = []
+    for i in range(count):
+        idx = int(round((i * last) / float(count - 1)))
+        out.append(dict(shots[idx]))
+    return out
+
+
+def _assign_one_shot_per_section(shots: list[dict], sections: list[dict]) -> list[dict]:
+    if len(shots) != len(sections):
+        raise RuntimeError(f"section shot mismatch: shots={len(shots)} sections={len(sections)}")
+    out: list[dict] = []
+    for i, (row, sec) in enumerate(zip(shots, sections), start=1):
+        sec_name = str(sec.get("name", "section"))
+        sec_dur = max(0.001, _sec_end(sec) - _sec_start(sec))
+        item = dict(row)
+        item["shot_id"] = f"S{i:03d}"
+        item["section_name"] = sec_name
+        item["is_chorus"] = _is_chorus(sec_name)
+        item["duration_sec"] = round(sec_dur, 3)
+        out.append(item)
+    return out
 
 
 def _align_section_timing(shots: list[dict], sections: list[dict]) -> list[dict]:
@@ -65,6 +99,8 @@ def _align_section_timing(shots: list[dict], sections: list[dict]) -> list[dict]
     out: list[dict] = []
     idx = 0
     for sec, cnt in zip(sections, counts):
+        if cnt <= 0:
+            continue
         sec_name = str(sec.get("name", "section"))
         sec_dur = max(0.001, _sec_end(sec) - _sec_start(sec))
         dur = round(sec_dur / cnt, 3)
@@ -75,26 +111,50 @@ def _align_section_timing(shots: list[dict], sections: list[dict]) -> list[dict]
             row["duration_sec"] = dur
             out.append(row)
             idx += 1
-    return out[: len(shots)]
+    if len(out) != len(shots):
+        raise RuntimeError(f"section alignment mismatch: expected={len(shots)} actual={len(out)}")
+    return out
 
 
 def _distribute_counts(total_shots: int, sections: list[dict]) -> list[int]:
     if total_shots <= 0:
         raise RuntimeError("total_shots must be positive")
+    if not sections:
+        raise RuntimeError("sections must not be empty")
     weights = [_section_weight(s) for s in sections]
     mass = sum(weights)
-    raw = [(w / mass) * total_shots for w in weights]
-    base = [max(1, int(x)) for x in raw]
-    while sum(base) > total_shots:
-        j = _argmax(base)
-        if base[j] > 1:
-            base[j] -= 1
-        else:
-            break
-    while sum(base) < total_shots:
-        j = _argmax(raw)
-        base[j] += 1
+    if mass <= 0:
+        raw = [float(total_shots) / float(len(sections))] * len(sections)
+    else:
+        raw = [(w / mass) * total_shots for w in weights]
+    base = [int(x) for x in raw]
+    remain = total_shots - sum(base)
+    frac_rank = sorted(range(len(raw)), key=lambda i: (raw[i] - base[i]), reverse=True)
+    for i in range(remain):
+        base[frac_rank[i % len(frac_rank)]] += 1
+    if sum(base) != total_shots:
+        raise RuntimeError("shot distribution mismatch")
     return base
+
+
+def _rescale_durations(shots: list[dict], target_total: float) -> None:
+    if not shots:
+        raise RuntimeError("shots must not be empty")
+    base = [max(0.001, float(s["duration_sec"])) for s in shots]
+    n = len(base)
+    min_dur = min(2.0, target_total / float(n))
+    reserve = min_dur * n
+    budget = max(0.0, target_total - reserve)
+    mass = sum(base)
+    if mass <= 0:
+        vals = [target_total / float(n)] * n
+    else:
+        vals = [min_dur + (budget * (x / mass)) for x in base]
+    rounded = [round(x, 3) for x in vals]
+    drift = round(target_total - sum(rounded), 3)
+    rounded[-1] = round(max(0.001, rounded[-1] + drift), 3)
+    for shot, dur in zip(shots, rounded):
+        shot["duration_sec"] = dur
 
 
 def _section_weight(section: dict) -> float:

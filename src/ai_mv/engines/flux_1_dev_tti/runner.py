@@ -18,7 +18,7 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
 
 
 def _run_candidates(config: dict, shot: dict) -> list[str]:
-    return [_run_one(config, shot, 0), _run_one(config, shot, 1)]
+    return [_run_one(config, shot, 0)]
 
 
 def _run_one(config: dict, shot: dict, offset: int) -> str:

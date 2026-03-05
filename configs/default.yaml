@@ -1,5 +1,4 @@
 audio:
-  source_wav: master.wav
   lyrics: ""
   song_title: ""
   song_description: ""
@@ -20,7 +19,6 @@ render:
 limits:
   max_retries_per_shot: 1
   timeout_seconds: 900
-  strict_failure: true
 integrations:
   comfyui_base_url: "http://127.0.0.1:8188"
   comfyui_input_dir: "C:/Users/Desktop/Documents/ComfyUI/input"
@@ -37,7 +35,7 @@ runtime:
   bootstrap_missing_inputs: true
   template_hash_lock: true
   template_hashes:
-    audio_ace_step_1_5_tta.api.json: ff9a86f44fcfa2d7f696bd80d953cfd422be1f194b59710888f2e69e8012b0ff
+    audio_ace_step_1_5_tta.api.json: c74c05f120309bcf90deb15c4079304616d341455b47159712f2031287f625df
     image_flux1_dev_tti.api.json: 4604bf1e6c7fe45246b9a2a18d3ab56377725e051c190100cead09c9081134a4
     image_flux1_dev_uso.api.json: 929919d824cb4595d14f2818a3ce5b4c3433fb7ce709e71dde01536369e9ea92
     video_wan_2_2_flf2v.api.json: d13efd85f0109531ab16028a0425bcb951cda7beee0ed8b959197f46e8551339

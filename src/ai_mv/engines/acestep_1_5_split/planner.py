@@ -8,7 +8,6 @@ from ai_mv.infra.ollama_client import generate_structured
 def build_audio_plan(config: dict, payload: dict) -> dict:
     audio = config["audio"]
     plan = {
-        "source_wav": audio["source_wav"],
         "lyrics": str(audio["lyrics"]),
         "description": str(audio["song_description"]),
         "tags": _audio_tags(audio),
@@ -17,7 +16,6 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     plan.update(audio_policy(config))
     planned = _plan_with_ollama(config, plan)
     normalized = normalize_audio_fields(planned)
-    normalized["source_wav"] = plan["source_wav"]
     normalized["description"] = normalized["genre_description"] or plan["description"]
     normalized["filename_prefix"] = plan["filename_prefix"]
     normalized["quality"] = plan["quality"]

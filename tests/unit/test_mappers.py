@@ -79,3 +79,5 @@ def test_wan_mapper():
     nodes = out["node.inputs"]
     assert nodes["81"]["length"] == 96
     assert nodes["81"]["width"] == 640
+    assert "start_image" not in nodes["81"]
+    assert "end_image" not in nodes["81"]

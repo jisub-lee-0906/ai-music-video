@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from functools import lru_cache
 import json
 from typing import Any
 
@@ -17,12 +19,17 @@ def run_workflow(
 ) -> dict:
     base = str(config["integrations"]["workflows_dir"])
     wf_path = resolve_project_path(base) / workflow_name
-    workflow = json.loads(wf_path.read_text(encoding="utf-8"))
+    workflow = deepcopy(_load_workflow_template(str(wf_path)))
     if required:
         preflight_workflow(workflow, required)
     validate_node_bindings(workflow, bindings)
     patched = patch_workflow(workflow, bindings)
     return submit(config, patched)
+
+
+@lru_cache(maxsize=16)
+def _load_workflow_template(path: str) -> dict[str, Any]:
+    return json.loads(resolve_project_path(path).read_text(encoding="utf-8"))
 
 
 def submit(config: dict, workflow: dict[str, Any]) -> dict:

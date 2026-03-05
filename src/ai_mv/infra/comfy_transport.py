@@ -21,20 +21,26 @@ def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> di
     queued = with_retry(lambda: _queue_prompt(base_url, workflow, timeout))
     prompt_id = str(queued["prompt_id"])
     history = wait_history(base_url, prompt_id, timeout)
+    _raise_if_execution_error(history, prompt_id)
     return {"prompt_id": prompt_id, "history": history, "files": extract_files(history)}
 
 
 def wait_history(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
     start = time.time()
     url = f"{base_url.rstrip('/')}/history/{prompt_id}"
+    sleep_sec = 0.4
+    max_sleep_sec = 2.0
     while True:
         data = with_retry(lambda: _get_json(url, timeout))
         record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
-        if time.time() - start > timeout:
+        elapsed = time.time() - start
+        if elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
-        time.sleep(1.0)
+        remaining = max(0.0, timeout - elapsed)
+        time.sleep(min(sleep_sec, remaining))
+        sleep_sec = min(max_sleep_sec, sleep_sec * 1.2)
 
 
 def extract_files(history: dict[str, Any]) -> list[str]:
@@ -45,6 +51,8 @@ def extract_files(history: dict[str, Any]) -> list[str]:
             continue
         files += _collect_file_entries(node_out["images"] if "images" in node_out else [])
         files += _collect_file_entries(node_out["gifs"] if "gifs" in node_out else [])
+        files += _collect_file_entries(node_out["videos"] if "videos" in node_out else [])
+        files += _collect_file_entries(node_out["files"] if "files" in node_out else [])
         files += _collect_file_entries(node_out["audio"] if "audio" in node_out else [])
     return files
 
@@ -80,3 +88,22 @@ def _get_json(url: str, timeout: int) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ComfyRequestError("Comfy history response is not a dict")
     return data
+
+
+def _raise_if_execution_error(history: dict[str, Any], prompt_id: str) -> None:
+    status = history["status"] if isinstance(history, dict) and "status" in history else {}
+    if not isinstance(status, dict):
+        return
+    if str(status.get("status_str", "")).lower() != "error":
+        return
+    messages = status["messages"] if "messages" in status and isinstance(status["messages"], list) else []
+    for msg in reversed(messages):
+        if not isinstance(msg, list) or len(msg) < 2:
+            continue
+        if str(msg[0]) != "execution_error" or not isinstance(msg[1], dict):
+            continue
+        node_id = str(msg[1].get("node_id", ""))
+        node_type = str(msg[1].get("node_type", ""))
+        exc = str(msg[1].get("exception_message", "unknown error")).strip()
+        raise ComfyRequestError(f"Comfy execution_error prompt_id={prompt_id} node={node_id}/{node_type}: {exc}")
+    raise ComfyRequestError(f"Comfy execution_error prompt_id={prompt_id}")

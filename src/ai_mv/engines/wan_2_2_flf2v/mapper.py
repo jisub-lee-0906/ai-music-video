@@ -30,8 +30,6 @@ def map_wan_workflow(config: dict, clip: dict) -> dict:
                 "width": w,
                 "height": h,
                 "length": int(clip["frames"]),
-                "start_image": clip["start"],
-                "end_image": clip["end"],
             },
             WAN_KSAMPLER_A: {"noise_seed": seed, "steps": steps},
             WAN_KSAMPLER_B: {"noise_seed": seed, "steps": steps},
