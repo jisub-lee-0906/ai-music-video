@@ -1,0 +1,9 @@
+audio:
+  bpm: 118
+  keywords:
+    - cinematic
+    - live_action
+    - dramatic
+style:
+  guidance: "cinematic live-action, dramatic lighting, coherent identity, controlled camera motion"
+

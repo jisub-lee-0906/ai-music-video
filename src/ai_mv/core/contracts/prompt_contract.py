@@ -94,14 +94,14 @@ def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str,
     return out
 
 
-def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, dict]:
+def normalize_wan_clips(raw_clips: list[dict], clips: list[dict], guidance: str = "music video") -> dict[str, dict]:
     keyed = {str(x.get("shot_id", "")): x for x in raw_clips if isinstance(x, dict)}
     out: dict[str, dict] = {}
     for clip in clips:
         sid = str(clip.get("shot_id", ""))
         row = keyed.get(sid, {})
         out[sid] = {
-            "prompt": str(row.get("prompt", f"cinematic motion for {sid}")),
+            "prompt": str(row.get("prompt", f"{guidance}, motion for {sid}")),
             "negative_prompt": str(row.get("negative_prompt", "flicker, low quality")),
             "energy": str(row.get("energy", "mid")),
         }

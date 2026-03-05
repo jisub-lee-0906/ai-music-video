@@ -7,12 +7,13 @@ from ai_mv.utils.text_utils import parse_target
 
 def build_wan_plan(config: dict, payload: dict) -> dict:
     fps = parse_target(config.get("video", {}).get("target", "1920x1080@24"))[2]
+    guidance = str(config.get("style", {}).get("guidance", "music video")).strip() or "music video"
     clips: list[dict] = []
     for item in payload.get("uso_images", []):
         clips.extend(_item_to_clips(item, fps))
     spec = _plan_with_ollama(config, clips)
-    prompts = normalize_wan_clips(spec.get("clips", []), clips)
-    clips = [_apply_prompt(x, prompts.get(x["shot_id"], {})) for x in clips]
+    prompts = normalize_wan_clips(spec.get("clips", []), clips, guidance)
+    clips = [_apply_prompt(x, prompts.get(x["shot_id"], {}), guidance) for x in clips]
     return {"clips": clips}
 
 
@@ -44,9 +45,9 @@ def _clip(shot_id: str, start: str, end: str, fps: int, frames: int) -> dict:
     return {"shot_id": shot_id, "start": start, "end": end, "fps": fps, "frames": frames}
 
 
-def _apply_prompt(clip: dict, row: dict) -> dict:
+def _apply_prompt(clip: dict, row: dict, guidance: str) -> dict:
     out = dict(clip)
-    out["prompt"] = str(row.get("prompt", f"cinematic motion for {clip['shot_id']}"))
+    out["prompt"] = str(row.get("prompt", f"{guidance}, motion for {clip['shot_id']}"))
     out["negative_prompt"] = str(row.get("negative_prompt", "flicker, low quality"))
     out["energy"] = str(row.get("energy", "mid"))
     return out

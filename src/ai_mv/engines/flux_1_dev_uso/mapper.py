@@ -33,11 +33,15 @@ def _shot_index(shot_id: str) -> int:
 
 
 def _uso_prompt(item: dict) -> str:
-    base = f"consistent cinematic portrait for {item['shot_id']}"
+    guidance = str(item.get("style_guidance", "")).strip()
+    base = f"consistent portrait for {item['shot_id']}"
     stype = str(item.get("shot_type", "CHAR_MASTER"))
     style = str(item.get("style_ref", ""))
     delta = str(item.get("delta", "small pose shift"))
-    return f"{base}, shot_type={stype}, keyframe={item.get('frame_name', 'start')}, delta={delta}, style_ref={style}"
+    return (
+        f"{base}, shot_type={stype}, keyframe={item.get('frame_name', 'start')}, "
+        f"delta={delta}, style_ref={style}, guidance={guidance}"
+    )
 
 
 def _uso_size(config: dict) -> tuple[int, int]:

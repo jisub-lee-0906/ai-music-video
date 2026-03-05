@@ -28,6 +28,9 @@ def stage_image_for_comfy(config: dict, image_ref: str) -> str:
         src = _fetch_from_comfy_output(config, ref)
     if not src:
         return Path(ref).name
+    uploaded = _upload_to_comfy_input(config, src, ref)
+    if uploaded:
+        return uploaded
     dst = _resolve_comfy_input(config) / Path(ref)
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
@@ -80,4 +83,30 @@ def _download_view(base: str, filename: str, subfolder: str, dst: Path) -> bool:
         return False
     dst.write_bytes(res.content)
     return True
+
+
+def _upload_to_comfy_input(config: dict, src: Path, ref: str) -> str:
+    base = str(config.get("integrations", {}).get("comfyui_base_url", "")).rstrip("/")
+    if not base:
+        return ""
+    sub = Path(ref).parent.as_posix()
+    data = {"type": "input", "overwrite": "true"}
+    if sub and sub != ".":
+        data["subfolder"] = sub
+    try:
+        with src.open("rb") as fp:
+            res = requests.post(
+                f"{base}/upload/image",
+                data=data,
+                files={"image": (src.name, fp, "application/octet-stream")},
+                timeout=30,
+            )
+        if res.status_code >= 400:
+            return ""
+        body = res.json() if res.content else {}
+    except Exception:
+        return ""
+    name = str(body.get("name") or body.get("filename") or src.name).strip()
+    folder = str(body.get("subfolder", "")).strip("/\\")
+    return f"{folder}/{name}" if folder else name
 

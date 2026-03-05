@@ -8,8 +8,9 @@ def map_wan_workflow(config: dict, clip: dict) -> dict:
     idx = _shot_index(clip.get("shot_id", "0"))
     seed = 3000 + idx + int(clip.get("seed_offset", 0))
     steps = _steps_for_energy(str(clip.get("energy", "mid")))
+    guidance = str(config.get("style", {}).get("guidance", "music video")).strip() or "music video"
     return {
-        "shot.prompt": str(clip.get("prompt", f"cinematic motion for {clip['shot_id']}")),
+        "shot.prompt": str(clip.get("prompt", f"{guidance}, motion for {clip['shot_id']}")),
         "shot.negative_prompt": str(clip.get("negative_prompt", "flicker, low quality")),
         "shot.seed": seed,
         "shot.start_image": clip["start"],

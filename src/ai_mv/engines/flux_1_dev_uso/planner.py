@@ -7,10 +7,11 @@ from ai_mv.infra.ollama_client import generate_structured
 def build_uso_plan(config: dict, payload: dict) -> dict:
     refs = config.get("consistency", {}).get("reference_images", [])
     style_ref = refs[0] if refs else ""
+    style_guidance = str(config.get("style", {}).get("guidance", "")).strip()
     anchors = payload.get("anchors", [])
     spec = _plan_with_ollama(config, anchors)
     rules = normalize_uso_items(spec.get("items", []), anchors)
-    items = [_build_item(anchor, style_ref, rules.get(anchor["shot_id"], {})) for anchor in anchors]
+    items = [_build_item(anchor, style_ref, style_guidance, rules.get(anchor["shot_id"], {})) for anchor in anchors]
     return {"items": items}
 
 
@@ -25,7 +26,7 @@ def _plan_with_ollama(config: dict, anchors: list[dict]) -> dict:
         return {}
 
 
-def _build_item(anchor: dict, style_ref: str, rule: dict) -> dict:
+def _build_item(anchor: dict, style_ref: str, style_guidance: str, rule: dict) -> dict:
     is_chorus = bool(anchor.get("is_chorus", False))
     mode = str(rule.get("mode", "triple" if is_chorus else "double"))
     return {
@@ -35,6 +36,7 @@ def _build_item(anchor: dict, style_ref: str, rule: dict) -> dict:
         "style_ref": style_ref,
         "mode": mode,
         "delta": str(rule.get("delta", "small pose shift")),
+        "style_guidance": style_guidance,
         "duration_sec": float(anchor.get("duration_sec", 4.0)),
         "shot_type": str(anchor.get("shot_type", "CHAR_MASTER")),
     }
