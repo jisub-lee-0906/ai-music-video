@@ -5,8 +5,8 @@ from ai_mv.utils.json_utils import write_json
 
 
 def readiness_report(state: dict, payload: dict) -> None:
-    score = float(payload.get("quality_score", 0.0))
-    go_live_ready = state.get("status") == "done" and score >= 1.0
+    score = float(payload["quality_score"])
+    go_live_ready = state["status"] == "done" and score >= 1.0
     out = {
         "run_id": state["run_id"],
         "status": state["status"],

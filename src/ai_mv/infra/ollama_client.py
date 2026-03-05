@@ -15,12 +15,12 @@ def ping_ollama(base_url: str) -> bool:
 
 
 def generate_json(config: dict, prompt: str) -> dict:
-    integ = config.get("integrations", {})
-    base = integ.get("ollama_base_url", "http://127.0.0.1:11434").rstrip("/")
-    model = integ.get("ollama_model", "qwen2.5:14b-instruct")
-    strict = bool(integ.get("strict_remote", False))
+    integ = config["integrations"]
+    base = str(integ["ollama_base_url"]).rstrip("/")
+    model = str(integ["ollama_model"])
+    strict = bool(integ["strict_remote"])
     if not strict:
-        return {"mock": True, "prompt": prompt[:80]}
+        raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
 
     def _call() -> dict:
         res = requests.post(
@@ -29,19 +29,20 @@ def generate_json(config: dict, prompt: str) -> dict:
             timeout=30,
         )
         res.raise_for_status()
-        text = res.json().get("response", "{}")
+        body = res.json()
+        text = str(body["response"])
         return json.loads(text)
 
     return with_retry(_call)
 
 
 def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
-    integ = config.get("integrations", {})
-    base = integ.get("ollama_base_url", "http://127.0.0.1:11434").rstrip("/")
-    model = integ.get("ollama_model", "qwen2.5:14b-instruct")
-    strict = bool(integ.get("strict_remote", False))
+    integ = config["integrations"]
+    base = str(integ["ollama_base_url"]).rstrip("/")
+    model = str(integ["ollama_model"])
+    strict = bool(integ["strict_remote"])
     if not strict:
-        return {"mock": True, "prompt": prompt[:80], "schema": True}
+        raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
 
     def _call() -> dict:
         res = requests.post(
@@ -50,16 +51,17 @@ def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
             timeout=45,
         )
         res.raise_for_status()
-        text = res.json().get("response", "{}")
+        body = res.json()
+        text = str(body["response"])
         return json.loads(text)
 
     return with_retry(_call)
 
 
 def _payload(config: dict, model: str, prompt: str, fmt: str | dict) -> dict:
-    integ = config.get("integrations", {})
-    num_gpu = int(integ.get("ollama_num_gpu", 0))
-    keep_alive = str(integ.get("ollama_keep_alive", "0s"))
+    integ = config["integrations"]
+    num_gpu = int(integ["ollama_num_gpu"])
+    keep_alive = str(integ["ollama_keep_alive"])
     return {
         "model": model,
         "prompt": prompt,

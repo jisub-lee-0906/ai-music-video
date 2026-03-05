@@ -8,7 +8,6 @@ def write_dashboard(state: dict, payload: dict) -> None:
         "run_id": state["run_id"],
         "status": state["status"],
         "stages": state["completed_stages"],
-        "quality": payload.get("quality_score", 0.0),
+        "quality": payload["quality_score"],
     }
     write_json(f"artifacts/dashboards/{state['run_id']}.json", data)
-

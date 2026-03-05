@@ -4,6 +4,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from ai_mv.utils.text_utils import parse_target
+
 
 def run_ffmpeg_mux(clips: list[Path], audio: Path, out: Path, config: dict) -> bool:
     ffmpeg = shutil.which("ffmpeg")
@@ -12,10 +14,8 @@ def run_ffmpeg_mux(clips: list[Path], audio: Path, out: Path, config: dict) -> b
     out.parent.mkdir(parents=True, exist_ok=True)
     concat = out.parent / "concat.txt"
     concat.write_text("\n".join([f"file '{p.as_posix()}'" for p in clips]), encoding="utf-8")
-    target = str(config.get("video", {}).get("target", "1920x1080@24"))
-    dims, fps = target.split("@")
-    w, h = dims.split("x")
-    cmd = _ffmpeg_cmd(ffmpeg, concat, audio, out, w, h, int(fps))
+    w, h, fps = parse_target(str(config["video"]["target"]))
+    cmd = _ffmpeg_cmd(ffmpeg, concat, audio, out, str(w), str(h), fps)
     return subprocess.run(cmd, check=False).returncode == 0
 
 
@@ -44,4 +44,3 @@ def _ffmpeg_cmd(ffmpeg: str, concat: Path, audio: Path, out: Path, w: str, h: st
         "-shortest",
         str(out),
     ]
-

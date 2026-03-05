@@ -8,11 +8,13 @@ from ai_mv.utils.time_utils import ffprobe_duration
 def run_audio_split(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
     result = run_workflow(config, "audio_ace_step_1_5_tta.api.json", wf, audio_required_inputs())
-    music_file = _pick_audio_file(result.get("files", []), config)
-    duration = ffprobe_duration(music_file) or float(plan.get("duration", 160))
+    music_file = _pick_audio_file(result["files"])
+    duration = ffprobe_duration(music_file)
+    if duration <= 0:
+        raise RuntimeError(f"invalid audio duration: {music_file}")
     return {
         "duration_sec": duration,
-        "bpm_estimate": int(plan.get("bpm", 120)),
+        "bpm_estimate": int(plan["bpm"]),
         "sections": _sections(duration),
         "music_file": music_file,
     }
@@ -28,9 +30,9 @@ def _sections(duration: float) -> list[dict]:
     ]
 
 
-def _pick_audio_file(files: list[str], config: dict) -> str:
+def _pick_audio_file(files: list[str]) -> str:
     for name in files:
         low = str(name).lower()
         if low.endswith((".wav", ".mp3", ".flac", ".m4a")):
             return name
-    return str(config.get("audio", {}).get("source_wav", "master.wav"))
+    raise RuntimeError("audio output file not found")

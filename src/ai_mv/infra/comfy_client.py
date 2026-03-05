@@ -15,7 +15,7 @@ def run_workflow(
     bindings: dict[str, Any],
     required: dict[str, list[str]] | None = None,
 ) -> dict:
-    base = config.get("integrations", {}).get("workflows_dir", "workflows")
+    base = str(config["integrations"]["workflows_dir"])
     wf_path = resolve_project_path(base) / workflow_name
     workflow = json.loads(wf_path.read_text(encoding="utf-8"))
     if required:
@@ -26,9 +26,9 @@ def run_workflow(
 
 
 def submit(config: dict, workflow: dict[str, Any]) -> dict:
-    base_url = config.get("integrations", {}).get("comfyui_base_url", "")
+    base_url = str(config["integrations"]["comfyui_base_url"])
     timeout = resolve_timeout(config)
-    strict = bool(config.get("integrations", {}).get("strict_remote", False))
+    strict = bool(config["integrations"]["strict_remote"])
     if not strict:
-        return {"prompt_id": "mock", "mock": True}
+        raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
     return submit_workflow(base_url, workflow, timeout)

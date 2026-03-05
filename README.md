@@ -9,8 +9,7 @@ ai-mv start --config configs/default.yaml
 ```
 
 ## Commands
-- `ai-mv start --config <yaml> [--run-id <id>]`
-- `ai-mv run-batch --config <yaml>`
+- `ai-mv start --config <yaml> [--run-id <id>] [--profile <name>]`
 - `ai-mv doctor --config <yaml>`
 - `ai-mv status --run-id <id>`
 

@@ -7,7 +7,7 @@ from ai_mv.infra.comfy_client import run_workflow
 
 def run_tti(config: dict, plan: dict) -> list[dict]:
     out: list[dict] = []
-    shots = plan.get("shots", [])
+    shots = plan["shots"]
     if not shots:
         raise RuntimeError("TTI plan is empty")
     for shot in shots:
@@ -40,15 +40,14 @@ def _run_one(config: dict, shot: dict, offset: int) -> str:
     payload["seed"] = int(payload["seed"]) + (offset * 101)
     payload["filename_prefix"] = f"anchors/{shot['shot_id']}_{'a' if offset == 0 else 'b'}"
     result = _run_shot_tti(config, payload)
-    files = result.get("files", [])
-    if files:
-        return files[0]
-    suffix = "a" if offset == 0 else "b"
-    return f"{shot['shot_id']}_{suffix}.png"
+    files = result["files"]
+    if not files:
+        raise RuntimeError(f"TTI output missing for {shot['shot_id']}")
+    return files[0]
 
 
 def _run_shot_tti(config: dict, shot: dict) -> dict:
-    attempts = int(config.get("limits", {}).get("max_retries_per_shot", 3))
+    attempts = int(config["limits"]["max_retries_per_shot"])
     fn = lambda retry: run_workflow(
         config,
         "image_flux1_dev_tti.api.json",
@@ -67,5 +66,4 @@ def _mutate_shot(shot: dict, retry: int) -> dict:
 
 
 def _select_candidate(candidates: list[str]) -> str:
-    usable = [x for x in candidates if x and not x.endswith("_missing.png")]
-    return usable[0] if usable else candidates[0]
+    return candidates[0]

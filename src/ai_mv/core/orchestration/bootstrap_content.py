@@ -1,66 +1,75 @@
 from __future__ import annotations
 
-import base64
 import json
 from pathlib import Path
 
 from ai_mv.infra.ollama_client import generate_structured
-from ai_mv.utils.path_utils import resolve_project_path
 
 
 def ensure_lyrics(config: dict) -> None:
-    audio = config.setdefault("audio", {})
-    path = resolve_project_path(str(audio.get("lyrics_file", "lyrics.txt")))
-    audio["lyrics_file"] = path.as_posix()
-    if path.exists() and path.read_text(encoding="utf-8").strip():
+    audio = config["audio"]
+    if str(audio["lyrics"]).strip():
         return
-    prompt = _lyrics_prompt(config)
-    schema = {"type": "object", "required": ["lyrics"], "properties": {"lyrics": {"type": "string"}}}
-    out = generate_structured(config, prompt, schema)
-    lyrics = str(out.get("lyrics", "Instrumental section with hook and chorus.")).strip()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(lyrics, encoding="utf-8")
-
-
-def ensure_references(config: dict) -> None:
-    cons = config.setdefault("consistency", {})
-    refs = [str(x) for x in cons.get("reference_images", []) if str(x).strip()]
-    if refs:
-        return
-    base = resolve_project_path("refs")
-    refs = [(base / n).as_posix() for n in ["subject_front.png", "subject_side.png", "subject_full.png"]]
-    for ref in refs:
-        _write_tiny_png(Path(ref))
-    cons["reference_images"] = refs
+    out = generate_structured(config, _lyrics_prompt(config), _lyrics_schema())
+    audio["lyrics"] = _render_lyrics_text(out)
+    audio["song_title"] = str(out["title"]).strip()
+    audio["song_description"] = str(out["description"]).strip()
+    audio["lyrics_structured"] = out
 
 
 def ensure_run_style(config: dict, run_dir: Path) -> None:
     style_file = run_dir / "run_style.json"
-    style = config.setdefault("style", {})
-    if style_file.exists() and not str(style.get("guidance", "")).strip():
+    style = config["style"]
+    if style_file.exists() and not str(style["guidance"]).strip():
         data = json.loads(style_file.read_text(encoding="utf-8"))
-        style["guidance"] = str(data.get("guidance", "")).strip()
+        style["guidance"] = str(data["guidance"]).strip()
         return
-    if str(style.get("guidance", "")).strip():
+    if str(style["guidance"]).strip():
         _write_style(style_file, str(style["guidance"]))
         return
     out = generate_structured(config, _style_prompt(config), _style_schema())
-    guidance = str(out.get("guidance", "live-action music video, coherent identity, dynamic camera"))
+    guidance = str(out["guidance"])
     style["guidance"] = guidance
     _write_style(style_file, guidance)
 
 
 def _lyrics_prompt(config: dict) -> str:
-    audio = config.get("audio", {})
-    duration = int(audio.get("target_duration_sec", 160))
-    tags = ", ".join([str(x) for x in audio.get("keywords", [])])
-    style = str(config.get("style", {}).get("guidance", "")).strip()
-    return f"Create concise MV lyrics JSON {{\"lyrics\":\"...\"}}. Duration<= {duration}s, tags={tags}, style={style}."
+    audio = config["audio"]
+    duration = int(audio["target_duration_sec"])
+    tags = ", ".join([str(x) for x in audio["keywords"]])
+    style = str(config["style"]["guidance"]).strip()
+    return (
+        "Return strict JSON with title, description, lyrics_blocks[]. "
+        "Each block has section,label,lines[]. "
+        "Allowed sections: intro,verse,pre_chorus,chorus,bridge,outro. "
+        f"Duration<= {duration}s, tags={tags}, style={style}."
+    )
+
+
+def _lyrics_schema() -> dict:
+    block = {
+        "type": "object",
+        "required": ["section", "label", "lines"],
+        "properties": {
+            "section": {"type": "string", "enum": ["intro", "verse", "pre_chorus", "chorus", "bridge", "outro"]},
+            "label": {"type": "string"},
+            "lines": {"type": "array", "items": {"type": "string"}},
+        },
+    }
+    return {
+        "type": "object",
+        "required": ["title", "description", "lyrics_blocks"],
+        "properties": {
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+            "lyrics_blocks": {"type": "array", "items": block},
+        },
+    }
 
 
 def _style_prompt(config: dict) -> str:
-    profile = str(config.get("profile", "default"))
-    tags = ", ".join([str(x) for x in config.get("audio", {}).get("keywords", [])])
+    profile = str(config["profile"])
+    tags = ", ".join([str(x) for x in config["audio"]["keywords"]])
     return f"Return JSON {{\"guidance\":\"...\"}} for MV visual direction. profile={profile}, keywords={tags}."
 
 
@@ -73,8 +82,22 @@ def _write_style(path: Path, guidance: str) -> None:
     path.write_text(body, encoding="utf-8")
 
 
-def _write_tiny_png(path: Path) -> None:
-    png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6p9xkAAAAASUVORK5CYII="
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(base64.b64decode(png))
-
+def _render_lyrics_text(out: dict) -> str:
+    blocks = out["lyrics_blocks"]
+    if not isinstance(blocks, list) or not blocks:
+        raise RuntimeError("lyrics_blocks is empty")
+    lines: list[str] = []
+    for row in blocks:
+        if not isinstance(row, dict):
+            raise RuntimeError("invalid lyrics block")
+        label = str(row["label"]).strip()
+        arr = [str(x).strip() for x in row["lines"] if str(x).strip()]
+        if not arr:
+            raise RuntimeError(f"empty lyrics lines: {label}")
+        lines.append(f"[{label}]")
+        lines.extend(arr)
+        lines.append("")
+    text = "\n".join(lines).strip()
+    if not text:
+        raise RuntimeError("lyrics text empty")
+    return text

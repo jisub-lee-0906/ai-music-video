@@ -30,7 +30,7 @@ def tti_required_inputs() -> dict[str, list[str]]:
 
 
 def _tti_size(config: dict) -> tuple[int, int]:
-    size = str(config.get("render", {}).get("tti_size", "1024x576"))
+    size = str(config["render"]["tti_size"])
     w, h = parse_size(size)
     ensure_16_9(w, h)
     return w, h

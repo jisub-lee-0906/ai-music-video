@@ -19,9 +19,7 @@ def ping_comfy(base_url: str) -> bool:
 
 def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> dict:
     queued = with_retry(lambda: _queue_prompt(base_url, workflow, timeout))
-    prompt_id = str(queued.get("prompt_id", ""))
-    if not prompt_id:
-        return queued
+    prompt_id = str(queued["prompt_id"])
     history = wait_history(base_url, prompt_id, timeout)
     return {"prompt_id": prompt_id, "history": history, "files": extract_files(history)}
 
@@ -31,7 +29,7 @@ def wait_history(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
     url = f"{base_url.rstrip('/')}/history/{prompt_id}"
     while True:
         data = with_retry(lambda: _get_json(url, timeout))
-        record = data.get(prompt_id, {}) if isinstance(data, dict) else {}
+        record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
         if time.time() - start > timeout:
@@ -40,14 +38,14 @@ def wait_history(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
 
 
 def extract_files(history: dict[str, Any]) -> list[str]:
-    outputs = history.get("outputs", {})
+    outputs = history["outputs"]
     files: list[str] = []
     for _, node_out in outputs.items():
         if not isinstance(node_out, dict):
             continue
-        files += _collect_file_entries(node_out.get("images", []))
-        files += _collect_file_entries(node_out.get("gifs", []))
-        files += _collect_file_entries(node_out.get("audio", []))
+        files += _collect_file_entries(node_out["images"] if "images" in node_out else [])
+        files += _collect_file_entries(node_out["gifs"] if "gifs" in node_out else [])
+        files += _collect_file_entries(node_out["audio"] if "audio" in node_out else [])
     return files
 
 
@@ -68,11 +66,10 @@ def _safe_response_body(res: requests.Response) -> str:
 
 def _collect_file_entries(items: list[dict[str, Any]]) -> list[str]:
     out: list[str] = []
-    for item in items or []:
-        name = str(item.get("filename", ""))
-        folder = str(item.get("subfolder", "")).strip("/\\")
-        if name:
-            out.append(f"{folder}/{name}" if folder else name)
+    for item in items:
+        name = str(item["filename"])
+        folder = str(item["subfolder"]).strip("/\\") if "subfolder" in item else ""
+        out.append(f"{folder}/{name}" if folder else name)
     return out
 
 
@@ -80,5 +77,6 @@ def _get_json(url: str, timeout: int) -> dict[str, Any]:
     res = requests.get(url, timeout=timeout)
     res.raise_for_status()
     data = res.json()
-    return data if isinstance(data, dict) else {}
-
+    if not isinstance(data, dict):
+        raise ComfyRequestError("Comfy history response is not a dict")
+    return data

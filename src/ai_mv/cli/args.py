@@ -10,10 +10,7 @@ def build_parser() -> argparse.ArgumentParser:
     start = sub.add_parser("start")
     start.add_argument("--config", required=True)
     start.add_argument("--run-id", default=None)
-
-    run = sub.add_parser("run-batch")
-    run.add_argument("--config", required=True)
-    run.add_argument("--run-id", default=None)
+    start.add_argument("--profile", default=None)
 
     doctor = sub.add_parser("doctor")
     doctor.add_argument("--config", required=True)

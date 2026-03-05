@@ -59,50 +59,58 @@ def wan_schema() -> dict:
 
 
 def normalize_tti_shot(raw: dict, idx: int) -> dict:
-    stype = str(raw.get("shot_type", SHOT_TYPES[idx % len(SHOT_TYPES)]))
+    stype = str(raw["shot_type"])
+    if stype not in SHOT_TYPES:
+        raise RuntimeError(f"invalid shot_type at {idx}: {stype}")
     return {
-        "shot_id": str(raw.get("shot_id", f"shot_{idx:03d}")),
-        "prompt": str(raw.get("prompt", "")).strip(),
-        "negative_prompt": str(raw.get("negative_prompt", "lowres, blur, artifacts")),
-        "duration_sec": float(raw.get("duration_sec", 4.0)),
-        "seed": int(raw.get("seed", 1000 + idx)),
-        "shot_type": stype if stype in SHOT_TYPES else SHOT_TYPES[idx % len(SHOT_TYPES)],
-        "is_chorus": bool(raw.get("is_chorus", False)),
+        "shot_id": str(raw["shot_id"]),
+        "prompt": str(raw["prompt"]).strip(),
+        "negative_prompt": str(raw["negative_prompt"]),
+        "duration_sec": float(raw["duration_sec"]),
+        "seed": int(raw["seed"]),
+        "shot_type": stype,
+        "is_chorus": bool(raw["is_chorus"]),
     }
 
 
-def normalize_audio_fields(raw: dict, fallback: dict) -> dict:
-    out = dict(fallback)
-    out["tags"] = str(raw.get("tags", out.get("tags", "")))
-    out["lyrics"] = str(raw.get("lyrics", out.get("lyrics", "")))
-    out["bpm"] = int(raw.get("bpm", out.get("bpm", 120)))
-    out["seed"] = int(raw.get("seed", out.get("seed", 31)))
-    out["duration"] = int(raw.get("duration", out.get("duration", 160)))
-    return out
+def normalize_audio_fields(raw: dict) -> dict:
+    return {
+        "tags": str(raw["tags"]),
+        "lyrics": str(raw["lyrics"]),
+        "bpm": int(raw["bpm"]),
+        "seed": int(raw["seed"]),
+        "duration": int(raw["duration"]),
+    }
 
 
 def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str, dict]:
-    keyed = {str(x.get("shot_id", "")): x for x in raw_items if isinstance(x, dict)}
+    keyed = {str(x["shot_id"]): x for x in raw_items if isinstance(x, dict)}
     out: dict[str, dict] = {}
     for anchor in anchors:
-        sid = str(anchor.get("shot_id", ""))
-        default_mode = "triple" if bool(anchor.get("is_chorus", False)) else "double"
+        sid = str(anchor["shot_id"])
+        row = keyed[sid]
+        mode = str(row["mode"])
+        if mode not in {"double", "triple"}:
+            raise RuntimeError(f"invalid uso mode: {mode}")
         out[sid] = {
-            "mode": str(keyed.get(sid, {}).get("mode", default_mode)),
-            "delta": str(keyed.get(sid, {}).get("delta", "small pose shift")),
+            "mode": mode,
+            "delta": str(row["delta"]),
         }
     return out
 
 
-def normalize_wan_clips(raw_clips: list[dict], clips: list[dict], guidance: str = "music video") -> dict[str, dict]:
-    keyed = {str(x.get("shot_id", "")): x for x in raw_clips if isinstance(x, dict)}
+def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, dict]:
+    keyed = {str(x["shot_id"]): x for x in raw_clips if isinstance(x, dict)}
     out: dict[str, dict] = {}
     for clip in clips:
-        sid = str(clip.get("shot_id", ""))
-        row = keyed.get(sid, {})
+        sid = str(clip["shot_id"])
+        row = keyed[sid]
+        energy = str(row["energy"])
+        if energy not in {"low", "mid", "high"}:
+            raise RuntimeError(f"invalid wan energy: {energy}")
         out[sid] = {
-            "prompt": str(row.get("prompt", f"{guidance}, motion for {sid}")),
-            "negative_prompt": str(row.get("negative_prompt", "flicker, low quality")),
-            "energy": str(row.get("energy", "mid")),
+            "prompt": str(row["prompt"]),
+            "negative_prompt": str(row["negative_prompt"]),
+            "energy": energy,
         }
     return out

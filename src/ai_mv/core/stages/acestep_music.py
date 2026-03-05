@@ -10,5 +10,5 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
     payload["run_id"] = stage_input.run_id
     plan = build_audio_plan(stage_input.config, payload)
     audio_map = run_audio_split(stage_input.config, plan)
-    music_file = str(audio_map.get("music_file", stage_input.config.get("audio", {}).get("source_wav", "")))
+    music_file = str(audio_map["music_file"])
     return StageOutput("acestep_music", "done", {"audio_map": audio_map, "music_file": music_file}, [])

@@ -49,9 +49,9 @@ def _is_stale(lock: Path) -> bool:
 def _read_lock(lock: Path) -> tuple[int, int]:
     try:
         data = json.loads(lock.read_text(encoding="utf-8"))
-        return int(data.get("pid", -1)), int(data.get("ts", 0))
+        return int(data["pid"]), int(data["ts"])
     except Exception:
-        return -1, 0
+        raise RuntimeError(f"invalid lock file: {lock}")
 
 
 def _pid_alive(pid: int) -> bool:

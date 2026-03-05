@@ -53,7 +53,7 @@ def _uso_prompt(item: dict) -> str:
 
 
 def _uso_size(config: dict) -> tuple[int, int]:
-    size = str(config.get("render", {}).get("uso_size", "1024x576"))
+    size = str(config["render"]["uso_size"])
     w, h = size.split("x", 1)
     iw, ih = int(w), int(h)
     ensure_16_9(iw, ih)

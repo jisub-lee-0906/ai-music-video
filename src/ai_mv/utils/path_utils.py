@@ -25,9 +25,6 @@ def stage_image_for_comfy(config: dict, image_ref: str) -> str:
     ref = str(image_ref or "").strip()
     if not ref:
         raise MediaValidationError("image ref is empty")
-    strict = bool(config.get("integrations", {}).get("strict_remote", False))
-    if not strict:
-        return Path(ref).as_posix()
     src = _resolve_image_source(config, ref)
     if not src:
         src = _fetch_from_comfy_output(config, ref)
@@ -48,25 +45,23 @@ def _resolve_image_source(config: dict, ref: str) -> Path | None:
     p = Path(ref)
     if p.exists():
         return p.resolve()
-    out = str(config.get("integrations", {}).get("comfyui_output_dir", "")).strip()
-    if out and (Path(out) / p).exists():
-        return (Path(out) / p).resolve()
-    if out and (Path(out) / p.name).exists():
-        return (Path(out) / p.name).resolve()
+    out = Path(str(config["integrations"]["comfyui_output_dir"]).strip())
+    if (out / p).exists():
+        return (out / p).resolve()
+    if (out / p.name).exists():
+        return (out / p.name).resolve()
     return None
 
 
 def _resolve_comfy_input(config: dict) -> Path:
-    inp = str(config.get("integrations", {}).get("comfyui_input_dir", "")).strip()
+    inp = str(config["integrations"]["comfyui_input_dir"]).strip()
     if inp:
         return Path(inp).resolve()
-    return (PROJECT_ROOT / "input").resolve()
+    raise MediaValidationError("integrations.comfyui_input_dir is required")
 
 
 def _fetch_from_comfy_output(config: dict, ref: str) -> Path | None:
-    base = str(config.get("integrations", {}).get("comfyui_base_url", "")).rstrip("/")
-    if not base:
-        return None
+    base = str(config["integrations"]["comfyui_base_url"]).rstrip("/")
     rel = Path(ref).as_posix().strip("/")
     name = Path(rel).name
     sub = "" if "/" not in rel else rel.rsplit("/", 1)[0]
@@ -93,9 +88,7 @@ def _download_view(base: str, filename: str, subfolder: str, dst: Path) -> bool:
 
 
 def _upload_to_comfy_input(config: dict, src: Path, ref: str) -> str:
-    base = str(config.get("integrations", {}).get("comfyui_base_url", "")).rstrip("/")
-    if not base:
-        return ""
+    base = str(config["integrations"]["comfyui_base_url"]).rstrip("/")
     sub = Path(ref).parent.as_posix()
     data = {"type": "input", "overwrite": "true"}
     if sub and sub != ".":
@@ -113,7 +106,7 @@ def _upload_to_comfy_input(config: dict, src: Path, ref: str) -> str:
         body = res.json() if res.content else {}
     except Exception:
         return ""
-    name = str(body.get("name") or body.get("filename") or src.name).strip()
-    folder = str(body.get("subfolder", "")).strip("/\\")
+    name = str(body["name"] if "name" in body else body["filename"]).strip()
+    folder = str(body["subfolder"]).strip("/\\") if "subfolder" in body else ""
     return f"{folder}/{name}" if folder else name
 

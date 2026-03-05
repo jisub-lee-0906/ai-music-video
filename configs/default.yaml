@@ -1,31 +1,26 @@
-project_name: ai_mv_default
 audio:
   source_wav: master.wav
-  sample_rate: 48000
-  lyrics_file: lyrics.txt
+  lyrics: ""
+  song_title: ""
+  song_description: ""
   target_duration_sec: 160
   bpm: 120
   seed: 31
   quality: V0
-  keywords: [cinematic, performance, kpop]
+  keywords: []
+profile: ""
+style:
+  guidance: ""
 video:
   target: "1920x1080@24"
-  mezzanine_codec: prores
 render:
   tti_size: "1024x576"
   uso_size: "1024x576"
   wan_size: "640x360"
-  wan_fallback_size: "640x360"
-consistency:
-  reference_images:
-    - refs/subject_front.jpg
-    - refs/subject_side.jpg
-    - refs/subject_full.jpg
 limits:
   max_retries_per_shot: 1
   timeout_seconds: 900
   strict_failure: true
-  queue_concurrency: 1
 integrations:
   comfyui_base_url: "http://127.0.0.1:8188"
   comfyui_input_dir: "C:/Users/Desktop/Documents/ComfyUI/input"
@@ -37,7 +32,6 @@ integrations:
   workflows_dir: "workflows"
   strict_remote: true
 runtime:
-  auto_start_services: false
   bootstrap_missing_inputs: true
   template_hash_lock: true
   template_hashes:
@@ -45,4 +39,3 @@ runtime:
     image_flux1_dev_tti.api.json: 4604bf1e6c7fe45246b9a2a18d3ab56377725e051c190100cead09c9081134a4
     image_flux1_dev_uso.api.json: 929919d824cb4595d14f2818a3ce5b4c3433fb7ce709e71dde01536369e9ea92
     video_wan_2_2_flf2v.api.json: d13efd85f0109531ab16028a0425bcb951cda7beee0ed8b959197f46e8551339
-profile: cinematic

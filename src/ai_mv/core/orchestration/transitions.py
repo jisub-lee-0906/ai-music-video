@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ai_mv.core.orchestration.bootstrap_content import ensure_lyrics, ensure_references, ensure_run_style
+from ai_mv.core.orchestration.bootstrap_content import ensure_lyrics, ensure_run_style
 from ai_mv.core.orchestration.bootstrap_guard import apply_profile, validate_sizes, validate_templates
 
 
@@ -18,8 +18,7 @@ def bootstrap_config(config: dict, run_dir: Path) -> dict:
     apply_profile(config)
     validate_sizes(config)
     validate_templates(config)
-    if bool(config.get("runtime", {}).get("bootstrap_missing_inputs", True)):
+    if bool(config["runtime"]["bootstrap_missing_inputs"]):
         ensure_lyrics(config)
-        ensure_references(config)
     ensure_run_style(config, run_dir)
     return config

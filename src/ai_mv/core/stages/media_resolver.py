@@ -4,15 +4,13 @@ from pathlib import Path
 
 
 def build_merge_plan(payload: dict) -> dict:
-    clips = payload.get("clips", [])
+    clips = payload["clips"]
     return {"ordered": [x["video"] for x in clips]}
 
 
 def resolve_clip_paths(names: list[str], config: dict, run_dir: Path) -> list[Path]:
     roots = [Path("."), run_dir]
-    comfy_out = str(config.get("integrations", {}).get("comfyui_output_dir", "")).strip()
-    if comfy_out:
-        roots.append(Path(comfy_out))
+    roots.append(Path(str(config["integrations"]["comfyui_output_dir"]).strip()))
     out: list[Path] = []
     for name in names:
         p = Path(str(name))
@@ -23,13 +21,16 @@ def resolve_clip_paths(names: list[str], config: dict, run_dir: Path) -> list[Pa
 
 
 def resolve_audio_path(music_file: str, config: dict) -> Path:
-    candidate = Path(music_file) if music_file else Path(config.get("audio", {}).get("source_wav", "master.wav"))
+    if not music_file:
+        raise RuntimeError("music_file is required")
+    candidate = Path(music_file)
     if candidate.exists():
         return candidate.resolve()
-    comfy_out = str(config.get("integrations", {}).get("comfyui_output_dir", "")).strip()
-    if comfy_out and (Path(comfy_out) / candidate).exists():
-        return (Path(comfy_out) / candidate).resolve()
-    return candidate
+    comfy_out = Path(str(config["integrations"]["comfyui_output_dir"]).strip())
+    staged = (comfy_out / candidate)
+    if staged.exists():
+        return staged.resolve()
+    raise RuntimeError(f"audio file not found: {music_file}")
 
 
 def _search_roots(roots: list[Path], rel: Path) -> Path | None:
@@ -38,4 +39,3 @@ def _search_roots(roots: list[Path], rel: Path) -> Path | None:
         if cand.exists() and cand.suffix.lower() in {".mp4", ".mov", ".mkv"}:
             return cand
     return None
-

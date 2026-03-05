@@ -26,16 +26,31 @@ def ensure_run_dir(run_id: str | None) -> Path:
 
 def init_run_state(config: dict[str, Any], run_id: str | None) -> dict[str, Any]:
     run_dir = ensure_run_dir(run_id)
-    return {"run_id": run_dir.name, "status": "running", "completed_stages": []}
+    return {
+        "run_id": run_dir.name,
+        "status": "running",
+        "current_stage": "",
+        "failure_reason": "",
+        "completed_stages": [],
+    }
 
 
 def load_config(path: str) -> dict[str, Any]:
     with Path(path).open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        raise RuntimeError("config yaml must be object")
+    return data
 
 
 def read_snapshot(run_id: str) -> dict[str, Any]:
     snap = runs_root() / run_id / "snapshot.json"
     if not snap.exists():
-        return {"run_id": run_id, "status": "missing", "completed_stages": []}
+        return {
+            "run_id": run_id,
+            "status": "missing",
+            "current_stage": "",
+            "failure_reason": "",
+            "completed_stages": [],
+        }
     return read_json(snap)

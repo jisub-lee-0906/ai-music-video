@@ -8,7 +8,7 @@ from ai_mv.utils.text_utils import ensure_16_9, parse_size, parse_target
 
 
 def apply_profile(config: dict) -> None:
-    name = str(config.get("profile", "")).strip()
+    name = str(config["profile"]).strip()
     if not name:
         return
     fname = name if name.endswith(".yaml") else f"{name}.yaml"
@@ -17,21 +17,23 @@ def apply_profile(config: dict) -> None:
         raise PipelineError(f"missing profile config: {path.as_posix()}")
     import yaml
 
-    profile = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    profile = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(profile, dict):
+        raise PipelineError(f"invalid profile config: {path.as_posix()}")
     _deep_merge(config, profile)
     config["profile"] = name
 
 
 def validate_sizes(config: dict) -> None:
-    w, h, _ = parse_target(config.get("video", {}).get("target", "1920x1080@24"))
+    w, h, _ = parse_target(config["video"]["target"])
     ensure_16_9(w, h)
     for key in ("tti_size", "uso_size", "wan_size"):
-        rw, rh = parse_size(str(config.get("render", {}).get(key, "1024x576")))
+        rw, rh = parse_size(str(config["render"][key]))
         ensure_16_9(rw, rh)
 
 
 def validate_templates(config: dict) -> None:
-    wf = resolve_project_path(str(config.get("integrations", {}).get("workflows_dir", "workflows")))
+    wf = resolve_project_path(str(config["integrations"]["workflows_dir"]))
     fixed = [
         "audio_ace_step_1_5_tta.api.json",
         "image_flux1_dev_tti.api.json",
@@ -41,8 +43,8 @@ def validate_templates(config: dict) -> None:
     for name in fixed:
         if not (wf / name).exists():
             raise PipelineError(f"missing workflow template: {name}")
-    hashes = config.get("runtime", {}).get("template_hashes", {})
-    if not bool(config.get("runtime", {}).get("template_hash_lock", True)):
+    hashes = config["runtime"]["template_hashes"]
+    if not bool(config["runtime"]["template_hash_lock"]):
         return
     for name, expected in hashes.items():
         p = wf / name
@@ -57,4 +59,3 @@ def _deep_merge(base: dict, patch: dict) -> None:
             _deep_merge(base[key], val)
         else:
             base[key] = val
-

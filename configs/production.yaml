@@ -1,9 +1,0 @@
-project_name: ai_mv_production
-audio:
-  sample_rate: 48000
-video:
-  target: "1920x1080@24"
-limits:
-  max_retries_per_shot: 3
-integrations:
-  strict_remote: true
