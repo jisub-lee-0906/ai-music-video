@@ -10,5 +10,6 @@ def test_parser_has_commands():
 
 def test_start_accepts_profile():
     parser = build_parser()
-    args = parser.parse_args(["start", "--config", "configs/default.yaml", "--profile", "edm_neon"])
-    assert args.profile == "edm_neon"
+    args = parser.parse_args(["start", "--config", "configs/default.yaml", "--profile", "jpop_citypop"])
+    assert args.profile == "jpop_citypop"
+

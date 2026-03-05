@@ -1,0 +1,10 @@
+audio:
+  bpm: 112
+  keywords:
+    - jpop
+    - citypop
+    - retro_synth
+    - urban_night
+    - mellow_groove
+style:
+  guidance: "jpop city-pop mood, retro synth textures, warm neon night atmosphere, clean live-action consistency"

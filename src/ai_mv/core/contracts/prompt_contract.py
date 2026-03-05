@@ -45,7 +45,6 @@ def audio_schema() -> dict:
         },
     }
     props = {
-        "tags": {"type": "string"},
         "genre_description": {"type": "string"},
         "bpm": {"type": "integer"},
         "seed": {"type": "integer"},
@@ -104,7 +103,6 @@ def normalize_audio_fields(raw: dict) -> dict:
     if not isinstance(blocks, list) or not blocks:
         raise RuntimeError("lyrics_blocks missing")
     return {
-        "tags": str(raw["tags"]),
         "genre_description": str(raw["genre_description"]).strip(),
         "lyrics_blocks": blocks,
         "lyrics": _render_lyrics_blocks(blocks),

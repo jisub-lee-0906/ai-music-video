@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.utils.text_utils import ascii_safe_text
+
 AUDIO_TEXT = "94"
 AUDIO_LATENT = "98"
 AUDIO_KSAMPLER = "3"
@@ -10,8 +12,8 @@ def map_audio_workflow(config: dict, plan: dict) -> dict:
     return {
         "node.inputs": {
             AUDIO_TEXT: {
-                "tags": str(plan["tags"]),
-                "lyrics": str(plan["lyrics"]),
+                "tags": ascii_safe_text(str(plan["genre_description"])),
+                "lyrics": ascii_safe_text(str(plan["lyrics"])),
                 "seed": int(plan["seed"]),
                 "bpm": int(plan["bpm"]),
                 "duration": int(plan["duration"]),

@@ -7,7 +7,8 @@ from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow
 def test_audio_mapper():
     plan = {
         "tags": "kpop",
-        "lyrics": "la",
+        "genre_description": "Bright idol-pop with punchy 808s and layered hooks.",
+        "lyrics": "we’re alive",
         "seed": 1,
         "bpm": 120,
         "duration": 160,
@@ -18,6 +19,8 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
+    assert nodes["94"]["tags"] == "Bright idol-pop with punchy 808s and layered hooks."
+    assert nodes["94"]["lyrics"] == "we're alive"
 
 
 def test_tti_mapper():

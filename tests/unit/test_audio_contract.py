@@ -3,7 +3,6 @@ from ai_mv.core.contracts.prompt_contract import normalize_audio_fields
 
 def test_normalize_audio_fields_renders_lyrics_blocks():
     raw = {
-        "tags": "jpop, idol",
         "genre_description": "J-pop idol track with bright synth layers and punchy drums.",
         "bpm": 128,
         "seed": 42,

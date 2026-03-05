@@ -13,6 +13,14 @@ def test_uso_planner_double(monkeypatch):
     assert out["items"][0]["prompt_text"]
 
 
+def test_uso_planner_shot_id_coerce(monkeypatch):
+    monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
+    payload = {"anchors": [_anchor("intro_000", False)]}
+    out = build_uso_plan({"style": {"guidance": "g"}}, payload)
+    assert out["items"][0]["shot_id"] == "intro_000"
+    assert "flower" in out["items"][0]["prompt_text"].lower()
+
+
 def test_wan_planner_uses_start_end_only(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate)
     payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 6.0}]}
@@ -46,6 +54,19 @@ def _fake_uso_generate(_config, _prompt, _schema):
                 "prompt_text": "A performer breathes slowly under sunset light with calm expression.",
                 "negative_prompt": "artifact, bad anatomy, extra limbs",
             },
+        ]
+    }
+
+
+def _fake_uso_generate_mismatch(_config, _prompt, _schema):
+    return {
+        "items": [
+            {
+                "shot_id": "intro_001",
+                "delta": "small gaze shift",
+                "prompt_text": "A European girl with a heartfelt smile stands in an endless blooming flower field under a clear summer sky with warm daylight.",
+                "negative_prompt": "low quality, blurry, jpeg artifacts, bad hands",
+            }
         ]
     }
 

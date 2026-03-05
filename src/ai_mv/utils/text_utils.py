@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import unicodedata
+
 
 def compact(text: str) -> str:
     return " ".join((text or "").split())
@@ -19,3 +21,21 @@ def parse_target(target: str) -> tuple[int, int, int]:
 def ensure_16_9(width: int, height: int) -> None:
     if width * 9 != height * 16:
         raise ValueError(f"non-16:9 size: {width}x{height}")
+
+
+def ascii_safe_text(text: str) -> str:
+    src = str(text or "")
+    table = str.maketrans(
+        {
+            "’": "'",
+            "‘": "'",
+            "“": '"',
+            "”": '"',
+            "—": "-",
+            "–": "-",
+            "…": "...",
+            "\u00a0": " ",
+        }
+    )
+    normalized = unicodedata.normalize("NFKD", src.translate(table))
+    return normalized.encode("ascii", "ignore").decode("ascii")
