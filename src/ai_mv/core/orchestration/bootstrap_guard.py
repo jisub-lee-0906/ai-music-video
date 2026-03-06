@@ -4,6 +4,7 @@ import hashlib
 
 from ai_mv.core.contracts.errors import PipelineError
 from ai_mv.utils.path_utils import resolve_project_path
+from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import ensure_16_9, parse_size, parse_target
 
 
@@ -44,7 +45,7 @@ def validate_templates(config: dict) -> None:
         if not (wf / name).exists():
             raise PipelineError(f"missing workflow template: {name}")
     hashes = config["runtime"]["template_hashes"]
-    if not bool(config["runtime"]["template_hash_lock"]):
+    if not parse_bool(config["runtime"]["template_hash_lock"], default=False):
         return
     if not isinstance(hashes, dict) or not hashes:
         raise PipelineError("template_hash_lock=true requires non-empty runtime.template_hashes")

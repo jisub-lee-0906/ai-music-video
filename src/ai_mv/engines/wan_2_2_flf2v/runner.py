@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow, wan_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
@@ -14,7 +16,8 @@ def run_wan(config: dict, plan: dict) -> list[dict]:
     for clip in clips:
         result = _run_clip_wan(config, clip)
         files = result["files"]
-        outputs.append({"shot_id": clip["shot_id"], "video": _pick_video(files, clip["shot_id"]), "retry": 0, "error_body": ""})
+        video = _pick_video(files, clip["shot_id"])
+        outputs.append({"shot_id": clip["shot_id"], "video": _resolve_video_path(config, video), "retry": 0, "error_body": ""})
     return outputs
 
 
@@ -47,3 +50,14 @@ def _pick_video(files: list[str], shot_id: str) -> str:
     if not videos:
         raise RuntimeError(f"WAN output missing for {shot_id}")
     return videos[0]
+
+
+def _resolve_video_path(config: dict, name: str) -> str:
+    path = Path(str(name))
+    if path.exists():
+        return str(path.resolve())
+    raw = str(config["integrations"]["comfyui_output_dir"]).strip()
+    if not raw:
+        return str(path)
+    candidate = Path(raw) / path
+    return str(candidate.resolve()) if candidate.exists() else str(path)

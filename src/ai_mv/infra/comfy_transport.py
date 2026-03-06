@@ -7,7 +7,6 @@ from typing import Any
 import requests
 
 from ai_mv.core.contracts.errors import ComfyRequestError
-from ai_mv.infra.http_retry import with_retry
 
 
 def ping_comfy(base_url: str) -> bool:
@@ -18,7 +17,7 @@ def ping_comfy(base_url: str) -> bool:
 
 
 def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int, attempts: int = 1) -> dict:
-    queued = with_retry(lambda: _queue_prompt(base_url, workflow, timeout), attempts=max(1, attempts))
+    queued = _queue_with_deadline(base_url, workflow, timeout, attempts)
     prompt_id = str(queued["prompt_id"])
     history = wait_history(base_url, prompt_id, timeout, attempts)
     _raise_if_execution_error(history, prompt_id)
@@ -35,8 +34,8 @@ def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1)
         if elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
         remaining = max(0.0, timeout - elapsed)
-        poll_timeout = max(1, int(remaining))
-        data = with_retry(lambda: _get_json(url, poll_timeout), attempts=max(1, attempts), delay=0.0)
+        poll_timeout = max(0.05, remaining)
+        data = _get_json(url, poll_timeout)
         record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
@@ -67,6 +66,26 @@ def _queue_prompt(base_url: str, workflow: dict[str, Any], timeout: int) -> dict
     return res.json()
 
 
+def _queue_with_deadline(base_url: str, workflow: dict[str, Any], timeout: int, attempts: int) -> dict:
+    last: Exception | None = None
+    start = time.time()
+    for _ in range(max(1, attempts)):
+        remaining = timeout - (time.time() - start)
+        if remaining <= 0:
+            break
+        try:
+            return _queue_prompt(base_url, workflow, max(0.05, remaining))
+        except ComfyRequestError as exc:
+            if _is_non_retryable_prompt_error(exc):
+                raise
+            last = exc
+        except Exception as exc:
+            last = exc
+    if last:
+        raise last
+    raise TimeoutError("ComfyUI queue timeout")
+
+
 def _safe_response_body(res: requests.Response) -> str:
     try:
         return json.dumps(res.json(), ensure_ascii=False)
@@ -83,13 +102,18 @@ def _collect_file_entries(items: list[dict[str, Any]]) -> list[str]:
     return out
 
 
-def _get_json(url: str, timeout: int) -> dict[str, Any]:
+def _get_json(url: str, timeout: float) -> dict[str, Any]:
     res = requests.get(url, timeout=timeout)
     res.raise_for_status()
     data = res.json()
     if not isinstance(data, dict):
         raise ComfyRequestError("Comfy history response is not a dict")
     return data
+
+
+def _is_non_retryable_prompt_error(exc: ComfyRequestError) -> bool:
+    text = str(exc)
+    return text.startswith("Comfy prompt failed: 4")
 
 
 def _raise_if_execution_error(history: dict[str, Any], prompt_id: str) -> None:

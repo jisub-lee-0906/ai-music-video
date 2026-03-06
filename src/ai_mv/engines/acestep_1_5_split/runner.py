@@ -6,17 +6,7 @@ from ai_mv.engines.acestep_1_5_split.mapper import audio_required_inputs, map_au
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.utils.time_utils import ffprobe_duration
 
-SECTION_FLOW: dict[str, tuple[str, ...]] = {
-    "intro": ("intro", "verse_1", "verse", "pre_chorus", "chorus", "bridge", "outro"),
-    "verse_1": ("verse_1", "pre_chorus", "chorus", "post_chorus", "verse_2", "bridge", "outro"),
-    "verse_2": ("verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"),
-    "verse": ("verse", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"),
-    "pre_chorus": ("pre_chorus", "chorus", "post_chorus", "outro"),
-    "chorus": ("chorus", "post_chorus", "verse_2", "verse", "bridge", "outro"),
-    "post_chorus": ("post_chorus", "chorus", "pre_chorus", "verse_2", "verse", "bridge", "outro"),
-    "bridge": ("bridge", "chorus", "post_chorus", "outro"),
-    "outro": (),
-}
+ALLOWED_SECTIONS = {"intro", "verse", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"}
 
 
 def run_audio_split(config: dict, plan: dict) -> dict:
@@ -39,11 +29,11 @@ def _sections(duration: float, blocks: list[dict]) -> list[dict]:
     rows = _limit_section_rows(rows)
     rows = _validate_and_fix_order(rows)
     if not rows:
-        return _fallback_sections(duration)
+        raise RuntimeError("lyrics_blocks empty after validation")
     weights = [_block_weight(x) for x in rows]
     mass = sum(weights)
     if mass <= 0:
-        return _fallback_sections(duration)
+        raise RuntimeError("invalid lyrics block weights")
     out: list[dict] = []
     cursor = 0.0
     for i, row in enumerate(rows):
@@ -52,6 +42,8 @@ def _sections(duration: float, blocks: list[dict]) -> list[dict]:
         end = duration if i == len(rows) - 1 else min(duration, cursor + seg)
         out.append({"name": name, "start_sec": round(cursor, 3), "end_sec": round(end, 3)})
         cursor = end
+    if not out:
+        raise RuntimeError("sections build produced no rows")
     return out
 
 
@@ -69,16 +61,6 @@ def _block_weight(row: dict) -> float:
     if "intro" in section:
         return base * 0.8
     return base
-
-
-def _fallback_sections(duration: float) -> list[dict]:
-    return [
-        {"name": "intro", "start_sec": 0.0, "end_sec": duration * 0.15},
-        {"name": "verse", "start_sec": duration * 0.15, "end_sec": duration * 0.40},
-        {"name": "chorus", "start_sec": duration * 0.40, "end_sec": duration * 0.60},
-        {"name": "bridge", "start_sec": duration * 0.60, "end_sec": duration * 0.78},
-        {"name": "outro", "start_sec": duration * 0.78, "end_sec": duration},
-    ]
 
 
 def _limit_section_rows(rows: list[dict]) -> list[dict]:
@@ -106,16 +88,22 @@ def _validate_and_fix_order(rows: list[dict]) -> list[dict]:
 
 
 def _canonical_section(name: str) -> str:
-    if name in SECTION_FLOW:
+    if name in ALLOWED_SECTIONS:
         return name
     raise RuntimeError(f"lyrics_blocks section invalid: {name}")
 
 
 def _validate_transitions(names: list[str]) -> None:
-    for prev, cur in zip(names, names[1:]):
-        allowed = SECTION_FLOW.get(prev, ())
-        if cur not in allowed:
-            raise RuntimeError(f"lyrics_blocks transition invalid: {prev} -> {cur}")
+    seen_verse_1 = False
+    for idx, cur in enumerate(names):
+        if cur == "intro" and idx != 0:
+            raise RuntimeError("lyrics_blocks transition invalid: intro must be first")
+        if cur == "outro" and idx != len(names) - 1:
+            raise RuntimeError("lyrics_blocks transition invalid: outro must be last")
+        if cur == "verse_1":
+            seen_verse_1 = True
+        if cur == "verse_2" and not seen_verse_1:
+            raise RuntimeError("lyrics_blocks transition invalid: verse_2 before verse_1")
 
 
 def _pick_audio_file(files: list[str]) -> str:

@@ -11,20 +11,14 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
     if not shots:
         raise RuntimeError("TTI plan is empty")
     for shot in shots:
-        candidates = _run_candidates(config, shot)
-        selected = _select_candidate(candidates)
-        out.append(_pack_anchor(shot, candidates, selected))
+        anchor = _run_one(config, shot)
+        out.append(_pack_anchor(shot, anchor))
     return out
 
 
-def _run_candidates(config: dict, shot: dict) -> list[str]:
-    return [_run_one(config, shot, 0)]
-
-
-def _run_one(config: dict, shot: dict, offset: int) -> str:
+def _run_one(config: dict, shot: dict) -> str:
     payload = dict(shot)
-    payload["seed"] = int(payload["seed"]) + (offset * 101)
-    payload["filename_prefix"] = f"anchors/{shot['shot_id']}_{'a' if offset == 0 else 'b'}"
+    payload["filename_prefix"] = f"anchors/{shot['shot_id']}"
     result = _run_shot_tti(config, payload)
     files = result["files"]
     if not files:
@@ -51,12 +45,11 @@ def _mutate_shot(shot: dict, retry: int) -> dict:
     return out
 
 
-def _pack_anchor(shot: dict, candidates: list[str], selected: str) -> dict:
+def _pack_anchor(shot: dict, anchor: str) -> dict:
     return {
         "shot_id": shot["shot_id"],
-        "anchor": selected,
-        "anchor_candidates": candidates,
-        "anchor_selected": selected,
+        "anchor": anchor,
+        "anchor_selected": anchor,
         "shot_type": shot["shot_type"],
         "section_name": str(shot.get("section_name", "section")),
         "duration_sec": float(shot["duration_sec"]),
@@ -64,7 +57,3 @@ def _pack_anchor(shot: dict, candidates: list[str], selected: str) -> dict:
         "retry": 0,
         "error_body": "",
     }
-
-
-def _select_candidate(candidates: list[str]) -> str:
-    return candidates[0]

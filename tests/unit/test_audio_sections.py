@@ -28,9 +28,8 @@ def test_sections_reject_outro_not_last():
 
 def test_sections_reject_invalid_transition():
     blocks = [
-        {"section": "intro", "lines": ["a"]},
         {"section": "chorus", "lines": ["b"]},
-        {"section": "verse_1", "lines": ["c"]},
+        {"section": "intro", "lines": ["a"]},
         {"section": "outro", "lines": ["d"]},
     ]
     with pytest.raises(RuntimeError):
@@ -47,3 +46,25 @@ def test_sections_allow_same_section_repeat():
     out = audio_runner._sections(100.0, blocks)
     names = [x["name"] for x in out]
     assert names.count("verse_1") == 2
+
+
+def test_sections_allow_chorus_to_verse1():
+    blocks = [
+        {"section": "intro", "lines": ["a"]},
+        {"section": "chorus", "lines": ["b"]},
+        {"section": "verse_1", "lines": ["c"]},
+        {"section": "outro", "lines": ["d"]},
+    ]
+    out = audio_runner._sections(100.0, blocks)
+    names = [x["name"] for x in out]
+    assert names == ["intro", "chorus", "verse_1", "outro"]
+
+
+def test_sections_reject_verse2_before_verse1():
+    blocks = [
+        {"section": "intro", "lines": ["a"]},
+        {"section": "verse_2", "lines": ["b"]},
+        {"section": "outro", "lines": ["c"]},
+    ]
+    with pytest.raises(RuntimeError):
+        audio_runner._sections(100.0, blocks)

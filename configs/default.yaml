@@ -4,6 +4,7 @@ integrations:
   comfyui_base_url: "http://127.0.0.1:8188"
   comfyui_input_dir: "C:/Users/Desktop/Documents/ComfyUI/input"
   comfyui_output_dir: "C:/Users/Desktop/Documents/ComfyUI/output"
+  ollama_timeout_structured_sec: 600
 runtime:
   template_hashes:
     audio_ace_step_1_5_tta.api.json: c74c05f120309bcf90deb15c4079304616d341455b47159712f2031287f625df

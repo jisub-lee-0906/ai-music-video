@@ -1,26 +1,24 @@
 from pathlib import Path
 
 from ai_mv.core.orchestration.transitions import bootstrap_config
-import ai_mv.core.orchestration.bootstrap_content as content
 
 
-def test_bootstrap_creates_lyrics_and_style(tmp_path, monkeypatch):
+def test_bootstrap_keeps_existing_audio_and_style(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(content, "generate_structured", _fake_generate)
     cfg = {
         "profile": "",
-        "integrations": {"strict_remote": True, "workflows_dir": str(Path("workflows"))},
+        "integrations": {"workflows_dir": str(Path("workflows"))},
         "audio": {
-            "lyrics": "",
-            "song_title": "",
-            "song_description": "",
+            "lyrics": "manual lyrics",
+            "song_title": "manual title",
+            "song_description": "manual description",
             "target_duration_sec": 160,
             "keywords": [],
         },
-        "style": {"guidance": ""},
+        "style": {"guidance": "manual guidance"},
         "video": {"target": "1920x1080@24"},
         "render": {"tti_size": "1024x576", "uso_size": "1024x576", "wan_size": "640x360"},
-        "runtime": {"template_hash_lock": False, "template_hashes": {}, "bootstrap_missing_inputs": True},
+        "runtime": {"template_hash_lock": False, "template_hashes": {}},
     }
     (tmp_path / "workflows").mkdir()
     for name in _wf_names():
@@ -28,14 +26,12 @@ def test_bootstrap_creates_lyrics_and_style(tmp_path, monkeypatch):
     run_dir = tmp_path / "artifacts" / "runs_state" / "x"
     run_dir.mkdir(parents=True)
     out = bootstrap_config(cfg, run_dir)
-    assert str(out["audio"].get("lyrics", "")).strip()
-    assert isinstance(out["audio"].get("lyrics_structured", {}), dict)
-    assert (run_dir / "run_style.json").exists()
+    assert out["audio"]["lyrics"] == "manual lyrics"
+    assert out["style"]["guidance"] == "manual guidance"
 
 
 def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(content, "generate_structured", _fake_generate)
     cfg = {
         "integrations": {"workflows_dir": str(Path("workflows"))},
         "runtime": {"template_hash_lock": False, "template_hashes": {}},
@@ -50,16 +46,6 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     assert out["render"]["wan_size"] == "640x360"
     assert int(out["limits"]["timeout_seconds"]) == 900
     assert "audio" in out and "quality" in out["audio"]
-
-
-def _fake_generate(_config, prompt, _schema):
-    if "lyrics_blocks" in prompt:
-        return {
-            "title": "t",
-            "description": "d",
-            "lyrics_blocks": [{"section": "verse", "label": "Verse 1", "lines": ["line 1"]}],
-        }
-    return {"guidance": "cinematic live action"}
 
 
 def _wf_names() -> list[str]:

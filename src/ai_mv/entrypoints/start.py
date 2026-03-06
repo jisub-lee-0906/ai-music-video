@@ -16,8 +16,8 @@ def run_start(config_path: str, run_id: str | None = None, profile: str | None =
     rid = run_id or ""
     lock = acquire_lock("start")
     try:
-        cfg_path, rid, strict_remote = _prepare_config(config_path, rid, profile)
-        if strict_remote and run_doctor(cfg_path) != 0:
+        cfg_path, rid = _prepare_config(config_path, rid, profile)
+        if run_doctor(cfg_path) != 0:
             return 1
         run_pipeline(cfg_path, rid)
         snap = read_snapshot(rid)
@@ -29,7 +29,7 @@ def run_start(config_path: str, run_id: str | None = None, profile: str | None =
         release_lock(lock)
 
 
-def _prepare_config(config_path: str, run_id: str, profile: str | None) -> tuple[str, str, bool]:
+def _prepare_config(config_path: str, run_id: str, profile: str | None) -> tuple[str, str]:
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     if not isinstance(cfg, dict):
         raise RuntimeError("config must be yaml object")
@@ -40,5 +40,4 @@ def _prepare_config(config_path: str, run_id: str, profile: str | None) -> tuple
     cfg = bootstrap_config(cfg, run_dir)
     effective = run_dir / "effective_config.yaml"
     effective.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
-    strict_remote = bool(cfg["integrations"]["strict_remote"])
-    return abs_path(str(effective)), rid, strict_remote
+    return abs_path(str(effective)), rid

@@ -9,13 +9,11 @@ def build_merge_plan(payload: dict) -> dict:
 
 
 def resolve_clip_paths(names: list[str], config: dict, run_dir: Path) -> list[Path]:
-    roots = [Path("."), run_dir]
-    roots.append(Path(str(config["integrations"]["comfyui_output_dir"]).strip()))
+    roots = _clip_roots(config, run_dir)
     out: list[Path] = []
     missing: list[str] = []
     for name in names:
-        p = Path(str(name))
-        found = p if p.exists() else _search_roots(roots, p)
+        found = _resolve_one_clip(name, roots)
         if found:
             out.append(found)
         else:
@@ -48,3 +46,22 @@ def _search_roots(roots: list[Path], rel: Path) -> Path | None:
         if cand.exists() and cand.suffix.lower() in {".mp4", ".mov", ".mkv", ".webm"}:
             return cand
     return None
+
+
+def _clip_roots(config: dict, run_dir: Path) -> list[Path]:
+    out = [run_dir.resolve()]
+    raw = str(config["integrations"]["comfyui_output_dir"]).strip()
+    if raw:
+        out.append(Path(raw).resolve())
+    return out
+
+
+def _resolve_one_clip(name: str, roots: list[Path]) -> Path | None:
+    p = Path(str(name))
+    if p.is_absolute():
+        return p.resolve() if _is_video_file(p) else None
+    return _search_roots(roots, p)
+
+
+def _is_video_file(path: Path) -> bool:
+    return path.exists() and path.suffix.lower() in {".mp4", ".mov", ".mkv", ".webm"}

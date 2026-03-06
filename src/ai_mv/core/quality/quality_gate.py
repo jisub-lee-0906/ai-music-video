@@ -38,4 +38,8 @@ def _duration_in_sync(payload: dict) -> bool:
 
 def _anchors_exist(payload: dict) -> bool:
     anchors = payload["anchors"]
-    return bool(anchors) and all(bool(x["anchor_selected"]) for x in anchors)
+    return bool(anchors) and all(bool(_anchor_path(x)) for x in anchors)
+
+
+def _anchor_path(row: dict) -> str:
+    return str(row.get("anchor", row.get("anchor_selected", ""))).strip()

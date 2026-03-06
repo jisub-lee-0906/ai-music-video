@@ -18,9 +18,16 @@ def test_uso_planner_double(monkeypatch):
 def test_uso_planner_shot_id_coerce(monkeypatch):
     monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
     payload = {"anchors": [_anchor("intro_000", False)]}
-    out = build_uso_plan({"style": {"guidance": "g"}}, payload)
+    out = build_uso_plan({"style": {"guidance": "g"}, "render": {"strict_prompt_id_match": False}}, payload)
     assert out["items"][0]["shot_id"] == "intro_000"
     assert "flower" in out["items"][0]["prompt_text"].lower()
+
+
+def test_uso_planner_shot_id_mismatch_strict(monkeypatch):
+    monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
+    payload = {"anchors": [_anchor("intro_000", False)]}
+    with pytest.raises(RuntimeError):
+        build_uso_plan({"style": {"guidance": "g"}, "render": {"strict_prompt_id_match": True}}, payload)
 
 
 def test_uso_planner_batches_requests(monkeypatch):
@@ -41,9 +48,43 @@ def test_uso_planner_batches_requests(monkeypatch):
 
     monkeypatch.setattr(uso_planner, "generate_structured", _fake)
     payload = {"anchors": [_anchor("a", False), _anchor("b", False)]}
-    out = build_uso_plan({"style": {"guidance": "g"}, "render": {"max_shot_sec": 10.0, "uso_planner_batch_size": 1}}, payload)
+    out = build_uso_plan(
+        {
+            "style": {"guidance": "g"},
+            "render": {
+                "max_shot_sec": 10.0,
+                "uso_planner_batch_size": 1,
+                "strict_prompt_id_match": False,
+            },
+        },
+        payload,
+    )
     assert len(out["items"]) == 2
     assert calls["n"] == 2
+
+
+def test_uso_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
+    calls = {"n": 0}
+
+    def _fake(_config, prompt, _schema):
+        calls["n"] += 1
+        sid = _extract_after(prompt, "Anchors=", ":")
+        return {
+            "items": [
+                {
+                    "shot_id": sid,
+                    "delta": "d",
+                    "prompt_text": "A performer turns gently with subtle smile under warm city lights and clean cinematic framing.",
+                    "negative_prompt": "low quality, blurry, jpeg artifacts, bad hands",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(uso_planner, "generate_structured", _fake)
+    payload = {"anchors": [_anchor("a", False), _anchor("b", False)]}
+    out = build_uso_plan({"style": {"guidance": "g"}, "render": {"uso_planner_batch_size": 2}}, payload)
+    assert [x["shot_id"] for x in out["items"]] == ["a", "b"]
+    assert calls["n"] == 3
 
 
 def test_wan_planner_uses_start_end_only(monkeypatch):
@@ -57,9 +98,22 @@ def test_wan_planner_uses_start_end_only(monkeypatch):
 def test_wan_planner_shot_id_coerce(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
     payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 4.0}]}
-    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
+    out = build_wan_plan(
+        {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0, "strict_prompt_id_match": False}},
+        payload,
+    )
     assert out["clips"][0]["shot_id"] == "x"
     assert "kitten" in out["clips"][0]["positive_prompt"].lower()
+
+
+def test_wan_planner_shot_id_mismatch_strict(monkeypatch):
+    monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
+    payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 4.0}]}
+    with pytest.raises(RuntimeError):
+        build_wan_plan(
+            {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0, "strict_prompt_id_match": True}},
+            payload,
+        )
 
 
 def test_wan_planner_batches_requests(monkeypatch):
@@ -71,9 +125,30 @@ def test_wan_planner_batches_requests(monkeypatch):
 
     monkeypatch.setattr(wan_planner, "generate_structured", _fake)
     payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)]}
-    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_planner_batch_size": 1}}, payload)
+    out = build_wan_plan(
+        {
+            "video": {"target": "1920x1080@24"},
+            "render": {"wan_planner_batch_size": 1, "strict_prompt_id_match": False},
+        },
+        payload,
+    )
     assert len(out["clips"]) == 2
     assert calls["n"] == 2
+
+
+def test_wan_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
+    calls = {"n": 0}
+
+    def _fake(_config, prompt, _schema):
+        calls["n"] += 1
+        sid = _extract_after(prompt, "ClipIds=", ":")
+        return {"clips": [{"shot_id": sid, "positive_prompt": "p", "negative_prompt": "n", "energy": "normal"}]}
+
+    monkeypatch.setattr(wan_planner, "generate_structured", _fake)
+    payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)]}
+    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_planner_batch_size": 2}}, payload)
+    assert [x["shot_id"] for x in out["clips"]] == ["x", "y"]
+    assert calls["n"] == 3
 
 
 def test_wan_planner_clip_cap_guard(monkeypatch):
@@ -163,3 +238,11 @@ def _fake_wan_generate_mismatch(_config, _prompt, _schema):
             }
         ]
     }
+
+
+def _extract_after(text: str, marker: str, end: str) -> str:
+    if marker not in text:
+        return "x"
+    tail = text.split(marker, 1)[1]
+    token = tail.split(",", 1)[0]
+    return token.split(end, 1)[0].strip() or "x"

@@ -14,39 +14,11 @@ def ping_ollama(base_url: str) -> bool:
         return False
 
 
-def generate_json(config: dict, prompt: str) -> dict:
-    integ = config["integrations"]
-    base = str(integ["ollama_base_url"]).rstrip("/")
-    model = str(integ["ollama_model"])
-    timeout = int(integ["ollama_timeout_json_sec"])
-    strict = bool(integ["strict_remote"])
-    if not strict:
-        raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
-
-    def _call() -> dict:
-        res = requests.post(
-            f"{base}/api/generate",
-            json=_payload(config, model, prompt, "json"),
-            timeout=timeout,
-        )
-        res.raise_for_status()
-        body = res.json()
-        text = str(body["response"])
-        return json.loads(text)
-
-    attempts = _ollama_retry_attempts(config)
-    return with_retry(_call, attempts=attempts)
-
-
 def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
     integ = config["integrations"]
     base = str(integ["ollama_base_url"]).rstrip("/")
     model = str(integ["ollama_model"])
     timeout = int(integ["ollama_timeout_structured_sec"])
-    strict = bool(integ["strict_remote"])
-    if not strict:
-        raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
-
     def _call() -> dict:
         res = requests.post(
             f"{base}/api/generate",

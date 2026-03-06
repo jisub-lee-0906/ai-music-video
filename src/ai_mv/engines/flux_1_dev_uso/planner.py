@@ -3,6 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_contract import normalize_uso_items, uso_schema
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
 from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
 
@@ -35,13 +36,33 @@ def _plan_with_batches(config: dict, anchors: list[dict], batch_size: int) -> li
         raise RuntimeError("uso planner batch_size must be positive")
     out: list[dict] = []
     carry = ""
+    strict = _strict_id_match(config)
     for i in range(0, len(anchors), batch_size):
         chunk = anchors[i : i + batch_size]
-        prompt = _planner_prompt(config, chunk, carry)
-        raw = generate_structured(config, prompt, uso_schema())
-        rows = _coerce_item_ids(raw.get("items", []), chunk)
+        rows = _plan_chunk_rows(config, chunk, carry, strict)
         out.extend(rows)
         carry = _batch_tail(rows)
+    return out
+
+
+def _plan_chunk_rows(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
+    prompt = _planner_prompt(config, chunk, carry)
+    raw = generate_structured(config, prompt, uso_schema())
+    try:
+        return _coerce_item_ids(raw.get("items", []), chunk, strict)
+    except RuntimeError as exc:
+        if strict and _is_id_mismatch(exc) and len(chunk) > 1:
+            return _plan_chunk_rows_split(config, chunk, carry, strict)
+        raise
+
+
+def _plan_chunk_rows_split(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
+    out: list[dict] = []
+    local_carry = carry
+    for anchor in chunk:
+        rows = _plan_chunk_rows(config, [anchor], local_carry, strict)
+        out.extend(rows)
+        local_carry = _batch_tail(rows)
     return out
 
 
@@ -94,7 +115,7 @@ def _batch_tail(rows: list[dict]) -> str:
     return text[:220]
 
 
-def _coerce_item_ids(items: list[dict], anchors: list[dict]) -> list[dict]:
+def _coerce_item_ids(items: list[dict], anchors: list[dict], strict: bool) -> list[dict]:
     pool = [x for x in items if isinstance(x, dict)]
     keyed = {str(x.get("shot_id", "")): x for x in pool if str(x.get("shot_id", "")).strip()}
     out: list[dict] = []
@@ -103,16 +124,28 @@ def _coerce_item_ids(items: list[dict], anchors: list[dict]) -> list[dict]:
         sid = str(a["shot_id"])
         row = keyed.get(sid)
         if row is None:
+            if strict:
+                raise RuntimeError(f"USO planner shot_id mismatch: missing {sid}")
             row = _next_item(pool, idx)
             idx += 1
         out.append(_with_shot_id(row, sid))
     return out
 
 
+def _strict_id_match(config: dict) -> bool:
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    raw = render.get("strict_prompt_id_match", True) if isinstance(render, dict) else True
+    return parse_bool(raw, default=True)
+
+
 def _next_item(pool: list[dict], idx: int) -> dict:
     if idx >= len(pool):
         raise RuntimeError("USO planner returned fewer items than anchors")
     return pool[idx]
+
+
+def _is_id_mismatch(exc: RuntimeError) -> bool:
+    return "shot_id mismatch" in str(exc).lower()
 
 
 def _with_shot_id(row: dict, shot_id: str) -> dict:

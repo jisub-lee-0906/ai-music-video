@@ -3,6 +3,7 @@ from __future__ import annotations
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.core.contracts.prompt_contract import normalize_wan_clips, wan_schema
 from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
 
@@ -20,20 +21,38 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
 
 def _plan_with_ollama(config: dict, clips: list[dict]) -> dict:
     batch_size = _wan_planner_batch_size(config, len(clips))
+    strict = _strict_id_match(config)
     if len(clips) <= batch_size:
-        prompt = _planner_prompt(config, clips, "")
-        raw = generate_structured(config, prompt, wan_schema())
-        return {"clips": _coerce_clip_ids(raw.get("clips", []), clips)}
+        return {"clips": _plan_chunk_rows(config, clips, "", strict)}
     out: list[dict] = []
     carry = ""
     for i in range(0, len(clips), batch_size):
         chunk = clips[i : i + batch_size]
-        prompt = _planner_prompt(config, chunk, carry)
-        raw = generate_structured(config, prompt, wan_schema())
-        rows = _coerce_clip_ids(raw.get("clips", []), chunk)
+        rows = _plan_chunk_rows(config, chunk, carry, strict)
         out.extend(rows)
         carry = _carry_hint(rows)
     return {"clips": out}
+
+
+def _plan_chunk_rows(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
+    prompt = _planner_prompt(config, chunk, carry)
+    raw = generate_structured(config, prompt, wan_schema())
+    try:
+        return _coerce_clip_ids(raw.get("clips", []), chunk, strict)
+    except RuntimeError as exc:
+        if strict and _is_id_mismatch(exc) and len(chunk) > 1:
+            return _plan_chunk_rows_split(config, chunk, carry, strict)
+        raise
+
+
+def _plan_chunk_rows_split(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
+    out: list[dict] = []
+    local_carry = carry
+    for clip in chunk:
+        rows = _plan_chunk_rows(config, [clip], local_carry, strict)
+        out.extend(rows)
+        local_carry = _carry_hint(rows)
+    return out
 
 
 def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
@@ -70,7 +89,7 @@ def _lyrics_excerpt(config: dict) -> str:
     return " | ".join(lines[:8])
 
 
-def _coerce_clip_ids(rows: list[dict], clips: list[dict]) -> list[dict]:
+def _coerce_clip_ids(rows: list[dict], clips: list[dict], strict: bool) -> list[dict]:
     pool = [x for x in rows if isinstance(x, dict)]
     keyed = {str(x.get("shot_id", "")): x for x in pool if str(x.get("shot_id", "")).strip()}
     out: list[dict] = []
@@ -79,6 +98,8 @@ def _coerce_clip_ids(rows: list[dict], clips: list[dict]) -> list[dict]:
         sid = str(clip["shot_id"])
         row = keyed.get(sid)
         if row is None:
+            if strict:
+                raise RuntimeError(f"WAN planner shot_id mismatch: missing {sid}")
             row = _next_row(pool, idx)
             idx += 1
         out.append(_with_shot_id(row, sid))
@@ -89,6 +110,10 @@ def _next_row(pool: list[dict], idx: int) -> dict:
     if idx >= len(pool):
         raise RuntimeError("WAN planner returned fewer clips than required")
     return pool[idx]
+
+
+def _is_id_mismatch(exc: RuntimeError) -> bool:
+    return "shot_id mismatch" in str(exc).lower()
 
 
 def _with_shot_id(row: dict, shot_id: str) -> dict:
@@ -139,6 +164,12 @@ def _wan_planner_batch_size(config: dict, count: int) -> int:
     except Exception:
         n = 20
     return max(1, min(max(1, count), n))
+
+
+def _strict_id_match(config: dict) -> bool:
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    raw = render.get("strict_prompt_id_match", True) if isinstance(render, dict) else True
+    return parse_bool(raw, default=True)
 
 
 def _carry_hint(rows: list[dict]) -> str:

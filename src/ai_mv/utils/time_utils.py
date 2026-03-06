@@ -2,12 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import time
 from pathlib import Path
-
-
-def now_id() -> str:
-    return time.strftime("%Y%m%d-%H%M%S")
 
 
 def ffprobe_duration(path: str | Path) -> float:
