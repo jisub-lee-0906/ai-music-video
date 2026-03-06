@@ -76,6 +76,7 @@ def _planner_prompt(config: dict, anchors: list[dict], carry: str) -> str:
         "Return strict JSON only: {\"items\":[...]}. No prose outside JSON. "
         "Each item must include shot_id,delta,prompt_text,negative_prompt. "
         "Use shot_id values exactly from Anchors list, without creating new ids. "
+        "shot_id must be exactly one token from Anchors with no suffix, prefix, or punctuation changes. "
         "prompt_text must be exactly one natural English sentence (18-34 words). "
         "Keep the same character identity, face, hair, and outfit as the anchor image. "
         "delta describes a small progression from start to end frame, not a scene reset. "
@@ -116,7 +117,7 @@ def _batch_tail(rows: list[dict]) -> str:
 
 
 def _coerce_item_ids(items: list[dict], anchors: list[dict], strict: bool) -> list[dict]:
-    pool = [x for x in items if isinstance(x, dict)]
+    pool = [_normalize_item_id(x) for x in items if isinstance(x, dict)]
     keyed = {str(x.get("shot_id", "")): x for x in pool if str(x.get("shot_id", "")).strip()}
     out: list[dict] = []
     idx = 0
@@ -148,6 +149,14 @@ def _is_id_mismatch(exc: RuntimeError) -> bool:
     return "shot_id mismatch" in str(exc).lower()
 
 
+def _normalize_item_id(row: dict) -> dict:
+    out = dict(row)
+    sid = str(out.get("shot_id", "")).strip().strip(".;:")
+    if sid:
+        out["shot_id"] = sid
+    return out
+
+
 def _with_shot_id(row: dict, shot_id: str) -> dict:
     out = dict(row)
     out["shot_id"] = shot_id
@@ -155,13 +164,7 @@ def _with_shot_id(row: dict, shot_id: str) -> dict:
 
 
 def _anchor_summary(anchors: list[dict]) -> str:
-    rows: list[str] = []
-    for a in anchors:
-        sid = str(a["shot_id"])
-        stype = str(a["shot_type"])
-        dur = round(float(a["duration_sec"]), 2)
-        rows.append(f"{sid}:{stype}:{dur}s")
-    return ", ".join(rows)
+    return ", ".join(str(a["shot_id"]) for a in anchors)
 
 
 def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:

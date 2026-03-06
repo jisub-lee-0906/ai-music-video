@@ -68,7 +68,7 @@ def test_uso_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
 
     def _fake(_config, prompt, _schema):
         calls["n"] += 1
-        sid = _extract_after(prompt, "Anchors=", ":")
+        sid = _extract_after(prompt, "Anchors=", ",")
         return {
             "items": [
                 {
@@ -85,6 +85,16 @@ def test_uso_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
     out = build_uso_plan({"style": {"guidance": "g"}, "render": {"uso_planner_batch_size": 2}}, payload)
     assert [x["shot_id"] for x in out["items"]] == ["a", "b"]
     assert calls["n"] == 3
+
+
+def test_uso_anchor_summary_uses_shot_ids_only():
+    summary = uso_planner._anchor_summary([_anchor("a", False), _anchor("b", True)])
+    assert summary == "a, b"
+
+
+def test_uso_normalize_item_id_strips_trailing_punct():
+    row = uso_planner._normalize_item_id({"shot_id": "S001_C01."})
+    assert row["shot_id"] == "S001_C01"
 
 
 def test_wan_planner_uses_start_end_only(monkeypatch):
