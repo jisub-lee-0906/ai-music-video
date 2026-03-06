@@ -69,8 +69,10 @@ def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
         "Sentence 1: subject and transformation or movement arc. "
         "Sentence 2: camera motion, lighting change, and emotional escalation. "
         "Optional sentence 3: environment reaction details. "
+        "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
+        "Set energy as low, normal, or high based on motion intensity and pacing. "
         f"{carry_clause}Style guidance={guidance}; Lyrics context={lyrics}; ClipIds={summary}."
     )
 

@@ -33,11 +33,6 @@ def _audio_prompt(plan: dict) -> str:
     desc = str(plan["description"]).strip()
     tags = str(plan["tags"]).strip()
     tags_clause = f"Input tags={tags}. " if tags else ""
-    bpm_hint = int(plan["bpm"]) if "bpm" in plan else 0
-    key_hint = str(plan.get("keyscale", "")).strip()
-    hint_clause = ""
-    if bpm_hint > 0 or key_hint:
-        hint_clause = f"Hint bpm={bpm_hint if bpm_hint > 0 else 'auto'}, keyscale={key_hint or 'auto'}. "
     return (
         "You are an elite songwriter-producer. Return JSON only. "
         "No markdown. No prose outside JSON. "
@@ -62,8 +57,8 @@ def _audio_prompt(plan: dict) -> str:
         "Chorus must include at least one call-and-response or chant-like fragment. "
         "Avoid generic filler and repeated empty slogans. "
         "Do not invent extra sections or fields. "
-        f"Target duration={int(plan['duration'])} sec. "
-        f"{hint_clause}{tags_clause}Creative reference={desc}."
+        f"Target duration={int(plan['duration'])} sec, bpm={int(plan['bpm'])}. "
+        f"{tags_clause}Creative reference={desc}."
     )
 
 
