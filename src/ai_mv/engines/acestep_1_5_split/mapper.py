@@ -9,15 +9,19 @@ AUDIO_SAVE = "104"
 
 
 def map_audio_workflow(config: dict, plan: dict) -> dict:
+    text_inputs = {
+        "tags": ascii_safe_text(str(plan["genre_description"])),
+        "lyrics": ascii_safe_text(str(plan["lyrics"])),
+        "seed": int(plan["seed"]),
+        "bpm": int(plan["bpm"]),
+        "duration": int(plan["duration"]),
+    }
+    keyscale = str(plan.get("keyscale", "")).strip()
+    if keyscale:
+        text_inputs["keyscale"] = keyscale
     return {
         "node.inputs": {
-            AUDIO_TEXT: {
-                "tags": ascii_safe_text(str(plan["genre_description"])),
-                "lyrics": ascii_safe_text(str(plan["lyrics"])),
-                "seed": int(plan["seed"]),
-                "bpm": int(plan["bpm"]),
-                "duration": int(plan["duration"]),
-            },
+            AUDIO_TEXT: text_inputs,
             AUDIO_LATENT: {"seconds": int(plan["duration"])},
             AUDIO_KSAMPLER: {"seed": int(plan["seed"])},
             AUDIO_SAVE: {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import zlib
+
 from ai_mv.utils.text_utils import ensure_16_9
 
 USO_LOAD_IMAGE = "47"
@@ -10,7 +12,7 @@ USO_SAVE = "9"
 
 
 def map_uso_workflow(config: dict, item: dict) -> dict:
-    idx = _shot_index(str(item["shot_id"])) + int(item["frame_idx"])
+    idx = _shot_seed(str(item["shot_id"])) + int(item["frame_idx"])
     width, height = _uso_size(config)
     prompt = _uso_prompt(item)
     return {
@@ -34,10 +36,9 @@ def uso_required_inputs() -> dict[str, list[str]]:
     }
 
 
-def _shot_index(shot_id: str) -> int:
-    token = str(shot_id).split("_")[-1]
-    digits = "".join(ch for ch in token if ch.isdigit())
-    return int(digits) if digits else 0
+def _shot_seed(shot_id: str) -> int:
+    text = str(shot_id).strip().encode("utf-8")
+    return int(zlib.crc32(text) % 1_000_000)
 
 
 def _uso_prompt(item: dict) -> str:

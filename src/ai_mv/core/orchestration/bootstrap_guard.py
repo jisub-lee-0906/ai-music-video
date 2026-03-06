@@ -46,6 +46,8 @@ def validate_templates(config: dict) -> None:
     hashes = config["runtime"]["template_hashes"]
     if not bool(config["runtime"]["template_hash_lock"]):
         return
+    if not isinstance(hashes, dict) or not hashes:
+        raise PipelineError("template_hash_lock=true requires non-empty runtime.template_hashes")
     for name, expected in hashes.items():
         p = wf / name
         actual = hashlib.sha256(p.read_bytes()).hexdigest()

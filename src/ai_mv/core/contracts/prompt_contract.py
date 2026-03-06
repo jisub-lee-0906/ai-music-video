@@ -41,15 +41,16 @@ def audio_schema() -> dict:
             },
             "label": {"type": "string"},
             "style": {"type": "string"},
-            "lines": {"type": "array", "items": {"type": "string"}},
+            "lines": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
         },
     }
     props = {
         "genre_description": {"type": "string"},
         "bpm": {"type": "integer"},
+        "keyscale": {"type": "string"},
         "seed": {"type": "integer"},
         "duration": {"type": "integer"},
-        "lyrics_blocks": {"type": "array", "items": block},
+        "lyrics_blocks": {"type": "array", "items": block, "minItems": 1, "maxItems": 16},
     }
     return {"type": "object", "required": list(props.keys()), "properties": props}
 
@@ -107,6 +108,7 @@ def normalize_audio_fields(raw: dict) -> dict:
         "lyrics_blocks": blocks,
         "lyrics": _render_lyrics_blocks(blocks),
         "bpm": int(raw["bpm"]),
+        "keyscale": str(raw.get("keyscale", "")).strip(),
         "seed": int(raw["seed"]),
         "duration": int(raw["duration"]),
     }

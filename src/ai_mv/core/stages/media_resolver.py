@@ -12,11 +12,20 @@ def resolve_clip_paths(names: list[str], config: dict, run_dir: Path) -> list[Pa
     roots = [Path("."), run_dir]
     roots.append(Path(str(config["integrations"]["comfyui_output_dir"]).strip()))
     out: list[Path] = []
+    missing: list[str] = []
     for name in names:
         p = Path(str(name))
         found = p if p.exists() else _search_roots(roots, p)
         if found:
             out.append(found)
+        else:
+            missing.append(str(name))
+    if missing:
+        preview = ", ".join(missing[:5])
+        more = f" (+{len(missing)-5} more)" if len(missing) > 5 else ""
+        raise RuntimeError(f"clip files not found: {preview}{more}")
+    if len(out) != len(names):
+        raise RuntimeError(f"clip path count mismatch: expected={len(names)} actual={len(out)}")
     return out
 
 
@@ -36,6 +45,6 @@ def resolve_audio_path(music_file: str, config: dict) -> Path:
 def _search_roots(roots: list[Path], rel: Path) -> Path | None:
     for root in roots:
         cand = (root / rel).resolve()
-        if cand.exists() and cand.suffix.lower() in {".mp4", ".mov", ".mkv"}:
+        if cand.exists() and cand.suffix.lower() in {".mp4", ".mov", ".mkv", ".webm"}:
             return cand
     return None

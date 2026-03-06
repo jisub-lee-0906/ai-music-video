@@ -5,6 +5,7 @@ def test_normalize_audio_fields_renders_lyrics_blocks():
     raw = {
         "genre_description": "J-pop idol track with bright synth layers and punchy drums.",
         "bpm": 128,
+        "keyscale": "A minor",
         "seed": 42,
         "duration": 160,
         "lyrics_blocks": [
@@ -14,5 +15,6 @@ def test_normalize_audio_fields_renders_lyrics_blocks():
     }
     out = normalize_audio_fields(raw)
     assert out["bpm"] == 128
+    assert out["keyscale"] == "A minor"
     assert "[Intro - Synth Rise]" in out["lyrics"]
     assert "[Chorus - Pop Explosion]" in out["lyrics"]

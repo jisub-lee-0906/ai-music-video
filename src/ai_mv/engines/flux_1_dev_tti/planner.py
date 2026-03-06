@@ -187,7 +187,8 @@ def _valid_prompt_pair(shot: dict) -> bool:
 
 
 def _is_chorus(name: str) -> bool:
-    return "chorus" in str(name).lower()
+    sec = str(name).strip().lower()
+    return sec == "chorus" or sec.startswith("chorus_")
 
 
 def _sec_start(row: dict) -> float:

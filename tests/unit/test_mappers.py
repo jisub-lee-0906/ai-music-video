@@ -12,6 +12,7 @@ def test_audio_mapper():
         "seed": 1,
         "bpm": 120,
         "duration": 160,
+        "keyscale": "A minor",
         "filename_prefix": "audio/run/music",
         "quality": "V0",
     }
@@ -21,6 +22,7 @@ def test_audio_mapper():
     assert nodes["94"]["bpm"] == 120
     assert nodes["94"]["tags"] == "Bright idol-pop with punchy 808s and layered hooks."
     assert nodes["94"]["lyrics"] == "we're alive"
+    assert nodes["94"]["keyscale"] == "A minor"
 
 
 def test_tti_mapper():

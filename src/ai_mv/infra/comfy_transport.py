@@ -17,28 +17,30 @@ def ping_comfy(base_url: str) -> bool:
         return False
 
 
-def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> dict:
-    queued = with_retry(lambda: _queue_prompt(base_url, workflow, timeout))
+def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int, attempts: int = 1) -> dict:
+    queued = with_retry(lambda: _queue_prompt(base_url, workflow, timeout), attempts=max(1, attempts))
     prompt_id = str(queued["prompt_id"])
-    history = wait_history(base_url, prompt_id, timeout)
+    history = wait_history(base_url, prompt_id, timeout, attempts)
     _raise_if_execution_error(history, prompt_id)
     return {"prompt_id": prompt_id, "history": history, "files": extract_files(history)}
 
 
-def wait_history(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
+def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1) -> dict[str, Any]:
     start = time.time()
     url = f"{base_url.rstrip('/')}/history/{prompt_id}"
     sleep_sec = 0.4
     max_sleep_sec = 2.0
     while True:
-        data = with_retry(lambda: _get_json(url, timeout))
-        record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
-        if record:
-            return record
         elapsed = time.time() - start
         if elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
         remaining = max(0.0, timeout - elapsed)
+        poll_timeout = max(1, int(remaining))
+        data = with_retry(lambda: _get_json(url, poll_timeout), attempts=max(1, attempts), delay=0.0)
+        record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
+        if record:
+            return record
+        remaining = max(0.0, timeout - (time.time() - start))
         time.sleep(min(sleep_sec, remaining))
         sleep_sec = min(max_sleep_sec, sleep_sec * 1.2)
 

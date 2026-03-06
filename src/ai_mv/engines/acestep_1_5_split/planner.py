@@ -19,6 +19,8 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     normalized["description"] = normalized["genre_description"] or plan["description"]
     normalized["filename_prefix"] = plan["filename_prefix"]
     normalized["quality"] = plan["quality"]
+    if not str(normalized.get("keyscale", "")).strip():
+        normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
     return normalized
 
 
@@ -31,12 +33,17 @@ def _audio_prompt(plan: dict) -> str:
     desc = str(plan["description"]).strip()
     tags = str(plan["tags"]).strip()
     tags_clause = f"Input tags={tags}. " if tags else ""
+    bpm_hint = int(plan["bpm"]) if "bpm" in plan else 0
+    key_hint = str(plan.get("keyscale", "")).strip()
+    hint_clause = ""
+    if bpm_hint > 0 or key_hint:
+        hint_clause = f"Hint bpm={bpm_hint if bpm_hint > 0 else 'auto'}, keyscale={key_hint or 'auto'}. "
     return (
         "You are an elite songwriter-producer. Return JSON only. "
         "No markdown. No prose outside JSON. "
-        "Required top-level keys: genre_description,bpm,seed,duration,lyrics_blocks. "
+        "Required top-level keys: genre_description,bpm,keyscale,seed,duration,lyrics_blocks. "
         "Required lyrics_blocks item keys: section,label,style,lines. "
-        "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,outro. "
+        "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
         "Composition target must follow input reference strictly. "
         "Design aggressive section contrast with distinct diction per section. "
         "Verse: momentum-forward, rhythmic punch, percussive wording, compact bar-like phrasing. "
@@ -55,8 +62,8 @@ def _audio_prompt(plan: dict) -> str:
         "Chorus must include at least one call-and-response or chant-like fragment. "
         "Avoid generic filler and repeated empty slogans. "
         "Do not invent extra sections or fields. "
-        f"Target duration={int(plan['duration'])} sec, bpm={int(plan['bpm'])}. "
-        f"{tags_clause}Creative reference={desc}."
+        f"Target duration={int(plan['duration'])} sec. "
+        f"{hint_clause}{tags_clause}Creative reference={desc}."
     )
 
 

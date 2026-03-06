@@ -12,16 +12,23 @@ def run_uso(config: dict, plan: dict) -> list[dict]:
     if not items:
         raise RuntimeError("USO plan is empty")
     prev_end = ""
+    prev_section = ""
     for item in items:
-        start = _resolve_start(config, item, prev_end)
+        section = str(item.get("section_name", "section"))
+        start = _resolve_start(config, item, prev_end, prev_section, section)
         end = _render_end(config, item, start)
         out.append(_pack_item(item, start, end))
         prev_end = end
+        prev_section = section
     return out
 
 
-def _resolve_start(config: dict, item: dict, prev_end: str) -> str:
-    return prev_end if prev_end else _render_start(config, item)
+def _resolve_start(config: dict, item: dict, prev_end: str, prev_section: str, section: str) -> str:
+    if not prev_end:
+        return _render_start(config, item)
+    if section != prev_section:
+        return _render_start(config, item)
+    return prev_end
 
 
 def _render_start(config: dict, item: dict) -> str:

@@ -8,7 +8,6 @@ REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
     "uso_chain": ("anchors",),
     "wan_interpolation": ("uso_images",),
     "merge_mux": ("clips", "music_file"),
-    "closeout": ("anchors", "clips", "merge_plan", "final_video", "audio_duration_sec", "final_duration_sec"),
 }
 
 

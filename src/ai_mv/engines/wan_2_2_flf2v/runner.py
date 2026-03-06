@@ -43,7 +43,7 @@ def _mutate_clip(config: dict, clip: dict, retry: int) -> dict:
 
 
 def _pick_video(files: list[str], shot_id: str) -> str:
-    videos = [f for f in files if f.lower().endswith((".mp4", ".mov", ".mkv"))]
+    videos = [f for f in files if f.lower().endswith((".mp4", ".mov", ".mkv", ".webm"))]
     if not videos:
         raise RuntimeError(f"WAN output missing for {shot_id}")
     return videos[0]

@@ -13,7 +13,7 @@ def run_ffmpeg_mux(clips: list[Path], audio: Path, out: Path, config: dict) -> b
         return False
     out.parent.mkdir(parents=True, exist_ok=True)
     concat = out.parent / "concat.txt"
-    concat.write_text("\n".join([f"file '{p.as_posix()}'" for p in clips]), encoding="utf-8")
+    concat.write_text("\n".join([_concat_line(p) for p in clips]), encoding="utf-8")
     w, h, fps = parse_target(str(config["video"]["target"]))
     cmd = _ffmpeg_cmd(ffmpeg, concat, audio, out, str(w), str(h), fps)
     return subprocess.run(cmd, check=False).returncode == 0
@@ -44,3 +44,8 @@ def _ffmpeg_cmd(ffmpeg: str, concat: Path, audio: Path, out: Path, w: str, h: st
         "-shortest",
         str(out),
     ]
+
+
+def _concat_line(path: Path) -> str:
+    safe = path.as_posix().replace("'", "'\\''")
+    return f"file '{safe}'"

@@ -35,7 +35,18 @@ def _load_workflow_template(path: str) -> dict[str, Any]:
 def submit(config: dict, workflow: dict[str, Any]) -> dict:
     base_url = str(config["integrations"]["comfyui_base_url"])
     timeout = resolve_timeout(config)
+    attempts = _comfy_retry_attempts(config)
     strict = bool(config["integrations"]["strict_remote"])
     if not strict:
         raise RuntimeError("strict_remote=false is not supported in fail-fast mode")
-    return submit_workflow(base_url, workflow, timeout)
+    return submit_workflow(base_url, workflow, timeout, attempts=attempts)
+
+
+def _comfy_retry_attempts(config: dict) -> int:
+    integ = config.get("integrations", {}) if isinstance(config, dict) else {}
+    raw = integ.get("comfy_retry_attempts", 1) if isinstance(integ, dict) else 1
+    try:
+        n = int(raw)
+    except Exception:
+        return 1
+    return max(1, n)

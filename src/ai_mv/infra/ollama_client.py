@@ -34,7 +34,8 @@ def generate_json(config: dict, prompt: str) -> dict:
         text = str(body["response"])
         return json.loads(text)
 
-    return with_retry(_call)
+    attempts = _ollama_retry_attempts(config)
+    return with_retry(_call, attempts=attempts)
 
 
 def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
@@ -57,7 +58,8 @@ def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
         text = str(body["response"])
         return json.loads(text)
 
-    return with_retry(_call)
+    attempts = _ollama_retry_attempts(config)
+    return with_retry(_call, attempts=attempts)
 
 
 def _payload(config: dict, model: str, prompt: str, fmt: str | dict) -> dict:
@@ -72,3 +74,13 @@ def _payload(config: dict, model: str, prompt: str, fmt: str | dict) -> dict:
         "keep_alive": keep_alive,
         "options": {"num_gpu": num_gpu},
     }
+
+
+def _ollama_retry_attempts(config: dict) -> int:
+    integ = config.get("integrations", {}) if isinstance(config, dict) else {}
+    raw = integ.get("ollama_retry_attempts", 1) if isinstance(integ, dict) else 1
+    try:
+        n = int(raw)
+    except Exception:
+        return 1
+    return max(1, n)

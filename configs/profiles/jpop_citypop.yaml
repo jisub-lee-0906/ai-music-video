@@ -1,9 +1,15 @@
 audio:
   tags:
-    - jpop
-    - citypop
-    - retro synth
-    - urban night
-    - mellow groove
+    - japanese city pop
+    - 80s urban night
+    - female solo vocal
+    - bright female timbre
+    - high register
+    - glossy electric piano
+    - chorus guitar comping
+    - warm analog synth pad
+    - fretless bass groove
+    - tight disco drums
+    - nostalgic romantic mood
 style:
-  guidance: "jpop city-pop mood, retro synth textures, warm neon night atmosphere, clean live-action consistency"
+  guidance: "retro japanese city-pop mood, warm neon reflections, elegant nightlife styling, clean filmic framing, soft diffusion highlights, no futuristic sci-fi look"

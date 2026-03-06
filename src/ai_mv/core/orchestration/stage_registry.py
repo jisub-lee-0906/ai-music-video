@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from ai_mv.core.stages.acestep_music import run_acestep_music
-from ai_mv.core.stages.closeout import run_closeout
 from ai_mv.core.stages.merge_mux import run_merge_mux
 from ai_mv.core.stages.tti_anchor import run_tti_anchor
 from ai_mv.core.stages.uso_chain import run_uso_chain
@@ -15,6 +14,4 @@ def ordered_stages() -> list[tuple[str, callable]]:
         ("uso_chain", run_uso_chain),
         ("wan_interpolation", run_wan_interpolation),
         ("merge_mux", run_merge_mux),
-        ("closeout", run_closeout),
     ]
-

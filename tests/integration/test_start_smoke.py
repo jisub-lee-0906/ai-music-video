@@ -16,6 +16,7 @@ def test_start_smoke(monkeypatch):
     )
     cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
     cfg["runtime"]["template_hash_lock"] = False
+    cfg.setdefault("audio", {})
     cfg["audio"]["lyrics"] = "test lyric block"
     temp_cfg = Path("artifacts/reports/test-start-config.yaml")
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")
