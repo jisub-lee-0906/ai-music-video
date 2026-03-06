@@ -65,9 +65,10 @@ def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
         "Return strict JSON only: {\"clips\":[...]}. No prose outside JSON. "
         "Each clip item must include shot_id,positive_prompt,negative_prompt,energy. "
         "Use shot_id values exactly from ClipIds list, without creating new ids. "
+        "shot_id must be exactly one token from ClipIds with no suffix, prefix, or punctuation changes. "
         "positive_prompt must be 2-3 natural English sentences describing cinematic motion between start and end frames. "
-        "Sentence 1: subject and transformation or movement arc. "
-        "Sentence 2: camera motion, lighting change, and emotional escalation. "
+        "Sentence 1: starting state and first movement impulse. "
+        "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
         "Optional sentence 3: environment reaction details. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
@@ -125,14 +126,7 @@ def _with_shot_id(row: dict, shot_id: str) -> dict:
 
 
 def _clip_summary(clips: list[dict]) -> str:
-    rows: list[str] = []
-    for c in clips:
-        sid = str(c["shot_id"])
-        frames = int(c["frames"])
-        fps = int(c["fps"])
-        sec = str(c.get("section_name", "section"))
-        rows.append(f"{sid}:{sec}:{frames}f@{fps}")
-    return ", ".join(rows)
+    return ", ".join(str(c["shot_id"]) for c in clips)
 
 
 def _item_to_clip(item: dict, fps: int) -> dict:

@@ -141,7 +141,7 @@ def test_wan_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
 
     def _fake(_config, prompt, _schema):
         calls["n"] += 1
-        sid = _extract_after(prompt, "ClipIds=", ":")
+        sid = _extract_after(prompt, "ClipIds=", ",")
         return {"clips": [{"shot_id": sid, "positive_prompt": "p", "negative_prompt": "n", "energy": "normal"}]}
 
     monkeypatch.setattr(wan_planner, "generate_structured", _fake)
@@ -171,6 +171,11 @@ def test_wan_planner_clip_cap_guard_default(monkeypatch):
 def test_wan_energy_policy_pre_chorus_not_forced_high():
     out = wan_planner._energy_policy({"section_name": "pre_chorus"}, "normal")
     assert out == "normal"
+
+
+def test_wan_clip_summary_uses_shot_ids_only():
+    summary = wan_planner._clip_summary([_uso("x", 1.0), _uso("y", 1.0)])
+    assert summary == "x, y"
 
 
 def _anchor(shot_id: str, chorus: bool) -> dict:
@@ -244,5 +249,5 @@ def _extract_after(text: str, marker: str, end: str) -> str:
     if marker not in text:
         return "x"
     tail = text.split(marker, 1)[1]
-    token = tail.split(",", 1)[0]
-    return token.split(end, 1)[0].strip() or "x"
+    token = tail.split(end, 1)[0] if end in tail else tail
+    return token.strip().strip(".;:") or "x"
