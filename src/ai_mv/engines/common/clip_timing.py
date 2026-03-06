@@ -43,7 +43,7 @@ def _split_frames(duration_sec: float, fps: int, max_clip_sec: float | None, sec
     if total <= max_frames:
         return [total]
     target = _sec_to_frames(_section_target_sec(section_name, max_clip_sec), fps, floor)
-    min_frames = _sec_to_frames(min(1.0, max_clip_sec), fps, floor)
+    min_frames = _sec_to_frames(min(1.8, max_clip_sec), fps, floor)
     return _variable_split(total, target, min_frames, max_frames)
 
 
@@ -69,15 +69,15 @@ def _variable_split(total: int, target: int, min_frames: int, max_frames: int) -
 def _section_target_sec(section_name: str, max_clip_sec: float) -> float:
     sec = section_name.lower()
     if "chorus" in sec:
-        base = 1.6
-    elif "bridge" in sec or "outro" in sec:
-        base = 3.0
-    elif "intro" in sec:
-        base = 2.2
-    elif "verse" in sec:
         base = 2.6
+    elif "bridge" in sec or "outro" in sec:
+        base = 3.8
+    elif "intro" in sec:
+        base = 2.8
+    elif "verse" in sec:
+        base = 3.4
     else:
-        base = 2.4
+        base = 3.0
     return min(max_clip_sec, base)
 
 

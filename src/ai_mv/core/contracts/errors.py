@@ -10,6 +10,10 @@ class ComfyRequestError(PipelineError):
     pass
 
 
+class OllamaRequestError(PipelineError):
+    pass
+
+
 class WorkflowValidationError(PipelineError):
     pass
 

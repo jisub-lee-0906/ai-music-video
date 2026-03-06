@@ -8,18 +8,19 @@ from ai_mv.core.artifacts.summary import write_summary
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.scheduler import schedule
-from ai_mv.core.quality.release_readiness import readiness_report
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state, load_config
 
 
-def run_pipeline(config_path: str, run_id: str = "") -> str:
+def run_pipeline(config_path: str, run_id: str = "", allow_existing_run: bool = False) -> str:
     cfg = load_config(config_path)
-    state = init_run_state(cfg, run_id)
+    state = init_run_state(cfg, run_id, allow_existing=allow_existing_run)
     stage_input = StageInput(run_id=state["run_id"], config=cfg, payload={})
+    save_snapshot(state, stage_input.payload)
 
     for name, stage_fn in schedule():
         state["current_stage"] = name
+        save_snapshot(state, stage_input.payload)
         try:
             validate_stage_input(name, stage_input.payload)
             result = stage_fn(stage_input)
@@ -41,5 +42,4 @@ def run_pipeline(config_path: str, run_id: str = "") -> str:
     write_manifest(state, stage_input.payload)
     write_summary(state, stage_input.payload)
     write_dashboard(state, stage_input.payload)
-    readiness_report(state, stage_input.payload)
     return state["run_id"]

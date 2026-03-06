@@ -37,22 +37,7 @@ def _plan_with_ollama(config: dict, clips: list[dict]) -> dict:
 def _plan_chunk_rows(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
     prompt = _planner_prompt(config, chunk, carry)
     raw = generate_structured(config, prompt, wan_schema())
-    try:
-        return _coerce_clip_ids(raw.get("clips", []), chunk, strict)
-    except RuntimeError as exc:
-        if strict and _is_id_mismatch(exc) and len(chunk) > 1:
-            return _plan_chunk_rows_split(config, chunk, carry, strict)
-        raise
-
-
-def _plan_chunk_rows_split(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
-    out: list[dict] = []
-    local_carry = carry
-    for clip in chunk:
-        rows = _plan_chunk_rows(config, [clip], local_carry, strict)
-        out.extend(rows)
-        local_carry = _carry_hint(rows)
-    return out
+    return _coerce_clip_ids(raw.get("clips", []), chunk, strict)
 
 
 def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
@@ -71,6 +56,9 @@ def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
         "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
         "Optional sentence 3: environment reaction details. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
+        "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
+        "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
+        "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
@@ -115,10 +103,6 @@ def _next_row(pool: list[dict], idx: int) -> dict:
     return pool[idx]
 
 
-def _is_id_mismatch(exc: RuntimeError) -> bool:
-    return "shot_id mismatch" in str(exc).lower()
-
-
 def _with_shot_id(row: dict, shot_id: str) -> dict:
     out = dict(row)
     out["shot_id"] = shot_id
@@ -126,7 +110,17 @@ def _with_shot_id(row: dict, shot_id: str) -> dict:
 
 
 def _clip_summary(clips: list[dict]) -> str:
-    return ", ".join(str(c["shot_id"]) for c in clips)
+    return ", ".join(_clip_summary_row(c) for c in clips)
+
+
+def _clip_summary_row(clip: dict) -> str:
+    sid = str(clip["shot_id"])
+    section = str(clip.get("section_name", "section"))
+    camera = str(clip.get("camera_language", "")).strip() or "clean framing"
+    emotion = str(clip.get("emotion", "")).strip() or "steady emotion"
+    detail = str(clip.get("scene_detail", "")).strip() or "hero detail"
+    motion = str(clip.get("motion_hint", "")).strip() or "smooth motion"
+    return f"{sid}({section}|{camera}|{emotion}|{detail}|{motion})"
 
 
 def _item_to_clip(item: dict, fps: int) -> dict:
@@ -140,6 +134,11 @@ def _item_to_clip(item: dict, fps: int) -> dict:
         "section_name": str(item.get("section_name", "section")),
         "shot_type": str(item.get("shot_type", "CHAR_MASTER")),
         "is_chorus": bool(item.get("is_chorus", False)),
+        "camera_language": str(item.get("camera_language", "")),
+        "pose_delta": str(item.get("pose_delta", "")),
+        "emotion": str(item.get("emotion", "")),
+        "scene_detail": str(item.get("scene_detail", "")),
+        "motion_hint": str(item.get("motion_hint", "")),
     }
 
 
@@ -190,9 +189,11 @@ def _apply_prompt(clip: dict, row: dict) -> dict:
 def _energy_policy(clip: dict, suggested: str) -> str:
     sec = _section_token(clip)
     if sec == "chorus" or sec.startswith("chorus_"):
-        return "high"
+        if suggested == "high":
+            return "high"
+        return "normal"
     if sec in {"bridge", "outro"}:
-        return "low"
+        return "low" if suggested == "low" else "normal"
     if suggested in {"low", "normal", "high"}:
         return suggested
     return "normal"

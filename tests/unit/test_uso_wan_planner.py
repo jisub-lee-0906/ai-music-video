@@ -64,32 +64,16 @@ def test_uso_planner_batches_requests(monkeypatch):
 
 
 def test_uso_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
-    calls = {"n": 0}
-
-    def _fake(_config, prompt, _schema):
-        calls["n"] += 1
-        sid = _extract_after(prompt, "Anchors=", ",")
-        return {
-            "items": [
-                {
-                    "shot_id": sid,
-                    "delta": "d",
-                    "prompt_text": "A performer turns gently with subtle smile under warm city lights and clean cinematic framing.",
-                    "negative_prompt": "low quality, blurry, jpeg artifacts, bad hands",
-                }
-            ]
-        }
-
-    monkeypatch.setattr(uso_planner, "generate_structured", _fake)
+    monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
     payload = {"anchors": [_anchor("a", False), _anchor("b", False)]}
-    out = build_uso_plan({"style": {"guidance": "g"}, "render": {"uso_planner_batch_size": 2}}, payload)
-    assert [x["shot_id"] for x in out["items"]] == ["a", "b"]
-    assert calls["n"] == 3
+    with pytest.raises(RuntimeError, match="shot_id mismatch"):
+        build_uso_plan({"style": {"guidance": "g"}, "render": {"uso_planner_batch_size": 2}}, payload)
 
 
 def test_uso_anchor_summary_uses_shot_ids_only():
     summary = uso_planner._anchor_summary([_anchor("a", False), _anchor("b", True)])
-    assert summary == "a, b"
+    assert "a(" in summary
+    assert "b(" in summary
 
 
 def test_uso_normalize_item_id_strips_trailing_punct():
@@ -99,15 +83,16 @@ def test_uso_normalize_item_id_strips_trailing_punct():
 
 def test_wan_planner_uses_start_end_only(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate)
-    payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 4.0}]}
+    payload = {"uso_images": [_uso("x", 4.0)]}
     out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
     assert len(out["clips"]) == 1
     assert out["clips"][0]["shot_id"] == "x"
+    assert out["clips"][0]["camera_language"] == "clean hero framing"
 
 
 def test_wan_planner_shot_id_coerce(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
-    payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 4.0}]}
+    payload = {"uso_images": [_uso("x", 4.0)]}
     out = build_wan_plan(
         {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0, "strict_prompt_id_match": False}},
         payload,
@@ -118,7 +103,7 @@ def test_wan_planner_shot_id_coerce(monkeypatch):
 
 def test_wan_planner_shot_id_mismatch_strict(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
-    payload = {"uso_images": [{"shot_id": "x", "start": "s.png", "end": "e.png", "duration_sec": 4.0}]}
+    payload = {"uso_images": [_uso("x", 4.0)]}
     with pytest.raises(RuntimeError):
         build_wan_plan(
             {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0, "strict_prompt_id_match": True}},
@@ -147,18 +132,10 @@ def test_wan_planner_batches_requests(monkeypatch):
 
 
 def test_wan_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
-    calls = {"n": 0}
-
-    def _fake(_config, prompt, _schema):
-        calls["n"] += 1
-        sid = _extract_after(prompt, "ClipIds=", ",")
-        return {"clips": [{"shot_id": sid, "positive_prompt": "p", "negative_prompt": "n", "energy": "normal"}]}
-
-    monkeypatch.setattr(wan_planner, "generate_structured", _fake)
+    monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
     payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)]}
-    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_planner_batch_size": 2}}, payload)
-    assert [x["shot_id"] for x in out["clips"]] == ["x", "y"]
-    assert calls["n"] == 3
+    with pytest.raises(RuntimeError, match="shot_id mismatch"):
+        build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_planner_batch_size": 2}}, payload)
 
 
 def test_wan_planner_clip_cap_guard(monkeypatch):
@@ -185,7 +162,8 @@ def test_wan_energy_policy_pre_chorus_not_forced_high():
 
 def test_wan_clip_summary_uses_shot_ids_only():
     summary = wan_planner._clip_summary([_uso("x", 1.0), _uso("y", 1.0)])
-    assert summary == "x, y"
+    assert "x(" in summary
+    assert "y(" in summary
 
 
 def _anchor(shot_id: str, chorus: bool) -> dict:
@@ -195,11 +173,29 @@ def _anchor(shot_id: str, chorus: bool) -> dict:
         "is_chorus": chorus,
         "duration_sec": 4.0,
         "shot_type": "CHAR_MASTER",
+        "camera_language": "clean hero framing",
+        "pose_delta": "small pose shift",
+        "emotion": "steady confidence",
+        "scene_detail": "concert light wall",
+        "motion_hint": "smooth motion",
     }
 
 
 def _uso(shot_id: str, duration: float) -> dict:
-    return {"shot_id": shot_id, "start": "s.png", "end": "e.png", "duration_sec": duration}
+    return {
+        "shot_id": shot_id,
+        "start": "s.png",
+        "end": "e.png",
+        "duration_sec": duration,
+        "section_name": "verse",
+        "shot_type": "CHAR_MASTER",
+        "is_chorus": False,
+        "camera_language": "clean hero framing",
+        "pose_delta": "small pose shift",
+        "emotion": "steady confidence",
+        "scene_detail": "concert light wall",
+        "motion_hint": "smooth motion",
+    }
 
 
 def _fake_uso_generate(_config, _prompt, _schema):
@@ -253,11 +249,3 @@ def _fake_wan_generate_mismatch(_config, _prompt, _schema):
             }
         ]
     }
-
-
-def _extract_after(text: str, marker: str, end: str) -> str:
-    if marker not in text:
-        return "x"
-    tail = text.split(marker, 1)[1]
-    token = tail.split(end, 1)[0] if end in tail else tail
-    return token.strip().strip(".;:") or "x"

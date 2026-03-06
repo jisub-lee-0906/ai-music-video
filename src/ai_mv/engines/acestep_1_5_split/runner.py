@@ -3,7 +3,9 @@
 from pathlib import Path
 
 from ai_mv.engines.acestep_1_5_split.mapper import audio_required_inputs, map_audio_workflow
+from ai_mv.infra.comfy_outputs import pick_audio_file
 from ai_mv.infra.comfy_client import run_workflow
+from ai_mv.utils.path_utils import resolve_generated_file
 from ai_mv.utils.time_utils import ffprobe_duration
 
 ALLOWED_SECTIONS = {"intro", "verse", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"}
@@ -12,7 +14,7 @@ ALLOWED_SECTIONS = {"intro", "verse", "verse_1", "verse_2", "pre_chorus", "choru
 def run_audio_split(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
     result = run_workflow(config, "audio_ace_step_1_5_tta.api.json", wf, audio_required_inputs())
-    music_file = _resolve_audio_file(config, _pick_audio_file(result["files"]))
+    music_file = _resolve_audio_file(config, pick_audio_file(result["files"]))
     duration = ffprobe_duration(music_file)
     if duration <= 0:
         raise RuntimeError(f"invalid audio duration: {music_file}")
@@ -106,20 +108,6 @@ def _validate_transitions(names: list[str]) -> None:
             raise RuntimeError("lyrics_blocks transition invalid: verse_2 before verse_1")
 
 
-def _pick_audio_file(files: list[str]) -> str:
-    for name in files:
-        low = str(name).lower()
-        if low.endswith((".wav", ".mp3", ".flac", ".m4a")):
-            return name
-    raise RuntimeError("audio output file not found")
-
-
 def _resolve_audio_file(config: dict, name: str) -> str:
-    p = Path(str(name))
-    if p.exists():
-        return str(p.resolve())
-    out = Path(str(config["integrations"]["comfyui_output_dir"]).strip())
-    cand = out / p
-    if cand.exists():
-        return str(cand.resolve())
-    return str(p)
+    path = resolve_generated_file(config, name, {".wav", ".mp3", ".flac", ".m4a"}, "audio")
+    return str(path)

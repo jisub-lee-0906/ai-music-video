@@ -60,6 +60,8 @@ def test_uso_mapper():
     nodes = out["node.inputs"]
     assert nodes["47"]["image"] == "a.png"
     assert nodes["112:110"]["width"] == 1024
+    assert "Start frame only" in nodes["112:6"]["text"]
+    assert "clean mv look" in nodes["112:6"]["text"]
 
 
 def test_wan_mapper():

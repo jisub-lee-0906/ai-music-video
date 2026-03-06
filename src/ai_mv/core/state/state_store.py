@@ -17,15 +17,14 @@ def runs_root() -> Path:
     return root
 
 
-def ensure_run_dir(run_id: str | None) -> Path:
-    rid = run_id or time.strftime("%Y%m%d-%H%M%S")
-    out = runs_root() / rid
-    out.mkdir(parents=True, exist_ok=True)
-    return out
+def ensure_run_dir(run_id: str | None, allow_existing: bool = False) -> Path:
+    if str(run_id or "").strip():
+        return _explicit_run_dir(str(run_id).strip(), allow_existing)
+    return _generated_run_dir()
 
 
-def init_run_state(config: dict[str, Any], run_id: str | None) -> dict[str, Any]:
-    run_dir = ensure_run_dir(run_id)
+def init_run_state(config: dict[str, Any], run_id: str | None, allow_existing: bool = False) -> dict[str, Any]:
+    run_dir = ensure_run_dir(run_id, allow_existing=allow_existing)
     return {
         "run_id": run_dir.name,
         "status": "running",
@@ -54,3 +53,26 @@ def read_snapshot(run_id: str) -> dict[str, Any]:
             "completed_stages": [],
         }
     return read_json(snap)
+
+
+def _explicit_run_dir(run_id: str, allow_existing: bool) -> Path:
+    out = runs_root() / run_id
+    if out.exists():
+        if allow_existing and out.is_dir():
+            return out
+        raise RuntimeError(f"run_id already exists: {run_id}")
+    out.mkdir(parents=True, exist_ok=False)
+    return out
+
+
+def _generated_run_dir() -> Path:
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    for idx in range(100):
+        suffix = f"-{idx:02d}" if idx else ""
+        out = runs_root() / f"{stamp}{suffix}"
+        try:
+            out.mkdir(parents=True, exist_ok=False)
+            return out
+        except FileExistsError:
+            continue
+    raise RuntimeError("failed to allocate unique run_id")

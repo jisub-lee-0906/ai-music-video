@@ -4,30 +4,55 @@ SHOT_TYPES = ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "DETAIL_INSERT", "ENV
 
 
 def tti_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["master_anchor", "shots"],
+        "properties": {
+            "master_anchor": _tti_master_schema(),
+            "shots": {"type": "array", "items": _tti_shot_schema()},
+        },
+    }
+
+
+def _tti_master_schema() -> dict:
+    anchor = {
+        "type": "object",
+        "required": ["prompt_clip_l", "prompt_t5xxl", "negative_prompt", "seed"],
+        "properties": {
+            "prompt_clip_l": {"type": "string"},
+            "prompt_t5xxl": {"type": "string"},
+            "negative_prompt": {"type": "string"},
+            "seed": {"type": "integer"},
+        },
+    }
+    return anchor
+
+
+def _tti_shot_schema() -> dict:
     shot = {
         "type": "object",
         "required": [
             "shot_id",
-            "prompt_clip_l",
-            "prompt_t5xxl",
-            "negative_prompt",
-            "duration_sec",
-            "seed",
             "shot_type",
             "is_chorus",
+            "camera_language",
+            "pose_delta",
+            "emotion",
+            "scene_detail",
+            "motion_hint",
         ],
         "properties": {
             "shot_id": {"type": "string"},
-            "prompt_clip_l": {"type": "string"},
-            "prompt_t5xxl": {"type": "string"},
-            "negative_prompt": {"type": "string"},
-            "duration_sec": {"type": "number"},
-            "seed": {"type": "integer"},
             "shot_type": {"type": "string", "enum": SHOT_TYPES},
             "is_chorus": {"type": "boolean"},
+            "camera_language": {"type": "string"},
+            "pose_delta": {"type": "string"},
+            "emotion": {"type": "string"},
+            "scene_detail": {"type": "string"},
+            "motion_hint": {"type": "string"},
         },
     }
-    return {"type": "object", "required": ["shots"], "properties": {"shots": {"type": "array", "items": shot}}}
+    return shot
 
 
 def audio_schema() -> dict:
@@ -87,15 +112,32 @@ def normalize_tti_shot(raw: dict, idx: int) -> dict:
     stype = str(raw["shot_type"])
     if stype not in SHOT_TYPES:
         raise RuntimeError(f"invalid shot_type at {idx}: {stype}")
-    return {
-        "shot_id": str(raw["shot_id"]),
-        "prompt_clip_l": str(raw["prompt_clip_l"]).strip(),
-        "prompt_t5xxl": str(raw["prompt_t5xxl"]).strip(),
-        "negative_prompt": str(raw["negative_prompt"]),
-        "duration_sec": float(raw["duration_sec"]),
-        "seed": int(raw["seed"]),
+    out = {
+        "shot_id": str(raw["shot_id"]).strip(),
         "shot_type": stype,
         "is_chorus": bool(raw["is_chorus"]),
+        "camera_language": str(raw["camera_language"]).strip(),
+        "pose_delta": str(raw["pose_delta"]).strip(),
+        "emotion": str(raw["emotion"]).strip(),
+        "scene_detail": str(raw["scene_detail"]).strip(),
+        "motion_hint": str(raw["motion_hint"]).strip(),
+    }
+    if not all(out[key] for key in ("shot_id", "camera_language", "pose_delta", "emotion", "scene_detail", "motion_hint")):
+        raise RuntimeError(f"incomplete TTI shot blueprint at {idx}")
+    return out
+
+
+def normalize_tti_master(raw: dict) -> dict:
+    clip_l = str(raw["prompt_clip_l"]).strip()
+    t5 = str(raw["prompt_t5xxl"]).strip()
+    neg = str(raw["negative_prompt"]).strip()
+    if not clip_l or not t5 or not neg:
+        raise RuntimeError("invalid TTI master anchor")
+    return {
+        "prompt_clip_l": clip_l,
+        "prompt_t5xxl": t5,
+        "negative_prompt": neg,
+        "seed": int(raw["seed"]),
     }
 
 

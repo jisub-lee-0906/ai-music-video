@@ -3,9 +3,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import requests
-
 from ai_mv.core.contracts.errors import MediaValidationError
+from ai_mv.infra.comfy_local import comfy_input_dir, comfy_output_dir
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -27,25 +26,30 @@ def stage_image_for_comfy(config: dict, image_ref: str) -> str:
         raise MediaValidationError("image ref is empty")
     src = _resolve_image_source(config, ref)
     if not src:
-        src = _fetch_from_comfy_output(config, ref)
-    if not src:
         raise MediaValidationError(f"image source not found: {ref}")
-    uploaded = _upload_to_comfy_input(config, src, ref)
-    if uploaded:
-        return uploaded
-    dst = _resolve_comfy_input(config) / Path(ref)
+    rel = _comfy_stage_relpath(ref)
+    dst = comfy_input_dir(config) / rel
+    if _same_file(src, dst):
+        return rel.as_posix()
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
     if not dst.exists():
         raise MediaValidationError(f"failed to stage image: {dst.as_posix()}")
-    return Path(ref).as_posix()
+    return rel.as_posix()
+
+
+def resolve_generated_file(config: dict, ref: str, exts: set[str], label: str) -> Path:
+    path = _resolve_generated_path(config, ref)
+    if not path or path.suffix.lower() not in exts:
+        raise MediaValidationError(f"{label} file not found: {ref}")
+    return path
 
 
 def _resolve_image_source(config: dict, ref: str) -> Path | None:
     p = Path(ref)
     if p.exists():
         return p.resolve()
-    out = Path(str(config["integrations"]["comfyui_output_dir"]).strip())
+    out = comfy_output_dir(config)
     if (out / p).exists():
         return (out / p).resolve()
     if (out / p.name).exists():
@@ -53,60 +57,32 @@ def _resolve_image_source(config: dict, ref: str) -> Path | None:
     return None
 
 
-def _resolve_comfy_input(config: dict) -> Path:
-    inp = str(config["integrations"]["comfyui_input_dir"]).strip()
-    if inp:
-        return Path(inp).resolve()
-    raise MediaValidationError("integrations.comfyui_input_dir is required")
+def _comfy_stage_relpath(ref: str) -> Path:
+    path = Path(ref)
+    if path.is_absolute():
+        return Path(path.name)
+    if ".." in path.parts:
+        raise MediaValidationError(f"image ref escapes comfy input dir: {ref}")
+    return path
 
 
-def _fetch_from_comfy_output(config: dict, ref: str) -> Path | None:
-    base = str(config["integrations"]["comfyui_base_url"]).rstrip("/")
-    rel = Path(ref).as_posix().strip("/")
-    name = Path(rel).name
-    sub = "" if "/" not in rel else rel.rsplit("/", 1)[0]
-    out = _resolve_comfy_input(config) / "_staged_from_output"
-    out.mkdir(parents=True, exist_ok=True)
-    dst = out / name
-    if _download_view(base, name, sub, dst):
-        return dst
-    if sub and _download_view(base, name, "", dst):
-        return dst
+def _same_file(src: Path, dst: Path) -> bool:
+    try:
+        return src.resolve() == dst.resolve()
+    except Exception:
+        return False
+
+
+def _resolve_generated_path(config: dict, ref: str) -> Path | None:
+    raw = str(ref or "").strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    if path.exists():
+        return path.resolve()
+    out = comfy_output_dir(config)
+    for cand in ((out / path), (out / path.name)):
+        if cand.exists():
+            return cand.resolve()
     return None
-
-
-def _download_view(base: str, filename: str, subfolder: str, dst: Path) -> bool:
-    params = {"filename": filename, "subfolder": subfolder, "type": "output"}
-    try:
-        res = requests.get(f"{base}/view", params=params, timeout=20)
-    except Exception:
-        return False
-    if res.status_code != 200 or not res.content:
-        return False
-    dst.write_bytes(res.content)
-    return True
-
-
-def _upload_to_comfy_input(config: dict, src: Path, ref: str) -> str:
-    base = str(config["integrations"]["comfyui_base_url"]).rstrip("/")
-    sub = Path(ref).parent.as_posix()
-    data = {"type": "input", "overwrite": "true"}
-    if sub and sub != ".":
-        data["subfolder"] = sub
-    try:
-        with src.open("rb") as fp:
-            res = requests.post(
-                f"{base}/upload/image",
-                data=data,
-                files={"image": (src.name, fp, "application/octet-stream")},
-                timeout=30,
-            )
-        if res.status_code >= 400:
-            return ""
-        body = res.json() if res.content else {}
-    except Exception:
-        return ""
-    name = str(body["name"] if "name" in body else body["filename"]).strip()
-    folder = str(body["subfolder"]).strip("/\\") if "subfolder" in body else ""
-    return f"{folder}/{name}" if folder else name
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow, wan_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
-from ai_mv.utils.path_utils import stage_image_for_comfy
+from ai_mv.infra.comfy_outputs import pick_video_file
+from ai_mv.utils.path_utils import resolve_generated_file, stage_image_for_comfy
 
 
 def run_wan(config: dict, plan: dict) -> list[dict]:
@@ -15,8 +14,7 @@ def run_wan(config: dict, plan: dict) -> list[dict]:
         raise RuntimeError("WAN plan is empty")
     for clip in clips:
         result = _run_clip_wan(config, clip)
-        files = result["files"]
-        video = _pick_video(files, clip["shot_id"])
+        video = pick_video_file(result["files"], f"WAN {clip['shot_id']}")
         outputs.append({"shot_id": clip["shot_id"], "video": _resolve_video_path(config, video), "retry": 0, "error_body": ""})
     return outputs
 
@@ -45,19 +43,6 @@ def _mutate_clip(config: dict, clip: dict, retry: int) -> dict:
     return out
 
 
-def _pick_video(files: list[str], shot_id: str) -> str:
-    videos = [f for f in files if f.lower().endswith((".mp4", ".mov", ".mkv", ".webm"))]
-    if not videos:
-        raise RuntimeError(f"WAN output missing for {shot_id}")
-    return videos[0]
-
-
 def _resolve_video_path(config: dict, name: str) -> str:
-    path = Path(str(name))
-    if path.exists():
-        return str(path.resolve())
-    raw = str(config["integrations"]["comfyui_output_dir"]).strip()
-    if not raw:
-        return str(path)
-    candidate = Path(raw) / path
-    return str(candidate.resolve()) if candidate.exists() else str(path)
+    path = resolve_generated_file(config, name, {".mp4", ".mov", ".mkv", ".webm"}, "video")
+    return str(path)

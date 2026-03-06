@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -16,10 +17,11 @@ def run_start(config_path: str, run_id: str | None = None, profile: str | None =
     rid = run_id or ""
     lock = acquire_lock("start")
     try:
-        cfg_path, rid = _prepare_config(config_path, rid, profile)
-        if run_doctor(cfg_path) != 0:
+        cfg = _load_prepared_config(config_path, profile)
+        if _run_doctor_with_temp_config(cfg) != 0:
             return 1
-        run_pipeline(cfg_path, rid)
+        cfg_path, rid = _prepare_run_config(cfg, rid)
+        run_pipeline(cfg_path, rid, allow_existing_run=True)
         snap = read_snapshot(rid)
         print(f"run_id={rid}")
         print(f"status={snap['status']}")
@@ -29,15 +31,28 @@ def run_start(config_path: str, run_id: str | None = None, profile: str | None =
         release_lock(lock)
 
 
-def _prepare_config(config_path: str, run_id: str, profile: str | None) -> tuple[str, str]:
+def _load_prepared_config(config_path: str, profile: str | None) -> dict:
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     if not isinstance(cfg, dict):
         raise RuntimeError("config must be yaml object")
     if str(profile or "").strip():
         cfg["profile"] = str(profile).strip()
-    run_dir = ensure_run_dir(run_id)
+    return bootstrap_config(cfg, Path(config_path).resolve().parent)
+
+
+def _run_doctor_with_temp_config(cfg: dict) -> int:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".yaml", delete=False) as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+        temp = Path(f.name)
+    try:
+        return run_doctor(abs_path(str(temp)))
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def _prepare_run_config(cfg: dict, run_id: str) -> tuple[str, str]:
+    run_dir = ensure_run_dir(run_id, allow_existing=False)
     rid = run_dir.name
-    cfg = bootstrap_config(cfg, run_dir)
     effective = run_dir / "effective_config.yaml"
     effective.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
     return abs_path(str(effective)), rid

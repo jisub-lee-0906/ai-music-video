@@ -13,8 +13,14 @@ ai-mv start --config configs/default.yaml
 - `ai-mv doctor --config <yaml>`
 - `ai-mv status --run-id <id>`
 
+## Doctor Checks
+- local ComfyUI base URL and input/output directories
+- configured Ollama model presence
+- workflow template files
+- `ffmpeg` and `ffprobe` on `PATH`
+
 ## Core Paths
 - configs: runtime policies and profiles
 - workflows: ComfyUI API workflow exports
 - artifacts/runs_state: run snapshots and manifests
-- artifacts/reports: summaries and release readiness
+- artifacts/reports: summaries

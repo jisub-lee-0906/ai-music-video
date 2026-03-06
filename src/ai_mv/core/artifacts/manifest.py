@@ -25,8 +25,7 @@ def _anchor_rows(payload: dict) -> list[dict]:
         out.append(
             {
                 "shot_id": str(row.get("shot_id", "")),
-                "anchor": str(row.get("anchor", row.get("anchor_selected", ""))),
-                "anchor_selected": str(row.get("anchor_selected", row.get("anchor", ""))),
+                "anchor": str(row.get("anchor", "")),
                 "retry": int(row.get("retry", 0)),
                 "error_body": str(row.get("error_body", "")),
             }

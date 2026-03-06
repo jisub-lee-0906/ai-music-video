@@ -1,7 +1,6 @@
 import ai_mv.core.artifacts.dashboard as dashboard
 import ai_mv.core.artifacts.manifest as manifest
 import ai_mv.core.artifacts.summary as summary
-import ai_mv.core.quality.release_readiness as readiness
 
 
 def test_artifacts_safe_on_partial_payload(monkeypatch):
@@ -13,7 +12,6 @@ def test_artifacts_safe_on_partial_payload(monkeypatch):
     monkeypatch.setattr(manifest, "write_json", _sink)
     monkeypatch.setattr(summary, "write_json", _sink)
     monkeypatch.setattr(dashboard, "write_json", _sink)
-    monkeypatch.setattr(readiness, "write_json", _sink)
 
     state = {
         "run_id": "r1",
@@ -27,7 +25,6 @@ def test_artifacts_safe_on_partial_payload(monkeypatch):
     manifest.write_manifest(state, payload)
     summary.write_summary(state, payload)
     dashboard.write_dashboard(state, payload)
-    readiness.readiness_report(state, payload)
 
-    assert len(calls) == 4
+    assert len(calls) == 3
     assert all(isinstance(p, str) and isinstance(d, dict) for p, d in calls)

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ai_mv.utils.path_utils import resolve_generated_file
+
 
 def build_merge_plan(payload: dict) -> dict:
     clips = payload["clips"]
@@ -28,16 +30,7 @@ def resolve_clip_paths(names: list[str], config: dict, run_dir: Path) -> list[Pa
 
 
 def resolve_audio_path(music_file: str, config: dict) -> Path:
-    if not music_file:
-        raise RuntimeError("music_file is required")
-    candidate = Path(music_file)
-    if candidate.exists():
-        return candidate.resolve()
-    comfy_out = Path(str(config["integrations"]["comfyui_output_dir"]).strip())
-    staged = (comfy_out / candidate)
-    if staged.exists():
-        return staged.resolve()
-    raise RuntimeError(f"audio file not found: {music_file}")
+    return resolve_generated_file(config, music_file, {".wav", ".mp3", ".flac", ".m4a"}, "audio")
 
 
 def _search_roots(roots: list[Path], rel: Path) -> Path | None:

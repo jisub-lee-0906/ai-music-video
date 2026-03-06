@@ -1,9 +1,11 @@
+import pytest
+
 from ai_mv.engines.flux_1_dev_tti.planner import build_tti_plan
 import ai_mv.engines.flux_1_dev_tti.planner as tti_planner
 
 
 def test_tti_section_timing_policy(monkeypatch):
-    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate)
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_four)
     cfg = {
         "style": {"guidance": "g"},
         "audio": {"song_title": "t", "song_description": "d", "lyrics": "[v] line"},
@@ -20,6 +22,7 @@ def test_tti_section_timing_policy(monkeypatch):
         }
     }
     out = build_tti_plan(cfg, payload)
+    assert out["master_anchor"]["prompt_clip_l"]
     shots = out["shots"]
     assert shots
     assert len(shots) == 4
@@ -33,7 +36,7 @@ def test_tti_section_timing_policy(monkeypatch):
 
 
 def test_tti_distribution_when_sections_exceed_shots(monkeypatch):
-    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_small)
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_three)
     cfg = {
         "style": {"guidance": "g"},
         "audio": {"song_title": "t", "song_description": "d", "lyrics": "[v] line"},
@@ -50,14 +53,12 @@ def test_tti_distribution_when_sections_exceed_shots(monkeypatch):
             ],
         }
     }
-    out = build_tti_plan(cfg, payload)
-    shots = out["shots"]
-    assert len(shots) == 5
-    assert round(sum(float(x["duration_sec"]) for x in shots), 3) == 12.0
+    with pytest.raises(RuntimeError, match="shot count mismatch"):
+        build_tti_plan(cfg, payload)
 
 
 def test_tti_duration_scaling_preserves_target_total(monkeypatch):
-    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_many)
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_two)
     cfg = {
         "style": {"guidance": "g"},
         "audio": {"song_title": "t", "song_description": "d", "lyrics": "[v] line"},
@@ -79,7 +80,7 @@ def test_tti_duration_scaling_preserves_target_total(monkeypatch):
 
 
 def test_tti_pre_chorus_not_marked_as_chorus(monkeypatch):
-    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_small)
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_two)
     cfg = {
         "style": {"guidance": "g"},
         "audio": {"song_title": "t", "song_description": "d", "lyrics": "[v] line"},
@@ -101,43 +102,42 @@ def test_tti_pre_chorus_not_marked_as_chorus(monkeypatch):
     assert shots[1]["is_chorus"] is True
 
 
-def _fake_tti_generate(_config, _prompt, _schema):
-    base = {
-        "prompt_clip_l": "a, b, c, d, e, f, g, h, i, j, k, l, m",
-        "prompt_t5xxl": "Sentence one. Sentence two.",
-        "negative_prompt": "n",
-        "duration_sec": 6.0,
-        "seed": 1,
+def _fake_tti_generate_four(_config, _prompt, _schema):
+    return {"master_anchor": _master(101), "shots": [_shot(i) for i in range(4)]}
+
+
+def _fake_tti_generate_three(_config, _prompt, _schema):
+    return {"master_anchor": _master(201), "shots": [_shot(i, "gentle push-in framing", "small chin lift", "calm intensity", "club light haze", "controlled motion") for i in range(3)]}
+
+
+def _fake_tti_generate_two(_config, _prompt, _schema):
+    return {"master_anchor": _master(301), "shots": [_shot(i) for i in range(2)]}
+
+
+def _master(seed: int) -> dict:
+    return {
+        "prompt_clip_l": "hero face, silver hair, bright eyes, stage outfit, satin fabric, poised stance, crystal mic, neon set, rim light, cinematic lens, electric mood, teal pink palette, polished detail",
+        "prompt_t5xxl": "A silver-haired performer stands in a neon concert set with a crystal microphone and a sharply styled satin stage outfit. Clean lens framing and rim lighting hold a poised, magnetic stage presence.",
+        "negative_prompt": "low quality, blurry, bad hands",
+        "seed": seed,
+    }
+
+
+def _shot(
+    idx: int,
+    camera: str = "slow dolly with clean mid-wide framing",
+    pose: str = "subtle shoulder turn and gaze lift",
+    emotion: str = "focused confidence",
+    detail: str = "neon stage architecture",
+    motion: str = "smooth performance motion",
+) -> dict:
+    return {
+        "shot_id": f"s_{idx:03d}",
         "shot_type": "PERF_WIDE",
         "is_chorus": False,
+        "camera_language": camera,
+        "pose_delta": pose,
+        "emotion": emotion,
+        "scene_detail": detail,
+        "motion_hint": motion,
     }
-    shots = []
-    for i in range(8):
-        row = dict(base)
-        row["shot_id"] = f"s_{i:03d}"
-        row["seed"] = 100 + i
-        shots.append(row)
-    return {"shots": shots}
-
-
-def _fake_tti_generate_small(_config, _prompt, _schema):
-    base = {
-        "prompt_clip_l": "a, b, c, d, e, f, g, h, i, j, k, l, m",
-        "prompt_t5xxl": "Sentence one. Sentence two.",
-        "negative_prompt": "n",
-        "duration_sec": 4.0,
-        "seed": 1,
-        "shot_type": "PERF_WIDE",
-        "is_chorus": False,
-    }
-    shots = []
-    for i in range(3):
-        row = dict(base)
-        row["shot_id"] = f"s_{i:03d}"
-        row["seed"] = 200 + i
-        shots.append(row)
-    return {"shots": shots}
-
-
-def _fake_tti_generate_many(_config, _prompt, _schema):
-    return _fake_tti_generate(_config, _prompt, _schema)

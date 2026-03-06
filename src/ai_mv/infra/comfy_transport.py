@@ -11,17 +11,21 @@ from ai_mv.core.contracts.errors import ComfyRequestError
 
 def ping_comfy(base_url: str) -> bool:
     try:
-        return requests.get(f"{base_url.rstrip('/')}/history", timeout=3).status_code < 500
+        res = requests.get(f"{base_url.rstrip('/')}/history", timeout=3)
+        if res.status_code != 200:
+            return False
+        return isinstance(res.json(), dict)
     except Exception:
         return False
 
 
 def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int, attempts: int = 1) -> dict:
     queued = _queue_with_deadline(base_url, workflow, timeout, attempts)
-    prompt_id = str(queued["prompt_id"])
+    prompt_id = _prompt_id_from_queue(queued)
     history = wait_history(base_url, prompt_id, timeout, attempts)
     _raise_if_execution_error(history, prompt_id)
-    return {"prompt_id": prompt_id, "history": history, "files": extract_files(history)}
+    files = extract_files(history)
+    return {"prompt_id": prompt_id, "history": history, "files": files}
 
 
 def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1) -> dict[str, Any]:
@@ -34,8 +38,7 @@ def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1)
         if elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
         remaining = max(0.0, timeout - elapsed)
-        poll_timeout = max(0.05, remaining)
-        data = _get_json(url, poll_timeout)
+        data = _history_get_with_retries(url, remaining, prompt_id, attempts)
         record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
@@ -45,16 +48,20 @@ def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1)
 
 
 def extract_files(history: dict[str, Any]) -> list[str]:
-    outputs = history["outputs"]
+    outputs = history.get("outputs")
+    if not isinstance(outputs, dict) or not outputs:
+        raise ComfyRequestError("Comfy history outputs missing")
     files: list[str] = []
     for _, node_out in outputs.items():
         if not isinstance(node_out, dict):
             continue
-        files += _collect_file_entries(node_out["images"] if "images" in node_out else [])
-        files += _collect_file_entries(node_out["gifs"] if "gifs" in node_out else [])
-        files += _collect_file_entries(node_out["videos"] if "videos" in node_out else [])
-        files += _collect_file_entries(node_out["files"] if "files" in node_out else [])
-        files += _collect_file_entries(node_out["audio"] if "audio" in node_out else [])
+        files += _collect_file_entries(node_out.get("images", []))
+        files += _collect_file_entries(node_out.get("gifs", []))
+        files += _collect_file_entries(node_out.get("videos", []))
+        files += _collect_file_entries(node_out.get("files", []))
+        files += _collect_file_entries(node_out.get("audio", []))
+    if not files:
+        raise ComfyRequestError("Comfy workflow produced no files")
     return files
 
 
@@ -96,10 +103,47 @@ def _safe_response_body(res: requests.Response) -> str:
 def _collect_file_entries(items: list[dict[str, Any]]) -> list[str]:
     out: list[str] = []
     for item in items:
+        if not isinstance(item, dict) or "filename" not in item:
+            raise ComfyRequestError("Comfy output item missing filename")
         name = str(item["filename"])
         folder = str(item["subfolder"]).strip("/\\") if "subfolder" in item else ""
         out.append(f"{folder}/{name}" if folder else name)
     return out
+
+
+def _prompt_id_from_queue(queued: dict[str, Any]) -> str:
+    prompt_id = str(queued.get("prompt_id", "")).strip()
+    if not prompt_id:
+        raise ComfyRequestError("Comfy queue response missing prompt_id")
+    return prompt_id
+
+
+def _safe_history_get(url: str, timeout: float, prompt_id: str) -> dict[str, Any]:
+    try:
+        return _get_json(url, timeout)
+    except Exception as exc:
+        raise ComfyRequestError(f"Comfy history request failed: {prompt_id}: {exc}") from exc
+
+
+def _history_get_with_retries(url: str, remaining: float, prompt_id: str, attempts: int) -> dict[str, Any]:
+    last: Exception | None = None
+    total = max(1, attempts)
+    for idx in range(total):
+        timeout = _history_attempt_timeout(remaining, total - idx)
+        try:
+            return _safe_history_get(url, timeout, prompt_id)
+        except ComfyRequestError as exc:
+            last = exc
+    if last:
+        raise last
+    raise ComfyRequestError(f"Comfy history request failed: {prompt_id}")
+
+
+def _history_attempt_timeout(remaining: float, attempts_left: int) -> float:
+    if remaining <= 0:
+        return 0.05
+    share = remaining / float(max(1, attempts_left))
+    return max(0.05, share)
 
 
 def _get_json(url: str, timeout: float) -> dict[str, Any]:
