@@ -13,36 +13,37 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
     if not clips:
         raise RuntimeError("WAN clips empty")
     _enforce_clip_cap(config, clips, fps)
-    spec = _plan_with_ollama(config, clips)
+    spec = _plan_with_ollama(config, payload, clips)
     prompts = normalize_wan_clips(spec["clips"], clips)
     clips = [_apply_prompt(x, prompts[x["shot_id"]]) for x in clips]
     return {"clips": clips}
 
 
-def _plan_with_ollama(config: dict, clips: list[dict]) -> dict:
+def _plan_with_ollama(config: dict, payload: dict, clips: list[dict]) -> dict:
     batch_size = _wan_planner_batch_size(config, len(clips))
     strict = _strict_id_match(config)
     if len(clips) <= batch_size:
-        return {"clips": _plan_chunk_rows(config, clips, "", strict)}
+        return {"clips": _plan_chunk_rows(config, payload, clips, "", strict)}
     out: list[dict] = []
     carry = ""
     for i in range(0, len(clips), batch_size):
         chunk = clips[i : i + batch_size]
-        rows = _plan_chunk_rows(config, chunk, carry, strict)
+        rows = _plan_chunk_rows(config, payload, chunk, carry, strict)
         out.extend(rows)
         carry = _carry_hint(rows)
     return {"clips": out}
 
 
-def _plan_chunk_rows(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
-    prompt = _planner_prompt(config, chunk, carry)
+def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
+    prompt = _planner_prompt(config, payload, chunk, carry)
     raw = generate_structured(config, prompt, wan_schema())
     return _coerce_clip_ids(raw.get("clips", []), chunk, strict)
 
 
-def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
-    guidance = _style_guidance(config)
-    lyrics = _lyrics_excerpt(config)
+def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
+    guidance = _style_guidance(config, payload)
+    lyrics = _lyrics_excerpt(payload)
+    brief = _brief_summary(payload["visual_brief"])
     summary = _clip_summary(clips)
     carry_clause = f"Previous batch continuity hint={carry}. " if carry else ""
     return (
@@ -62,22 +63,32 @@ def _planner_prompt(config: dict, clips: list[dict], carry: str) -> str:
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
-        f"{carry_clause}Style guidance={guidance}; Lyrics context={lyrics}; ClipIds={summary}."
+        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; ClipIds={summary}."
     )
 
 
-def _style_guidance(config: dict) -> str:
+def _style_guidance(config: dict, payload: dict) -> str:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    guided = str(audio_map.get("style_guidance", "")).strip() if isinstance(audio_map, dict) else ""
+    if guided:
+        return guided
     style = config.get("style", {}) if isinstance(config, dict) else {}
     return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
 
 
-def _lyrics_excerpt(config: dict) -> str:
-    audio = config.get("audio", {}) if isinstance(config, dict) else {}
-    text = str(audio.get("lyrics", "")).strip() if isinstance(audio, dict) else ""
+def _lyrics_excerpt(payload: dict) -> str:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    text = str(audio_map.get("lyrics", "")).strip() if isinstance(audio_map, dict) else ""
     if not text:
         return ""
     lines = [x.strip() for x in text.splitlines() if x.strip()]
     return " | ".join(lines[:8])
+
+
+def _brief_summary(brief: dict) -> str:
+    motifs = ", ".join(brief.get("visual_motifs", []))
+    rules = ", ".join(brief.get("negative_constraints", []))
+    return f"hero={brief['hero_identity']}; world={brief['world_rules']}; motifs={motifs}; avoid={rules}"
 
 
 def _coerce_clip_ids(rows: list[dict], clips: list[dict], strict: bool) -> list[dict]:

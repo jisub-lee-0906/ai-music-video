@@ -8,6 +8,7 @@ import requests
 import yaml
 
 from ai_mv.core.contracts.prompt_contract import tti_schema
+from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.core.orchestration.bootstrap_guard import apply_profile
 from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow
 from ai_mv.engines.flux_1_dev_tti.planner import _planner_prompt
@@ -15,7 +16,7 @@ from ai_mv.engines.flux_1_dev_tti.planner import _planner_prompt
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="debug-tti-fast")
-    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument("--config", default="")
     p.add_argument("--profile", default="")
     p.add_argument("--shots", type=int, default=2)
     p.add_argument("--timeout", type=int, default=120)
@@ -23,7 +24,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_config(path: str, profile: str) -> dict:
-    cfg = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    cfg = default_config() if not path.strip() else yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(cfg, dict):
         raise RuntimeError("config must be yaml object")
     if profile.strip():

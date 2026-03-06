@@ -9,6 +9,11 @@ def test_gate_requires_anchors_for_uso():
         validate_stage_input("uso_chain", {})
 
 
+def test_gate_requires_visual_brief_for_tti():
+    with pytest.raises(StageFailure):
+        validate_stage_input("tti_anchor", {"audio_map": {"sections": [1]}})
+
+
 def test_gate_accepts_when_required_inputs_present():
     payload = {
         "anchors": [{"shot_id": "a"}],

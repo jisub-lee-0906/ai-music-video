@@ -5,13 +5,14 @@ import yaml
 
 import ai_mv.core.orchestration.pipeline as pipeline_mod
 from ai_mv.core.contracts.stage_io import StageOutput
+from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.core.state.state_store import read_snapshot
 from ai_mv.utils.json_utils import read_json
 
 
 def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     monkeypatch.setattr(pipeline_mod, "schedule", _failing_schedule)
-    cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
+    cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-fail-config.yaml")
     temp_cfg.parent.mkdir(parents=True, exist_ok=True)

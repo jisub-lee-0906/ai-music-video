@@ -3,17 +3,10 @@ from __future__ import annotations
 
 DEFAULT_CONFIG: dict = {
     "audio": {
-        "lyrics": "",
-        "song_title": "",
-        "song_description": "",
         "target_duration_sec": 160,
-        "keyscale": "",
-        "seed": 31,
         "quality": "V0",
-        "tags": [],
     },
     "profile": "",
-    "style": {"guidance": ""},
     "video": {"target": "1920x1080@24"},
     "render": {
         "tti_size": "1024x576",
@@ -34,7 +27,6 @@ DEFAULT_CONFIG: dict = {
         "comfyui_output_dir": "",
         "ollama_base_url": "http://127.0.0.1:11434",
         "ollama_model": "qwen3:14b",
-        "ollama_timeout_json_sec": 60,
         "ollama_timeout_structured_sec": 600,
         "comfy_retry_attempts": 1,
         "ollama_num_gpu": 0,
@@ -47,6 +39,10 @@ DEFAULT_CONFIG: dict = {
         "template_hashes": {},
     },
 }
+
+
+def default_config() -> dict:
+    return _clone(DEFAULT_CONFIG)
 
 
 def apply_defaults(config: dict) -> None:

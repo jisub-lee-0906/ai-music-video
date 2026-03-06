@@ -1,3 +1,4 @@
+from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.cli.args import build_parser
 
 
@@ -10,6 +11,12 @@ def test_parser_has_commands():
 
 def test_start_accepts_profile():
     parser = build_parser()
-    args = parser.parse_args(["start", "--config", "configs/default.yaml", "--profile", "jpop_citypop"])
+    args = parser.parse_args(["start", "--profile", "jpop_citypop"])
     assert args.profile == "jpop_citypop"
+
+
+def test_default_config_available():
+    cfg = default_config()
+    assert isinstance(cfg, dict)
+    assert "integrations" in cfg
 

@@ -5,12 +5,13 @@ import yaml
 
 import ai_mv.core.orchestration.pipeline as pipeline_mod
 from ai_mv.core.contracts.stage_io import StageOutput
+from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.core.orchestration.pipeline import run_pipeline
 
 
 def test_pipeline_smoke(monkeypatch):
     monkeypatch.setattr(pipeline_mod, "schedule", _fake_schedule)
-    cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
+    cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-config.yaml")
     temp_cfg.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +35,7 @@ def test_pipeline_writes_initial_snapshot_before_first_stage(monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "schedule", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
-    cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
+    cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-snapshot-config.yaml")
     temp_cfg.parent.mkdir(parents=True, exist_ok=True)
@@ -55,7 +56,7 @@ def test_pipeline_writes_stage_name_before_stage_runs(monkeypatch):
 
     monkeypatch.setattr(pipeline_mod, "schedule", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
-    cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
+    cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-stage-config.yaml")
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")

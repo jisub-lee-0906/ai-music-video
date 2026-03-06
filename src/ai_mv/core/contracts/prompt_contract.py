@@ -108,6 +108,31 @@ def wan_schema() -> dict:
     return {"type": "object", "required": ["clips"], "properties": {"clips": {"type": "array", "items": clip}}}
 
 
+def visual_brief_schema() -> dict:
+    props = {
+        "hero_identity": {"type": "string"},
+        "world_rules": {"type": "string"},
+        "visual_motifs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+        "negative_constraints": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 10},
+        "section_briefs": {"type": "array", "items": _visual_section_schema()},
+    }
+    return {"type": "object", "required": list(props.keys()), "properties": props}
+
+
+def _visual_section_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["section_name", "emotional_arc", "palette_hint", "lighting_hint", "staging_hint"],
+        "properties": {
+            "section_name": {"type": "string"},
+            "emotional_arc": {"type": "string"},
+            "palette_hint": {"type": "string"},
+            "lighting_hint": {"type": "string"},
+            "staging_hint": {"type": "string"},
+        },
+    }
+
+
 def normalize_tti_shot(raw: dict, idx: int) -> dict:
     stype = str(raw["shot_type"])
     if stype not in SHOT_TYPES:
@@ -204,3 +229,53 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
             "energy": energy,
         }
     return out
+
+
+def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
+    if not sections:
+        raise RuntimeError("visual brief sections missing")
+    briefs = _normalize_section_briefs(raw["section_briefs"], sections)
+    return {
+        "hero_identity": _require_text(raw, "hero_identity"),
+        "world_rules": _require_text(raw, "world_rules"),
+        "visual_motifs": _normalize_text_list(raw["visual_motifs"], "visual_motifs"),
+        "negative_constraints": _normalize_text_list(raw["negative_constraints"], "negative_constraints"),
+        "section_briefs": briefs,
+    }
+
+
+def _normalize_section_briefs(raw: list[dict], sections: list[dict]) -> list[dict]:
+    rows = [x for x in raw if isinstance(x, dict)]
+    if len(rows) != len(sections):
+        raise RuntimeError("visual brief section count mismatch")
+    out: list[dict] = []
+    for row, section in zip(rows, sections):
+        out.append(_normalize_visual_section(row, str(section.get("name", "section"))))
+    return out
+
+
+def _normalize_visual_section(row: dict, expected_name: str) -> dict:
+    actual = _require_text(row, "section_name")
+    if actual != expected_name:
+        raise RuntimeError(f"visual brief section mismatch: expected={expected_name} actual={actual}")
+    return {
+        "section_name": actual,
+        "emotional_arc": _require_text(row, "emotional_arc"),
+        "palette_hint": _require_text(row, "palette_hint"),
+        "lighting_hint": _require_text(row, "lighting_hint"),
+        "staging_hint": _require_text(row, "staging_hint"),
+    }
+
+
+def _normalize_text_list(raw: list[str], field: str) -> list[str]:
+    vals = [str(x).strip() for x in raw if str(x).strip()] if isinstance(raw, list) else []
+    if not vals:
+        raise RuntimeError(f"{field} missing")
+    return vals
+
+
+def _require_text(raw: dict, field: str) -> str:
+    text = str(raw[field]).strip()
+    if not text:
+        raise RuntimeError(f"{field} missing")
+    return text

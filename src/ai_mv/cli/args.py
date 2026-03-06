@@ -8,12 +8,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     start = sub.add_parser("start")
-    start.add_argument("--config", required=True)
+    start.add_argument("--config", default="")
     start.add_argument("--run-id", default=None)
     start.add_argument("--profile", default=None)
 
     doctor = sub.add_parser("doctor")
-    doctor.add_argument("--config", required=True)
+    doctor.add_argument("--config", default="")
 
     status = sub.add_parser("status")
     status.add_argument("--run-id", required=True)

@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 
 import ai_mv.entrypoints.start as start_mod
+from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.entrypoints.start import run_start
 
 
@@ -15,7 +16,7 @@ def test_start_smoke(monkeypatch):
         "read_snapshot",
         lambda _rid: {"status": "done", "failure_reason": "", "completed_stages": []},
     )
-    cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
+    cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     cfg.setdefault("audio", {})
     cfg["audio"]["lyrics"] = "test lyric block"
@@ -27,7 +28,7 @@ def test_start_smoke(monkeypatch):
 
 def test_start_does_not_reserve_run_id_when_doctor_fails(monkeypatch):
     monkeypatch.setattr(start_mod, "run_doctor", lambda _cfg: 1)
-    cfg = yaml.safe_load(Path("configs/default.yaml").read_text(encoding="utf-8"))
+    cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-start-fail-config.yaml")
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")

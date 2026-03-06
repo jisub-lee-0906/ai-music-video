@@ -5,15 +5,16 @@ from ai_mv.infra.ollama_client import generate_structured
 
 
 def build_tti_plan(config: dict, payload: dict) -> dict:
+    brief = payload["visual_brief"]
     sections = list(payload["audio_map"]["sections"])
-    spec = _plan_with_ollama(config, sections)
+    spec = _plan_with_ollama(config, payload["audio_map"], brief, sections)
     master = normalize_tti_master(spec["master_anchor"])
     shots = _normalize_shots(spec["shots"], sections)
     return {"master_anchor": master, "shots": shots}
 
 
-def _plan_with_ollama(config: dict, sections: list[dict]) -> dict:
-    out = generate_structured(config, _planner_prompt(config, sections), tti_schema())
+def _plan_with_ollama(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict:
+    out = generate_structured(config, _planner_prompt(config, audio_map, brief, sections), tti_schema())
     if not isinstance(out, dict):
         raise RuntimeError("invalid TTI planner output")
     if not isinstance(out.get("master_anchor"), dict):
@@ -23,12 +24,12 @@ def _plan_with_ollama(config: dict, sections: list[dict]) -> dict:
     return out
 
 
-def _planner_prompt(config: dict, sections: list[dict]) -> str:
-    audio = config["audio"]
-    guidance = str(config["style"]["guidance"]).strip()
-    title = str(audio["song_title"]).strip()
-    desc = str(audio["song_description"]).strip()
-    lyrics = _lyrics_excerpt(str(audio["lyrics"]))
+def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> str:
+    guidance = _style_guidance(config, audio_map)
+    desc = str(audio_map.get("genre_description", "")).strip()
+    lyrics = _lyrics_excerpt(str(audio_map.get("lyrics", "")))
+    tags = str(audio_map.get("tags", "")).strip()
+    brief_view = _brief_summary(brief)
     section_view = _section_summary(sections)
     types = ", ".join(SHOT_TYPES)
     return (
@@ -54,7 +55,7 @@ def _planner_prompt(config: dict, sections: list[dict]) -> str:
         "motion_hint should prefer smooth readable motion, not frantic action. "
         "Shot count must match section count exactly. "
         f"Use shot_type only from enum: {types}. "
-        f"Song title={title}; Song description={desc}; Style guidance={guidance}; Lyrics excerpt={lyrics}; Sections={section_view}."
+        f"Audio tags={tags}; Audio direction={desc}; Style guidance={guidance}; Visual brief={brief_view}; Lyrics excerpt={lyrics}; Sections={section_view}."
     )
 
 
@@ -99,6 +100,14 @@ def _lyrics_excerpt(text: str) -> str:
     return " | ".join(lines[:12]) if lines else ""
 
 
+def _style_guidance(config: dict, audio_map: dict) -> str:
+    guided = str(audio_map.get("style_guidance", "")).strip()
+    if guided:
+        return guided
+    style = config.get("style", {}) if isinstance(config, dict) else {}
+    return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
+
+
 def _section_summary(sections: list[dict]) -> str:
     out: list[str] = []
     for row in sections:
@@ -107,3 +116,22 @@ def _section_summary(sections: list[dict]) -> str:
     if not out:
         raise RuntimeError("sections missing for TTI prompt planner")
     return ", ".join(out)
+
+
+def _brief_summary(brief: dict) -> str:
+    motifs = ", ".join(brief.get("visual_motifs", []))
+    rules = ", ".join(brief.get("negative_constraints", []))
+    return (
+        f"hero={brief['hero_identity']}; world={brief['world_rules']}; "
+        f"motifs={motifs}; avoid={rules}; section_rules={_section_briefs(brief)}"
+    )
+
+
+def _section_briefs(brief: dict) -> str:
+    rows = []
+    for row in brief.get("section_briefs", []):
+        rows.append(
+            f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
+            f"{row['lighting_hint']}|{row['staging_hint']}"
+        )
+    return ", ".join(rows)

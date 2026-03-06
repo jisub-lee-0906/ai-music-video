@@ -12,7 +12,7 @@ from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state, load_config
 
 
-def run_pipeline(config_path: str, run_id: str = "", allow_existing_run: bool = False) -> str:
+def run_pipeline(config_path: str | None = None, run_id: str = "", allow_existing_run: bool = False) -> str:
     cfg = load_config(config_path)
     state = init_run_state(cfg, run_id, allow_existing=allow_existing_run)
     stage_input = StageInput(run_id=state["run_id"], config=cfg, payload={})

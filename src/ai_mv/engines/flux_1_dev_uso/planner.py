@@ -12,8 +12,8 @@ def build_uso_plan(config: dict, payload: dict) -> dict:
     if not anchors:
         raise RuntimeError("anchors missing for USO")
     clip_anchors = _expand_clip_anchors(config, anchors)
-    style_guidance = str(config["style"]["guidance"]).strip()
-    spec = _plan_with_ollama(config, clip_anchors)
+    style_guidance = _style_guidance(config, payload)
+    spec = _plan_with_ollama(config, payload, clip_anchors)
     rules = normalize_uso_items(spec["items"], clip_anchors)
     items = [_build_item(a, style_guidance, rules[a["shot_id"]]) for a in clip_anchors]
     return {"items": items}
@@ -25,13 +25,13 @@ def _expand_clip_anchors(config: dict, anchors: list[dict]) -> list[dict]:
     return expand_anchor_clips(anchors, fps, max_clip_sec)
 
 
-def _plan_with_ollama(config: dict, anchors: list[dict]) -> dict:
+def _plan_with_ollama(config: dict, payload: dict, anchors: list[dict]) -> dict:
     batch_size = min(len(anchors), _uso_planner_batch_size(config))
-    items = _plan_with_batches(config, anchors, batch_size)
+    items = _plan_with_batches(config, payload, anchors, batch_size)
     return {"items": items}
 
 
-def _plan_with_batches(config: dict, anchors: list[dict], batch_size: int) -> list[dict]:
+def _plan_with_batches(config: dict, payload: dict, anchors: list[dict], batch_size: int) -> list[dict]:
     if batch_size <= 0:
         raise RuntimeError("uso planner batch_size must be positive")
     out: list[dict] = []
@@ -39,21 +39,22 @@ def _plan_with_batches(config: dict, anchors: list[dict], batch_size: int) -> li
     strict = _strict_id_match(config)
     for i in range(0, len(anchors), batch_size):
         chunk = anchors[i : i + batch_size]
-        rows = _plan_chunk_rows(config, chunk, carry, strict)
+        rows = _plan_chunk_rows(config, payload, chunk, carry, strict)
         out.extend(rows)
         carry = _batch_tail(rows)
     return out
 
 
-def _plan_chunk_rows(config: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
-    prompt = _planner_prompt(config, chunk, carry)
+def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str, strict: bool) -> list[dict]:
+    prompt = _planner_prompt(config, payload, chunk, carry)
     raw = generate_structured(config, prompt, uso_schema())
     return _coerce_item_ids(raw.get("items", []), chunk, strict)
 
 
-def _planner_prompt(config: dict, anchors: list[dict], carry: str) -> str:
-    guidance = str(config["style"]["guidance"]).strip()
-    lyrics = _lyrics_excerpt(config)
+def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
+    guidance = _style_guidance(config, payload)
+    lyrics = _lyrics_excerpt(payload)
+    brief = _brief_summary(payload["visual_brief"])
     summary = _anchor_summary(anchors)
     carry_clause = f"Previous batch continuity hint={carry}. " if carry else ""
     return (
@@ -70,13 +71,13 @@ def _planner_prompt(config: dict, anchors: list[dict], carry: str) -> str:
         "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint. "
         "Prefer readable, graceful progression over chaotic transformation. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, text watermark, logo, subtitle. "
-        f"{carry_clause}Style guidance={guidance}; Lyrics context={lyrics}; Anchors={summary}."
+        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; Anchors={summary}."
     )
 
 
-def _lyrics_excerpt(config: dict) -> str:
-    audio = config.get("audio", {}) if isinstance(config, dict) else {}
-    text = str(audio.get("lyrics", "")).strip() if isinstance(audio, dict) else ""
+def _lyrics_excerpt(payload: dict) -> str:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    text = str(audio_map.get("lyrics", "")).strip() if isinstance(audio_map, dict) else ""
     if not text:
         return ""
     lines = [x.strip()[:120] for x in text.splitlines() if x.strip()]
@@ -93,6 +94,21 @@ def _uso_planner_batch_size(config: dict) -> int:
     except Exception:
         return 4
     return max(1, min(20, n))
+
+
+def _style_guidance(config: dict, payload: dict) -> str:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    guided = str(audio_map.get("style_guidance", "")).strip() if isinstance(audio_map, dict) else ""
+    if guided:
+        return guided
+    style = config.get("style", {}) if isinstance(config, dict) else {}
+    return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
+
+
+def _brief_summary(brief: dict) -> str:
+    motifs = ", ".join(brief.get("visual_motifs", []))
+    rules = ", ".join(brief.get("negative_constraints", []))
+    return f"hero={brief['hero_identity']}; world={brief['world_rules']}; motifs={motifs}; avoid={rules}"
 
 
 def _batch_tail(rows: list[dict]) -> str:

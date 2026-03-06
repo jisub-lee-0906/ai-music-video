@@ -8,26 +8,33 @@ import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 
 def test_uso_planner_double(monkeypatch):
     monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate)
-    payload = {"anchors": [_anchor("a", False), _anchor("b", True)]}
-    out = build_uso_plan({"style": {"guidance": "g"}}, payload)
+    payload = {"anchors": [_anchor("a", False), _anchor("b", True)], "audio_map": {"style_guidance": "g"}, "visual_brief": _brief()}
+    out = build_uso_plan({}, payload)
     shot_ids = [x["shot_id"] for x in out["items"]]
     assert shot_ids == ["a", "b"]
     assert out["items"][0]["prompt_text"]
 
 
+def test_uso_planner_allows_missing_style_guidance(monkeypatch):
+    monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate)
+    payload = {"anchors": [_anchor("a", False)], "visual_brief": _brief()}
+    out = build_uso_plan({}, payload)
+    assert out["items"][0]["style_guidance"] == ""
+
+
 def test_uso_planner_shot_id_coerce(monkeypatch):
     monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
-    payload = {"anchors": [_anchor("intro_000", False)]}
-    out = build_uso_plan({"style": {"guidance": "g"}, "render": {"strict_prompt_id_match": False}}, payload)
+    payload = {"anchors": [_anchor("intro_000", False)], "audio_map": {"style_guidance": "g"}, "visual_brief": _brief()}
+    out = build_uso_plan({"render": {"strict_prompt_id_match": False}}, payload)
     assert out["items"][0]["shot_id"] == "intro_000"
     assert "flower" in out["items"][0]["prompt_text"].lower()
 
 
 def test_uso_planner_shot_id_mismatch_strict(monkeypatch):
     monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
-    payload = {"anchors": [_anchor("intro_000", False)]}
+    payload = {"anchors": [_anchor("intro_000", False)], "audio_map": {"style_guidance": "g"}, "visual_brief": _brief()}
     with pytest.raises(RuntimeError):
-        build_uso_plan({"style": {"guidance": "g"}, "render": {"strict_prompt_id_match": True}}, payload)
+        build_uso_plan({"render": {"strict_prompt_id_match": True}}, payload)
 
 
 def test_uso_planner_batches_requests(monkeypatch):
@@ -47,10 +54,9 @@ def test_uso_planner_batches_requests(monkeypatch):
         }
 
     monkeypatch.setattr(uso_planner, "generate_structured", _fake)
-    payload = {"anchors": [_anchor("a", False), _anchor("b", False)]}
+    payload = {"anchors": [_anchor("a", False), _anchor("b", False)], "audio_map": {"style_guidance": "g"}, "visual_brief": _brief()}
     out = build_uso_plan(
         {
-            "style": {"guidance": "g"},
             "render": {
                 "max_shot_sec": 10.0,
                 "uso_planner_batch_size": 1,
@@ -65,9 +71,9 @@ def test_uso_planner_batches_requests(monkeypatch):
 
 def test_uso_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
     monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate_mismatch)
-    payload = {"anchors": [_anchor("a", False), _anchor("b", False)]}
+    payload = {"anchors": [_anchor("a", False), _anchor("b", False)], "audio_map": {"style_guidance": "g"}, "visual_brief": _brief()}
     with pytest.raises(RuntimeError, match="shot_id mismatch"):
-        build_uso_plan({"style": {"guidance": "g"}, "render": {"uso_planner_batch_size": 2}}, payload)
+        build_uso_plan({"render": {"uso_planner_batch_size": 2}}, payload)
 
 
 def test_uso_anchor_summary_uses_shot_ids_only():
@@ -83,7 +89,7 @@ def test_uso_normalize_item_id_strips_trailing_punct():
 
 def test_wan_planner_uses_start_end_only(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate)
-    payload = {"uso_images": [_uso("x", 4.0)]}
+    payload = {"uso_images": [_uso("x", 4.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
     assert len(out["clips"]) == 1
     assert out["clips"][0]["shot_id"] == "x"
@@ -92,7 +98,7 @@ def test_wan_planner_uses_start_end_only(monkeypatch):
 
 def test_wan_planner_shot_id_coerce(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
-    payload = {"uso_images": [_uso("x", 4.0)]}
+    payload = {"uso_images": [_uso("x", 4.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     out = build_wan_plan(
         {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0, "strict_prompt_id_match": False}},
         payload,
@@ -103,7 +109,7 @@ def test_wan_planner_shot_id_coerce(monkeypatch):
 
 def test_wan_planner_shot_id_mismatch_strict(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
-    payload = {"uso_images": [_uso("x", 4.0)]}
+    payload = {"uso_images": [_uso("x", 4.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     with pytest.raises(RuntimeError):
         build_wan_plan(
             {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0, "strict_prompt_id_match": True}},
@@ -119,7 +125,7 @@ def test_wan_planner_batches_requests(monkeypatch):
         return {"clips": [{"shot_id": "x", "positive_prompt": "p", "negative_prompt": "n", "energy": "normal"}]}
 
     monkeypatch.setattr(wan_planner, "generate_structured", _fake)
-    payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)]}
+    payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     out = build_wan_plan(
         {
             "video": {"target": "1920x1080@24"},
@@ -133,14 +139,14 @@ def test_wan_planner_batches_requests(monkeypatch):
 
 def test_wan_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate_mismatch)
-    payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)]}
+    payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     with pytest.raises(RuntimeError, match="shot_id mismatch"):
         build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_planner_batch_size": 2}}, payload)
 
 
 def test_wan_planner_clip_cap_guard(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate)
-    payload = {"uso_images": [_uso("x", 6.0)]}
+    payload = {"uso_images": [_uso("x", 6.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     try:
         build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 5.0}}, payload)
         assert False, "expected RuntimeError"
@@ -150,7 +156,7 @@ def test_wan_planner_clip_cap_guard(monkeypatch):
 
 def test_wan_planner_clip_cap_guard_default(monkeypatch):
     monkeypatch.setattr(wan_planner, "generate_structured", _fake_wan_generate)
-    payload = {"uso_images": [_uso("x", 6.0)]}
+    payload = {"uso_images": [_uso("x", 6.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     with pytest.raises(RuntimeError):
         build_wan_plan({"video": {"target": "1920x1080@24"}}, payload)
 
@@ -248,4 +254,22 @@ def _fake_wan_generate_mismatch(_config, _prompt, _schema):
                 "energy": "high",
             }
         ]
+    }
+
+
+def _brief() -> dict:
+    return {
+        "hero_identity": "silver-haired city-pop heroine",
+        "world_rules": "retro neon nightlife with polished stage depth",
+        "visual_motifs": ["neon reflections", "chrome microphone"],
+        "negative_constraints": ["identity drift", "random fantasy props"],
+        "section_briefs": [
+            {
+                "section_name": "verse",
+                "emotional_arc": "steady confidence",
+                "palette_hint": "teal-magenta glow",
+                "lighting_hint": "soft rim light",
+                "staging_hint": "clean stage depth",
+            }
+        ],
     }

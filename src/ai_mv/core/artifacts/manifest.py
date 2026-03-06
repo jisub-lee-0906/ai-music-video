@@ -8,6 +8,7 @@ def write_manifest(state: dict, payload: dict) -> None:
         "run_id": state["run_id"],
         "status": state["status"],
         "failure_reason": state["failure_reason"],
+        "visual_brief": dict(payload.get("visual_brief", {})),
         "anchors": _anchor_rows(payload),
         "uso_images": _uso_rows(payload),
         "clips": list(payload.get("clips", [])),

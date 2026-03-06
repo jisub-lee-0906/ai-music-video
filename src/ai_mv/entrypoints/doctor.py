@@ -6,7 +6,7 @@ from ai_mv.infra.doctor_checks import assert_runtime_ready
 from ai_mv.infra.ollama_client import assert_ollama_ready, ping_ollama
 
 
-def run_doctor(config_path: str) -> int:
+def run_doctor(config_path: str | None = None) -> int:
     cfg = load_config(config_path)
     assert_runtime_ready(cfg)
     assert_ollama_ready(cfg)

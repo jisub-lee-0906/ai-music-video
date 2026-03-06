@@ -6,17 +6,17 @@ from ai_mv.infra.ollama_client import generate_structured
 
 
 def build_audio_plan(config: dict, payload: dict) -> dict:
-    audio = config["audio"]
+    audio = _audio_config(config)
     plan = {
-        "lyrics": str(audio["lyrics"]),
-        "description": str(audio["song_description"]),
         "tags": _audio_tags(audio),
+        "style_guidance": _style_guidance(config),
         "filename_prefix": f"artifacts/runs_state/{payload['run_id']}/audio/music",
     }
     plan.update(audio_policy(config))
     planned = _plan_with_ollama(config, plan)
     normalized = normalize_audio_fields(planned)
-    normalized["description"] = normalized["genre_description"] or plan["description"]
+    normalized["tags"] = plan["tags"]
+    normalized["style_guidance"] = plan["style_guidance"]
     normalized["filename_prefix"] = plan["filename_prefix"]
     normalized["quality"] = plan["quality"]
     if not str(normalized.get("keyscale", "")).strip():
@@ -30,9 +30,10 @@ def _plan_with_ollama(config: dict, plan: dict) -> dict:
 
 
 def _audio_prompt(plan: dict) -> str:
-    desc = str(plan["description"]).strip()
     tags = str(plan["tags"]).strip()
+    guidance = str(plan["style_guidance"]).strip()
     tags_clause = f"Input tags={tags}. " if tags else ""
+    guidance_clause = f"Style guidance={guidance}. " if guidance else ""
     return (
         "You are an elite songwriter-producer. Return JSON only. "
         "No markdown. No prose outside JSON. "
@@ -58,7 +59,7 @@ def _audio_prompt(plan: dict) -> str:
         "Avoid generic filler and repeated empty slogans. "
         "Do not invent extra sections or fields. "
         f"Target duration={int(plan['duration'])} sec, bpm={int(plan['bpm'])}. "
-        f"{tags_clause}Creative reference={desc}."
+        f"{tags_clause}{guidance_clause}"
     )
 
 
@@ -66,3 +67,13 @@ def _audio_tags(audio: dict) -> str:
     raw = audio.get("tags", []) if isinstance(audio, dict) else []
     vals = [str(x).strip() for x in raw if str(x).strip()]
     return ", ".join(vals)
+
+
+def _audio_config(config: dict) -> dict:
+    audio = config.get("audio", {}) if isinstance(config, dict) else {}
+    return audio if isinstance(audio, dict) else {}
+
+
+def _style_guidance(config: dict) -> str:
+    style = config.get("style", {}) if isinstance(config, dict) else {}
+    return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""

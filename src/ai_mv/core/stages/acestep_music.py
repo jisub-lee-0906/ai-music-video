@@ -10,5 +10,15 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
     payload["run_id"] = stage_input.run_id
     plan = build_audio_plan(stage_input.config, payload)
     audio_map = run_audio_split(stage_input.config, plan)
+    audio_map.update(_audio_context(plan))
     music_file = str(audio_map["music_file"])
     return StageOutput("acestep_music", "done", {"audio_map": audio_map, "music_file": music_file}, [])
+
+
+def _audio_context(plan: dict) -> dict:
+    return {
+        "genre_description": str(plan.get("genre_description", "")).strip(),
+        "lyrics": str(plan.get("lyrics", "")).strip(),
+        "tags": str(plan.get("tags", "")).strip(),
+        "style_guidance": str(plan.get("style_guidance", "")).strip(),
+    }
