@@ -175,7 +175,7 @@ def normalize_audio_fields(raw: dict) -> dict:
         "lyrics_blocks": blocks,
         "lyrics": _render_lyrics_blocks(blocks),
         "bpm": int(raw["bpm"]),
-        "keyscale": str(raw.get("keyscale", "")).strip(),
+        "keyscale": _normalize_keyscale(str(raw.get("keyscale", "")).strip()),
         "seed": int(raw["seed"]),
         "duration": int(raw["duration"]),
     }
@@ -279,3 +279,17 @@ def _require_text(raw: dict, field: str) -> str:
     if not text:
         raise RuntimeError(f"{field} missing")
     return text
+
+
+def _normalize_keyscale(text: str) -> str:
+    raw = str(text).strip()
+    if not raw:
+        return ""
+    tokens = raw.replace("-", " ").split()
+    if len(tokens) < 2:
+        return raw
+    tonic = tokens[0].upper().replace("♯", "#").replace("♭", "b")
+    mode = tokens[1].lower()
+    if mode in {"major", "minor"}:
+        return f"{tonic} {mode}"
+    return raw

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 DEFAULT_CONFIG: dict = {
     "audio": {
-        "target_duration_sec": 160,
+        "target_duration_sec": 200,
         "quality": "V0",
     },
     "profile": "",
@@ -23,8 +23,8 @@ DEFAULT_CONFIG: dict = {
     },
     "integrations": {
         "comfyui_base_url": "http://127.0.0.1:8188",
-        "comfyui_input_dir": "",
-        "comfyui_output_dir": "",
+        "comfyui_input_dir": r"C:\Users\Desktop\Documents\ComfyUI\input",
+        "comfyui_output_dir": r"C:\Users\Desktop\Documents\ComfyUI\output",
         "ollama_base_url": "http://127.0.0.1:11434",
         "ollama_model": "qwen3:14b",
         "ollama_timeout_structured_sec": 600,

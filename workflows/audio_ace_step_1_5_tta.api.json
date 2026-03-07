@@ -2,7 +2,7 @@
   "3": {
     "inputs": {
       "seed": 31,
-      "steps": 10,
+      "steps": 8,
       "cfg": 1,
       "sampler_name": "euler",
       "scheduler": "simple",
@@ -81,8 +81,8 @@
       "language": "en",
       "keyscale": "E minor",
       "generate_audio_codes": true,
-      "cfg_scale": 2.3,
-      "temperature": 0.8,
+      "cfg_scale": 2,
+      "temperature": 0.85,
       "top_p": 0.9,
       "top_k": 0,
       "min_p": 0,

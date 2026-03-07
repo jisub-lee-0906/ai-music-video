@@ -18,3 +18,18 @@ def test_normalize_audio_fields_renders_lyrics_blocks():
     assert out["keyscale"] == "A minor"
     assert "[Intro - Synth Rise]" in out["lyrics"]
     assert "[Chorus - Pop Explosion]" in out["lyrics"]
+
+
+def test_normalize_audio_fields_normalizes_keyscale_case():
+    raw = {
+        "genre_description": "Bright city-pop with glossy synths.",
+        "bpm": 122,
+        "keyscale": "C Major",
+        "seed": 7,
+        "duration": 120,
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "Pulse", "lines": ["light it up"]},
+        ],
+    }
+    out = normalize_audio_fields(raw)
+    assert out["keyscale"] == "C major"

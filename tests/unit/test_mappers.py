@@ -8,7 +8,7 @@ def test_audio_mapper():
     plan = {
         "tags": "kpop",
         "genre_description": "Bright idol-pop with punchy 808s and layered hooks.",
-        "lyrics": "we’re alive",
+        "lyrics": "we're alive",
         "seed": 1,
         "bpm": 120,
         "duration": 160,

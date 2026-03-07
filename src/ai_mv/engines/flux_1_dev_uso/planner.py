@@ -67,9 +67,11 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "prompt_text must be exactly one natural English sentence (18-34 words). "
         "delta describes a small progression from start to end frame, not a scene reset. "
         "Do not change time period, world setting, or character species. "
+        "Use the visual brief to keep hero identity, world rules, motifs, and section mood aligned. "
         "Use concrete visual language: pose shift, gaze shift, hand motion, cloth motion, light direction, camera feel. "
         "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint. "
         "Prefer readable, graceful progression over chaotic transformation. "
+        "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, text watermark, logo, subtitle. "
         f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; Anchors={summary}."
     )
@@ -108,7 +110,20 @@ def _style_guidance(config: dict, payload: dict) -> str:
 def _brief_summary(brief: dict) -> str:
     motifs = ", ".join(brief.get("visual_motifs", []))
     rules = ", ".join(brief.get("negative_constraints", []))
-    return f"hero={brief['hero_identity']}; world={brief['world_rules']}; motifs={motifs}; avoid={rules}"
+    return (
+        f"hero={brief['hero_identity']}; world={brief['world_rules']}; "
+        f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
+    )
+
+
+def _section_briefs(brief: dict) -> str:
+    rows = []
+    for row in brief.get("section_briefs", []):
+        rows.append(
+            f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
+            f"{row['lighting_hint']}|{row['staging_hint']}"
+        )
+    return ", ".join(rows)
 
 
 def _batch_tail(rows: list[dict]) -> str:

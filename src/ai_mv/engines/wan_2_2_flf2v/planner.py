@@ -57,9 +57,11 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
         "Optional sentence 3: environment reaction details. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
+        "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
         "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
         "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
         "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
+        "Do not describe multiple competing action arcs in one clip. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
@@ -88,7 +90,20 @@ def _lyrics_excerpt(payload: dict) -> str:
 def _brief_summary(brief: dict) -> str:
     motifs = ", ".join(brief.get("visual_motifs", []))
     rules = ", ".join(brief.get("negative_constraints", []))
-    return f"hero={brief['hero_identity']}; world={brief['world_rules']}; motifs={motifs}; avoid={rules}"
+    return (
+        f"hero={brief['hero_identity']}; world={brief['world_rules']}; "
+        f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
+    )
+
+
+def _section_briefs(brief: dict) -> str:
+    rows = []
+    for row in brief.get("section_briefs", []):
+        rows.append(
+            f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
+            f"{row['lighting_hint']}|{row['staging_hint']}"
+        )
+    return ", ".join(rows)
 
 
 def _coerce_clip_ids(rows: list[dict], clips: list[dict], strict: bool) -> list[dict]:
