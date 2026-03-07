@@ -55,6 +55,7 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
     guidance = _style_guidance(config, payload)
     lyrics = _lyrics_excerpt(payload)
     brief = _brief_summary(payload["visual_brief"])
+    anchor_ids = _anchor_ids(anchors)
     summary = _anchor_summary(anchors)
     carry_clause = f"Previous batch continuity hint={carry}. " if carry else ""
     return (
@@ -64,6 +65,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Use shot_id values exactly from Anchors list, without creating new ids. "
         "All anchors refer to the same master identity image. Preserve exact face, hair, outfit, body proportions, styling, and accessories across every item. "
         "shot_id must be exactly one token from Anchors with no suffix, prefix, or punctuation changes. "
+        "Clip suffixes such as _C01, _C02, _C03 are part of the required shot_id and must be preserved exactly. "
+        "Item count must match the number of Anchors exactly. "
         "prompt_text must be exactly one natural English sentence (18-34 words). "
         "delta describes a small progression from start to end frame, not a scene reset. "
         "Do not change time period, world setting, or character species. "
@@ -73,7 +76,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Prefer readable, graceful progression over chaotic transformation. "
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, text watermark, logo, subtitle. "
-        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; Anchors={summary}."
+        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; "
+        f"Anchor ids={anchor_ids}; Anchors={summary}."
     )
 
 
@@ -185,10 +189,15 @@ def _anchor_summary_row(anchor: dict) -> str:
     shot_type = str(anchor.get("shot_type", "CHAR_MASTER"))
     emotion = str(anchor.get("emotion", "")).strip() or "steady"
     pose = str(anchor.get("pose_delta", "")).strip() or "small pose shift"
-    camera = str(anchor.get("camera_language", "")).strip() or "clean mid framing"
-    motion = str(anchor.get("motion_hint", "")).strip() or "smooth motion"
     detail = str(anchor.get("scene_detail", "")).strip() or "hero focus"
-    return f"{sid}({section}|{shot_type}|{emotion}|{pose}|{camera}|{motion}|{detail})"
+    return f"{sid}({section}|{shot_type}|{emotion}|{pose}|{detail})"
+
+
+def _anchor_ids(anchors: list[dict]) -> str:
+    ids = [str(anchor["shot_id"]) for anchor in anchors]
+    if not ids:
+        raise RuntimeError("anchors missing for USO prompt planner")
+    return ", ".join(ids)
 
 
 def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
@@ -206,4 +215,9 @@ def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
         "shot_type": str(anchor["shot_type"]),
         "section_name": str(anchor.get("section_name", "section")),
         "is_chorus": bool(anchor.get("is_chorus", False)),
+        "camera_language": str(anchor.get("camera_language", "")),
+        "pose_delta": str(anchor.get("pose_delta", "")),
+        "emotion": str(anchor.get("emotion", "")),
+        "scene_detail": str(anchor.get("scene_detail", "")),
+        "motion_hint": str(anchor.get("motion_hint", "")),
     }

@@ -44,6 +44,7 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
     guidance = _style_guidance(config, payload)
     lyrics = _lyrics_excerpt(payload)
     brief = _brief_summary(payload["visual_brief"])
+    clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
     carry_clause = f"Previous batch continuity hint={carry}. " if carry else ""
     return (
@@ -52,6 +53,8 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Each clip item must include shot_id,positive_prompt,negative_prompt,energy. "
         "Use shot_id values exactly from ClipIds list, without creating new ids. "
         "shot_id must be exactly one token from ClipIds with no suffix, prefix, or punctuation changes. "
+        "Clip suffixes such as _C01, _C02, _C03 are part of the required shot_id and must be preserved exactly. "
+        "Clip item count must match the number of ClipIds exactly. "
         "positive_prompt must be 2-3 natural English sentences describing cinematic motion between start and end frames. "
         "Sentence 1: starting state and first movement impulse. "
         "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
@@ -65,7 +68,8 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
-        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; ClipIds={summary}."
+        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; "
+        f"Exact ClipIds={clip_ids}; ClipSummary={summary}."
     )
 
 
@@ -147,6 +151,13 @@ def _clip_summary_row(clip: dict) -> str:
     detail = str(clip.get("scene_detail", "")).strip() or "hero detail"
     motion = str(clip.get("motion_hint", "")).strip() or "smooth motion"
     return f"{sid}({section}|{camera}|{emotion}|{detail}|{motion})"
+
+
+def _clip_ids(clips: list[dict]) -> str:
+    ids = [str(clip["shot_id"]) for clip in clips]
+    if not ids:
+        raise RuntimeError("WAN clips missing for planner prompt")
+    return ", ".join(ids)
 
 
 def _item_to_clip(item: dict, fps: int) -> dict:
