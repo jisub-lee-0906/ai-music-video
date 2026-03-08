@@ -76,6 +76,7 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Prefer readable, graceful progression over chaotic transformation. "
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
+        "Keep the hero face and upper-body presence primary; props and bags should stay secondary unless the shot is a brief intentional detail insert. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, text watermark, logo, subtitle. "
         f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; "
         f"Anchor ids={anchor_ids}; Anchors={summary}."

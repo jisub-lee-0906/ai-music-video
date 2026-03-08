@@ -25,6 +25,7 @@ def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
         "Build one stable hero identity and one stable visual world that can survive TTI, USO, and WAN without drift. "
         "hero_identity must describe only identity locks: face, hair, age impression, styling, signature wardrobe, and hero prop. "
         "When audio direction, tags, or style guidance point to Japanese city-pop or East Asian urban nostalgia, hero_identity should reflect an East Asian heroine by default unless the input clearly says otherwise. "
+        "hero prop is a supporting identity accent, not the primary subject of the frame. "
         "Do not put camera moves, scene actions, or section events inside hero_identity. "
         "world_rules must be 2-3 short sentences covering setting, image texture, atmosphere, and the master palette/lighting baseline only. "
         "visual_motifs must be short reusable noun phrases, not full sentences. "
@@ -37,8 +38,11 @@ def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
         "lighting_hint must be a section accent that still inherits the same global lighting baseline. "
         "section_briefs should change emphasis, not rewrite the visual grammar. "
         "staging_hint must stay physically simple and camera-safe: one clear setup, one readable action, no frantic verbs. "
+        "Do not let bags, props, or accessories dominate the frame unless the section explicitly calls for a brief detail emphasis. "
         "Keep the brief practical for downstream planners: concise, reusable, and low-ambiguity. "
         "section_briefs must match Sections exactly in count and order. "
+        "If a section name repeats, return repeated section_briefs entries in the same repeated order; never merge duplicate section names. "
+        "Use each section_name token exactly as provided in Sections. "
         f"Audio tags={tags}; Style guidance={guidance}; Audio direction={genre}; Lyrics excerpt={lyrics}; Sections={summary}."
     )
 
