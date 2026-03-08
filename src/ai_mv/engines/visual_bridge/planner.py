@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.prompt_contract import normalize_visual_brief, visual_brief_schema
+from ai_mv.core.contracts.prompt_normalize import normalize_visual_brief
+from ai_mv.core.contracts.prompt_schema import visual_brief_schema
 from ai_mv.infra.ollama_client import generate_structured
 
 

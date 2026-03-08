@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.state.state_store import load_config
+from ai_mv.core.orchestration.config_loader import load_config
 from ai_mv.infra.comfy_client import ping_comfy
 from ai_mv.infra.doctor_checks import assert_runtime_ready
 from ai_mv.infra.ollama_client import assert_ollama_ready, ping_ollama

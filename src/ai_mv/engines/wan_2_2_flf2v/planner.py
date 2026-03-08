@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
-from ai_mv.core.contracts.prompt_contract import normalize_wan_clips, wan_schema
+from ai_mv.core.contracts.prompt_normalize import normalize_wan_clips
+from ai_mv.core.contracts.prompt_schema import wan_schema
 from ai_mv.infra.ollama_client import generate_structured
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target

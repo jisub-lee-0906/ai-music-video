@@ -5,9 +5,10 @@ from pathlib import Path
 
 import yaml
 
+from ai_mv.core.orchestration.config_loader import load_config
 from ai_mv.core.orchestration.pipeline import run_pipeline
 from ai_mv.core.orchestration.transitions import bootstrap_config
-from ai_mv.core.state.state_store import ensure_run_dir, load_config, read_snapshot
+from ai_mv.core.state.state_store import ensure_run_dir, read_snapshot
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 from ai_mv.utils.path_utils import abs_path

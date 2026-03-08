@@ -4,9 +4,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.utils.json_utils import read_json
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -33,17 +30,6 @@ def init_run_state(config: dict[str, Any], run_id: str | None, allow_existing: b
         "failure_reason": "",
         "completed_stages": [],
     }
-
-
-def load_config(path: str | None = None) -> dict[str, Any]:
-    raw = str(path or "").strip()
-    if not raw:
-        return default_config()
-    with Path(raw).open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    if not isinstance(data, dict):
-        raise RuntimeError("config yaml must be object")
-    return data
 
 
 def read_snapshot(run_id: str) -> dict[str, Any]:

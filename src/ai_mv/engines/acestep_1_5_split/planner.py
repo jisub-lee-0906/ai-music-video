@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.prompt_contract import audio_schema, normalize_audio_fields
+from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields
+from ai_mv.core.contracts.prompt_schema import audio_schema
 from ai_mv.engines.acestep_1_5_split.policy import audio_policy
 from ai_mv.infra.ollama_client import generate_structured
 

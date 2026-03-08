@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.prompt_contract import normalize_uso_items, uso_schema
+from ai_mv.core.contracts.prompt_normalize import normalize_uso_items
+from ai_mv.core.contracts.prompt_schema import uso_schema
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
 from ai_mv.infra.ollama_client import generate_structured
 from ai_mv.utils.bool_utils import parse_bool
@@ -75,9 +76,11 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint. "
         "Prefer readable, graceful progression over chaotic transformation. "
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
+        "For EMOTION_CLOSE and DETAIL_INSERT shots, prefer micro-shifts only: slight gaze, gentle head angle, small hand placement, or subtle light shift. "
+        "Do not twist the torso, fold limbs unnaturally, hide the neck, or force the arms across the body in awkward ways. "
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Keep the hero face and upper-body presence primary; props and bags should stay secondary unless the shot is a brief intentional detail insert. "
-        "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, text watermark, logo, subtitle. "
+        "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, twisted limbs, broken wrists, warped torso, collapsed shoulders, text watermark, logo, subtitle. "
         f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; "
         f"Anchor ids={anchor_ids}; Anchors={summary}."
     )

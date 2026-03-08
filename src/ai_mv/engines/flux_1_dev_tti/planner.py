@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.prompt_contract import SHOT_TYPES, normalize_tti_master, normalize_tti_shot, tti_schema
+from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
+from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
 from ai_mv.infra.ollama_client import generate_structured
 
 
@@ -25,13 +26,23 @@ def _plan_with_ollama(config: dict, audio_map: dict, brief: dict, sections: list
 
 
 def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> str:
-    guidance = _style_guidance(config, audio_map)
-    desc = str(audio_map.get("genre_description", "")).strip()
-    lyrics = _lyrics_excerpt(str(audio_map.get("lyrics", "")))
-    tags = str(audio_map.get("tags", "")).strip()
-    brief_view = _brief_summary(brief)
-    section_view = _section_summary(sections)
-    types = ", ".join(SHOT_TYPES)
+    context = _planner_context(config, audio_map, brief, sections)
+    return _planner_rules() + _planner_inputs(context)
+
+
+def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict[str, str]:
+    return {
+        "guidance": _style_guidance(config, audio_map),
+        "desc": str(audio_map.get("genre_description", "")).strip(),
+        "lyrics": _lyrics_excerpt(str(audio_map.get("lyrics", ""))),
+        "tags": str(audio_map.get("tags", "")).strip(),
+        "brief_view": _brief_summary(brief),
+        "section_view": _section_summary(sections),
+        "types": ", ".join(SHOT_TYPES),
+    }
+
+
+def _planner_rules() -> str:
     return (
         "You are a senior music-video visual director and FLUX prompt engineer. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
@@ -63,8 +74,15 @@ def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[d
         "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
         "If the brief discourages fast camera or drift, use stillness, glide, slow dolly, gentle turn, or subtle gaze change instead of running or aggressive movement. "
         "Shot count must match section count exactly. "
-        f"Use shot_type only from enum: {types}. "
-        f"Audio tags={tags}; Audio direction={desc}; Style guidance={guidance}; Visual brief={brief_view}; Lyrics excerpt={lyrics}; Sections={section_view}."
+    )
+
+
+def _planner_inputs(context: dict[str, str]) -> str:
+    return (
+        f"Use shot_type only from enum: {context['types']}. "
+        f"Audio tags={context['tags']}; Audio direction={context['desc']}; "
+        f"Style guidance={context['guidance']}; Visual brief={context['brief_view']}; "
+        f"Lyrics excerpt={context['lyrics']}; Sections={context['section_view']}."
     )
 
 
