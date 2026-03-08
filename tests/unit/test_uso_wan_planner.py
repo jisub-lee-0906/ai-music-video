@@ -172,6 +172,21 @@ def test_wan_clip_summary_uses_shot_ids_only():
     assert "y(" in summary
 
 
+def test_wan_chains_split_clip_starts_from_previous_end():
+    clips = wan_planner._chain_clip_starts(
+        [
+            {**_uso("S001_C01", 1.0), "start": "s1.png", "end": "e1.png"},
+            {**_uso("S001_C02", 1.0), "start": "s2.png", "end": "e2.png"},
+            {**_uso("S001_C03", 1.0), "start": "s3.png", "end": "e3.png"},
+            {**_uso("S002_C01", 1.0), "start": "s4.png", "end": "e4.png"},
+        ]
+    )
+    assert clips[0]["start"] == "s1.png"
+    assert clips[1]["start"] == "e1.png"
+    assert clips[2]["start"] == "e2.png"
+    assert clips[3]["start"] == "s4.png"
+
+
 def _anchor(shot_id: str, chorus: bool) -> dict:
     return {
         "shot_id": shot_id,

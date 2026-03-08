@@ -130,6 +130,30 @@ def test_tti_plan_allows_missing_creative_seed_fields(monkeypatch):
     assert len(out["shots"]) == 2
 
 
+def test_tti_shot_hierarchy_is_forced_by_section(monkeypatch):
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_five)
+    payload = {
+        "audio_map": {
+            "duration_sec": 20.0,
+            "genre_description": "bright city-pop production",
+            "lyrics": "[v] line",
+            "style_guidance": "g",
+            "tags": "city pop, female vocal",
+            "sections": [
+                {"name": "intro", "start_sec": 0.0, "end_sec": 4.0},
+                {"name": "verse", "start_sec": 4.0, "end_sec": 8.0},
+                {"name": "pre_chorus", "start_sec": 8.0, "end_sec": 12.0},
+                {"name": "chorus", "start_sec": 12.0, "end_sec": 16.0},
+                {"name": "outro", "start_sec": 16.0, "end_sec": 20.0},
+            ],
+        },
+        "visual_brief": _brief(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+    }
+    out = build_tti_plan({}, payload)
+    types = [shot["shot_type"] for shot in out["shots"]]
+    assert types == ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "PERF_WIDE", "ENV_TRANSITION"]
+
+
 def _brief(names: list[str]) -> dict:
     return {
         "hero_identity": "silver-haired nightclub heroine with sharp styling",
@@ -160,6 +184,10 @@ def _fake_tti_generate_three(_config, _prompt, _schema):
 
 def _fake_tti_generate_two(_config, _prompt, _schema):
     return {"master_anchor": _master(301), "shots": [_shot(i) for i in range(2)]}
+
+
+def _fake_tti_generate_five(_config, _prompt, _schema):
+    return {"master_anchor": _master(401), "shots": [_shot(i, detail=f"detail {i}") for i in range(5)]}
 
 
 def _master(seed: int) -> dict:

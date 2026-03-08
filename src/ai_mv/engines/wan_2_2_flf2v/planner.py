@@ -10,6 +10,7 @@ from ai_mv.utils.text_utils import parse_target
 def build_wan_plan(config: dict, payload: dict) -> dict:
     fps = parse_target(config["video"]["target"])[2]
     clips = [_item_to_clip(item, fps) for item in payload["uso_images"]]
+    clips = _chain_clip_starts(clips)
     if not clips:
         raise RuntimeError("WAN clips empty")
     _enforce_clip_cap(config, clips, fps)
@@ -62,8 +63,10 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
         "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
         "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
+        "For consecutive clips from the same shot series, treat the previous clip end as the immediate starting state of the next clip, not a visual reset. "
         "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
         "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
+        "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Do not describe multiple competing action arcs in one clip. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
@@ -179,6 +182,19 @@ def _item_to_clip(item: dict, fps: int) -> dict:
     }
 
 
+def _chain_clip_starts(clips: list[dict]) -> list[dict]:
+    out: list[dict] = []
+    prev_end: dict[str, str] = {}
+    for clip in clips:
+        item = dict(clip)
+        key = _clip_series_key(str(item["shot_id"]))
+        if key in prev_end:
+            item["start"] = prev_end[key]
+        prev_end[key] = str(item["end"])
+        out.append(item)
+    return out
+
+
 def _enforce_clip_cap(config: dict, clips: list[dict], fps: int) -> None:
     sec = read_max_clip_sec(config)
     max_frames = max(_frame_floor(fps), int(round(sec * fps)))
@@ -213,6 +229,10 @@ def _carry_hint(rows: list[dict]) -> str:
 
 def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
+
+
+def _clip_series_key(shot_id: str) -> str:
+    return str(shot_id).split("_C", 1)[0]
 
 
 def _apply_prompt(clip: dict, row: dict) -> dict:

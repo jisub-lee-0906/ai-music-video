@@ -43,41 +43,53 @@ def _split_frames(duration_sec: float, fps: int, max_clip_sec: float | None, sec
     if total <= max_frames:
         return [total]
     target = _sec_to_frames(_section_target_sec(section_name, max_clip_sec), fps, floor)
-    min_frames = _sec_to_frames(min(1.8, max_clip_sec), fps, floor)
+    min_frames = _sec_to_frames(min(3.2, max_clip_sec), fps, floor)
     return _variable_split(total, target, min_frames, max_frames)
 
 
 def _variable_split(total: int, target: int, min_frames: int, max_frames: int) -> list[int]:
-    out: list[int] = []
-    remain = total
-    pattern = (0.8, 1.0, 1.2, 0.9, 1.1)
-    idx = 0
-    while remain > 0:
-        if remain <= max_frames:
-            out.append(remain)
-            break
-        frames = int(round(target * pattern[idx % len(pattern)]))
-        frames = max(min_frames, min(max_frames, frames))
-        if 0 < (remain - frames) < min_frames:
-            frames = max(min_frames, remain - min_frames)
-        out.append(frames)
-        remain -= frames
-        idx += 1
+    count = _split_count(total, min_frames, max_frames)
+    base = total // count
+    extra = total % count
+    out = [base + (1 if i < extra else 0) for i in range(count)]
+    return _nudge_toward_target(out, target, min_frames, max_frames)
+
+
+def _split_count(total: int, min_frames: int, max_frames: int) -> int:
+    count = max(1, (total + max_frames - 1) // max_frames)
+    while count > 1 and (total / float(count)) < min_frames:
+        count -= 1
+    return count
+
+
+def _nudge_toward_target(parts: list[int], target: int, min_frames: int, max_frames: int) -> list[int]:
+    out = list(parts)
+    for idx in range(len(out) - 1):
+        cur = out[idx]
+        nxt = out[idx + 1]
+        if cur >= target or nxt <= target:
+            continue
+        shift = min(target - cur, nxt - target, max_frames - cur, nxt - min_frames)
+        if shift > 0:
+            out[idx] += shift
+            out[idx + 1] -= shift
     return out
 
 
 def _section_target_sec(section_name: str, max_clip_sec: float) -> float:
     sec = section_name.lower()
     if "chorus" in sec:
-        base = 2.6
-    elif "bridge" in sec or "outro" in sec:
+        base = 3.5
+    elif "pre_chorus" in sec:
         base = 3.8
+    elif "bridge" in sec or "outro" in sec:
+        base = 5.0
     elif "intro" in sec:
-        base = 2.8
+        base = 4.0
     elif "verse" in sec:
-        base = 3.4
+        base = 4.2
     else:
-        base = 3.0
+        base = 4.0
     return min(max_clip_sec, base)
 
 

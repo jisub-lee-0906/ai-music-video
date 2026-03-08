@@ -46,8 +46,10 @@ def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[d
         "Sentence 1 = hero identity + wardrobe + environment + signature prop with concrete detail. "
         "Sentence 2 = camera + lighting + emotional presence with cinematic language and no motion event. "
         "Keep one consistent hero identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
+        "If the visual brief implies Japanese city-pop or East Asian urban nostalgia, preserve East Asian facial features and styling cues in the master anchor unless the brief explicitly says otherwise. "
         "Use the visual brief as the source of truth for identity locks, world rules, motifs, and forbidden drift. "
         "master_anchor should absorb hero/world/motif rules, while shot items should absorb section-specific variation only. "
+        "Use a stable shot hierarchy across the song: intro/outro favor character master or environment setup, verses favor performance-wide, pre-chorus favors emotion-close, chorus favors performance hero framing, post-chorus favors detail or reflection, bridge favors emotion-close or reflective transition. "
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
         "Negative constraints and world rules override any section staging idea. "
@@ -55,7 +57,7 @@ def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[d
         "camera_language must stay smooth and readable; avoid explosive, frantic, handheld, whip, crash zoom, or fast-pan language unless the brief explicitly allows it. "
         "pose_delta should describe exactly one readable body or gaze change. "
         "emotion should be concise and performance-oriented, not narrative. "
-        "scene_detail should name exactly one concrete set or prop emphasis. "
+        "scene_detail should name exactly one concrete set or prop emphasis and should preserve the same master palette with only section accent shifts. "
         "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
         "If the brief discourages fast camera or drift, use stillness, glide, slow dolly, gentle turn, or subtle gaze change instead of running or aggressive movement. "
         "Shot count must match section count exactly. "
@@ -81,6 +83,7 @@ def _assign_one_shot_per_section(shots: list[dict], sections: list[dict]) -> lis
         item = dict(row)
         item["shot_id"] = f"S{idx:03d}"
         item["section_name"] = str(sec.get("name", "section"))
+        item["shot_type"] = _shot_type_for_section(item["section_name"])
         item["is_chorus"] = _is_chorus(item["section_name"])
         item["duration_sec"] = round(max(0.001, _sec_end(sec) - _sec_start(sec)), 3)
         out.append(item)
@@ -140,3 +143,22 @@ def _section_briefs(brief: dict) -> str:
             f"{row['lighting_hint']}|{row['staging_hint']}"
         )
     return ", ".join(rows)
+
+
+def _shot_type_for_section(name: str) -> str:
+    sec = str(name).strip().lower()
+    if sec == "intro":
+        return "CHAR_MASTER"
+    if sec.startswith("verse"):
+        return "PERF_WIDE"
+    if sec == "pre_chorus":
+        return "EMOTION_CLOSE"
+    if sec == "chorus":
+        return "PERF_WIDE"
+    if sec == "post_chorus":
+        return "DETAIL_INSERT"
+    if sec == "bridge":
+        return "EMOTION_CLOSE"
+    if sec == "outro":
+        return "ENV_TRANSITION"
+    return "PERF_WIDE"
