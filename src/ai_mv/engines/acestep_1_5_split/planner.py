@@ -43,6 +43,10 @@ def _audio_prompt(plan: dict) -> str:
 
 
 def _audio_prompt_rules() -> str:
+    return _audio_structure_rules() + _audio_description_rules()
+
+
+def _audio_structure_rules() -> str:
     return (
         "You are an elite songwriter-producer. Return JSON only. "
         "No markdown. No prose outside JSON. "
@@ -53,21 +57,34 @@ def _audio_prompt_rules() -> str:
         "Design aggressive section contrast with distinct diction per section. "
         "Give each section a clearly different job in the emotional arc so the song feels staged and cumulative. "
         "Intro should open atmosphere with minimal language and immediate tone-setting. "
+        "Intro should stay sparse and usually fit in 2-3 short lines unless the style strongly demands more. "
         "Verse: forward motion, clear imagery, memorable cadence, and strong lyrical specificity. "
         "Verse should include concrete sensory or scene details without copying examples, and should advance the scene rather than summarizing emotion. "
+        "Prefer fuller line density in verses than in pre-chorus or outro. "
         "Keep line endings clear and singable; avoid vague filler. "
         "Pre-chorus: emotional lift, tension, breath-space, smoother vowel flow and intimacy, with language that clearly prepares a release. "
+        "Pre-chorus should feel slightly more open and less crowded than the verse. "
+        "Pre-chorus usually works best in 2-3 concise lines unless the song clearly needs an extra pickup line. "
         "Chorus: high-impact hook, chant-ready phrasing, immediate recall, strong emotional release, and the clearest central idea of the song. "
+        "Chorus should simplify language compared with the verse so the hook lands instantly. "
         "Post-chorus: very short callback lines built around the same hook phrase, acting as a lingering afterglow rather than a new verse. "
-        "Bridge should create a genuine contrast in perspective, energy, or emotional framing before the final return. "
+        "Bridge should create a genuine contrast in perspective, energy, or emotional framing before the final return, and should redirect or thin the language instead of stacking more imagery. "
+        "Bridge should usually be sparser than the verse and should not feel lyrically crowded. "
+    )
+
+
+def _audio_description_rules() -> str:
+    return (
         "genre_description must be one compact production paragraph including arrangement cues "
         "(808/bass, synth layers, harmonies, transitions, impact), in 2-3 sentences only. "
         "genre_description must explicitly cover groove foundation, lead vocal character, and hook instrumentation. "
         "genre_description should also describe pocket, rhythm feel, or timing character in concrete production terms when relevant. "
+        "Mention at least one clear groove behavior such as bounce, glide, pulse, sway, swing, push, or restraint. "
         "Prefer tangible musical language like swing, bounce, pulse, breath, glide, shimmer, punch, or restraint over generic adjectives. "
         "Prefer one coherent production identity instead of mixing many genres. "
         "Keep genre_description reusable as a downstream audio-direction brief, not a poetic review. "
         "For each block, lines must be 2-4 short singable lines with concrete imagery and cadence. "
+        "Only chorus may expand beyond 4 lines when needed for hook repetition or chant response. "
         "Prefer vivid action verbs and sonic words over abstract statements. "
         "Write lines with clear mouth-feel and internal rhythm suitable for topline melody. "
         "Keep 1-3 recurring concept words or images alive across verse, pre-chorus, and chorus so the song identity stays glued together. "
