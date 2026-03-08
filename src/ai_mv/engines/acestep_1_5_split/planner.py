@@ -36,6 +36,13 @@ def _audio_prompt(plan: dict) -> str:
     tags_clause = f"Input tags={tags}. " if tags else ""
     guidance_clause = f"Style guidance={guidance}. " if guidance else ""
     bpm_clause = _target_bpm_clause(plan)
+    return _audio_prompt_rules() + (
+        f"Target duration={int(plan['duration'])} sec. "
+        f"{bpm_clause}{tags_clause}{guidance_clause}"
+    )
+
+
+def _audio_prompt_rules() -> str:
     return (
         "You are an elite songwriter-producer. Return JSON only. "
         "No markdown. No prose outside JSON. "
@@ -44,26 +51,30 @@ def _audio_prompt(plan: dict) -> str:
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
         "Composition target must follow input reference strictly. "
         "Design aggressive section contrast with distinct diction per section. "
+        "Give each section a clearly different job in the emotional arc so the song feels staged and cumulative. "
+        "Intro should open atmosphere with minimal language and immediate tone-setting. "
         "Verse: forward motion, clear imagery, memorable cadence, and strong lyrical specificity. "
-        "Verse should include concrete sensory or scene details without copying examples. "
+        "Verse should include concrete sensory or scene details without copying examples, and should advance the scene rather than summarizing emotion. "
         "Keep line endings clear and singable; avoid vague filler. "
-        "Pre-chorus: emotional lift, tension, breath-space, smoother vowel flow and intimacy. "
-        "Chorus: high-impact hook, chant-ready phrasing, immediate recall, strong emotional release. "
-        "Post-chorus: very short callback lines built around the same hook phrase. "
+        "Pre-chorus: emotional lift, tension, breath-space, smoother vowel flow and intimacy, with language that clearly prepares a release. "
+        "Chorus: high-impact hook, chant-ready phrasing, immediate recall, strong emotional release, and the clearest central idea of the song. "
+        "Post-chorus: very short callback lines built around the same hook phrase, acting as a lingering afterglow rather than a new verse. "
+        "Bridge should create a genuine contrast in perspective, energy, or emotional framing before the final return. "
         "genre_description must be one compact production paragraph including arrangement cues "
         "(808/bass, synth layers, harmonies, transitions, impact), in 2-3 sentences only. "
         "genre_description must explicitly cover groove foundation, lead vocal character, and hook instrumentation. "
+        "genre_description should also describe pocket, rhythm feel, or timing character in concrete production terms when relevant. "
+        "Prefer tangible musical language like swing, bounce, pulse, breath, glide, shimmer, punch, or restraint over generic adjectives. "
         "Prefer one coherent production identity instead of mixing many genres. "
         "Keep genre_description reusable as a downstream audio-direction brief, not a poetic review. "
         "For each block, lines must be 2-4 short singable lines with concrete imagery and cadence. "
         "Prefer vivid action verbs and sonic words over abstract statements. "
         "Write lines with clear mouth-feel and internal rhythm suitable for topline melody. "
+        "Keep 1-3 recurring concept words or images alive across verse, pre-chorus, and chorus so the song identity stays glued together. "
         "Include one repeatable hook phrase in chorus/post-chorus for recall and repeat it at least twice in chorus lines. "
         "Chorus must include at least one call-and-response or chant-like fragment. "
         "Avoid generic filler and repeated empty slogans. "
         "Do not invent extra sections or fields. "
-        f"Target duration={int(plan['duration'])} sec. "
-        f"{bpm_clause}{tags_clause}{guidance_clause}"
     )
 
 
