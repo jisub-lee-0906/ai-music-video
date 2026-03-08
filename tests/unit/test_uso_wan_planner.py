@@ -46,7 +46,7 @@ def test_uso_planner_batches_requests(monkeypatch):
             "items": [
                 {
                     "shot_id": "x",
-                    "delta": "d",
+                    "delta": "gentle gaze shifts left under warm city light",
                     "prompt_text": "A performer turns gently with subtle smile under warm city lights and clean cinematic framing.",
                     "negative_prompt": "low quality, blurry, jpeg artifacts, bad hands",
                 }
@@ -224,13 +224,13 @@ def _fake_uso_generate(_config, _prompt, _schema):
         "items": [
             {
                 "shot_id": "a",
-                "delta": "d1",
+                "delta": "gentle gaze shifts left with calm breath",
                 "prompt_text": "A European girl smiles warmly in a summer flower field.",
                 "negative_prompt": "blurry, deformed face, low detail",
             },
             {
                 "shot_id": "b",
-                "delta": "d2",
+                "delta": "soft shoulder turn under sunset light",
                 "prompt_text": "A performer breathes slowly under sunset light with calm expression.",
                 "negative_prompt": "artifact, bad anatomy, extra limbs",
             },

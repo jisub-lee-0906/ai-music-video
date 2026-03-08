@@ -53,7 +53,7 @@ def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str,
         sid = str(anchor["shot_id"])
         row = keyed[sid]
         out[sid] = {
-            "delta": str(row["delta"]),
+            "delta": _normalize_uso_delta(row["delta"], sid),
             "prompt_text": str(row["prompt_text"]).strip(),
             "negative_prompt": str(row["negative_prompt"]).strip(),
         }
@@ -154,3 +154,12 @@ def _normalize_keyscale(text: str) -> str:
     if mode in {"major", "minor"}:
         return f"{tonic} {mode}"
     return raw
+
+
+def _normalize_uso_delta(raw: object, shot_id: str) -> str:
+    text = str(raw).strip()
+    words = [x for x in text.replace(",", " ").split() if x]
+    has_alpha = any(ch.isalpha() for ch in text)
+    if len(words) < 3 or not has_alpha:
+        raise RuntimeError(f"invalid uso delta: {shot_id}")
+    return text
