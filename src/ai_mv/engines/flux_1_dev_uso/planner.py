@@ -86,6 +86,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
         "Keep prompt_text concrete enough that a renderer could stage the shot without guessing. "
         "Use section labels to control return intensity: later chorus returns may look more open or radiant, while Final Chorus should feel like the visual peak without becoming a different world. "
+        "For Chorus 2 and Final Chorus, prefer a visible payoff detail such as brighter eye contact, wider chest line, cleaner silhouette, or stronger boulevard reflection rather than vague intensity words. "
+        "For Final Chorus, make the sentence feel like the heroine has arrived at the emotional image promised by the song, while staying in the same wardrobe, world, and palette family. "
         "For EMOTION_CLOSE and DETAIL_INSERT shots, prefer micro-shifts only: slight gaze, gentle head angle, small hand placement, or subtle light shift. "
         "For EMOTION_CLOSE shots, keep the frame centered on face, neck, shoulders, and gaze; avoid having props compete with the expression. "
         "For PERF_WIDE shots, let movement read through body posture and walking rhythm first; props remain secondary. "

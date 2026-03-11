@@ -6,6 +6,14 @@ from ai_mv.core.contracts.prompt_schema import audio_schema
 from ai_mv.engines.acestep_1_5_split.policy import audio_policy
 from ai_mv.infra.codex_cli_client import generate_structured
 
+_GENERIC_HOOK_FRAGMENTS = (
+    "look at me",
+    "stay with me",
+    "call my name",
+    "hold me",
+    "all night",
+)
+
 
 def build_audio_plan(config: dict, payload: dict) -> dict:
     audio = _audio_config(config)
@@ -37,14 +45,14 @@ def _audio_prompt(plan: dict) -> str:
     profile_clause = _profile_clause(plan)
     bpm_clause = _target_bpm_clause(plan)
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
-    return _audio_prompt_rules() + (
+    return _audio_prompt_rules(plan) + (
         f"Target duration={int(plan['duration'])} sec. "
         f"{bpm_clause}{seed_clause}{tags_clause}{guidance_clause}{language_clause}{profile_clause}"
     )
 
 
-def _audio_prompt_rules() -> str:
-    return _audio_structure_rules() + _audio_form_rules() + _audio_description_rules()
+def _audio_prompt_rules(plan: dict) -> str:
+    return _audio_structure_rules() + _audio_form_rules() + _audio_description_rules() + _language_style_rules(plan)
 
 
 def _audio_structure_rules() -> str:
@@ -82,6 +90,9 @@ def _audio_form_rules() -> str:
         "A bridge must never be the final large section; it must be followed by another chorus block. "
         "Use repeated chorus blocks when the song returns, and label the last one as Final Chorus while keeping section='chorus'. "
         "Keep the first line of each chorus in the same hook family so recall stays immediate. "
+        "The second line of a chorus must answer, tilt, or intensify the hook; do not copy the opening line verbatim into line two. "
+        "In every chorus, line 1 should act as the hook anchor, line 2 should answer or intensify it, and later lines should carry scene detail, payoff, or emotional consequence. "
+        "Do not let every chorus line perform the same job or repeat the same phrase shape. "
         "If a second chorus appears before the bridge, keep the same hook family but change at least one support line and one payoff/callback line so it does not read as an exact duplicate. "
         "The final chorus must feel bigger than the first chorus by adding payoff, lift, or a fresh line turn instead of simple copy-paste. "
         "The final chorus should preserve the hook opening but introduce at least two new lines or one new image turn that was not used in the first chorus. "
@@ -115,8 +126,10 @@ def _audio_description_rules() -> str:
         "Chorus must include at least one call-and-response or chant-like fragment. "
         "Make the hook phrase title-worthy: short, singable, and easy to remember after one listen. "
         "The hook phrase should usually contain one concrete image, object, place, weather cue, or physical sensation instead of a generic romance placeholder. "
-        "Prefer a distinctive hook phrase built from the song's actual world, such as rain, glass, boulevard, headlights, harbor, summer heat, cassette, or neon, rather than generic love-song filler. "
+        "Prefer a distinctive hook phrase built from the song's actual world instead of generic love-song filler. "
+        "Use one concrete world element already implied by profile_summary, audio_direction, or hook_direction, then keep returning to that same world with small variations. "
         "Avoid fallback hook language like 'call my name', 'hold me', 'stay with me', 'all night', or repeated hey-oh syllables unless the surrounding line adds a fresh concrete twist. "
+        "Avoid letting a generic English fragment become the main hook anchor when a stronger world-specific phrase is available. "
         "Avoid using the same generic imperative in multiple chorus lines. "
         "Do not let every chorus line carry the same weight; support lines should set up the hook and payoff lines should feel earned. "
         "Avoid ending the song with a weak comedown if the chorus has not fully paid off yet. "
@@ -125,6 +138,28 @@ def _audio_description_rules() -> str:
         "When tags grow longer in future profiles, compress them into one coherent producer brief instead of listing every tag back. "
         "Do not invent extra sections or fields. "
     )
+
+
+def _language_style_rules(plan: dict) -> str:
+    lang = str(plan.get("language", "")).strip().lower()
+    if lang == "ja":
+        return (
+            "Write fluent modern Japanese lyrics with a natural mix of kanji, hiragana, and katakana. "
+            "Keep the diction elegant, adult, and singable rather than childish, slangy, or anime-coded. "
+            "Use English only for very short fashionable hook fragments when they sharpen recall. "
+            "Prefer natural Japanese phrasing built from the profile's concrete world over awkward loanword-heavy wording. "
+            "Avoid forced transliterations when a natural Japanese phrase would sing more smoothly. "
+            "If you use an English fragment, keep it to two to four words and weave it into a fuller Japanese line. "
+            "If you use an English fragment inside Japanese lyrics, embed it inside a fuller line instead of leaving it as a standalone line. "
+            "Do not use romaji, broken mojibake-like text, or fake Japanese-looking fragments. "
+        )
+    if lang == "ko":
+        return (
+            "Write fluent modern Korean lyrics with natural Hangul phrasing and clean singable cadence. "
+            "Keep English limited to very short intentional hook fragments. "
+            "Do not use broken transliteration, fake Korean-looking fragments, or noisy filler syllables. "
+        )
+    return ""
 
 
 def _audio_tags(audio: dict) -> str:
@@ -180,8 +215,32 @@ def _validate_audio_plan_quality(plan: dict) -> None:
     choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
     if len(choruses) < 2:
         return
+    _validate_chorus_opening_pairs(choruses)
+    _validate_chorus_line_functions(choruses)
+    _validate_generic_hook_fragments(choruses)
     _validate_second_chorus(choruses)
     _validate_final_chorus(choruses)
+
+
+def _validate_chorus_opening_pairs(choruses: list[dict]) -> None:
+    for block in choruses:
+        lines = _clean_lines(block)
+        if len(lines) >= 2 and lines[0].lower() == lines[1].lower():
+            raise RuntimeError("audio planner quality failure: chorus opening pair duplicates verbatim")
+
+
+def _validate_chorus_line_functions(choruses: list[dict]) -> None:
+    for block in choruses:
+        lines = _clean_lines(block)
+        if len(lines) < 4:
+            continue
+        opening = lines[0].lower()
+        repeated_opening = sum(1 for line in lines if line.lower() == opening)
+        if repeated_opening > 2:
+            raise RuntimeError("audio planner quality failure: chorus anchor repeated too many times")
+        support = [line for line in lines[2:] if line.lower() not in {opening, lines[1].lower()}]
+        if len(support) < 2:
+            raise RuntimeError("audio planner quality failure: chorus lacks support or payoff lines")
 
 
 def _validate_second_chorus(choruses: list[dict]) -> None:
@@ -189,6 +248,15 @@ def _validate_second_chorus(choruses: list[dict]) -> None:
     second = _clean_lines(choruses[1])
     if first and second and first == second:
         raise RuntimeError("audio planner quality failure: second chorus duplicates first chorus exactly")
+
+
+def _validate_generic_hook_fragments(choruses: list[dict]) -> None:
+    for block in choruses:
+        for line in _clean_lines(block):
+            low = line.lower()
+            for frag in _GENERIC_HOOK_FRAGMENTS:
+                if frag in low:
+                    raise RuntimeError(f"audio planner quality failure: generic hook fragment '{frag}'")
 
 
 def _validate_final_chorus(choruses: list[dict]) -> None:

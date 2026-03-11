@@ -59,6 +59,8 @@ def test_uso_prompt_mentions_mapper_appended_clauses():
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = uso_planner._planner_prompt({}, payload, anchors, "")
     assert "mapper appends frame timing and intent clauses" in prompt
+    assert "Final Chorus should feel like the visual peak" in prompt
+    assert "visible payoff detail" in prompt
 
 
 def test_wan_prompt_mentions_direct_text_encoder_alignment():
@@ -75,6 +77,17 @@ def test_wan_prompt_mentions_direct_text_encoder_alignment():
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "injected directly into the workflow text encoder" in prompt
+    assert "motion payoff" in prompt
+    assert "city have finally locked into the same beat" in prompt
+
+
+def test_wan_energy_policy_lifts_final_chorus():
+    final_clip = _clip("S010_C01", "chorus", "Final Chorus")
+    chorus2_clip = _clip("S008_C01", "chorus", "Chorus 2")
+    chorus_clip = _clip("S004_C01", "chorus", "Chorus")
+    assert wan_planner._energy_policy(final_clip, "normal") == "high"
+    assert wan_planner._energy_policy(chorus2_clip, "normal") == "normal"
+    assert wan_planner._energy_policy(chorus_clip, "normal") == "normal"
 
 
 def _brief() -> dict:

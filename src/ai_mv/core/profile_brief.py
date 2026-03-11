@@ -40,6 +40,12 @@ _HOOK_KEYS = ("neon", "rain", "glass", "harbor", "boulevard", "chrome", "taxi", 
 _MOTION_KEYS = ("bounce", "pulse", "glide", "sway", "swing", "push", "restraint", "lift")
 _MOOD_KEYS = ("rom", "warm", "cool", "melanch", "dream", "grace", "eleg", "adult", "night", "polished")
 _NEGATIVE_KEYS = ("no ", "avoid ", "without ", "not ", "never ", "non-")
+_WORLD_HINTS = (
+    (("city pop", "nightlife"), "late-night street lights, wet glass reflections, last ride afterglow"),
+    (("city pop", "night"), "street glow, mirror glass, midnight crossing shimmer"),
+    (("retro", "night"), "chrome signage, rain on glass, slow headlights"),
+    (("summer", "night"), "summer heat, night wind, midnight street glow"),
+)
 
 
 def build_profile_brief(tags: str | Iterable[str], guidance: str) -> dict[str, str]:
@@ -51,12 +57,13 @@ def build_profile_brief(tags: str | Iterable[str], guidance: str) -> dict[str, s
     motion = _take_matching(phrases, _MOTION_KEYS, 2, used)
     mood = _take_matching(phrases, _MOOD_KEYS, 3, used)
     hook = _hook_phrase(phrases)
+    world = _world_hint(phrases)
     negative = _negative_brief(phrases)
     return {
         "profile_summary": _profile_summary(audio, vocal, mood, visual),
         "audio_direction": _audio_direction(audio, vocal, motion),
-        "hook_direction": _hook_direction(hook, motion, mood),
-        "visual_direction": _visual_direction(visual, mood),
+        "hook_direction": _hook_direction(hook, world, motion, mood),
+        "visual_direction": _visual_direction(visual or world, mood),
         "negative_direction": negative,
     }
 
@@ -117,8 +124,8 @@ def _audio_direction(audio: str, vocal: str, motion: str) -> str:
     return text or "Keep one coherent musical lane, one lead-vocal identity, and one groove behavior."
 
 
-def _hook_direction(hook: str, motion: str, mood: str) -> str:
-    parts = [hook, motion or mood]
+def _hook_direction(hook: str, world: str, motion: str, mood: str) -> str:
+    parts = [hook or world, motion or mood]
     text = _sentence_parts(parts, 2)
     if text:
         return f"Build the hook around this concrete song world: {text}."
@@ -134,6 +141,14 @@ def _visual_direction(visual: str, mood: str) -> str:
 def _hook_phrase(phrases: list[str]) -> str:
     vals = [x for x in phrases if _has_any(x, _HOOK_KEYS)]
     return ", ".join(vals[:3])
+
+
+def _world_hint(phrases: list[str]) -> str:
+    merged = " | ".join(x.lower() for x in phrases)
+    for keys, hint in _WORLD_HINTS:
+        if all(key in merged for key in keys):
+            return hint
+    return ""
 
 
 def _sentence_parts(parts: list[str], limit: int) -> str:

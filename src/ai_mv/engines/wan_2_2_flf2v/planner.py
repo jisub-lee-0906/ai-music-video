@@ -71,6 +71,8 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
         "For consecutive clips from the same shot series, treat the previous clip end as the immediate starting state of the next clip, not a visual reset. "
         "Use section labels to shape escalation: Chorus 2 should feel like a stronger return than Chorus, and Final Chorus should feel like the motion payoff while staying inside the same visual grammar. "
+        "For Chorus 2 and Final Chorus, express the lift through clearer posture, cleaner camera relation, stronger reflection response, or a more resolved facial turn rather than generic statements about bigger emotion. "
+        "Final Chorus should read like the heroine and the city have finally locked into the same beat, with one readable motion payoff rather than extra spectacle. "
         "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
         "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
         "Keep the heroine readable in every sentence: face, posture, silhouette, and clear camera relation should stay understandable. "
@@ -263,10 +265,13 @@ def _apply_prompt(clip: dict, row: dict) -> dict:
 
 def _energy_policy(clip: dict, suggested: str) -> str:
     sec = _section_token(clip)
+    label = _section_label(clip)
+    if "final chorus" in label:
+        return "high"
+    if "chorus 2" in label:
+        return "high" if suggested == "high" else "normal"
     if sec == "chorus" or sec.startswith("chorus_"):
-        if suggested == "high":
-            return "high"
-        return "normal"
+        return "high" if suggested == "high" else "normal"
     if sec in {"bridge", "outro"}:
         return "low" if suggested == "low" else "normal"
     if suggested in {"low", "normal", "high"}:
@@ -276,3 +281,7 @@ def _energy_policy(clip: dict, suggested: str) -> str:
 
 def _section_token(clip: dict) -> str:
     return str(clip.get("section_name", "")).strip().lower()
+
+
+def _section_label(clip: dict) -> str:
+    return str(clip.get("section_label", clip.get("section_name", ""))).strip().lower()

@@ -21,6 +21,9 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
     }
     audio_prompt = audio_planner._audio_prompt(audio_plan)
     assert "Lyrics language=ja." in audio_prompt
+    assert "fluent modern Japanese lyrics" in audio_prompt
+    assert "Avoid forced transliterations" in audio_prompt
+    assert "profile's concrete world" in audio_prompt
 
     sections = [_section("intro", "Intro"), _section("chorus", "Final Chorus")]
     brief = _visual_brief()
