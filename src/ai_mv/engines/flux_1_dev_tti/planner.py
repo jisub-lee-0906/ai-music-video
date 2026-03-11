@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
-from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.infra.codex_cli_client import generate_structured
 
 
 def build_tti_plan(config: dict, payload: dict) -> dict:
     brief = payload["visual_brief"]
     sections = list(payload["audio_map"]["sections"])
-    spec = _plan_with_ollama(config, payload["audio_map"], brief, sections)
+    spec = _plan_with_llm(config, payload["audio_map"], brief, sections)
     master = normalize_tti_master(spec["master_anchor"])
     shots = _normalize_shots(spec["shots"], sections)
     return {"master_anchor": master, "shots": shots}
 
 
-def _plan_with_ollama(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict:
+def _plan_with_llm(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict:
     out = generate_structured(config, _planner_prompt(config, audio_map, brief, sections), tti_schema())
     if not isinstance(out, dict):
         raise RuntimeError("invalid TTI planner output")

@@ -10,7 +10,7 @@ class ComfyRequestError(PipelineError):
     pass
 
 
-class OllamaRequestError(PipelineError):
+class CodexCliRequestError(PipelineError):
     pass
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_uso_items
 from ai_mv.core.contracts.prompt_schema import uso_schema
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
-from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
@@ -14,7 +14,7 @@ def build_uso_plan(config: dict, payload: dict) -> dict:
         raise RuntimeError("anchors missing for USO")
     clip_anchors = _expand_clip_anchors(config, anchors)
     style_guidance = _style_guidance(config, payload)
-    spec = _plan_with_ollama(config, payload, clip_anchors)
+    spec = _plan_with_llm(config, payload, clip_anchors)
     rules = normalize_uso_items(spec["items"], clip_anchors)
     items = [_build_item(a, style_guidance, rules[a["shot_id"]]) for a in clip_anchors]
     return {"items": items}
@@ -26,7 +26,7 @@ def _expand_clip_anchors(config: dict, anchors: list[dict]) -> list[dict]:
     return expand_anchor_clips(anchors, fps, max_clip_sec)
 
 
-def _plan_with_ollama(config: dict, payload: dict, anchors: list[dict]) -> dict:
+def _plan_with_llm(config: dict, payload: dict, anchors: list[dict]) -> dict:
     batch_size = min(len(anchors), _uso_planner_batch_size(config))
     items = _plan_with_batches(config, payload, anchors, batch_size)
     return {"items": items}

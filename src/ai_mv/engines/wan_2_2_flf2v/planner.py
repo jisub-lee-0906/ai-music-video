@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.core.contracts.prompt_normalize import normalize_wan_clips
 from ai_mv.core.contracts.prompt_schema import wan_schema
-from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
@@ -15,13 +15,13 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
     if not clips:
         raise RuntimeError("WAN clips empty")
     _enforce_clip_cap(config, clips, fps)
-    spec = _plan_with_ollama(config, payload, clips)
+    spec = _plan_with_llm(config, payload, clips)
     prompts = normalize_wan_clips(spec["clips"], clips)
     clips = [_apply_prompt(x, prompts[x["shot_id"]]) for x in clips]
     return {"clips": clips}
 
 
-def _plan_with_ollama(config: dict, payload: dict, clips: list[dict]) -> dict:
+def _plan_with_llm(config: dict, payload: dict, clips: list[dict]) -> dict:
     batch_size = _wan_planner_batch_size(config, len(clips))
     strict = _strict_id_match(config)
     if len(clips) <= batch_size:

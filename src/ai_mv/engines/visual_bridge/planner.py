@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_visual_brief
 from ai_mv.core.contracts.prompt_schema import visual_brief_schema
-from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.infra.codex_cli_client import generate_structured
 
 
 def build_visual_brief(config: dict, payload: dict) -> dict:

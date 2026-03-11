@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields
 from ai_mv.core.contracts.prompt_schema import audio_schema
 from ai_mv.engines.acestep_1_5_split.policy import audio_policy
-from ai_mv.infra.ollama_client import generate_structured
+from ai_mv.infra.codex_cli_client import generate_structured
 
 
 def build_audio_plan(config: dict, payload: dict) -> dict:
@@ -14,7 +14,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
         "filename_prefix": f"artifacts/runs_state/{payload['run_id']}/audio/music",
     }
     plan.update(audio_policy(config))
-    planned = _plan_with_ollama(config, plan)
+    planned = _plan_with_llm(config, plan)
     normalized = normalize_audio_fields(planned)
     normalized["tags"] = plan["tags"]
     normalized["style_guidance"] = plan["style_guidance"]
@@ -25,7 +25,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     return normalized
 
 
-def _plan_with_ollama(config: dict, plan: dict) -> dict:
+def _plan_with_llm(config: dict, plan: dict) -> dict:
     prompt = _audio_prompt(plan)
     return generate_structured(config, prompt, audio_schema())
 
