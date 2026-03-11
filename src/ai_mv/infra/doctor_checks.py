@@ -4,15 +4,9 @@ import shutil
 from pathlib import Path
 
 from ai_mv.core.contracts.errors import PipelineError
+from ai_mv.core.workflow_names import WORKFLOW_FILES
 from ai_mv.infra.comfy_local import validate_local_comfy_config
 from ai_mv.utils.path_utils import resolve_project_path
-
-WORKFLOW_FILES = (
-    "audio_ace_step_1_5_tta.api.json",
-    "image_flux1_dev_tti.api.json",
-    "image_flux1_dev_uso.api.json",
-    "video_wan_2_2_flf2v.api.json",
-)
 
 
 def assert_runtime_ready(config: dict) -> None:

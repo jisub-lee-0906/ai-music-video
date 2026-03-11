@@ -1,4 +1,6 @@
-from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields
+import pytest
+
+from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields, validate_audio_lyrics_language
 
 
 def test_normalize_audio_fields_renders_lyrics_blocks():
@@ -33,3 +35,14 @@ def test_normalize_audio_fields_normalizes_keyscale_case():
     }
     out = normalize_audio_fields(raw)
     assert out["keyscale"] == "C major"
+
+
+def test_validate_audio_lyrics_language_accepts_japanese_dominant_lyrics():
+    lyrics = "[Verse 1 - Night Drive]\n雨のネオンが揺れてる\nまだ君の声が残ってる"
+    validate_audio_lyrics_language(lyrics, "ja")
+
+
+def test_validate_audio_lyrics_language_rejects_english_only_lyrics_for_japanese():
+    lyrics = "[Chorus - Bright Hook]\nNeon rain on the boulevard\nStay with me under city lights"
+    with pytest.raises(RuntimeError, match="expected ja-dominant lyrics"):
+        validate_audio_lyrics_language(lyrics, "ja")

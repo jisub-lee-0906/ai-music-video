@@ -15,6 +15,7 @@ def map_audio_workflow(config: dict, plan: dict) -> dict:
         "seed": int(plan["seed"]),
         "bpm": int(plan["bpm"]),
         "duration": int(plan["duration"]),
+        "language": _audio_language(plan),
     }
     keyscale = str(plan.get("keyscale", "")).strip()
     if keyscale:
@@ -34,8 +35,13 @@ def map_audio_workflow(config: dict, plan: dict) -> dict:
 
 def audio_required_inputs() -> dict[str, list[str]]:
     return {
-        "TextEncodeAceStepAudio1.5": ["tags", "lyrics", "seed", "bpm", "duration"],
+        "TextEncodeAceStepAudio1.5": ["tags", "lyrics", "seed", "bpm", "duration", "language"],
         "EmptyAceStep1.5LatentAudio": ["seconds"],
         "KSampler": ["seed"],
         "SaveAudioMP3": ["filename_prefix", "quality"],
     }
+
+
+def _audio_language(plan: dict) -> str:
+    raw = str(plan.get("language", "en")).strip().lower()
+    return raw if raw in {"en", "ja", "ko"} else "en"

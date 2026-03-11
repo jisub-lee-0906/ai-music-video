@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import zlib
 
-from ai_mv.utils.text_utils import ensure_16_9
+from ai_mv.utils.text_utils import ensure_positive_size
 
 USO_LOAD_IMAGE = "47"
 USO_TEXT_POS = "112:6"
@@ -77,5 +77,5 @@ def _uso_size(config: dict) -> tuple[int, int]:
     size = str(config["render"]["uso_size"])
     w, h = size.split("x", 1)
     iw, ih = int(w), int(h)
-    ensure_16_9(iw, ih)
+    ensure_positive_size(iw, ih)
     return iw, ih

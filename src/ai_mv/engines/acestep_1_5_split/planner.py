@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.profile_brief import build_profile_brief
-from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields
+from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields, validate_audio_lyrics_language
 from ai_mv.core.contracts.prompt_schema import audio_schema
 from ai_mv.engines.acestep_1_5_split.policy import audio_policy
 from ai_mv.infra.codex_cli_client import generate_structured
@@ -15,6 +15,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     plan = {
         "tags": tags,
         "style_guidance": guidance,
+        "language": _audio_language(audio),
         "filename_prefix": f"artifacts/runs_state/{payload['run_id']}/audio/music",
     }
     plan.update(profile)
@@ -32,12 +33,13 @@ def _audio_prompt(plan: dict) -> str:
     guidance = str(plan["style_guidance"]).strip()
     tags_clause = f"Input tags={tags}. " if tags else ""
     guidance_clause = f"Style guidance={guidance}. " if guidance else ""
+    language_clause = _language_clause(plan)
     profile_clause = _profile_clause(plan)
     bpm_clause = _target_bpm_clause(plan)
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
     return _audio_prompt_rules() + (
         f"Target duration={int(plan['duration'])} sec. "
-        f"{bpm_clause}{seed_clause}{tags_clause}{guidance_clause}{profile_clause}"
+        f"{bpm_clause}{seed_clause}{tags_clause}{guidance_clause}{language_clause}{profile_clause}"
     )
 
 
@@ -141,9 +143,21 @@ def _style_guidance(config: dict) -> str:
     return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
 
 
+def _audio_language(audio: dict) -> str:
+    raw = str(audio.get("language", "en")).strip().lower() if isinstance(audio, dict) else "en"
+    return raw if raw in {"en", "ja", "ko"} else "en"
+
+
 def _target_bpm_clause(plan: dict) -> str:
     bpm = int(plan.get("bpm", 0))
     return f"Target bpm={bpm}. " if bpm > 0 else ""
+
+
+def _language_clause(plan: dict) -> str:
+    lang = str(plan.get("language", "")).strip().lower()
+    if not lang:
+        return ""
+    return f"Lyrics language={lang}. "
 
 
 def _profile_clause(plan: dict) -> str:
@@ -224,6 +238,7 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized = normalize_audio_fields(planned)
     normalized["tags"] = plan["tags"]
     normalized["style_guidance"] = plan["style_guidance"]
+    normalized["language"] = plan["language"]
     normalized["profile_summary"] = plan["profile_summary"]
     normalized["audio_direction"] = plan["audio_direction"]
     normalized["hook_direction"] = plan["hook_direction"]
@@ -233,6 +248,7 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["quality"] = plan["quality"]
     if not str(normalized.get("keyscale", "")).strip():
         normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
+    validate_audio_lyrics_language(normalized["lyrics"], plan["language"])
     _validate_audio_plan_quality(normalized)
     return normalized
 

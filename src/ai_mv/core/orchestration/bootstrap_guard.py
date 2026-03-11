@@ -3,9 +3,10 @@ from __future__ import annotations
 import hashlib
 
 from ai_mv.core.contracts.errors import PipelineError
+from ai_mv.core.workflow_names import WORKFLOW_FILES
 from ai_mv.utils.path_utils import resolve_project_path
 from ai_mv.utils.bool_utils import parse_bool
-from ai_mv.utils.text_utils import ensure_16_9, parse_size, parse_target
+from ai_mv.utils.text_utils import ensure_16_9, ensure_positive_size, parse_size, parse_target
 
 
 def apply_profile(config: dict) -> None:
@@ -30,18 +31,12 @@ def validate_sizes(config: dict) -> None:
     ensure_16_9(w, h)
     for key in ("tti_size", "uso_size", "wan_size"):
         rw, rh = parse_size(str(config["render"][key]))
-        ensure_16_9(rw, rh)
+        ensure_positive_size(rw, rh)
 
 
 def validate_templates(config: dict) -> None:
     wf = resolve_project_path(str(config["integrations"]["workflows_dir"]))
-    fixed = [
-        "audio_ace_step_1_5_tta.api.json",
-        "image_flux1_dev_tti.api.json",
-        "image_flux1_dev_uso.api.json",
-        "video_wan_2_2_flf2v.api.json",
-    ]
-    for name in fixed:
+    for name in WORKFLOW_FILES:
         if not (wf / name).exists():
             raise PipelineError(f"missing workflow template: {name}")
     hashes = config["runtime"]["template_hashes"]

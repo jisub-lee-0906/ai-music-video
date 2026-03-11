@@ -1,7 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-from pathlib import Path
-
+from ai_mv.core.workflow_names import AUDIO_WORKFLOW
 from ai_mv.engines.acestep_1_5_split.mapper import audio_required_inputs, map_audio_workflow
 from ai_mv.infra.comfy_outputs import pick_audio_file
 from ai_mv.infra.comfy_client import run_workflow
@@ -13,7 +12,7 @@ ALLOWED_SECTIONS = {"intro", "verse", "verse_1", "verse_2", "pre_chorus", "choru
 
 def run_audio_split(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
-    result = run_workflow(config, "audio_ace_step_1_5_tta.api.json", wf, audio_required_inputs())
+    result = run_workflow(config, AUDIO_WORKFLOW, wf, audio_required_inputs())
     music_file = _resolve_audio_file(config, pick_audio_file(result["files"]))
     duration = ffprobe_duration(music_file)
     if duration <= 0:

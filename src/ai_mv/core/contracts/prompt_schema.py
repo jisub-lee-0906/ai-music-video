@@ -17,11 +17,9 @@ def tti_schema() -> dict:
 def _tti_master_schema() -> dict:
     return {
         "type": "object",
-        "required": ["prompt_clip_l", "prompt_t5xxl", "negative_prompt", "seed"],
+        "required": ["prompt_text", "seed"],
         "properties": {
-            "prompt_clip_l": {"type": "string"},
-            "prompt_t5xxl": {"type": "string"},
-            "negative_prompt": {"type": "string"},
+            "prompt_text": {"type": "string"},
             "seed": {"type": "integer"},
         },
     }

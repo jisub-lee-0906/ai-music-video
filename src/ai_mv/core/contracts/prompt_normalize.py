@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import string
+
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES
 
 
@@ -23,12 +25,10 @@ def normalize_tti_shot(raw: dict, idx: int) -> dict:
 
 
 def normalize_tti_master(raw: dict) -> dict:
-    clip_l = str(raw["prompt_clip_l"]).strip()
-    t5 = str(raw["prompt_t5xxl"]).strip()
-    neg = str(raw["negative_prompt"]).strip()
-    if not clip_l or not t5 or not neg:
+    text = str(raw["prompt_text"]).strip()
+    if not text:
         raise RuntimeError("invalid TTI master anchor")
-    return {"prompt_clip_l": clip_l, "prompt_t5xxl": t5, "negative_prompt": neg, "seed": int(raw["seed"])}
+    return {"prompt_text": text, "seed": int(raw["seed"])}
 
 
 def normalize_audio_fields(raw: dict) -> dict:
@@ -44,6 +44,19 @@ def normalize_audio_fields(raw: dict) -> dict:
         "seed": int(raw["seed"]),
         "duration": int(raw["duration"]),
     }
+
+
+def validate_audio_lyrics_language(lyrics: str, language: str) -> None:
+    lang = str(language).strip().lower()
+    if lang not in {"ja", "ko", "en"}:
+        return
+    counts = _script_counts(lyrics)
+    if lang == "ja" and counts["jp"] < max(8, int(counts["latin"] * 0.6)):
+        raise RuntimeError("audio lyrics language mismatch: expected ja-dominant lyrics")
+    if lang == "ko" and counts["ko"] < max(8, int(counts["latin"] * 0.6)):
+        raise RuntimeError("audio lyrics language mismatch: expected ko-dominant lyrics")
+    if lang == "en" and counts["latin"] < max(8, int((counts["jp"] + counts["ko"]) * 1.5)):
+        raise RuntimeError("audio lyrics language mismatch: expected en-dominant lyrics")
 
 
 def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str, dict]:
@@ -163,3 +176,30 @@ def _normalize_uso_delta(raw: object, shot_id: str) -> str:
     if len(words) < 3 or not has_alpha:
         raise RuntimeError(f"invalid uso delta: {shot_id}")
     return text
+
+
+def _script_counts(text: str) -> dict[str, int]:
+    counts = {"latin": 0, "jp": 0, "ko": 0}
+    for ch in str(text):
+        if ch in string.ascii_letters:
+            counts["latin"] += 1
+            continue
+        code = ord(ch)
+        if _is_japanese(code):
+            counts["jp"] += 1
+            continue
+        if _is_korean(code):
+            counts["ko"] += 1
+    return counts
+
+
+def _is_japanese(code: int) -> bool:
+    return (
+        0x3040 <= code <= 0x309F
+        or 0x30A0 <= code <= 0x30FF
+        or 0x4E00 <= code <= 0x9FFF
+    )
+
+
+def _is_korean(code: int) -> bool:
+    return 0xAC00 <= code <= 0xD7AF or 0x1100 <= code <= 0x11FF

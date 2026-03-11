@@ -2,6 +2,7 @@ from pathlib import Path
 
 import ai_mv.core.orchestration.bootstrap_guard as bootstrap_guard
 from ai_mv.core.orchestration.transitions import bootstrap_config
+from ai_mv.core.workflow_names import WORKFLOW_FILES
 
 
 def test_bootstrap_applies_profile_audio_and_style(tmp_path, monkeypatch):
@@ -15,7 +16,7 @@ def test_bootstrap_applies_profile_audio_and_style(tmp_path, monkeypatch):
         "profile": "city",
         "integrations": {"workflows_dir": str(Path("workflows"))},
         "video": {"target": "1920x1080@24"},
-        "render": {"tti_size": "1024x576", "uso_size": "1024x576", "wan_size": "640x360"},
+        "render": {"tti_size": "1024x1024", "uso_size": "1024x1024", "wan_size": "640x640"},
         "runtime": {"template_hash_lock": False, "template_hashes": {}},
     }
     (tmp_path / "workflows").mkdir()
@@ -44,23 +45,20 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     run_dir.mkdir(parents=True)
     out = bootstrap_config(cfg, run_dir)
     assert out["video"]["target"] == "1920x1080@24"
-    assert out["render"]["wan_size"] == "640x360"
+    assert out["render"]["wan_size"] == "640x640"
     assert int(out["limits"]["timeout_seconds"]) == 900
     assert "audio" in out and "quality" in out["audio"]
+    assert out["audio"]["language"] == "en"
 
 
 def _wf_names() -> list[str]:
-    return [
-        "audio_ace_step_1_5_tta.api.json",
-        "image_flux1_dev_tti.api.json",
-        "image_flux1_dev_uso.api.json",
-        "video_wan_2_2_flf2v.api.json",
-    ]
+    return list(WORKFLOW_FILES)
 
 
 def _profile_yaml() -> str:
     return (
         "audio:\n"
+        "  language: ja\n"
         "  tags:\n"
         "    - city pop\n"
         "    - female vocal\n"

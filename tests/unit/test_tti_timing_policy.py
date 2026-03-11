@@ -24,7 +24,7 @@ def test_tti_section_timing_policy(monkeypatch):
         "visual_brief": _brief(["intro", "verse", "chorus", "outro"]),
     }
     out = build_tti_plan(cfg, payload)
-    assert out["master_anchor"]["prompt_clip_l"]
+    assert out["master_anchor"]["prompt_text"]
     shots = out["shots"]
     assert shots
     assert len(shots) == 4
@@ -192,9 +192,7 @@ def _fake_tti_generate_five(_config, _prompt, _schema):
 
 def _master(seed: int) -> dict:
     return {
-        "prompt_clip_l": "hero face, silver hair, bright eyes, stage outfit, satin fabric, poised stance, crystal mic, neon set, rim light, cinematic lens, electric mood, teal pink palette, polished detail",
-        "prompt_t5xxl": "A silver-haired performer stands in a neon concert set with a crystal microphone and a sharply styled satin stage outfit. Clean lens framing and rim lighting hold a poised, magnetic stage presence.",
-        "negative_prompt": "low quality, blurry, bad hands",
+        "prompt_text": "hero face, silver hair, bright eyes, stage outfit, satin fabric, poised stance, crystal microphone, neon concert set, rim light, cinematic lens, electric mood, teal pink palette, polished detail",
         "seed": seed,
     }
 

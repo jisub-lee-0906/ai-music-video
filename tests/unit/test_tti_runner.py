@@ -9,12 +9,10 @@ def test_run_tti_uses_single_master_anchor(monkeypatch):
         return {"files": ["anchors/character_master.png"]}
 
     monkeypatch.setattr(tti_runner, "run_workflow", _fake_run)
-    cfg = {"limits": {"max_retries_per_shot": 1}, "render": {"tti_size": "1024x576"}}
+    cfg = {"limits": {"max_retries_per_shot": 1}, "render": {"tti_size": "1024x1024"}}
     plan = {
         "master_anchor": {
-            "prompt_clip_l": "hero tags",
-            "prompt_t5xxl": "Sentence one. Sentence two.",
-            "negative_prompt": "bad",
+            "prompt_text": "hero portrait, silver earrings, satin blouse, wet neon street, chrome reflections",
             "seed": 101,
         },
         "shots": [

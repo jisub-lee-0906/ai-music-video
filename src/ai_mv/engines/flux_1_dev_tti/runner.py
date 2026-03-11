@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.workflow_names import TTI_WORKFLOW
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.infra.comfy_outputs import pick_image_file
 from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow, tti_required_inputs
@@ -29,7 +30,7 @@ def _run_shot_tti(config: dict, shot: dict, shot_id: str) -> dict:
     attempts = int(config["limits"]["max_retries_per_shot"])
     fn = lambda retry: run_workflow(
         config,
-        "image_flux1_dev_tti.api.json",
+        TTI_WORKFLOW,
         map_tti_workflow(config, _mutate_shot(shot, retry)),
         tti_required_inputs(),
     )

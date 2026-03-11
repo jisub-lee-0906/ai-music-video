@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import zlib
 
-from ai_mv.utils.text_utils import ensure_16_9, parse_size
+from ai_mv.utils.text_utils import ensure_positive_size, parse_size
 
 WAN_TEXT_NEG = "78"
 WAN_LOAD_START = "80"
@@ -49,7 +49,7 @@ def _shot_seed(shot_id: str) -> int:
 def _wan_size(config: dict, clip: dict) -> tuple[int, int]:
     size = str(clip["wan_size"])
     w, h = parse_size(size)
-    ensure_16_9(w, h)
+    ensure_positive_size(w, h)
     return w, h
 
 

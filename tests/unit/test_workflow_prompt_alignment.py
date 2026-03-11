@@ -21,7 +21,7 @@ def test_audio_prompt_mentions_acestep_tags_field_alignment():
     assert "AceStep tags text field" in prompt
 
 
-def test_tti_prompt_mentions_direct_clip_encoder_alignment():
+def test_tti_prompt_mentions_direct_text_encoder_alignment():
     brief = {
         "hero_identity": "hero",
         "world_rules": "world",
@@ -42,7 +42,6 @@ def test_tti_prompt_mentions_direct_clip_encoder_alignment():
     }
     sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
-    assert "injected directly into the workflow CLIP encoder" in prompt
     assert "injected directly into the workflow text encoder" in prompt
 
 

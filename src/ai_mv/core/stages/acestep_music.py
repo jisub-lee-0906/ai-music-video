@@ -21,6 +21,7 @@ def _audio_context(plan: dict) -> dict:
         "lyrics": str(plan.get("lyrics", "")).strip(),
         "tags": str(plan.get("tags", "")).strip(),
         "style_guidance": str(plan.get("style_guidance", "")).strip(),
+        "language": str(plan.get("language", "")).strip(),
         "profile_summary": str(plan.get("profile_summary", "")).strip(),
         "audio_direction": str(plan.get("audio_direction", "")).strip(),
         "hook_direction": str(plan.get("hook_direction", "")).strip(),
