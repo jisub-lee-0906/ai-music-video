@@ -44,6 +44,9 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
     guidance = _style_guidance(config, payload)
+    profile = _audio_map_text(payload, "profile_summary")
+    visual = _audio_map_text(payload, "visual_direction")
+    negative = _audio_map_text(payload, "negative_direction")
     lyrics = _lyrics_excerpt(payload)
     brief = _brief_summary(payload["visual_brief"])
     clip_ids = _clip_ids(clips)
@@ -61,18 +64,25 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Sentence 1: starting state and first movement impulse. "
         "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
         "Optional sentence 3: environment reaction details. "
+        "positive_prompt must read like a usable motion direction for a renderer, not like marketing copy or a music review. "
+        "positive_prompt is injected directly into the workflow text encoder, so do not use bullet points, labels, shot ids, or section headers. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
         "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
         "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
         "For consecutive clips from the same shot series, treat the previous clip end as the immediate starting state of the next clip, not a visual reset. "
+        "Use section labels to shape escalation: Chorus 2 should feel like a stronger return than Chorus, and Final Chorus should feel like the motion payoff while staying inside the same visual grammar. "
         "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
         "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
+        "Keep the heroine readable in every sentence: face, posture, silhouette, and clear camera relation should stay understandable. "
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Do not describe multiple competing action arcs in one clip. "
+        "Avoid generic wording like cinematic motion, dynamic energy, dramatic atmosphere, or stylish movement unless tied to a concrete body, camera, or environment action. "
+        "Treat profile_summary and visual_direction as the stable interpretation layer for future profiles: keep one coherent world and motion grammar instead of echoing long tag lists. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
-        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; "
+        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; Avoid={negative}; "
+        f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Exact ClipIds={clip_ids}; ClipSummary={summary}."
     )
 
@@ -93,6 +103,11 @@ def _lyrics_excerpt(payload: dict) -> str:
         return ""
     lines = [x.strip() for x in text.splitlines() if x.strip()]
     return " | ".join(lines[:8])
+
+
+def _audio_map_text(payload: dict, key: str) -> str:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    return str(audio_map.get(key, "")).strip() if isinstance(audio_map, dict) else ""
 
 
 def _brief_summary(brief: dict) -> str:
@@ -150,11 +165,12 @@ def _clip_summary(clips: list[dict]) -> str:
 def _clip_summary_row(clip: dict) -> str:
     sid = str(clip["shot_id"])
     section = str(clip.get("section_name", "section"))
+    label = str(clip.get("section_label", section))
     camera = str(clip.get("camera_language", "")).strip() or "clean framing"
     emotion = str(clip.get("emotion", "")).strip() or "steady emotion"
     detail = str(clip.get("scene_detail", "")).strip() or "hero detail"
     motion = str(clip.get("motion_hint", "")).strip() or "smooth motion"
-    return f"{sid}({section}|{camera}|{emotion}|{detail}|{motion})"
+    return f"{sid}({section}|{label}|{camera}|{emotion}|{detail}|{motion})"
 
 
 def _clip_ids(clips: list[dict]) -> str:
@@ -173,6 +189,7 @@ def _item_to_clip(item: dict, fps: int) -> dict:
         "fps": fps,
         "frames": int(frames),
         "section_name": str(item.get("section_name", "section")),
+        "section_label": str(item.get("section_label", item.get("section_name", "section"))),
         "shot_type": str(item.get("shot_type", "CHAR_MASTER")),
         "is_chorus": bool(item.get("is_chorus", False)),
         "camera_language": str(item.get("camera_language", "")),

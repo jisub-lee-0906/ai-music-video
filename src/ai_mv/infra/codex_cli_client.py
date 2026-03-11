@@ -47,7 +47,7 @@ def _generate_once(config: dict, prompt: str, schema: dict) -> dict:
         output_path = Path(tmp) / "output.json"
         schema_path.write_text(json.dumps(strict_schema, ensure_ascii=False), encoding="utf-8")
         args = _exec_args(cmd, model, schema_path, output_path, prompt)
-        _run(args, timeout)
+        _run(args, prompt, timeout)
         data = _load_output(output_path)
         _validate_schema(data, schema)
         return data
@@ -68,7 +68,7 @@ def _exec_args(cmd: str, model: str, schema_path: Path, output_path: Path, promp
         str(output_path),
         "-m",
         model,
-        prompt,
+        "-",
     ]
 
 
@@ -123,9 +123,10 @@ def _login_status(cmd: str) -> str:
     return text
 
 
-def _run(args: list[str], timeout: int) -> None:
+def _run(args: list[str], prompt: str, timeout: int) -> None:
     res = subprocess.run(
         args,
+        input=prompt,
         capture_output=True,
         text=True,
         encoding="utf-8",

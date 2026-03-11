@@ -36,8 +36,12 @@ def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[
         "desc": str(audio_map.get("genre_description", "")).strip(),
         "lyrics": _lyrics_excerpt(str(audio_map.get("lyrics", ""))),
         "tags": str(audio_map.get("tags", "")).strip(),
+        "profile": str(audio_map.get("profile_summary", "")).strip(),
+        "visual_direction": str(audio_map.get("visual_direction", "")).strip(),
+        "negative_direction": str(audio_map.get("negative_direction", "")).strip(),
         "brief_view": _brief_summary(brief),
         "section_view": _section_summary(sections),
+        "section_labels": _section_labels(sections),
         "types": ", ".join(SHOT_TYPES),
     }
 
@@ -51,9 +55,11 @@ def _planner_rules() -> str:
         "master_anchor must include: prompt_clip_l,prompt_t5xxl,negative_prompt,seed. "
         "master_anchor prompt_clip_l must be 18-36 unique tags, comma+space separated, all lowercase natural phrases. "
         "No snake_case, no brackets, no markdown, no full sentence. "
+        "prompt_clip_l is injected directly into the workflow CLIP encoder, so keep it as raw tag text only with no prefixes or commentary. "
         "Required slot order in master clip_l: subject identity, face traits, hair, eyes, wardrobe, fabric/material, pose, "
         "signature prop, background set, lighting style, lens/camera language, mood, color palette, cinematic quality. "
         "master_anchor prompt_t5xxl must be exactly 2 natural English sentences. "
+        "prompt_t5xxl is also injected directly into the workflow text encoder, so do not use lists, labels, or shot ids. "
         "Sentence 1 = hero identity + wardrobe + environment + signature prop with concrete detail. "
         "Sentence 2 = camera + lighting + emotional presence with cinematic language and no motion event. "
         "Keep one consistent hero identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
@@ -62,7 +68,10 @@ def _planner_rules() -> str:
         "Do not let the signature prop become the visual anchor of the master image; use face, posture, wardrobe silhouette, and environment first. "
         "Use the visual brief as the source of truth for identity locks, world rules, motifs, and forbidden drift. "
         "master_anchor should absorb hero/world/motif rules, while shot items should absorb section-specific variation only. "
+        "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same heroine and world grammar. "
+        "Use section labels as escalation hints: Chorus 2 should feel like a firmer return, and Final Chorus should feel like the visual payoff shot for the song. "
         "Use a stable shot hierarchy across the song: intro/outro favor character master or environment setup, verses favor performance-wide, pre-chorus favors emotion-close, chorus favors performance hero framing, post-chorus favors detail or reflection, bridge favors emotion-close or reflective transition. "
+        "Treat profile_summary and visual_direction as the stable lane for future profiles: translate longer tag sets into one coherent heroine, world, and camera grammar. "
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
         "Negative constraints and world rules override any section staging idea. "
@@ -77,6 +86,8 @@ def _planner_rules() -> str:
         "Except for brief detail inserts, do not let props, bags, or accessories become larger or more important than the hero face and performance. "
         "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
         "If the brief discourages fast camera or drift, use stillness, glide, slow dolly, gentle turn, or subtle gaze change instead of running or aggressive movement. "
+        "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
+        "Avoid empty prestige phrases like cinematic vibes, dramatic aura, stylish composition, or emotional energy without a concrete visible setup. "
         "Shot count must match section count exactly. "
     )
 
@@ -85,8 +96,9 @@ def _planner_inputs(context: dict[str, str]) -> str:
     return (
         f"Use shot_type only from enum: {context['types']}. "
         f"Audio tags={context['tags']}; Audio direction={context['desc']}; "
-        f"Style guidance={context['guidance']}; Visual brief={context['brief_view']}; "
-        f"Lyrics excerpt={context['lyrics']}; Sections={context['section_view']}."
+        f"Style guidance={context['guidance']}; Profile steering={context['profile']}; "
+        f"Visual direction={context['visual_direction']}; Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
+        f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; Timing reference={context['section_view']}."
     )
 
 
@@ -107,6 +119,7 @@ def _assign_one_shot_per_section(shots: list[dict], sections: list[dict]) -> lis
         item = dict(row)
         item["shot_id"] = f"S{idx:03d}"
         item["section_name"] = str(sec.get("name", "section"))
+        item["section_label"] = str(sec.get("label", sec.get("name", "section")))
         item["shot_type"] = _shot_type_for_section(item["section_name"])
         item["is_chorus"] = _is_chorus(item["section_name"])
         item["duration_sec"] = round(max(0.001, _sec_end(sec) - _sec_start(sec)), 3)
@@ -148,6 +161,14 @@ def _section_summary(sections: list[dict]) -> str:
     if not out:
         raise RuntimeError("sections missing for TTI prompt planner")
     return ", ".join(out)
+
+
+def _section_labels(sections: list[dict]) -> str:
+    out = [str(row.get("label", row.get("name", "section"))).strip() for row in sections]
+    vals = [x for x in out if x]
+    if not vals:
+        raise RuntimeError("sections missing for TTI prompt planner")
+    return ", ".join(vals)
 
 
 def _brief_summary(brief: dict) -> str:

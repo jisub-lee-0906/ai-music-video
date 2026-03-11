@@ -54,6 +54,7 @@ def _pack_item(item: dict, start: str, end: str) -> dict:
     return {
         "shot_id": item["shot_id"],
         "section_name": str(item.get("section_name", "section")),
+        "section_label": str(item.get("section_label", item.get("section_name", "section"))),
         "shot_type": str(item.get("shot_type", "CHAR_MASTER")),
         "is_chorus": bool(item.get("is_chorus", False)),
         "duration_sec": item["duration_sec"],

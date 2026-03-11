@@ -40,9 +40,10 @@ def _sections(duration: float, blocks: list[dict]) -> list[dict]:
     cursor = 0.0
     for i, row in enumerate(rows):
         name = str(row.get("section", "section")).strip().lower()
+        label = str(row.get("label", "")).strip() or name
         seg = duration * (weights[i] / mass)
         end = duration if i == len(rows) - 1 else min(duration, cursor + seg)
-        out.append({"name": name, "start_sec": round(cursor, 3), "end_sec": round(end, 3)})
+        out.append({"name": name, "label": label, "start_sec": round(cursor, 3), "end_sec": round(end, 3)})
         cursor = end
     if not out:
         raise RuntimeError("sections build produced no rows")

@@ -51,6 +51,7 @@ def _pack_anchor(shot: dict, anchor: str) -> dict:
         "identity_anchor": anchor,
         "shot_type": shot["shot_type"],
         "section_name": str(shot.get("section_name", "section")),
+        "section_label": str(shot.get("section_label", shot.get("section_name", "section"))),
         "duration_sec": float(shot["duration_sec"]),
         "is_chorus": bool(shot["is_chorus"]),
         "camera_language": str(shot.get("camera_language", "")),

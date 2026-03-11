@@ -56,10 +56,8 @@ def _variable_split(total: int, target: int, min_frames: int, max_frames: int) -
 
 
 def _split_count(total: int, min_frames: int, max_frames: int) -> int:
-    count = max(1, (total + max_frames - 1) // max_frames)
-    while count > 1 and (total / float(count)) < min_frames:
-        count -= 1
-    return count
+    _ = min_frames
+    return max(1, (total + max_frames - 1) // max_frames)
 
 
 def _nudge_toward_target(parts: list[int], target: int, min_frames: int, max_frames: int) -> list[int]:

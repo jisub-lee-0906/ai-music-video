@@ -23,6 +23,30 @@ def test_visual_bridge_builds_strict_brief(monkeypatch):
     assert out["section_briefs"][1]["section_name"] == "chorus"
 
 
+def test_visual_bridge_prompt_separates_names_and_timing():
+    audio_map = {
+        "tags": "city pop",
+        "style_guidance": "night drive",
+        "genre_description": "glossy retro pop",
+        "profile_summary": "retro japanese city-pop lane",
+        "visual_direction": "neon harbor nightlife with graceful poise",
+        "negative_direction": "no futuristic sci-fi tone",
+        "lyrics": "line one\nline two",
+    }
+    sections = [
+        {"name": "intro", "start_sec": 0.0, "end_sec": 6.0},
+        {"name": "chorus", "start_sec": 6.0, "end_sec": 14.0},
+    ]
+    prompt = bridge_planner._planner_prompt(audio_map, sections)
+    assert "Section names only=intro, chorus" in prompt
+    assert "Section labels in order=intro, chorus" in prompt
+    assert "Timing reference=intro(0.0-6.0), chorus(6.0-14.0)" in prompt
+    assert "section_name must be a bare section token only" in prompt
+    assert "Chorus 2 should feel like a stronger return" in prompt
+    assert "Profile steering=retro japanese city-pop lane" in prompt
+    assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
+
+
 def _fake_generate(_config, _prompt, _schema):
     return {
         "hero_identity": "silver-haired city-pop heroine with polished stage styling",

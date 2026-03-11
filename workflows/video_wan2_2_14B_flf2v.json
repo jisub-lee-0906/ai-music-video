@@ -58,7 +58,7 @@
   },
   "78": {
     "inputs": {
-      "text": "Brightly colored, overexposed, static, with unclear details, subtitles, style, work, painting, frame, still, overall gray, worst quality, low quality, JPEG compression artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, misshapen limbs, fused fingers, motionless frame, cluttered background, three legs, crowded background with many people, walking backward.",
+      "text": "Vivid tones, overexposed, static, blurry details, subtitles, style, work, painting, frame, frozen, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, mutilated, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, a motionless frame, cluttered background, three legs, too many people in the background, walking backward.",
       "clip": [
         "72",
         0
@@ -90,7 +90,7 @@
   "81": {
     "inputs": {
       "width": 640,
-      "height": 360,
+      "height": 640,
       "length": 81,
       "batch_size": 1,
       "positive": [
@@ -240,7 +240,7 @@
   },
   "90": {
     "inputs": {
-      "text": "A kitten made of ice crystals is suddenly awakened. Angrily, it raises its head, gradually growing colorful fur and transforming into a giant beast. Like sensing danger, it bares its teeth and widens its eyes.",
+      "text": "A kitten made of ice crystals suddenly jolts awake. Enraged, it lifts its head and gradually sprouts colored fur, transforming into a giant beast. As if sensing danger, it bares its teeth and widens its eyes.",
       "clip": [
         "72",
         0

@@ -54,6 +54,9 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
     guidance = _style_guidance(config, payload)
+    profile = _audio_map_text(payload, "profile_summary")
+    visual = _audio_map_text(payload, "visual_direction")
+    negative = _audio_map_text(payload, "negative_direction")
     lyrics = _lyrics_excerpt(payload)
     brief = _brief_summary(payload["visual_brief"])
     anchor_ids = _anchor_ids(anchors)
@@ -69,6 +72,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Clip suffixes such as _C01, _C02, _C03 are part of the required shot_id and must be preserved exactly. "
         "Item count must match the number of Anchors exactly. "
         "prompt_text must be exactly one natural English sentence (18-34 words). "
+        "prompt_text must read like a usable diffusion prompt sentence, not a lyric caption, review, or screenplay line. "
+        "prompt_text is used as the base workflow text and the mapper appends frame timing and intent clauses, so do not mention start frame, end frame, delta wording, or 'keep' instructions inside prompt_text itself. "
         "prompt_text should foreground the heroine face, upper body, posture, and readable environment before mentioning any prop. "
         "Do not mention the hero prop in every item; mention it only when it materially supports the intended shot. "
         "delta describes a small progression from start to end frame, not a scene reset. "
@@ -79,14 +84,19 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint. "
         "Prefer readable, graceful progression over chaotic transformation. "
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
+        "Keep prompt_text concrete enough that a renderer could stage the shot without guessing. "
+        "Use section labels to control return intensity: later chorus returns may look more open or radiant, while Final Chorus should feel like the visual peak without becoming a different world. "
         "For EMOTION_CLOSE and DETAIL_INSERT shots, prefer micro-shifts only: slight gaze, gentle head angle, small hand placement, or subtle light shift. "
         "For EMOTION_CLOSE shots, keep the frame centered on face, neck, shoulders, and gaze; avoid having props compete with the expression. "
         "For PERF_WIDE shots, let movement read through body posture and walking rhythm first; props remain secondary. "
         "Do not twist the torso, fold limbs unnaturally, hide the neck, or force the arms across the body in awkward ways. "
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Keep the hero face and upper-body presence primary; props and bags should stay secondary unless the shot is a brief intentional detail insert. "
+        "Avoid generic phrase pairs like beautiful lighting, emotional atmosphere, cinematic mood, stylish portrait, or dreamy vibes unless they are tied to a specific visual fact. "
+        "Treat profile_summary and visual_direction as the stable interpretation layer for future profiles: compress more tags into one readable image lane instead of listing them back. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, twisted limbs, broken wrists, warped torso, collapsed shoulders, text watermark, logo, subtitle. "
-        f"{carry_clause}Style guidance={guidance}; Visual brief={brief}; Lyrics context={lyrics}; "
+        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; Avoid={negative}; "
+        f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Anchor ids={anchor_ids}; Anchors={summary}."
     )
 
@@ -98,6 +108,11 @@ def _lyrics_excerpt(payload: dict) -> str:
         return ""
     lines = [x.strip()[:120] for x in text.splitlines() if x.strip()]
     return " | ".join(lines[:8])
+
+
+def _audio_map_text(payload: dict, key: str) -> str:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    return str(audio_map.get(key, "")).strip() if isinstance(audio_map, dict) else ""
 
 
 def _uso_planner_batch_size(config: dict) -> int:
@@ -196,11 +211,12 @@ def _anchor_summary(anchors: list[dict]) -> str:
 def _anchor_summary_row(anchor: dict) -> str:
     sid = str(anchor["shot_id"])
     section = str(anchor.get("section_name", "section"))
+    label = str(anchor.get("section_label", section))
     shot_type = str(anchor.get("shot_type", "CHAR_MASTER"))
     emotion = str(anchor.get("emotion", "")).strip() or "steady"
     pose = str(anchor.get("pose_delta", "")).strip() or "small pose shift"
     detail = str(anchor.get("scene_detail", "")).strip() or "hero focus"
-    return f"{sid}({section}|{shot_type}|{emotion}|{pose}|{detail})"
+    return f"{sid}({section}|{label}|{shot_type}|{emotion}|{pose}|{detail})"
 
 
 def _anchor_ids(anchors: list[dict]) -> str:
@@ -224,6 +240,7 @@ def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
         "duration_sec": float(anchor["duration_sec"]),
         "shot_type": str(anchor["shot_type"]),
         "section_name": str(anchor.get("section_name", "section")),
+        "section_label": str(anchor.get("section_label", anchor.get("section_name", "section"))),
         "is_chorus": bool(anchor.get("is_chorus", False)),
         "camera_language": str(anchor.get("camera_language", "")),
         "pose_delta": str(anchor.get("pose_delta", "")),
