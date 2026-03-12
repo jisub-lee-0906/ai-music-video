@@ -59,6 +59,13 @@ def validate_audio_lyrics_language(lyrics: str, language: str) -> None:
         raise RuntimeError("audio lyrics language mismatch: expected en-dominant lyrics")
 
 
+def validate_audio_genre_description_language(text: str) -> None:
+    counts = _script_counts(text)
+    non_latin = counts["jp"] + counts["ko"]
+    if non_latin > max(2, int(counts["latin"] * 0.15)):
+        raise RuntimeError("audio genre_description language mismatch: expected English production brief")
+
+
 def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str, dict]:
     keyed = {str(x["shot_id"]): x for x in raw_items if isinstance(x, dict)}
     out: dict[str, dict] = {}

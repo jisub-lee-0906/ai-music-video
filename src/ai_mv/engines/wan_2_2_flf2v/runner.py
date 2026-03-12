@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.workflow_names import WAN_WORKFLOW
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow, wan_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
@@ -25,7 +26,7 @@ def _run_clip_wan(config: dict, clip: dict) -> dict:
         payload = _mutate_clip(config, clip, retry)
         return run_workflow(
             config,
-            "video_wan_2_2_flf2v.api.json",
+            WAN_WORKFLOW,
             map_wan_workflow(config, payload),
             wan_required_inputs(),
         )

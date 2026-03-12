@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.workflow_names import USO_WORKFLOW
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow, uso_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
@@ -45,7 +46,7 @@ def _run_shot_uso(config: dict, item: dict) -> dict:
     def _call(retry: int) -> dict:
         payload = dict(item)
         payload["frame_idx"] = int(item["frame_idx"]) + retry
-        return run_workflow(config, "image_flux1_dev_uso.api.json", map_uso_workflow(config, payload), uso_required_inputs())
+        return run_workflow(config, USO_WORKFLOW, map_uso_workflow(config, payload), uso_required_inputs())
 
     return call_with_retries(attempts, _call, "USO", item["shot_id"])
 

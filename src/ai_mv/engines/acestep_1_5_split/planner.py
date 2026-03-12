@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from ai_mv.core.profile_brief import build_profile_brief
-from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields, validate_audio_lyrics_language
+from ai_mv.core.contracts.prompt_normalize import (
+    normalize_audio_fields,
+    validate_audio_genre_description_language,
+    validate_audio_lyrics_language,
+)
 from ai_mv.core.contracts.prompt_schema import audio_schema
 from ai_mv.engines.acestep_1_5_split.policy import audio_policy
 from ai_mv.infra.codex_cli_client import generate_structured
@@ -12,6 +16,11 @@ _GENERIC_HOOK_FRAGMENTS = (
     "call my name",
     "hold me",
     "all night",
+)
+_WEAK_JA_HOOK_ENDINGS = (
+    "まだ揺れてる",
+    "まだ光ってる",
+    "まだ消えない",
 )
 
 
@@ -43,11 +52,12 @@ def _audio_prompt(plan: dict) -> str:
     guidance_clause = f"Style guidance={guidance}. " if guidance else ""
     language_clause = _language_clause(plan)
     profile_clause = _profile_clause(plan)
+    hook_shape_clause = _hook_shape_clause(plan)
     bpm_clause = _target_bpm_clause(plan)
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
     return _audio_prompt_rules(plan) + (
         f"Target duration={int(plan['duration'])} sec. "
-        f"{bpm_clause}{seed_clause}{tags_clause}{guidance_clause}{language_clause}{profile_clause}"
+        f"{bpm_clause}{seed_clause}{tags_clause}{guidance_clause}{language_clause}{profile_clause}{hook_shape_clause}"
     )
 
 
@@ -111,6 +121,7 @@ def _audio_description_rules() -> str:
         "genre_description must be one compact production paragraph including arrangement cues "
         "(808/bass, synth layers, harmonies, transitions, impact), in 2-3 sentences only. "
         "genre_description is written directly into the AceStep tags text field, so it must stay plain production language with no bullets, labels, or markdown. "
+        "genre_description must always be written in English, even when the lyrics language is Japanese or Korean. "
         "genre_description must explicitly cover groove foundation, lead vocal character, and hook instrumentation. "
         "genre_description should also describe pocket, rhythm feel, or timing character in concrete production terms when relevant. "
         "Mention at least one clear groove behavior such as bounce, glide, pulse, sway, swing, push, or restraint. "
@@ -128,6 +139,9 @@ def _audio_description_rules() -> str:
         "The hook phrase should usually contain one concrete image, object, place, weather cue, or physical sensation instead of a generic romance placeholder. "
         "Prefer a distinctive hook phrase built from the song's actual world instead of generic love-song filler. "
         "Use one concrete world element already implied by profile_summary, audio_direction, or hook_direction, then keep returning to that same world with small variations. "
+        "Make the chorus opening feel like a plausible song title: one concrete world anchor plus one specific emotional, temporal, or motion twist. "
+        "Prefer a phrase that listeners could quote as the song title, not just a safe description line. "
+        "Different good hooks may use different contours such as image plus destination, image plus afterglow, reflection plus motion, or place plus echo; keep the contour coherent within one song. "
         "Avoid fallback hook language like 'call my name', 'hold me', 'stay with me', 'all night', or repeated hey-oh syllables unless the surrounding line adds a fresh concrete twist. "
         "Avoid letting a generic English fragment become the main hook anchor when a stronger world-specific phrase is available. "
         "Avoid using the same generic imperative in multiple chorus lines. "
@@ -149,6 +163,9 @@ def _language_style_rules(plan: dict) -> str:
             "Use English only for very short fashionable hook fragments when they sharpen recall. "
             "Prefer natural Japanese phrasing built from the profile's concrete world over awkward loanword-heavy wording. "
             "Avoid forced transliterations when a natural Japanese phrase would sing more smoothly. "
+            "In Japanese songs, the main chorus opening should be led by Japanese phrasing; do not let an English fragment dominate the hook anchor. "
+            "Give the Japanese chorus opening title-worthiness: it should sound like a phrase people could remember as the song name, not just a safe mood sentence. "
+            "Avoid generic safe endings like a bare 'still swaying' line unless the concrete image and twist are unusually specific. "
             "If you use an English fragment, keep it to two to four words and weave it into a fuller Japanese line. "
             "If you use an English fragment inside Japanese lyrics, embed it inside a fuller line instead of leaving it as a standalone line. "
             "Do not use romaji, broken mojibake-like text, or fake Japanese-looking fragments. "
@@ -206,6 +223,11 @@ def _profile_clause(plan: dict) -> str:
     return "".join(parts)
 
 
+def _hook_shape_clause(plan: dict) -> str:
+    text = str(plan.get("hook_shape_bias", "")).strip()
+    return f"Preferred hook contour={text}. " if text else ""
+
+
 def _profile_line(label: str, text: object) -> str:
     val = str(text).strip()
     return f"{label}={val}. " if val else ""
@@ -218,6 +240,8 @@ def _validate_audio_plan_quality(plan: dict) -> None:
     _validate_chorus_opening_pairs(choruses)
     _validate_chorus_line_functions(choruses)
     _validate_generic_hook_fragments(choruses)
+    _validate_language_specific_hook_style(choruses, str(plan.get("language", "")).strip().lower())
+    _validate_hook_title_worthiness(choruses, plan)
     _validate_second_chorus(choruses)
     _validate_final_chorus(choruses)
 
@@ -259,6 +283,29 @@ def _validate_generic_hook_fragments(choruses: list[dict]) -> None:
                     raise RuntimeError(f"audio planner quality failure: generic hook fragment '{frag}'")
 
 
+def _validate_language_specific_hook_style(choruses: list[dict], language: str) -> None:
+    if language != "ja":
+        return
+    for block in choruses:
+        lines = _clean_lines(block)
+        if not lines:
+            continue
+        opening = lines[0]
+        if _is_english_heavy_japanese_hook(opening):
+            raise RuntimeError("audio planner quality failure: japanese hook anchor leans too heavily on English fragment")
+
+
+def _validate_hook_title_worthiness(choruses: list[dict], plan: dict) -> None:
+    opening = _clean_lines(choruses[0])[0] if _clean_lines(choruses[0]) else ""
+    if not opening:
+        return
+    if _opening_lacks_concrete_world(opening, plan):
+        raise RuntimeError("audio planner quality failure: chorus opening lacks a concrete world anchor")
+    language = str(plan.get("language", "")).strip().lower()
+    if language == "ja" and _is_weak_japanese_hook_opening(opening):
+        raise RuntimeError("audio planner quality failure: japanese hook opening feels too generic")
+
+
 def _validate_final_chorus(choruses: list[dict]) -> None:
     first = _clean_lines(choruses[0])
     final_block = choruses[-1]
@@ -289,6 +336,74 @@ def _clean_lines(block: dict) -> list[str]:
     return [str(x).strip() for x in lines if str(x).strip()]
 
 
+def _is_english_heavy_japanese_hook(text: str) -> bool:
+    jp = 0
+    latin_words = 0
+    current_latin = []
+    for ch in str(text):
+        if ch.isascii() and ch.isalpha():
+            current_latin.append(ch)
+        else:
+            if current_latin:
+                latin_words += 1
+                current_latin = []
+            code = ord(ch)
+            if (
+                0x3040 <= code <= 0x309F
+                or 0x30A0 <= code <= 0x30FF
+                or 0x4E00 <= code <= 0x9FFF
+            ):
+                jp += 1
+    if current_latin:
+        latin_words += 1
+    if latin_words == 0:
+        return False
+    return jp < 6 or latin_words > 2
+
+
+def _opening_lacks_concrete_world(text: str, plan: dict) -> bool:
+    opening = str(text).strip()
+    hook_direction = str(plan.get("hook_direction", "")).strip()
+    profile_summary = str(plan.get("profile_summary", "")).strip()
+    candidates = _collect_world_tokens(hook_direction) | _collect_world_tokens(profile_summary)
+    if not candidates:
+        return False
+    return not any(token in opening for token in candidates)
+
+
+def _collect_world_tokens(text: str) -> set[str]:
+    out: set[str] = set()
+    buf = []
+    for ch in str(text):
+        code = ord(ch)
+        is_jp = (
+            0x3040 <= code <= 0x309F
+            or 0x30A0 <= code <= 0x30FF
+            or 0x4E00 <= code <= 0x9FFF
+        )
+        if is_jp:
+            buf.append(ch)
+            continue
+        if buf:
+            token = "".join(buf)
+            if len(token) >= 2:
+                out.add(token)
+            buf = []
+    if buf:
+        token = "".join(buf)
+        if len(token) >= 2:
+            out.add(token)
+    return out
+
+
+def _is_weak_japanese_hook_opening(text: str) -> bool:
+    opening = str(text).strip()
+    for ending in _WEAK_JA_HOOK_ENDINGS:
+        if opening.endswith(ending):
+            return True
+    return False
+
+
 def _plan_with_quality_attempts(config: dict, plan: dict) -> dict:
     attempts = _planner_attempts(config)
     last: Exception | None = None
@@ -316,6 +431,7 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["quality"] = plan["quality"]
     if not str(normalized.get("keyscale", "")).strip():
         normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
+    validate_audio_genre_description_language(normalized["genre_description"])
     validate_audio_lyrics_language(normalized["lyrics"], plan["language"])
     _validate_audio_plan_quality(normalized)
     return normalized
@@ -323,7 +439,9 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
 
 def _attempt_plan(plan: dict, idx: int) -> dict:
     out = dict(plan)
-    out["seed"] = int(plan.get("seed", 31)) + (idx * 1009)
+    seed = int(plan.get("seed", 31)) + (idx * 1009)
+    out["seed"] = seed
+    out["hook_shape_bias"] = _hook_shape_bias(seed, str(plan.get("language", "")).strip().lower())
     return out
 
 
@@ -334,3 +452,21 @@ def _planner_attempts(config: dict) -> int:
         return max(1, int(raw))
     except Exception:
         return 3
+
+
+def _hook_shape_bias(seed: int, language: str) -> str:
+    if language == "ja":
+        shapes = (
+            "concrete image plus destination or ride noun",
+            "street object plus emotional echo",
+            "reflection cue plus afterglow or remaining heat",
+            "weather or light cue plus reaching motion",
+        )
+        return shapes[seed % len(shapes)]
+    shapes = (
+        "concrete image plus destination",
+        "place cue plus emotional echo",
+        "reflection cue plus afterglow",
+        "weather cue plus motion",
+    )
+    return shapes[seed % len(shapes)]

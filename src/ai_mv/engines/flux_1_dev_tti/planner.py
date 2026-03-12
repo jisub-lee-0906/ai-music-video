@@ -42,6 +42,7 @@ def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[
         "brief_view": _brief_summary(brief),
         "section_view": _section_summary(sections),
         "section_labels": _section_labels(sections),
+        "escalation": _escalation_reference(sections),
         "types": ", ".join(SHOT_TYPES),
     }
 
@@ -66,7 +67,12 @@ def _planner_rules() -> str:
         "master_anchor should absorb hero/world/motif rules, while shot items should absorb section-specific variation only. "
         "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same heroine and world grammar. "
         "Use section labels as escalation hints: Chorus 2 should feel like a firmer return, and Final Chorus should feel like the visual payoff shot for the song. "
+        "Map repeated-return escalation in clear steps: the first Chorus should feel like arrival or release, Chorus 2 should feel brighter, more open, and more assured, and Final Chorus should feel like the most resolved and luminous version of the same world. "
+        "For repeated chorus labels, do not settle for mild synonyms at the same intensity: later returns must read as a real lift in emotion, posture, frame openness, and environmental clarity. "
         "Use a stable shot hierarchy across the song: intro/outro favor character master or environment setup, verses favor performance-wide, pre-chorus favors emotion-close, chorus favors performance hero framing, post-chorus favors detail or reflection, bridge favors emotion-close or reflective transition. "
+        "Think like a finished music video, not a portrait generator: the shot list should create angle variety, movement variety, and staging progression while preserving the same heroine. "
+        "Across the song, mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings where appropriate instead of defaulting to straight-on portraits. "
+        "Not every shot should face camera; reserve the most frontal hero framing for major returns and payoff moments. "
         "Treat profile_summary and visual_direction as the stable lane for future profiles: translate longer tag sets into one coherent heroine, world, and camera grammar. "
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
@@ -74,13 +80,19 @@ def _planner_rules() -> str:
         "camera_language should be a short cinematic phrase for framing/lens behavior only. "
         "camera_language must describe face framing, body framing, or lens feel, not prop framing; avoid phrases like close-up on bag, mirror, prop, or accessory. "
         "camera_language must stay smooth and readable; avoid explosive, frantic, handheld, whip, crash zoom, or fast-pan language unless the brief explicitly allows it. "
+        "For verses and transitions, prefer oblique framings such as three-quarter portrait, side profile walk, over-shoulder drift, reflected profile, or silhouette follow rather than always using centered front view. "
+        "For Chorus and Final Chorus, hero framing can return more frontally, but it should still feel like a staged music-video payoff rather than a static passport portrait. "
         "pose_delta should describe exactly one readable body or gaze change. "
         "emotion should be concise and performance-oriented, not narrative. "
+        "For Chorus 2 and Final Chorus, emotion should clearly sound more open, more assured, or more resolved than the earlier chorus rather than merely different. "
         "scene_detail should name exactly one concrete set or prop emphasis and should preserve the same master palette with only section accent shifts. "
+        "For repeated choruses, scene_detail should reveal a clearer, brighter, wider, or more resolved version of the same environment; Final Chorus should show the cleanest and most luminous environmental payoff. "
         "scene_detail should default to environment or lighting detail; use prop detail only when the shot_type truly calls for a brief insert. "
         "For CHAR_MASTER, PERF_WIDE, and EMOTION_CLOSE, keep scene_detail focused on environment, lighting, or silhouette rather than handheld objects. "
         "Except for brief detail inserts, do not let props, bags, or accessories become larger or more important than the hero face and performance. "
         "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
+        "Final Chorus motion_hint should feel like the smoothest and most confident payoff move in the song, not just another generic slow move. "
+        "Let motion_hint and camera_language work together like a music-video storyboard: profile walk, shoulder turn, silhouette drift, reflective pass, slow follow, and clean lateral glide are all valid when they fit the section. "
         "If the brief discourages fast camera or drift, use stillness, glide, slow dolly, gentle turn, or subtle gaze change instead of running or aggressive movement. "
         "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
         "Avoid empty prestige phrases like cinematic vibes, dramatic aura, stylish composition, or emotional energy without a concrete visible setup. "
@@ -94,7 +106,8 @@ def _planner_inputs(context: dict[str, str]) -> str:
         f"Audio tags={context['tags']}; Audio direction={context['desc']}; "
         f"Style guidance={context['guidance']}; Profile steering={context['profile']}; "
         f"Visual direction={context['visual_direction']}; Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
-        f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; Timing reference={context['section_view']}."
+        f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; "
+        f"Escalation guide={context['escalation']}; Timing reference={context['section_view']}."
     )
 
 
@@ -165,6 +178,20 @@ def _section_labels(sections: list[dict]) -> str:
     if not vals:
         raise RuntimeError("sections missing for TTI prompt planner")
     return ", ".join(vals)
+
+
+def _escalation_reference(sections: list[dict]) -> str:
+    labels = {str(row.get("label", row.get("name", "section"))).strip().lower() for row in sections}
+    parts: list[str] = []
+    if "chorus" in labels:
+        parts.append("Chorus=arrival, graceful release, first clear opening")
+    if "chorus 2" in labels:
+        parts.append("Chorus 2=firmer return, brighter openness, wider confidence")
+    if "final chorus" in labels:
+        parts.append("Final Chorus=peak return, luminous resolve, clearest environmental payoff")
+    if not parts:
+        parts.append("Repeated returns should rise in openness, confidence, and visual clarity")
+    return "; ".join(parts)
 
 
 def _brief_summary(brief: dict) -> str:

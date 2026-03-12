@@ -1,6 +1,10 @@
 import pytest
 
-from ai_mv.core.contracts.prompt_normalize import normalize_audio_fields, validate_audio_lyrics_language
+from ai_mv.core.contracts.prompt_normalize import (
+    normalize_audio_fields,
+    validate_audio_genre_description_language,
+    validate_audio_lyrics_language,
+)
 
 
 def test_normalize_audio_fields_renders_lyrics_blocks():
@@ -46,3 +50,14 @@ def test_validate_audio_lyrics_language_rejects_english_only_lyrics_for_japanese
     lyrics = "[Chorus - Bright Hook]\nNeon rain on the boulevard\nStay with me under city lights"
     with pytest.raises(RuntimeError, match="expected ja-dominant lyrics"):
         validate_audio_lyrics_language(lyrics, "ja")
+
+
+def test_validate_audio_genre_description_language_accepts_english_brief():
+    text = "Japanese city-pop with glossy electric piano, fretless bass, and warm analog pads. A mature female lead glides over a restrained disco pulse while the hook opens with soft guitar shimmer."
+    validate_audio_genre_description_language(text)
+
+
+def test_validate_audio_genre_description_language_rejects_japanese_brief():
+    text = "上品なジャパニーズ・シティポップで、艶のあるエレピとコーラスギターを前に、温かなアナログパッドが夜景の奥行きを作る。"
+    with pytest.raises(RuntimeError, match="expected English production brief"):
+        validate_audio_genre_description_language(text)
