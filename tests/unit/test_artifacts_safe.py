@@ -1,4 +1,3 @@
-import ai_mv.core.artifacts.dashboard as dashboard
 import ai_mv.core.artifacts.manifest as manifest
 import ai_mv.core.artifacts.summary as summary
 
@@ -11,7 +10,6 @@ def test_artifacts_safe_on_partial_payload(monkeypatch):
 
     monkeypatch.setattr(manifest, "write_json", _sink)
     monkeypatch.setattr(summary, "write_json", _sink)
-    monkeypatch.setattr(dashboard, "write_json", _sink)
 
     state = {
         "run_id": "r1",
@@ -24,14 +22,11 @@ def test_artifacts_safe_on_partial_payload(monkeypatch):
 
     manifest.write_manifest(state, payload)
     summary.write_summary(state, payload)
-    dashboard.write_dashboard(state, payload)
 
-    assert len(calls) == 6
+    assert len(calls) == 4
     paths = [str(p) for p, _ in calls]
     assert "artifacts/runs/r1/manifest.json" in paths[0].replace("\\", "/") or any("artifacts/runs/r1/manifest.json" in x.replace("\\", "/") for x in paths)
     assert any("artifacts/latest/manifest.json" in x.replace("\\", "/") for x in paths)
     assert any("artifacts/runs/r1/summary.json" in x.replace("\\", "/") for x in paths)
     assert any("artifacts/latest/summary.json" in x.replace("\\", "/") for x in paths)
-    assert any("artifacts/runs/r1/dashboard.json" in x.replace("\\", "/") for x in paths)
-    assert any("artifacts/latest/dashboard.json" in x.replace("\\", "/") for x in paths)
     assert all(isinstance(d, dict) for _, d in calls)

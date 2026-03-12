@@ -75,6 +75,15 @@ def audio_schema() -> dict:
     return {"type": "object", "required": list(props.keys()), "properties": props}
 
 
+def audio_judge_schema() -> dict:
+    props = {
+        "winner_index": {"type": "integer", "minimum": 0},
+        "reasoning": {"type": "string"},
+        "quality_notes": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+    }
+    return {"type": "object", "required": list(props.keys()), "properties": props}
+
+
 def uso_schema() -> dict:
     item = {
         "type": "object",
@@ -131,3 +140,13 @@ def _visual_section_schema() -> dict:
             "location_anchor": {"type": "string"},
         },
     }
+
+
+def coverage_judge_schema() -> dict:
+    props = {
+        "winner_index": {"type": "integer", "minimum": 0},
+        "reasoning": {"type": "string"},
+        "strengths": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+        "risks": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+    }
+    return {"type": "object", "required": list(props.keys()), "properties": props}

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import unicodedata
-
 def parse_size(size: str) -> tuple[int, int]:
     w, h = str(size).split("x", 1)
     return int(w), int(h)
@@ -21,21 +19,3 @@ def ensure_16_9(width: int, height: int) -> None:
 def ensure_positive_size(width: int, height: int) -> None:
     if width <= 0 or height <= 0:
         raise ValueError(f"invalid size: {width}x{height}")
-
-
-def ascii_safe_text(text: str) -> str:
-    src = str(text or "")
-    table = str.maketrans(
-        {
-            "’": "'",
-            "‘": "'",
-            "“": '"',
-            "”": '"',
-            "—": "-",
-            "–": "-",
-            "…": "...",
-            "\u00a0": " ",
-        }
-    )
-    normalized = unicodedata.normalize("NFKD", src.translate(table))
-    return normalized.encode("ascii", "ignore").decode("ascii")

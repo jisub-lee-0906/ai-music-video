@@ -49,7 +49,7 @@ def _audio_conditioning_text(plan: dict) -> str:
     tags = _split_tags(str(plan.get("tags", "")).strip())
     audio_direction = _trim_sentence(str(plan.get("audio_direction", "")).strip())
     profile_summary = _trim_sentence(str(plan.get("profile_summary", "")).strip())
-    desc = _trim_sentence(str(plan.get("genre_description", "")).strip())
+    desc = _compress_genre_description(str(plan.get("genre_description", "")).strip())
     lead = _conditioning_lead(tags, audio_direction, profile_summary)
     if lead and desc:
         return lead if lead == desc else f"{lead}. {desc}"
@@ -81,12 +81,12 @@ def _audio_tag_spine(tags: list[str]) -> str:
 
 def _conditioning_lead(tags: list[str], audio_direction: str, profile_summary: str) -> str:
     spine = _audio_tag_spine(tags)
-    detailed = _join_sentences(audio_direction)
-    if len(detailed.split()) >= 8:
-        return detailed
-    if len(spine.split()) >= 5:
+    if spine:
         return spine
-    return _sentenceize(audio_direction or profile_summary or spine)
+    detailed = _compress_audio_direction(audio_direction)
+    if detailed:
+        return detailed
+    return _sentenceize(profile_summary or "")
 
 
 def _pick_tags(tags: list[str], keys: tuple[str, ...], limit: int = 3) -> list[str]:
@@ -132,3 +132,43 @@ def _join_sentences(*parts: str) -> str:
     if not vals:
         return ""
     return ". ".join(vals)
+
+
+def _compress_audio_direction(text: str) -> str:
+    sentence = _sentenceize(text)
+    if not sentence:
+        return ""
+    parts = [part.strip() for part in sentence.split(".") if part.strip()]
+    if not parts:
+        return ""
+    head = parts[0]
+    tail = parts[1] if len(parts) > 1 else ""
+    if tail:
+        lower = tail.lower()
+        for prefix in ("keep the arrangement ", "the arrangement "):
+            if lower.startswith(prefix):
+                tail = tail[len(prefix):]
+                break
+        tail = tail.rstrip(". ")
+        if tail:
+            return _join_sentences(head, f"Arrangement stays {tail}")
+    return head
+
+
+def _compress_genre_description(text: str) -> str:
+    sentence = _sentenceize(text)
+    if not sentence:
+        return ""
+    parts = [part.strip() for part in sentence.split(".") if part.strip()]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    head = parts[0]
+    tail = parts[1]
+    lower = tail.lower()
+    for prefix in ("the groove should ", "groove should ", "it should "):
+        if lower.startswith(prefix):
+            tail = tail[len(prefix):]
+            break
+    return _join_sentences(head, tail)

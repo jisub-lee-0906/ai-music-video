@@ -13,6 +13,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = sub.add_parser("doctor")
 
+    preflight = sub.add_parser("preflight")
+    preflight.add_argument("--run-id", default=None)
+    preflight.add_argument("--profile", default=None)
+
     status = sub.add_parser("status")
     status.add_argument("--run-id", required=True)
     return parser

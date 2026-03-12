@@ -8,6 +8,7 @@ from ai_mv.core.contracts.prompt_normalize import (
     validate_audio_lyrics_language,
 )
 from ai_mv.core.contracts.prompt_schema import audio_schema
+from ai_mv.engines.acestep_1_5_split.audio_judge import judge_audio_candidates
 from ai_mv.engines.acestep_1_5_split.policy import audio_policy
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -60,9 +61,7 @@ def _plan_with_llm(config: dict, plan: dict) -> dict:
 
 def _audio_prompt(plan: dict) -> str:
     tags = str(plan["tags"]).strip()
-    guidance = str(plan["style_guidance"]).strip()
     tags_clause = f"Input tags={tags}. " if tags else ""
-    guidance_clause = f"Style guidance={guidance}. " if guidance else ""
     language_clause = _language_clause(plan)
     profile_clause = _profile_clause(plan)
     hook_shape_clause = _hook_shape_clause(plan)
@@ -70,7 +69,7 @@ def _audio_prompt(plan: dict) -> str:
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
     return _audio_prompt_rules(plan) + (
         f"Target duration={int(plan['duration'])} sec. "
-        f"{bpm_clause}{seed_clause}{tags_clause}{guidance_clause}{language_clause}{profile_clause}{hook_shape_clause}"
+        f"{bpm_clause}{seed_clause}{tags_clause}{language_clause}{profile_clause}{hook_shape_clause}"
     )
 
 
@@ -101,11 +100,15 @@ def _audio_structure_rules() -> str:
         "Chorus should simplify language compared with the verse so the hook lands instantly. "
         "Post-chorus: very short callback lines built around the same hook phrase, acting as a lingering afterglow rather than a new verse. "
         "Even when short, post-chorus should contain at least one complete melodic thought or image tail, not only chopped slogan fragments. "
+        "A strong post-chorus should directly restate the hook image or title phrase once, then let one fresh image or breath-line trail after it. "
         "Bridge should create a genuine contrast in perspective, energy, or emotional framing before the final return, and should redirect or thin the language instead of stacking more imagery. "
         "Bridge should feel like a real turn of the song, with choice, consequence, confession, or irreversible emotional recognition rather than only pretty atmosphere. "
+        "Bridge should usually contain an explicit contrast or pivot marker such as でも, もし, それでも, ただ, but, still, or even if, so the listener clearly feels the turn. "
+        "In a strong bridge, one line should reject the safer earlier path and another line should choose, confess, or commit to what comes next. "
         "Bridge should usually be sparser than the verse and should not feel lyrically crowded. "
         "Outro should feel like a real landing after the final chorus, not just a leftover fragment. "
         "Outro should usually keep 2-3 concise lines, with one residue image and one clear closure line that settles the song. "
+        "In a strong outro, the final line should sound like a gentle arrival, settling, or acceptance sentence rather than a floating poetic fragment. "
     )
 
 
@@ -136,6 +139,7 @@ def _audio_form_rules() -> str:
         "Verse_2 must advance the scene or relationship, not paraphrase verse_1. "
         "Post-chorus should usually stay at 2-3 short lines and behave like an echo, not a new verse, but it still needs one melodic tail or image turn so it does not feel empty. "
         "Outro must not end on a bare noun fragment or unresolved slogan; the last line should land like a gentle final sentence or emotional settling. "
+        "For 3-line outros, think of line 1 as residue image, line 2 as warmth shift, and line 3 as closure. "
         "Aim for 9-11 lyrics_blocks for a full song whenever duration allows. "
     )
 
@@ -185,15 +189,19 @@ def _language_style_rules(plan: dict) -> str:
         return (
             "Write fluent modern Japanese lyrics with a natural mix of kanji, hiragana, and katakana. "
             "Keep the diction elegant, adult, and singable rather than childish, slangy, or anime-coded. "
-        "Use English only for very short fashionable hook fragments when they sharpen recall. "
-        "Prefer natural Japanese phrasing built from the profile's concrete world over awkward loanword-heavy wording. "
-        "Avoid forced transliterations when a natural Japanese phrase would sing more smoothly. "
-        "In Japanese songs, the main chorus opening should be led by Japanese phrasing; do not let an English fragment dominate the hook anchor. "
-        "Do not let a short English phrase become the emotional center of a chorus support line by itself; it should feel woven into Japanese phrasing rather than dropped in as a slogan. "
-        "Give the Japanese chorus opening title-worthiness: it should sound like a phrase people could remember as the song name, not just a safe mood sentence. "
+            "Prefer natural Japanese phrasing built from the profile's concrete world over awkward loanword-heavy wording. "
+            "Avoid forced transliterations when a natural Japanese phrase would sing more smoothly. "
+            "In Japanese songs, the main chorus opening should be led by Japanese phrasing; do not let an English fragment dominate the hook anchor. "
+            "Avoid English in chorus support and callback lines unless it is a single indispensable borrowed noun inside a fuller Japanese clause. "
+            "Do not use short English slogans like 'cross the light' or similar phraselets as the answer line, support line, or callback line of a Japanese chorus. "
+            "Do not let a short English phrase become the emotional center of a chorus support line by itself; it should feel woven into Japanese phrasing rather than dropped in as a slogan. "
+            "Give the Japanese chorus opening title-worthiness: it should sound like a phrase people could remember as the song name, not just a safe mood sentence. "
             "Avoid generic safe endings like a bare 'still swaying' line unless the concrete image and twist are unusually specific. "
-            "If you use an English fragment, keep it to two to four words and weave it into a fuller Japanese line. "
-            "If you use an English fragment inside Japanese lyrics, embed it inside a fuller line instead of leaving it as a standalone line. "
+            "In Japanese choruses, keep the hook answer and callback lines primarily in Japanese; do not pivot into an English slogan where a natural Japanese continuation would be stronger. "
+            "Prefer a world-specific Japanese answer line over any mixed-language phrase that sounds like a tagline. "
+            "If you use an English fragment anywhere in Japanese lyrics, keep it to one or two words and weave it into a fuller Japanese line. "
+            "If an elegant all-Japanese line can do the same job, prefer the all-Japanese line. "
+            "Do not leave an English fragment as a standalone line or chant in a Japanese chorus. "
             "Do not use romaji, broken mojibake-like text, or fake Japanese-looking fragments. "
         )
     if lang == "ko":
@@ -239,7 +247,6 @@ def _language_clause(plan: dict) -> str:
 
 def _profile_clause(plan: dict) -> str:
     parts = [
-        _profile_line("Profile steering", plan.get("profile_summary", "")),
         _profile_line("Audio direction", plan.get("audio_direction", "")),
         _profile_line("Hook direction", plan.get("hook_direction", "")),
         _profile_line("Visual carryover", plan.get("visual_direction", "")),
@@ -600,11 +607,30 @@ def _hook_callback_tokens(lines: list[str]) -> set[str]:
     tokens: set[str] = set()
     for line in lines:
         tokens |= _collect_world_tokens(line)
+        tokens |= _collect_world_chunks(line)
         for word in str(line).lower().replace("?", " ").replace("!", " ").split():
             word = word.strip(".,:;-'\"")
             if len(word) >= 4 and word.isascii():
                 tokens.add(word)
     return tokens
+
+
+def _collect_world_chunks(text: str) -> set[str]:
+    pieces: set[str] = set()
+    line = str(text).strip()
+    if not line:
+        return pieces
+    for token in _collect_world_tokens(line):
+        cleaned = token.strip("　 ")
+        if len(cleaned) >= 3:
+            pieces.add(cleaned)
+        for sep in ("の", "へ", "で", "を", "に", "が", "は", "と", "まで", "だけ"):
+            if sep in cleaned:
+                for part in cleaned.split(sep):
+                    part = part.strip("　 ")
+                    if len(part) >= 2:
+                        pieces.add(part)
+    return pieces
 
 
 def _looks_like_fragment_ending(text: str) -> bool:
@@ -642,6 +668,7 @@ def _plan_with_quality_attempts(config: dict, plan: dict) -> dict:
     attempts = _planner_attempts(config)
     last: Exception | None = None
     passing: list[tuple[int, int, dict]] = []
+    failures: list[dict] = []
     for idx in range(attempts):
         try:
             attempt_plan = _attempt_plan(plan, idx)
@@ -649,8 +676,9 @@ def _plan_with_quality_attempts(config: dict, plan: dict) -> dict:
             passing.append((_score_audio_candidate(normalized), idx, normalized))
         except RuntimeError as exc:
             last = exc
+            failures.append({"attempt_index": idx, "reason": str(exc)})
     if passing:
-        return _best_passing_candidate(passing)
+        return _best_passing_candidate(config, plan, passing, failures)
     raise last if last else RuntimeError("audio planner failed")
 
 
@@ -692,9 +720,44 @@ def _planner_attempts(config: dict) -> int:
         return 3
 
 
-def _best_passing_candidate(passing: list[tuple[int, int, dict]]) -> dict:
+def _best_passing_candidate(config: dict, plan: dict, passing: list[tuple[int, int, dict]], failures: list[dict]) -> dict:
     ranked = sorted(passing, key=lambda item: (item[0], -item[1]), reverse=True)
-    return ranked[0][2]
+    shortlisted = ranked[: min(5, len(ranked))]
+    selected = shortlisted[0][2]
+    judge_review = {}
+    if len(shortlisted) > 1:
+        judged = judge_audio_candidates(config, plan, [row[2] for row in shortlisted])
+        selected = shortlisted[int(judged["winner_index"])][2]
+        judge_review = judged
+    selected["audio_quality_review"] = {
+        "passing_candidates": [_candidate_summary(score, idx, cand) for score, idx, cand in shortlisted],
+        "failed_attempts": failures,
+        "judge": judge_review,
+    }
+    return selected
+
+
+def _candidate_summary(score: int, idx: int, candidate: dict) -> dict:
+    labels = [str(x.get("label", "")).strip() for x in candidate.get("lyrics_blocks", []) if str(x.get("label", "")).strip()]
+    return {
+        "attempt_index": idx,
+        "heuristic_score": score,
+        "bpm": int(candidate.get("bpm", 0)),
+        "keyscale": str(candidate.get("keyscale", "")).strip(),
+        "labels": labels,
+        "chorus": _label_lines(candidate, "Chorus"),
+        "chorus_2": _label_lines(candidate, "Chorus 2"),
+        "bridge": _label_lines(candidate, "Bridge"),
+        "final_chorus": _label_lines(candidate, "Final Chorus"),
+        "outro": _label_lines(candidate, "Outro"),
+    }
+
+
+def _label_lines(candidate: dict, label: str) -> list[str]:
+    for row in candidate.get("lyrics_blocks", []):
+        if str(row.get("label", "")).strip() == label:
+            return _clean_lines(row)
+    return []
 
 
 def _score_audio_candidate(plan: dict) -> int:

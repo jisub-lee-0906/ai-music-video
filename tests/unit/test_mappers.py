@@ -22,9 +22,8 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
-    assert nodes["94"]["tags"].startswith(
-        "K-pop with glossy synth-pop drums, bright lead vocal focus, and a tight dance-pop pulse. "
-    )
+    assert nodes["94"]["tags"].startswith("kpop.")
+    assert "glossy synth-pop drums" not in nodes["94"]["tags"]
     assert nodes["94"]["tags"].endswith("Bright idol-pop with punchy 808s and layered hooks")
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
@@ -47,7 +46,8 @@ def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     nodes = out["node.inputs"]
     assert nodes["94"]["lyrics"] == plan["lyrics"]
     assert nodes["94"]["language"] == "ja"
-    assert nodes["94"]["tags"].startswith("Japanese city pop with warm analog keys")
+    assert nodes["94"]["tags"].startswith("jpop.")
+    assert "mature graceful lead vocal" not in nodes["94"]["tags"]
     assert nodes["94"]["tags"].endswith("Elegant Japanese city-pop with warm analog keys and soft neon glide")
 
 

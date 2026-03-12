@@ -40,11 +40,17 @@ def test_audio_prompt_requires_final_return_after_bridge():
     assert "generic English fragment" in prompt
     assert "The hook phrase should usually contain one concrete image" in prompt
     assert "genre_description must always be written in English" in prompt
-    assert "Profile steering=retro city-pop lane." in prompt
+    assert "Profile steering=" not in prompt
+    assert "Style guidance=" not in prompt
+    assert "Audio direction=mature female vocal, glossy piano, disco bounce." in prompt
     assert "Hook direction=neon rain and chrome reflections." in prompt
     assert "Preferred hook contour=" not in prompt
     assert "main chorus opening should be led by Japanese phrasing" in prompt
+    assert "Avoid English in chorus support and callback lines" in prompt
+    assert "Do not use short English slogans like 'cross the light'" in prompt
     assert "short English phrase become the emotional center" in prompt
+    assert "keep the hook answer and callback lines primarily in Japanese" in prompt
+    assert "world-specific Japanese answer line" in prompt
     assert "Make the chorus opening feel like a plausible song title" in prompt
     assert "title-worthiness" in prompt
 
@@ -224,6 +230,12 @@ def test_audio_plan_quality_rejects_weak_post_chorus():
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
         assert "post-chorus" in str(exc)
+
+
+def test_post_chorus_callback_accepts_natural_japanese_subphrase():
+    chorus = {"lines": ["零時の濡れた交差点", "答えは遅い", "support one", "support two", "callback", "payoff"]}
+    lines = ["濡れた交差点に頬がほどける", "ガラスの夜がやわらかく揺れる", "もう少しだけ このままでいい"]
+    assert audio_planner._post_chorus_has_callback(lines, audio_planner._clean_lines(chorus), audio_planner._hook_callback_tokens(audio_planner._clean_lines(chorus)))
 
 
 def test_audio_plan_quality_rejects_too_short_final_chorus():

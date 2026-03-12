@@ -22,14 +22,16 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     for path in (
         Path("artifacts/runs/test-failed-run/summary.json"),
         Path("artifacts/runs/test-failed-run/manifest.json"),
-        Path("artifacts/runs/test-failed-run/dashboard.json"),
+        Path("artifacts/runs/test-failed-run/run_summary.json"),
+        Path("artifacts/runs/test-failed-run/quality_review.json"),
         Path("artifacts/latest/summary.json"),
         Path("artifacts/latest/manifest.json"),
-        Path("artifacts/latest/dashboard.json"),
+        Path("artifacts/latest/run_summary.json"),
+        Path("artifacts/latest/quality_review.json"),
     ):
         path.unlink(missing_ok=True)
 
-    run_id = pipeline_mod.run_pipeline("test-failed-run")
+    run_id = pipeline_mod.run_pipeline(cfg, "test-failed-run")
 
     snapshot = read_snapshot(run_id)
     assert snapshot["status"] == "failed"
@@ -37,11 +39,13 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
 
     summary = read_json(Path(f"artifacts/runs/{run_id}/summary.json"))
     manifest = read_json(Path(f"artifacts/runs/{run_id}/manifest.json"))
-    dashboard = read_json(Path(f"artifacts/runs/{run_id}/dashboard.json"))
+    run_summary = read_json(Path(f"artifacts/runs/{run_id}/run_summary.json"))
+    quality_review = read_json(Path(f"artifacts/runs/{run_id}/quality_review.json"))
 
     assert summary["failure_reason"] == "boom_stage: planned failure"
     assert manifest["status"] == "failed"
-    assert dashboard["status"] == "failed"
+    assert run_summary["failure_reason"] == "boom_stage: planned failure"
+    assert isinstance(quality_review, dict)
 
 
 def _failing_schedule():
