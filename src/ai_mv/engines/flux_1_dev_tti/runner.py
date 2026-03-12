@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.output_paths import tti_anchor_prefix
 from ai_mv.core.workflow_names import TTI_WORKFLOW
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.infra.comfy_outputs import pick_image_file
@@ -21,7 +22,7 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
 
 def _run_master(config: dict, master: dict) -> str:
     payload = dict(master)
-    payload["filename_prefix"] = "anchors/character_master"
+    payload["filename_prefix"] = tti_anchor_prefix()
     result = _run_shot_tti(config, payload, "character_master")
     return pick_image_file(result["files"], "TTI character_master")
 

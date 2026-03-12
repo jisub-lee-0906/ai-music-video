@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.output_paths import uso_frame_prefix
 from ai_mv.core.workflow_names import USO_WORKFLOW
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow, uso_required_inputs
@@ -25,7 +26,7 @@ def _render_start(config: dict, item: dict) -> str:
     payload["frame_name"] = "start"
     payload["frame_idx"] = 0
     payload["ref"] = stage_image_for_comfy(config, payload["ref"])
-    payload["filename_prefix"] = f"uso/{item['shot_id']}_start"
+    payload["filename_prefix"] = uso_frame_prefix(item["shot_id"], "start")
     result = _run_shot_uso(config, payload)
     return pick_image_file(result["files"], f"USO {item['shot_id']}/start")
 
@@ -35,7 +36,7 @@ def _render_end(config: dict, item: dict) -> str:
     payload["frame_name"] = "end"
     payload["frame_idx"] = 1
     payload["ref"] = stage_image_for_comfy(config, payload["ref"])
-    payload["filename_prefix"] = f"uso/{item['shot_id']}_end"
+    payload["filename_prefix"] = uso_frame_prefix(item["shot_id"], "end")
     result = _run_shot_uso(config, payload)
     return pick_image_file(result["files"], f"USO {item['shot_id']}/end")
 

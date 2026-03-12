@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.profile_brief import build_profile_brief
+from ai_mv.core.output_paths import audio_prefix
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
     validate_audio_genre_description_language,
@@ -33,7 +34,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
         "tags": tags,
         "style_guidance": guidance,
         "language": _audio_language(audio),
-        "filename_prefix": f"artifacts/runs_state/{payload['run_id']}/audio/music",
+        "filename_prefix": audio_prefix(payload["run_id"]),
     }
     plan.update(profile)
     plan.update(audio_policy(config))

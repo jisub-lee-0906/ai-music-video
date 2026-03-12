@@ -2,6 +2,7 @@ from ai_mv.engines.acestep_1_5_split.mapper import map_audio_workflow
 from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow
 from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow
+from ai_mv.core.output_paths import audio_prefix, tti_anchor_prefix, uso_frame_prefix, wan_clip_prefix
 
 
 def test_audio_mapper():
@@ -13,7 +14,7 @@ def test_audio_mapper():
         "bpm": 120,
         "duration": 160,
         "keyscale": "A minor",
-        "filename_prefix": "audio/run/music",
+        "filename_prefix": audio_prefix("run"),
         "quality": "V0",
     }
     out = map_audio_workflow({}, plan)
@@ -30,7 +31,7 @@ def test_tti_mapper():
     shot = {
         "prompt_text": "cinematic portrait, silver hair, magical butterflies, glass roses, soft rim light, dream garden",
         "seed": 3,
-        "filename_prefix": "anchors/s_001_a",
+        "filename_prefix": tti_anchor_prefix(),
     }
     out = map_tti_workflow(cfg, shot)
     nodes = out["node.inputs"]
@@ -53,7 +54,7 @@ def test_uso_mapper():
         "style_ref": "refs/front.png",
         "style_guidance": "clean mv look",
         "delta": "small pose shift",
-        "filename_prefix": "uso/s_001_start",
+        "filename_prefix": uso_frame_prefix("s_001", "start"),
     }
     out = map_uso_workflow(cfg, item)
     nodes = out["node.inputs"]
@@ -76,7 +77,7 @@ def test_wan_mapper():
         "negative_prompt": "blur",
         "wan_size": "640x640",
         "seed_offset": 0,
-        "filename_prefix": "clips/s_001",
+        "filename_prefix": wan_clip_prefix("s_001"),
     }
     out = map_wan_workflow(cfg, clip)
     nodes = out["node.inputs"]

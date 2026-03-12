@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.output_paths import wan_clip_prefix
 from ai_mv.core.workflow_names import WAN_WORKFLOW
 from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow, wan_required_inputs
@@ -40,7 +41,7 @@ def _mutate_clip(config: dict, clip: dict, retry: int) -> dict:
     out["end"] = stage_image_for_comfy(config, str(out["end"]))
     out["seed_offset"] = retry * 101
     out["wan_size"] = str(config["render"]["wan_size"])
-    out["filename_prefix"] = f"clips/{clip['shot_id']}"
+    out["filename_prefix"] = wan_clip_prefix(clip["shot_id"])
     return out
 
 
