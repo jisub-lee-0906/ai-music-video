@@ -18,7 +18,6 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "audio_map": audio_map,
-            "audio_quality_review": dict(plan.get("audio_quality_review", {})),
             "music_file": music_file,
             "selected_profile": str(stage_input.config.get("profile", "")).strip(),
             "planner_prompts": _merge_prompt_preview(

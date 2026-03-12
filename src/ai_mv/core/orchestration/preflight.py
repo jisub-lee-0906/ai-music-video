@@ -51,7 +51,6 @@ def _add_audio(stage_input: StageInput) -> None:
     stage_input.payload.update(
         {
             "audio_map": audio_map,
-            "audio_quality_review": dict(plan.get("audio_quality_review", {})),
             "music_file": "",
             "planner_prompts": _merge(stage_input.payload, "audio", {"prompt": _audio_prompt(plan)}),
             "workflow_inputs_preview": _merge(

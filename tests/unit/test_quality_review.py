@@ -8,7 +8,6 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
     monkeypatch.setattr(
         "ai_mv.core.quality_review.generate_structured",
         lambda _config, _prompt, _schema: {
-            "winner_index": 0,
             "reasoning": "Coverage is coherent and editable.",
             "strengths": ["same-world continuity", "clear progression"],
             "risks": ["bridge still a bit safe"],
@@ -17,7 +16,6 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
     payload = {
         "selected_profile": "jpop_citypop",
         "audio_map": {"profile_summary": "city-pop", "language": "ja"},
-        "audio_quality_review": {"judge": {"winner_index": 0, "reasoning": "best song"}},
         "visual_brief": {
             "section_briefs": [
                 {"section_name": "intro", "story_beat": "checks the reflection", "location_anchor": "station glass", "emotional_arc": "searching"}
@@ -30,8 +28,7 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
         },
     }
     out = build_quality_review({}, payload)
-    assert out["audio"]["judge"]["reasoning"] == "best song"
-    assert out["visual"]["judge"]["winner_index"] == 0
+    assert out["visual"]["reasoning"] == "Coverage is coherent and editable."
 
 
 def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
@@ -44,7 +41,7 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
             "sections": [{"name": "intro", "label": "Intro"}, {"name": "chorus", "label": "Final Chorus"}],
         },
     }
-    review = {"audio": {"judge": {"winner_index": 0, "reasoning": "best"}}}
+    review = {"visual": {"reasoning": "best"}}
     summary = build_run_summary(state, payload, review)
     write_quality_review(state, review)
     write_run_summary(state, summary)

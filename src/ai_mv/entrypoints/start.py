@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
 from ai_mv.core.orchestration.config_defaults import default_config
@@ -18,7 +19,7 @@ def run_start(run_id: str | None = None, profile: str | None = None) -> int:
         if _run_doctor_with_profile(cfg) != 0:
             return 1
         rid = _prepare_run_profile(cfg, rid)
-        run_pipeline(cfg, rid, allow_existing_run=True)
+        _run_pipeline_compat(cfg, rid)
         snap = read_snapshot(rid)
         print(f"run_id={rid}")
         print(f"status={snap['status']}")
@@ -46,3 +47,10 @@ def _prepare_run_profile(cfg: dict, run_id: str) -> str:
     if profile:
         (run_dir / "selected_profile.txt").write_text(profile, encoding="utf-8")
     return rid
+
+
+def _run_pipeline_compat(cfg: dict, rid: str) -> str:
+    params = tuple(inspect.signature(run_pipeline).parameters)
+    if params and params[0] == "config":
+        return run_pipeline(cfg, rid, allow_existing_run=True)
+    return run_pipeline(rid, allow_existing_run=True)

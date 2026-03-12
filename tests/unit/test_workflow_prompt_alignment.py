@@ -109,7 +109,7 @@ def test_wan_prompt_mentions_direct_text_encoder_alignment():
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "injected directly into the workflow text encoder" in prompt
     assert "motion payoff" in prompt
-    assert "city have finally locked into the same beat" in prompt
+    assert "lead subject and the world have finally locked into the same beat" in prompt
     assert "vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views" in prompt
     assert "Build motion like coverage for a finished edit" in prompt
     assert "Honor section story_beat and location_anchor" in prompt
