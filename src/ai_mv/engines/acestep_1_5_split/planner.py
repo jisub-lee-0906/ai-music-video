@@ -88,8 +88,12 @@ def _audio_structure_rules() -> str:
         "Chorus: high-impact hook, chant-ready phrasing, immediate recall, strong emotional release, and the clearest central idea of the song. "
         "Chorus should simplify language compared with the verse so the hook lands instantly. "
         "Post-chorus: very short callback lines built around the same hook phrase, acting as a lingering afterglow rather than a new verse. "
+        "Even when short, post-chorus should contain at least one complete melodic thought or image tail, not only chopped slogan fragments. "
         "Bridge should create a genuine contrast in perspective, energy, or emotional framing before the final return, and should redirect or thin the language instead of stacking more imagery. "
+        "Bridge should feel like a real turn of the song, with choice, consequence, confession, or irreversible emotional recognition rather than only pretty atmosphere. "
         "Bridge should usually be sparser than the verse and should not feel lyrically crowded. "
+        "Outro should feel like a real landing after the final chorus, not just a leftover fragment. "
+        "Outro should usually keep 2-3 concise lines, with one residue image and one clear closure line that settles the song. "
     )
 
 
@@ -100,19 +104,25 @@ def _audio_form_rules() -> str:
         "If duration forces compression, keep at minimum intro, verse_1, pre_chorus, chorus, verse_2, bridge, final chorus, outro. "
         "A bridge must never be the final large section; it must be followed by another chorus block. "
         "Use repeated chorus blocks when the song returns, and label the last one as Final Chorus while keeping section='chorus'. "
+        "A normal chorus should usually land in 6 lines so the hook, response, support, and payoff all have room to breathe. "
         "Keep the first line of each chorus in the same hook family so recall stays immediate. "
         "The second line of a chorus must answer, tilt, or intensify the hook; do not copy the opening line verbatim into line two. "
         "In every chorus, line 1 should act as the hook anchor, line 2 should answer or intensify it, and later lines should carry scene detail, payoff, or emotional consequence. "
         "Do not let every chorus line perform the same job or repeat the same phrase shape. "
+        "Do not repeat the exact hook-anchor line again as line 3 unless it is clearly transformed; a chorus should move forward, not stall. "
+        "Within a chorus, the listener should feel progression from hook to answer to consequence; avoid making line 3 or line 4 feel like a simple second hook start. "
         "If a second chorus appears before the bridge, keep the same hook family but change at least one support line and one payoff/callback line so it does not read as an exact duplicate. "
         "The final chorus must feel bigger than the first chorus by adding payoff, lift, or a fresh line turn instead of simple copy-paste. "
+        "The final chorus should usually open into 7 or 8 lines so the payoff can actually expand rather than merely repeat the first chorus. "
         "The final chorus should preserve the hook opening but introduce at least two new lines or one new image turn that was not used in the first chorus. "
         "At least half of the non-opening lines in the final chorus should differ from the first chorus. "
         "Use the bridge as the setup for the final chorus payoff, so the final chorus answers or releases the bridge tension. "
         "The final chorus should contain one concrete visual or emotional payoff line that sounds like the line listeners wait for. "
+        "The final chorus should contain at least one line that would feel impossible or unearned earlier in the song. "
         "Do not repeat the exact same six chorus lines three times across the song. "
         "Verse_2 must advance the scene or relationship, not paraphrase verse_1. "
-        "Post-chorus should usually stay at 2-3 very short lines and behave like an echo, not a new verse. "
+        "Post-chorus should usually stay at 2-3 short lines and behave like an echo, not a new verse, but it still needs one melodic tail or image turn so it does not feel empty. "
+        "Outro must not end on a bare noun fragment or unresolved slogan; the last line should land like a gentle final sentence or emotional settling. "
         "Aim for 9-11 lyrics_blocks for a full song whenever duration allows. "
     )
 
@@ -236,15 +246,32 @@ def _profile_line(label: str, text: object) -> str:
 
 def _validate_audio_plan_quality(plan: dict) -> None:
     choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
+    posts = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "post_chorus"]
+    bridges = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "bridge"]
+    outros = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "outro"]
     if len(choruses) < 2:
         return
+    _validate_chorus_lengths(choruses)
     _validate_chorus_opening_pairs(choruses)
     _validate_chorus_line_functions(choruses)
     _validate_generic_hook_fragments(choruses)
     _validate_language_specific_hook_style(choruses, str(plan.get("language", "")).strip().lower())
     _validate_hook_title_worthiness(choruses, plan)
     _validate_second_chorus(choruses)
-    _validate_final_chorus(choruses)
+    _validate_post_chorus(posts, choruses[0] if choruses else {})
+    _validate_bridge(bridges)
+    _validate_final_chorus(choruses, bridges[-1] if bridges else {})
+    _validate_outro(outros)
+
+
+def _validate_chorus_lengths(choruses: list[dict]) -> None:
+    first = _clean_lines(choruses[0])
+    if len(first) < 6:
+        raise RuntimeError("audio planner quality failure: first chorus too short")
+    if len(choruses) > 1:
+        second = _clean_lines(choruses[1])
+        if len(second) < 6:
+            raise RuntimeError("audio planner quality failure: second chorus too short")
 
 
 def _validate_chorus_opening_pairs(choruses: list[dict]) -> None:
@@ -260,6 +287,8 @@ def _validate_chorus_line_functions(choruses: list[dict]) -> None:
         if len(lines) < 4:
             continue
         opening = lines[0].lower()
+        if len(lines) >= 3 and lines[2].lower() == opening:
+            raise RuntimeError("audio planner quality failure: chorus stalls by repeating the hook anchor too early")
         repeated_opening = sum(1 for line in lines if line.lower() == opening)
         if repeated_opening > 2:
             raise RuntimeError("audio planner quality failure: chorus anchor repeated too many times")
@@ -273,6 +302,23 @@ def _validate_second_chorus(choruses: list[dict]) -> None:
     second = _clean_lines(choruses[1])
     if first and second and first == second:
         raise RuntimeError("audio planner quality failure: second chorus duplicates first chorus exactly")
+
+
+def _validate_post_chorus(posts: list[dict], first_chorus: dict) -> None:
+    if not posts:
+        return
+    hook_lines = _clean_lines(first_chorus)[:4]
+    hook_tokens = _hook_callback_tokens(hook_lines)
+    for block in posts:
+        lines = _clean_lines(block)
+        if len(lines) < 2:
+            raise RuntimeError("audio planner quality failure: post-chorus too short")
+        if len(lines) > 3:
+            raise RuntimeError("audio planner quality failure: post-chorus too long")
+        if not _post_chorus_has_callback(lines, hook_lines, hook_tokens):
+            raise RuntimeError("audio planner quality failure: post-chorus misses direct hook callback")
+        if _is_fragmentary_post_chorus(lines):
+            raise RuntimeError("audio planner quality failure: post-chorus feels too fragmentary")
 
 
 def _validate_generic_hook_fragments(choruses: list[dict]) -> None:
@@ -307,15 +353,40 @@ def _validate_hook_title_worthiness(choruses: list[dict], plan: dict) -> None:
         raise RuntimeError("audio planner quality failure: japanese hook opening feels too generic")
 
 
-def _validate_final_chorus(choruses: list[dict]) -> None:
+def _validate_bridge(bridges: list[dict]) -> None:
+    if not bridges:
+        return
+    lines = _clean_lines(bridges[-1])
+    if len(lines) < 3:
+        raise RuntimeError("audio planner quality failure: bridge too short")
+    if not _bridge_has_turn(lines):
+        raise RuntimeError("audio planner quality failure: bridge lacks a real emotional turn")
+
+
+def _validate_final_chorus(choruses: list[dict], bridge_block: dict) -> None:
     first = _clean_lines(choruses[0])
     final_block = choruses[-1]
     final = _clean_lines(final_block)
     label = str(final_block.get("label", "")).strip().lower()
     if len(choruses) >= 3 and "final chorus" not in label:
         raise RuntimeError("audio planner quality failure: final chorus label missing")
+    if len(final) < 7:
+        raise RuntimeError("audio planner quality failure: final chorus too short for payoff")
     if not _has_final_chorus_payoff(first, final):
         raise RuntimeError("audio planner quality failure: final chorus payoff too weak")
+    if bridge_block and not _final_answers_bridge(final, _clean_lines(bridge_block)):
+        raise RuntimeError("audio planner quality failure: final chorus does not answer the bridge strongly enough")
+
+
+def _validate_outro(outros: list[dict]) -> None:
+    if not outros:
+        return
+    lines = _clean_lines(outros[-1])
+    if len(lines) < 2:
+        raise RuntimeError("audio planner quality failure: outro too short")
+    last = lines[-1]
+    if _looks_like_fragment_ending(last):
+        raise RuntimeError("audio planner quality failure: outro ending feels too fragmentary")
 
 
 def _has_final_chorus_payoff(first: list[str], final: list[str]) -> bool:
@@ -325,9 +396,61 @@ def _has_final_chorus_payoff(first: list[str], final: list[str]) -> bool:
         return False
     opening = first[0].lower()
     new_lines = [x for x in final[1:] if x.lower() not in {y.lower() for y in first[1:]}]
-    if len(new_lines) >= 2 and final[0].lower() == opening:
+    if len(new_lines) >= 3 and final[0].lower() == opening:
+        return True
+    if len(final) >= 8 and len(new_lines) >= 2 and any(len(line) >= 12 for line in new_lines):
         return True
     return False
+
+
+def _bridge_has_turn(lines: list[str]) -> bool:
+    joined = " ".join(lines).lower()
+    turn_markers = (
+        "もし",
+        "でも",
+        "だから",
+        "なのに",
+        "rather",
+        "even if",
+        "if ",
+        "but ",
+        "so ",
+        "still ",
+        "choose",
+        "選ぶ",
+        "離れても",
+        "戻れない",
+        "言えない",
+        "決めた",
+    )
+    return any(marker in joined for marker in turn_markers)
+
+
+def _final_answers_bridge(final: list[str], bridge: list[str]) -> bool:
+    if not final or not bridge:
+        return True
+    bridge_text = " ".join(bridge)
+    if any(token in bridge_text for token in ("離れて", "帰る", "背中", "選び")):
+        final_text = " ".join(final)
+        answer_markers = (
+            "帰さない",
+            "選ぶ",
+            "追いかける",
+            "連れてって",
+            "連れて帰る",
+            "やさしい",
+            "答え",
+            "綺麗",
+            "消えない",
+            "届きたい",
+            "朝",
+            "隣",
+            "残る",
+            "待ちたい",
+            "行く",
+        )
+        return any(marker in final_text for marker in answer_markers)
+    return True
 
 
 def _clean_lines(block: dict) -> list[str]:
@@ -405,15 +528,68 @@ def _is_weak_japanese_hook_opening(text: str) -> bool:
     return False
 
 
+def _post_chorus_has_callback(lines: list[str], hook_lines: list[str], hook_tokens: set[str]) -> bool:
+    lowered = [line.lower() for line in lines]
+    if any(line in {x.lower() for x in hook_lines} for line in lowered):
+        return True
+    return any(any(token in line for token in hook_tokens) for line in lines)
+
+
+def _hook_callback_tokens(lines: list[str]) -> set[str]:
+    tokens: set[str] = set()
+    for line in lines:
+        tokens |= _collect_world_tokens(line)
+        for word in str(line).lower().replace("?", " ").replace("!", " ").split():
+            word = word.strip(".,:;-'\"")
+            if len(word) >= 4 and word.isascii():
+                tokens.add(word)
+    return tokens
+
+
+def _looks_like_fragment_ending(text: str) -> bool:
+    line = str(text).strip()
+    if not line:
+        return True
+    if "　" not in line and " " not in line:
+        jp_tokens = _collect_world_tokens(line)
+        if jp_tokens and next(iter(jp_tokens)) == line:
+            return True
+    low = line.lower()
+    weak_suffixes = (
+        "afterglow",
+        "アフターグロウ",
+        "余熱",
+        "残像",
+    )
+    if any(low == suffix.lower() or low.endswith(" " + suffix.lower()) for suffix in weak_suffixes):
+        return True
+    return False
+
+
+def _is_fragmentary_post_chorus(lines: list[str]) -> bool:
+    if not lines:
+        return True
+    if any(len(line) >= 9 for line in lines):
+        return False
+    joined = " ".join(lines)
+    if any(ch in joined for ch in ("、", "。", "，", ",")):
+        return False
+    return True
+
+
 def _plan_with_quality_attempts(config: dict, plan: dict) -> dict:
     attempts = _planner_attempts(config)
     last: Exception | None = None
+    passing: list[tuple[int, int, dict]] = []
     for idx in range(attempts):
         try:
             attempt_plan = _attempt_plan(plan, idx)
-            return _normalize_and_validate(config, attempt_plan)
+            normalized = _normalize_and_validate(config, attempt_plan)
+            passing.append((_score_audio_candidate(normalized), idx, normalized))
         except RuntimeError as exc:
             last = exc
+    if passing:
+        return _best_passing_candidate(passing)
     raise last if last else RuntimeError("audio planner failed")
 
 
@@ -453,6 +629,70 @@ def _planner_attempts(config: dict) -> int:
         return max(1, int(raw))
     except Exception:
         return 3
+
+
+def _best_passing_candidate(passing: list[tuple[int, int, dict]]) -> dict:
+    ranked = sorted(passing, key=lambda item: (item[0], -item[1]), reverse=True)
+    return ranked[0][2]
+
+
+def _score_audio_candidate(plan: dict) -> int:
+    return (
+        _score_chorus_progression(plan)
+        + _score_final_payoff(plan)
+        + _score_bridge_turn(plan)
+        + _score_outro_closure(plan)
+    )
+
+
+def _score_chorus_progression(plan: dict) -> int:
+    choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
+    if len(choruses) < 2:
+        return 0
+    first = _clean_lines(choruses[0])
+    second = _clean_lines(choruses[1])
+    first_support = {line.lower() for line in first[2:]}
+    second_support = {line.lower() for line in second[2:]}
+    changed = len(second_support - first_support)
+    return min(4, changed * 2)
+
+
+def _score_final_payoff(plan: dict) -> int:
+    choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
+    if len(choruses) < 2:
+        return 0
+    first = _clean_lines(choruses[0])
+    final = _clean_lines(choruses[-1])
+    base = 2 if len(final) >= 8 else 1
+    first_tail = {line.lower() for line in first[1:]}
+    new_lines = sum(1 for line in final[1:] if line.lower() not in first_tail)
+    vivid = sum(1 for line in final if len(line.strip()) >= 12)
+    return base + min(4, new_lines) + min(2, vivid // 2)
+
+
+def _score_bridge_turn(plan: dict) -> int:
+    bridges = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "bridge"]
+    if not bridges:
+        return 0
+    lines = _clean_lines(bridges[-1])
+    text = " ".join(lines)
+    weight = 2 if _bridge_has_turn(lines) else 0
+    markers = ("でも", "もし", "選び", "足りない", "戻れない", "言えない", "決めた")
+    return weight + sum(1 for marker in markers if marker in text)
+
+
+def _score_outro_closure(plan: dict) -> int:
+    outros = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "outro"]
+    if not outros:
+        return 0
+    lines = _clean_lines(outros[-1])
+    if len(lines) < 2:
+        return 0
+    last = lines[-1]
+    if _looks_like_fragment_ending(last):
+        return 0
+    settle_markers = ("着いた", "終わる", "ほどける", "残る", "静か", "朝", "隣", "着く")
+    return 2 + sum(1 for marker in settle_markers if marker in last)
 
 
 def _hook_shape_bias(seed: int, language: str) -> str:

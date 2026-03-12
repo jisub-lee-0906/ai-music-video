@@ -4,8 +4,12 @@ ComfyUI + Codex CLI orchestration for long-form music-video generation.
 
 ## Quick Start
 ```bash
-pip install -e .[dev]
-ai-mv start --profile jpop_citypop
+python -m venv .venv
+& .\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+python -m pip install -e .[dev]
+python -m ai_mv.cli.app doctor
+python -m ai_mv.cli.app start --profile jpop_citypop
 ```
 
 `profile` is the main creative input surface.

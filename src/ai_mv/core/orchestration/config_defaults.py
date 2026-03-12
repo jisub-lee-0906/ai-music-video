@@ -5,7 +5,7 @@ DEFAULT_CONFIG: dict = {
     "audio": {
         "target_duration_sec": 200,
         "quality": "V0",
-        "planner_attempts": 3,
+        "planner_attempts": 5,
         "language": "en",
     },
     "profile": "",
