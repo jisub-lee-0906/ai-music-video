@@ -25,6 +25,7 @@ def test_audio_prompt_requires_final_return_after_bridge():
     assert "line 1 should act as the hook anchor" in prompt
     assert "normal chorus should usually land in 6 lines" in prompt
     assert "Do not repeat the exact hook-anchor line again as line 3" in prompt
+    assert "Do not reuse the exact hook-anchor line later in the same chorus block" in prompt
     assert "listener should feel progression from hook to answer to consequence" in prompt
     assert "The final chorus should usually open into 7 or 8 lines" in prompt
     assert "Post-chorus should usually stay at 2-3 short lines" in prompt
@@ -35,6 +36,7 @@ def test_audio_prompt_requires_final_return_after_bridge():
     assert "The final chorus should contain one concrete visual or emotional payoff line" in prompt
     assert "would feel impossible or unearned earlier in the song" in prompt
     assert "Avoid fallback hook language like 'call my name'" in prompt
+    assert "Avoid easy English callbacks like 'stay gold'" in prompt
     assert "generic English fragment" in prompt
     assert "The hook phrase should usually contain one concrete image" in prompt
     assert "genre_description must always be written in English" in prompt
@@ -42,6 +44,7 @@ def test_audio_prompt_requires_final_return_after_bridge():
     assert "Hook direction=neon rain and chrome reflections." in prompt
     assert "Preferred hook contour=" not in prompt
     assert "main chorus opening should be led by Japanese phrasing" in prompt
+    assert "short English phrase become the emotional center" in prompt
     assert "Make the chorus opening feel like a plausible song title" in prompt
     assert "title-worthiness" in prompt
 
@@ -91,19 +94,36 @@ def test_audio_plan_quality_rejects_generic_hook_fragment():
         assert "generic hook fragment" in str(exc)
 
 
-def test_audio_plan_quality_rejects_overrepeated_chorus_anchor():
+def test_audio_plan_quality_rejects_weak_english_callback_for_japanese_song():
     plan = {
+        "language": "ja",
         "lyrics_blocks": [
-            {"section": "chorus", "label": "Chorus", "lines": ["same", "tilt", "rise", "same", "same", "y"]},
-            {"section": "chorus", "label": "Chorus 2", "lines": ["a", "b", "c", "d", "e", "f"]},
-            {"section": "chorus", "label": "Final Chorus", "lines": ["a", "x", "y", "z", "u", "v", "w"]},
-        ]
+            {"section": "chorus", "label": "Chorus", "lines": ["濡れた街灯", "答えは遅い", "support one", "support two", "ほら stay gold, stay gold", "payoff"]},
+            {"section": "chorus", "label": "Chorus 2", "lines": ["雨のガラス", "answer", "support one", "support two", "callback", "payoff"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["雨のガラス", "x", "y", "z", "u", "v", "w"]},
+        ],
     }
     try:
         audio_planner._validate_audio_plan_quality(plan)
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
-        assert "chorus anchor repeated too many times" in str(exc)
+        assert "weak english callback" in str(exc)
+
+
+def test_audio_plan_quality_rejects_english_heavy_japanese_support_line():
+    plan = {
+        "language": "ja",
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "lines": ["濡れた街灯", "答えは遅い", "support one", "the last ride you know", "callback", "payoff"]},
+            {"section": "chorus", "label": "Chorus 2", "lines": ["雨のガラス", "answer", "support one", "support two", "callback", "payoff"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["雨のガラス", "x", "y", "z", "u", "v", "w"]},
+        ],
+    }
+    try:
+        audio_planner._validate_audio_plan_quality(plan)
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "leans too heavily on English wording" in str(exc)
 
 
 def test_audio_plan_quality_rejects_hook_anchor_repeated_as_line_three():
@@ -119,6 +139,45 @@ def test_audio_plan_quality_rejects_hook_anchor_repeated_as_line_three():
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
         assert "repeating the hook anchor too early" in str(exc)
+
+
+def test_audio_candidate_scoring_penalizes_reused_hook_anchor():
+    clean = {
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "lines": ["same", "tilt", "rise", "move", "e", "f"]},
+            {"section": "chorus", "label": "Chorus 2", "lines": ["a", "b", "c", "d", "e", "f"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["a", "x", "y", "z", "u", "v", "w", "q"]},
+            {"section": "bridge", "label": "Bridge", "lines": ["もし離れても", "でも今夜は足りない", "あなたを選ぶ"]},
+            {"section": "outro", "label": "Outro", "lines": ["wet glass fades", "the night settles by your side"]},
+        ]
+    }
+    repeated = {
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "lines": ["same", "tilt", "rise", "same", "e", "f"]},
+            {"section": "chorus", "label": "Chorus 2", "lines": ["a", "b", "c", "d", "e", "f"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["a", "x", "y", "a", "u", "v", "w", "q"]},
+            {"section": "bridge", "label": "Bridge", "lines": ["もし離れても", "でも今夜は足りない", "あなたを選ぶ"]},
+            {"section": "outro", "label": "Outro", "lines": ["wet glass fades", "the night settles by your side"]},
+        ]
+    }
+    assert audio_planner._score_hook_non_redundancy(clean) > audio_planner._score_hook_non_redundancy(repeated)
+
+
+def test_audio_candidate_scoring_prefers_direct_hook_and_resolved_final_line():
+    stronger = {
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "lines": ["街灯の先へ", "b", "c", "d", "e", "f"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["街灯の先へ", "x", "y", "z", "u", "v", "w", "あなたと行ける"]},
+        ]
+    }
+    weaker = {
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "lines": ["街灯の余韻", "b", "c", "d", "e", "f"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["街灯の余韻", "x", "y", "z", "u", "v", "w", "朝まで"]},
+        ]
+    }
+    assert audio_planner._score_hook_directness(stronger) > audio_planner._score_hook_directness(weaker)
+    assert audio_planner._score_final_closure(stronger) > audio_planner._score_final_closure(weaker)
 
 
 def test_audio_plan_quality_rejects_missing_support_payoff_lines():
@@ -246,6 +305,22 @@ def test_audio_plan_quality_rejects_english_heavy_japanese_hook_anchor():
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
         assert "leans too heavily on English fragment" in str(exc)
+
+
+def test_audio_plan_quality_rejects_awkward_japanese_english_center_line():
+    plan = {
+        "language": "ja",
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "lines": ["濡れた街灯", "返事はまだ遅い", "雨粒が肩をなぞる", "ねえ Last ride 逃さないで", "そのまま見つめて", "街がまた揺れる"]},
+            {"section": "chorus", "label": "Chorus 2", "lines": ["濡れた街灯が揺れてる", "横顔だけが近くなる", "雨粒が肩をなぞる", "最後の電車がにじむ", "そのまま見つめて", "街がまた揺れる"]},
+            {"section": "chorus", "label": "Final Chorus", "lines": ["濡れた街灯が揺れてる", "今夜はちゃんと届いてる", "ガラスの向こうで息をする", "終電のベルも遠くなる", "そのまま見つめて", "街がまたほどける", "濡れたホームに熱が残る"]},
+        ],
+    }
+    try:
+        audio_planner._validate_audio_plan_quality(plan)
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "short English phrase dominate too directly" in str(exc)
 
 
 def test_audio_plan_quality_rejects_hook_without_concrete_world_anchor():

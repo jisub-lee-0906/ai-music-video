@@ -18,10 +18,22 @@ _GENERIC_HOOK_FRAGMENTS = (
     "hold me",
     "all night",
 )
+_WEAK_ENGLISH_CALLBACKS = (
+    "stay gold",
+    "stay gold, stay gold",
+    "slow down",
+    "oh baby",
+    "baby baby",
+)
 _WEAK_JA_HOOK_ENDINGS = (
     "まだ揺れてる",
     "まだ光ってる",
     "まだ消えない",
+)
+_WEAK_JA_HOOK_ABSTRACTS = (
+    "余韻",
+    "気配",
+    "記憶",
 )
 
 
@@ -110,6 +122,7 @@ def _audio_form_rules() -> str:
         "In every chorus, line 1 should act as the hook anchor, line 2 should answer or intensify it, and later lines should carry scene detail, payoff, or emotional consequence. "
         "Do not let every chorus line perform the same job or repeat the same phrase shape. "
         "Do not repeat the exact hook-anchor line again as line 3 unless it is clearly transformed; a chorus should move forward, not stall. "
+        "Do not reuse the exact hook-anchor line later in the same chorus block; later callback moments must be transformed rather than copied verbatim. "
         "Within a chorus, the listener should feel progression from hook to answer to consequence; avoid making line 3 or line 4 feel like a simple second hook start. "
         "If a second chorus appears before the bridge, keep the same hook family but change at least one support line and one payoff/callback line so it does not read as an exact duplicate. "
         "The final chorus must feel bigger than the first chorus by adding payoff, lift, or a fresh line turn instead of simple copy-paste. "
@@ -154,6 +167,7 @@ def _audio_description_rules() -> str:
         "Prefer a phrase that listeners could quote as the song title, not just a safe description line. "
         "Different good hooks may use different contours such as image plus destination, image plus afterglow, reflection plus motion, or place plus echo; keep the contour coherent within one song. "
         "Avoid fallback hook language like 'call my name', 'hold me', 'stay with me', 'all night', or repeated hey-oh syllables unless the surrounding line adds a fresh concrete twist. "
+        "Avoid easy English callbacks like 'stay gold' or other slogan-like filler if they do not feel inevitable to the song's world. "
         "Avoid letting a generic English fragment become the main hook anchor when a stronger world-specific phrase is available. "
         "Avoid using the same generic imperative in multiple chorus lines. "
         "Do not let every chorus line carry the same weight; support lines should set up the hook and payoff lines should feel earned. "
@@ -171,11 +185,12 @@ def _language_style_rules(plan: dict) -> str:
         return (
             "Write fluent modern Japanese lyrics with a natural mix of kanji, hiragana, and katakana. "
             "Keep the diction elegant, adult, and singable rather than childish, slangy, or anime-coded. "
-            "Use English only for very short fashionable hook fragments when they sharpen recall. "
-            "Prefer natural Japanese phrasing built from the profile's concrete world over awkward loanword-heavy wording. "
-            "Avoid forced transliterations when a natural Japanese phrase would sing more smoothly. "
-            "In Japanese songs, the main chorus opening should be led by Japanese phrasing; do not let an English fragment dominate the hook anchor. "
-            "Give the Japanese chorus opening title-worthiness: it should sound like a phrase people could remember as the song name, not just a safe mood sentence. "
+        "Use English only for very short fashionable hook fragments when they sharpen recall. "
+        "Prefer natural Japanese phrasing built from the profile's concrete world over awkward loanword-heavy wording. "
+        "Avoid forced transliterations when a natural Japanese phrase would sing more smoothly. "
+        "In Japanese songs, the main chorus opening should be led by Japanese phrasing; do not let an English fragment dominate the hook anchor. "
+        "Do not let a short English phrase become the emotional center of a chorus support line by itself; it should feel woven into Japanese phrasing rather than dropped in as a slogan. "
+        "Give the Japanese chorus opening title-worthiness: it should sound like a phrase people could remember as the song name, not just a safe mood sentence. "
             "Avoid generic safe endings like a bare 'still swaying' line unless the concrete image and twist are unusually specific. "
             "If you use an English fragment, keep it to two to four words and weave it into a fuller Japanese line. "
             "If you use an English fragment inside Japanese lyrics, embed it inside a fuller line instead of leaving it as a standalone line. "
@@ -255,6 +270,7 @@ def _validate_audio_plan_quality(plan: dict) -> None:
     _validate_chorus_opening_pairs(choruses)
     _validate_chorus_line_functions(choruses)
     _validate_generic_hook_fragments(choruses)
+    _validate_weak_english_callbacks(choruses, str(plan.get("language", "")).strip().lower())
     _validate_language_specific_hook_style(choruses, str(plan.get("language", "")).strip().lower())
     _validate_hook_title_worthiness(choruses, plan)
     _validate_second_chorus(choruses)
@@ -289,9 +305,6 @@ def _validate_chorus_line_functions(choruses: list[dict]) -> None:
         opening = lines[0].lower()
         if len(lines) >= 3 and lines[2].lower() == opening:
             raise RuntimeError("audio planner quality failure: chorus stalls by repeating the hook anchor too early")
-        repeated_opening = sum(1 for line in lines if line.lower() == opening)
-        if repeated_opening > 2:
-            raise RuntimeError("audio planner quality failure: chorus anchor repeated too many times")
         support = [line for line in lines[2:] if line.lower() not in {opening, lines[1].lower()}]
         if len(support) < 2:
             raise RuntimeError("audio planner quality failure: chorus lacks support or payoff lines")
@@ -330,6 +343,17 @@ def _validate_generic_hook_fragments(choruses: list[dict]) -> None:
                     raise RuntimeError(f"audio planner quality failure: generic hook fragment '{frag}'")
 
 
+def _validate_weak_english_callbacks(choruses: list[dict], language: str) -> None:
+    if language != "ja":
+        return
+    for block in choruses:
+        for line in _clean_lines(block):
+            low = line.lower()
+            for frag in _WEAK_ENGLISH_CALLBACKS:
+                if frag in low:
+                    raise RuntimeError(f"audio planner quality failure: weak english callback '{frag}'")
+
+
 def _validate_language_specific_hook_style(choruses: list[dict], language: str) -> None:
     if language != "ja":
         return
@@ -340,6 +364,11 @@ def _validate_language_specific_hook_style(choruses: list[dict], language: str) 
         opening = lines[0]
         if _is_english_heavy_japanese_hook(opening):
             raise RuntimeError("audio planner quality failure: japanese hook anchor leans too heavily on English fragment")
+        for line in lines[1:]:
+            if _has_awkward_japanese_english_center(line):
+                raise RuntimeError("audio planner quality failure: japanese chorus line lets a short English phrase dominate too directly")
+            if _latin_word_count(line) > 2:
+                raise RuntimeError("audio planner quality failure: japanese chorus line leans too heavily on English wording")
 
 
 def _validate_hook_title_worthiness(choruses: list[dict], plan: dict) -> None:
@@ -528,6 +557,39 @@ def _is_weak_japanese_hook_opening(text: str) -> bool:
     return False
 
 
+def _opening_has_motion_or_destination(text: str) -> bool:
+    opening = str(text).strip()
+    markers = ("へ", "まで", "先", "向", "伸ば", "追", "越", "連れ", "行", "帰れない")
+    return any(marker in opening for marker in markers)
+
+
+def _looks_like_unresolved_final_line(text: str) -> bool:
+    line = str(text).strip()
+    weak_endings = ("朝まで", "まだ熱い", "消えないで", "帰れない", "気配", "余韻")
+    return any(line.endswith(ending) for ending in weak_endings)
+
+
+def _has_awkward_japanese_english_center(text: str) -> bool:
+    line = str(text).strip().lower()
+    filler = ("ねえ", "ほら", "まだ", "ただ")
+    if not any(token in line for token in filler):
+        return False
+    words = _latin_words(line)
+    if not words:
+        return False
+    if len(words) <= 3 and any(token in line for token in filler):
+        return True
+    return False
+
+
+def _latin_word_count(text: str) -> int:
+    return len(_latin_words(str(text).strip().lower()))
+
+
+def _latin_words(text: str) -> list[str]:
+    return [part for part in "".join(ch if ch.isascii() and (ch.isalpha() or ch.isspace()) else " " for ch in text).split() if part]
+
+
 def _post_chorus_has_callback(lines: list[str], hook_lines: list[str], hook_tokens: set[str]) -> bool:
     lowered = [line.lower() for line in lines]
     if any(line in {x.lower() for x in hook_lines} for line in lowered):
@@ -639,7 +701,10 @@ def _best_passing_candidate(passing: list[tuple[int, int, dict]]) -> dict:
 def _score_audio_candidate(plan: dict) -> int:
     return (
         _score_chorus_progression(plan)
+        + _score_hook_non_redundancy(plan)
+        + _score_hook_directness(plan)
         + _score_final_payoff(plan)
+        + _score_final_closure(plan)
         + _score_bridge_turn(plan)
         + _score_outro_closure(plan)
     )
@@ -657,6 +722,41 @@ def _score_chorus_progression(plan: dict) -> int:
     return min(4, changed * 2)
 
 
+def _score_hook_non_redundancy(plan: dict) -> int:
+    choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
+    score = 0
+    for block in choruses:
+        lines = _clean_lines(block)
+        if not lines:
+            continue
+        opening = lines[0].lower()
+        repeats = sum(1 for line in lines[1:] if line.lower() == opening)
+        if repeats == 0:
+            score += 3
+        elif repeats == 1:
+            score += 1
+        else:
+            score -= 2
+    return score
+
+
+def _score_hook_directness(plan: dict) -> int:
+    choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
+    if not choruses:
+        return 0
+    opening = _clean_lines(choruses[0])[0] if _clean_lines(choruses[0]) else ""
+    if not opening:
+        return 0
+    score = 0
+    if _opening_has_motion_or_destination(opening):
+        score += 3
+    if any(word in opening for word in _WEAK_JA_HOOK_ABSTRACTS):
+        score -= 2
+    if len(opening) >= 8:
+        score += 1
+    return score
+
+
 def _score_final_payoff(plan: dict) -> int:
     choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
     if len(choruses) < 2:
@@ -668,6 +768,20 @@ def _score_final_payoff(plan: dict) -> int:
     new_lines = sum(1 for line in final[1:] if line.lower() not in first_tail)
     vivid = sum(1 for line in final if len(line.strip()) >= 12)
     return base + min(4, new_lines) + min(2, vivid // 2)
+
+
+def _score_final_closure(plan: dict) -> int:
+    choruses = [x for x in plan.get("lyrics_blocks", []) if str(x.get("section", "")).strip().lower() == "chorus"]
+    if not choruses:
+        return 0
+    final = _clean_lines(choruses[-1])
+    if not final:
+        return 0
+    last = final[-1]
+    if _looks_like_unresolved_final_line(last):
+        return -3
+    markers = ("行ける", "選ぶ", "続く", "残る", "着く", "離れない", "覚えてる", "連れてゆく", "愛せる")
+    return 1 + sum(1 for marker in markers if marker in last)
 
 
 def _score_bridge_turn(plan: dict) -> int:
