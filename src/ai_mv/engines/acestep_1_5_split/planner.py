@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.profile_brief import build_profile_brief
+from ai_mv.core.profile_brief import build_profile_brief, resolve_style_guidance
 from ai_mv.core.output_paths import audio_prefix
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
@@ -41,7 +41,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     audio = _audio_config(config)
     tags = _audio_tags(audio)
     guidance = _style_guidance(config)
-    profile = build_profile_brief(tags, guidance)
+    profile = build_profile_brief(config)
     plan = {
         "tags": tags,
         "style_guidance": guidance,
@@ -217,8 +217,7 @@ def _audio_config(config: dict) -> dict:
 
 
 def _style_guidance(config: dict) -> str:
-    style = config.get("style", {}) if isinstance(config, dict) else {}
-    return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
+    return resolve_style_guidance(config)
 
 
 def _audio_language(audio: dict) -> str:

@@ -118,7 +118,8 @@ def _planner_inputs(context: dict[str, str]) -> str:
         f"Use shot_type only from enum: {context['types']}. "
         f"Audio tags={context['tags']}; Audio direction={context['desc']}; "
         f"Style guidance={context['guidance']}; Profile steering={context['profile']}; "
-        f"Visual direction={context['visual_direction']}; Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
+        f"Visual direction={context['visual_direction']}; "
+        f"Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
         f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; "
         f"Escalation guide={context['escalation']}; Timing reference={context['section_view']}."
     )

@@ -112,7 +112,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Avoid generic phrase pairs like beautiful lighting, emotional atmosphere, cinematic mood, stylish portrait, or dreamy vibes unless they are tied to a specific visual fact. "
         "Treat profile_summary and visual_direction as the stable interpretation layer for future profiles: compress more tags into one readable image lane instead of listing them back. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, twisted limbs, broken wrists, warped torso, collapsed shoulders, text watermark, logo, subtitle. "
-        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; Avoid={negative}; "
+        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; "
+        f"Avoid={negative}; "
         f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Anchor ids={anchor_ids}; Anchors={summary}."
     )

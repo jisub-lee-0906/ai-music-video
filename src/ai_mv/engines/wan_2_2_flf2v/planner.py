@@ -93,7 +93,8 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
-        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; Avoid={negative}; "
+        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; "
+        f"Avoid={negative}; "
         f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Exact ClipIds={clip_ids}; ClipSummary={summary}."
     )

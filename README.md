@@ -13,9 +13,20 @@ python -m ai_mv.cli.app start --profile jpop_citypop
 ```
 
 `profile` is the main creative input surface.
-- `audio.tags`: audio/music direction
+- `audio.brief`: primary music briefing for the LLM
+- `audio.hook_brief`: hook and topline briefing
+- `audio.tags`: optional conditioning spine for audio engines
 - `audio.language`: lyrics language only
-- `style.guidance`: visual direction
+- `visual.brief`: primary visual briefing for the LLM
+- `visual.negative`: forbidden visual drift
+- `mv.story_world`, `mv.action_vocabulary`, `mv.payoff_style`: section progression and MV behavior
+- `mv.avoid`: forbidden MV drift
+
+The planners are now strictly `brief-first`.
+- explicit identity/world briefing fields are required
+- missing briefing fields fail fast during profile bootstrap
+- old tag/guidance inference is not used in the runtime path anymore
+- profiles define the world and artistic boundaries, while planners reinterpret them into per-run workflow payloads
 
 Codex CLI expands those inputs into:
 - AceStep audio plan

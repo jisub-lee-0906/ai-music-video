@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from ai_mv.core.contracts.errors import PipelineError
+from ai_mv.core.profile_brief import validate_profile_brief_config
 from ai_mv.core.workflow_names import WORKFLOW_FILES
 from ai_mv.utils.path_utils import resolve_project_path
 from ai_mv.utils.bool_utils import parse_bool
@@ -24,6 +25,10 @@ def apply_profile(config: dict) -> None:
         raise PipelineError(f"invalid profile config: {path.as_posix()}")
     _deep_merge(config, profile)
     config["profile"] = name
+    try:
+        validate_profile_brief_config(config)
+    except ValueError as exc:
+        raise PipelineError(str(exc)) from exc
 
 
 def validate_sizes(config: dict) -> None:

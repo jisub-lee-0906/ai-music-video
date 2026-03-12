@@ -81,6 +81,9 @@ def _audio_tag_spine(tags: list[str]) -> str:
 
 def _conditioning_lead(tags: list[str], audio_direction: str, profile_summary: str) -> str:
     spine = _audio_tag_spine(tags)
+    detailed = _join_sentences(audio_direction)
+    if len(detailed.split()) >= 8:
+        return detailed
     if len(spine.split()) >= 5:
         return spine
     return _sentenceize(audio_direction or profile_summary or spine)
@@ -122,3 +125,10 @@ def _join_series(parts: list[str], conj: str = "and") -> str:
 def _sentenceize(text: str) -> str:
     cleaned = _trim_sentence(text).replace(";", ",")
     return " ".join(cleaned.split())
+
+
+def _join_sentences(*parts: str) -> str:
+    vals = [_sentenceize(part) for part in parts if _sentenceize(part)]
+    if not vals:
+        return ""
+    return ". ".join(vals)

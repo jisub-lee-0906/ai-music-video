@@ -29,7 +29,8 @@ def test_bootstrap_applies_profile_audio_and_style(tmp_path, monkeypatch):
     run_dir.mkdir(parents=True)
     out = bootstrap_config(cfg, run_dir)
     assert out["audio"]["tags"] == ["city pop", "female vocal"]
-    assert out["style"]["guidance"] == "neon nightlife"
+    assert out["audio"]["brief"] == "City-pop briefing"
+    assert out["visual"]["brief"] == "Night city visual briefing"
 
 
 def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
@@ -59,9 +60,17 @@ def _profile_yaml() -> str:
     return (
         "audio:\n"
         "  language: ja\n"
+        "  brief: City-pop briefing\n"
+        "  hook_brief: Hook briefing\n"
         "  tags:\n"
         "    - city pop\n"
         "    - female vocal\n"
-        "style:\n"
-        "  guidance: neon nightlife\n"
+        "visual:\n"
+        "  brief: Night city visual briefing\n"
+        "  negative: Avoid drift\n"
+        "mv:\n"
+        "  story_world: One small city night\n"
+        "  action_vocabulary: Slow pass, reflection check\n"
+        "  payoff_style: Open, resolved return\n"
+        "  avoid: Random spectacle\n"
     )

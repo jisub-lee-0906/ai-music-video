@@ -171,6 +171,8 @@ def _section(name: str) -> dict:
         "palette_hint": "teal and magenta",
         "lighting_hint": "soft rim light",
         "staging_hint": "clean stage depth",
+        "story_beat": "walks through the lit stage depth and keeps moving",
+        "location_anchor": "neon-lit stage runway",
     }
 
 
@@ -214,4 +216,5 @@ def _shot(
         "emotion": emotion,
         "scene_detail": detail,
         "motion_hint": motion,
+        "space_relation": "light spill stays camera-right while stage depth opens behind her",
     }
