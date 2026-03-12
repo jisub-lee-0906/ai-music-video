@@ -21,6 +21,8 @@ def test_visual_bridge_builds_strict_brief(monkeypatch):
     assert out["hero_identity"]
     assert len(out["section_briefs"]) == 2
     assert out["section_briefs"][1]["section_name"] == "chorus"
+    assert out["section_briefs"][0]["story_beat"]
+    assert out["section_briefs"][0]["location_anchor"]
 
 
 def test_visual_bridge_prompt_separates_names_and_timing():
@@ -43,6 +45,8 @@ def test_visual_bridge_prompt_separates_names_and_timing():
     assert "Timing reference=intro(0.0-6.0), chorus(6.0-14.0)" in prompt
     assert "section_name must be a bare section token only" in prompt
     assert "Chorus 2 should feel like a stronger return" in prompt
+    assert "Create a small location budget for the whole song" in prompt
+    assert "story_beat must be a short plain-English action" in prompt
     assert "Profile steering=retro japanese city-pop lane" in prompt
     assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
 
@@ -60,6 +64,8 @@ def _fake_generate(_config, _prompt, _schema):
                 "palette_hint": "teal and blue",
                 "lighting_hint": "soft rim light",
                 "staging_hint": "clean stage depth",
+                "story_beat": "passes through the storefront without looking back",
+                "location_anchor": "storefront pavement",
             },
             {
                 "section_name": "chorus",
@@ -67,6 +73,8 @@ def _fake_generate(_config, _prompt, _schema):
                 "palette_hint": "pink and gold",
                 "lighting_hint": "wide spotlight bloom",
                 "staging_hint": "expanded performance space",
+                "story_beat": "opens up in the same street with clearer confidence",
+                "location_anchor": "storefront pavement",
             },
         ],
     }

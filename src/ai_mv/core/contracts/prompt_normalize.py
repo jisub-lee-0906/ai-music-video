@@ -145,6 +145,8 @@ def _normalize_visual_section(row: dict, expected_name: str) -> dict:
         "palette_hint": _require_text(row, "palette_hint"),
         "lighting_hint": _require_text(row, "lighting_hint"),
         "staging_hint": _require_text(row, "staging_hint"),
+        "story_beat": _require_text(row, "story_beat"),
+        "location_anchor": _require_text(row, "location_anchor"),
     }
 
 

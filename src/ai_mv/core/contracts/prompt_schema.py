@@ -109,12 +109,14 @@ def visual_brief_schema() -> dict:
 def _visual_section_schema() -> dict:
     return {
         "type": "object",
-        "required": ["section_name", "emotional_arc", "palette_hint", "lighting_hint", "staging_hint"],
+        "required": ["section_name", "emotional_arc", "palette_hint", "lighting_hint", "staging_hint", "story_beat", "location_anchor"],
         "properties": {
             "section_name": {"type": "string"},
             "emotional_arc": {"type": "string"},
             "palette_hint": {"type": "string"},
             "lighting_hint": {"type": "string"},
             "staging_hint": {"type": "string"},
+            "story_beat": {"type": "string"},
+            "location_anchor": {"type": "string"},
         },
     }

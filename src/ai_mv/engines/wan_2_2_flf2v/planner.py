@@ -68,9 +68,11 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "positive_prompt is injected directly into the workflow text encoder, so do not use bullet points, labels, shot ids, or section headers. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
         "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
+        "Honor section story_beat and location_anchor from the visual brief so consecutive clips feel like progression inside a small recurring world rather than location swapping. "
         "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
         "For consecutive clips from the same shot series, treat the previous clip end as the immediate starting state of the next clip, not a visual reset. "
         "Think like a completed music video sequence: vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views across the song instead of keeping every clip face-on. "
+        "Build motion like coverage for a finished edit, not a loop of glamour poses: some clips should sell travel, passing space, or the heroine's relation to the city more than direct face presentation. "
         "Use section labels to shape escalation: Chorus 2 should feel like a stronger return than Chorus, and Final Chorus should feel like the motion payoff while staying inside the same visual grammar. "
         "For Chorus 2 and Final Chorus, express the lift through clearer posture, cleaner camera relation, stronger reflection response, or a more resolved facial turn rather than generic statements about bigger emotion. "
         "Final Chorus should read like the heroine and the city have finally locked into the same beat, with one readable motion payoff rather than extra spectacle. "
@@ -78,6 +80,7 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
         "Keep the heroine readable in every sentence: face, posture, silhouette, and clear camera relation should stay understandable. "
         "Verse and transition clips should often move through profile travel, side-on glide, shoulder-led turns, reflective passes, or silhouette walk-throughs instead of defaulting to direct front-facing motion. "
+        "Bridge clips should usually introduce distance or suspended breath: slowed walk-through, reflective separation, lateral drift with negative space, or profile pause are stronger than another frontal beauty move. "
         "Final Chorus can return to a more direct hero relation, but it should feel earned as the payoff angle rather than the default angle for the whole song. "
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Do not describe multiple competing action arcs in one clip. "
@@ -129,7 +132,7 @@ def _section_briefs(brief: dict) -> str:
     for row in brief.get("section_briefs", []):
         rows.append(
             f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
-            f"{row['lighting_hint']}|{row['staging_hint']}"
+            f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"
         )
     return ", ".join(rows)
 

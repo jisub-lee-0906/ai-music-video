@@ -28,7 +28,15 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
         "visual_motifs": ["rain"],
         "negative_constraints": ["drift"],
         "section_briefs": [
-            {"section_name": "chorus", "emotional_arc": "lift", "palette_hint": "red", "lighting_hint": "glow", "staging_hint": "front portrait"}
+            {
+                "section_name": "chorus",
+                "emotional_arc": "lift",
+                "palette_hint": "red",
+                "lighting_hint": "glow",
+                "staging_hint": "front portrait",
+                "story_beat": "opens up in the same street",
+                "location_anchor": "storefront pavement",
+            }
         ],
     }
     audio_map = {
@@ -48,6 +56,9 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Think like a finished music video" in prompt
     assert "mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings" in prompt
+    assert "Verse shots should often read as travel, drift, or body-in-space coverage" in prompt
+    assert "Bridge shots should introduce emotional distance" in prompt
+    assert "Honor each section's story_beat and location_anchor" in prompt
 
 
 def test_uso_prompt_mentions_mapper_appended_clauses():
@@ -67,6 +78,9 @@ def test_uso_prompt_mentions_mapper_appended_clauses():
     assert "Final Chorus should feel like the visual peak" in prompt
     assert "visible payoff detail" in prompt
     assert "three-quarter turns, profile walks, over-shoulder glances" in prompt
+    assert "avoid head-on beauty framing" in prompt
+    assert "body line, silhouette, and space relation may lead more than close facial detail" in prompt
+    assert "Honor the section story_beat and location_anchor" in prompt
 
 
 def test_wan_prompt_mentions_direct_text_encoder_alignment():
@@ -86,6 +100,8 @@ def test_wan_prompt_mentions_direct_text_encoder_alignment():
     assert "motion payoff" in prompt
     assert "city have finally locked into the same beat" in prompt
     assert "vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views" in prompt
+    assert "Build motion like coverage for a finished edit" in prompt
+    assert "Honor section story_beat and location_anchor" in prompt
 
 
 def test_wan_energy_policy_lifts_final_chorus():
@@ -104,7 +120,15 @@ def _brief() -> dict:
         "visual_motifs": ["rain"],
         "negative_constraints": ["drift"],
         "section_briefs": [
-            {"section_name": "chorus", "emotional_arc": "lift", "palette_hint": "red", "lighting_hint": "glow", "staging_hint": "front portrait"}
+            {
+                "section_name": "chorus",
+                "emotional_arc": "lift",
+                "palette_hint": "red",
+                "lighting_hint": "glow",
+                "staging_hint": "front portrait",
+                "story_beat": "opens up in the same street",
+                "location_anchor": "storefront pavement",
+            }
         ],
     }
 
