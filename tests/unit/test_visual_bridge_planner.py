@@ -46,9 +46,34 @@ def test_visual_bridge_prompt_separates_names_and_timing():
     assert "section_name must be a bare section token only" in prompt
     assert "Chorus 2 should feel like a stronger return" in prompt
     assert "Create a small location budget for the whole song" in prompt
-    assert "story_beat must be a short plain-English action" in prompt
+    assert "story_beat must be a short plain-English visible action beat" in prompt
     assert "Profile steering=retro japanese city-pop lane" in prompt
     assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
+
+
+def test_visual_bridge_rejects_non_action_story_beat():
+    bad = {
+        "hero_identity": "hero",
+        "world_rules": "world",
+        "visual_motifs": ["rain"],
+        "negative_constraints": ["drift"],
+        "section_briefs": [
+            {
+                "section_name": "intro",
+                "emotional_arc": "quiet",
+                "palette_hint": "blue",
+                "lighting_hint": "soft",
+                "staging_hint": "still frame",
+                "story_beat": "searching",
+                "location_anchor": "station corridor glass",
+            }
+        ],
+    }
+    try:
+        bridge_planner.normalize_visual_brief(bad, [{"name": "intro"}])
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "story_beat must describe a visible action" in str(exc)
 
 
 def _fake_generate(_config, _prompt, _schema):

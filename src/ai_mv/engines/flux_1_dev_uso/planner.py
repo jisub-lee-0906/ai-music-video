@@ -4,6 +4,7 @@ from ai_mv.core.contracts.prompt_normalize import normalize_uso_items
 from ai_mv.core.contracts.prompt_schema import uso_schema
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
 from ai_mv.infra.codex_cli_client import generate_structured
+from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
@@ -78,10 +79,13 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "For wider or travel-oriented shots, body line, silhouette, and space relation may lead more than close facial detail. "
         "Do not mention the hero prop in every item; mention it only when it materially supports the intended shot. "
         "delta describes a small progression from start to end frame, not a scene reset. "
+        "delta should usually be the smallest readable version of the section story_beat. "
         "delta must be a natural English change phrase of roughly 6-16 words, never a number, score, placeholder, or shorthand token. "
         "Do not change time period, world setting, or character species. "
         "Use the visual brief to keep hero identity, world rules, motifs, and section mood aligned. "
         "Honor the section story_beat and location_anchor from the visual brief: move the heroine through the same small set of places instead of inventing a new location for each item. "
+        "Honor the shot space_relation exactly: if glass, curb, storefront, or reflection is placed on one side of the frame, keep that side relation stable across the start and end images for the same clip. "
+        "Let the story_beat determine the keyframe change before beauty polish does; if the section is about passing, pausing, turning back, or facing forward, the frame pair should make that readable. "
         "Use concrete visual language: pose shift, gaze shift, hand motion, cloth motion, light direction, camera feel. "
         "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint. "
         "Prefer readable, graceful progression over chaotic transformation. "
@@ -89,11 +93,14 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Do not keep solving every shot as another polished upper-body hero portrait; some clips should privilege body line, travel direction, or space relation while preserving the same heroine. "
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
         "A valid change axis can also be camera relation or body orientation: quarter turn, profile pass, shoulder reveal, or entering/leaving frame. "
+        "Do not silently mirror the scene between start and end frames; preserve the same left-right geometry unless the shot blueprint explicitly says the heroine crosses the frame. "
         "Keep prompt_text concrete enough that a renderer could stage the shot without guessing. "
         "Use section labels to control return intensity: later chorus returns may look more open or radiant, while Final Chorus should feel like the visual peak without becoming a different world. "
         "For Chorus 2 and Final Chorus, prefer a visible payoff detail such as brighter eye contact, wider chest line, cleaner silhouette, or stronger boulevard reflection rather than vague intensity words. "
         "For Final Chorus, make the sentence feel like the heroine has arrived at the emotional image promised by the song, while staying in the same wardrobe, world, and palette family. "
         "Verse and bridge items should usually avoid head-on beauty framing unless the shot blueprint explicitly asks for it; profile travel, reflected glide, side-on walk, and over-shoulder look-backs are often better MV coverage. "
+        "Bridge items should feel meaningfully interrupted or isolated: a stop behind glass, a partial obstruction, a held profile, or a separated silhouette are stronger than another smooth glamour pose. "
+        "Outro items should leave one memorable residue image instead of another forward-moving portrait. "
         "For EMOTION_CLOSE and DETAIL_INSERT shots, prefer micro-shifts only: slight gaze, gentle head angle, small hand placement, or subtle light shift. "
         "For EMOTION_CLOSE shots, keep the frame centered on face, neck, shoulders, and gaze; avoid having props compete with the expression. "
         "For PERF_WIDE and ENV-like shots, let movement read through body posture, travel direction, and walking rhythm first; profile and three-quarter body views are often better than centered frontality. "
@@ -145,17 +152,18 @@ def _style_guidance(config: dict, payload: dict) -> str:
 
 
 def _brief_summary(brief: dict) -> str:
-    motifs = ", ".join(brief.get("visual_motifs", []))
-    rules = ", ".join(brief.get("negative_constraints", []))
+    world = world_bible(brief)
+    motifs = ", ".join(world.get("visual_motifs", []))
+    rules = ", ".join(world.get("negative_constraints", []))
     return (
-        f"hero={brief['hero_identity']}; world={brief['world_rules']}; "
+        f"hero={world['hero_identity']}; world={world['world_rules']}; "
         f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
     )
 
 
 def _section_briefs(brief: dict) -> str:
     rows = []
-    for row in brief.get("section_briefs", []):
+    for row in section_dramaturgy(brief):
         rows.append(
             f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
             f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"
@@ -224,7 +232,8 @@ def _anchor_summary_row(anchor: dict) -> str:
     emotion = str(anchor.get("emotion", "")).strip() or "steady"
     pose = str(anchor.get("pose_delta", "")).strip() or "small pose shift"
     detail = str(anchor.get("scene_detail", "")).strip() or "hero focus"
-    return f"{sid}({section}|{label}|{shot_type}|{emotion}|{pose}|{detail})"
+    relation = str(anchor.get("space_relation", "")).strip() or "space stays stable"
+    return f"{sid}({section}|{label}|{shot_type}|{emotion}|{pose}|{detail}|{relation})"
 
 
 def _anchor_ids(anchors: list[dict]) -> str:
@@ -255,4 +264,5 @@ def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
         "emotion": str(anchor.get("emotion", "")),
         "scene_detail": str(anchor.get("scene_detail", "")),
         "motion_hint": str(anchor.get("motion_hint", "")),
+        "space_relation": str(anchor.get("space_relation", "")),
     }

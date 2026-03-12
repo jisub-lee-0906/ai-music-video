@@ -28,7 +28,17 @@ def _tti_master_schema() -> dict:
 def _tti_shot_schema() -> dict:
     return {
         "type": "object",
-        "required": ["shot_id", "shot_type", "is_chorus", "camera_language", "pose_delta", "emotion", "scene_detail", "motion_hint"],
+        "required": [
+            "shot_id",
+            "shot_type",
+            "is_chorus",
+            "camera_language",
+            "pose_delta",
+            "emotion",
+            "scene_detail",
+            "motion_hint",
+            "space_relation",
+        ],
         "properties": {
             "shot_id": {"type": "string"},
             "shot_type": {"type": "string", "enum": SHOT_TYPES},
@@ -38,6 +48,7 @@ def _tti_shot_schema() -> dict:
             "emotion": {"type": "string"},
             "scene_detail": {"type": "string"},
             "motion_hint": {"type": "string"},
+            "space_relation": {"type": "string"},
         },
     }
 

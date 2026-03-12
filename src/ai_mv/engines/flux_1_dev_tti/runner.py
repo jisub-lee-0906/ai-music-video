@@ -61,6 +61,7 @@ def _pack_anchor(shot: dict, anchor: str) -> dict:
         "emotion": str(shot.get("emotion", "")),
         "scene_detail": str(shot.get("scene_detail", "")),
         "motion_hint": str(shot.get("motion_hint", "")),
+        "space_relation": str(shot.get("space_relation", "")),
         "retry": 0,
         "error_body": "",
     }

@@ -21,9 +21,27 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
-    assert nodes["94"]["tags"] == "Bright idol-pop with punchy 808s and layered hooks."
+    assert nodes["94"]["tags"] == "kpop. Bright idol-pop with punchy 808s and layered hooks."
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
+
+
+def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
+    plan = {
+        "tags": "jpop",
+        "genre_description": "Elegant Japanese city-pop with warm analog keys and soft neon glide.",
+        "lyrics": "濡れた街灯を追いかけて\nあなたの影を見つけた",
+        "seed": 7,
+        "bpm": 108,
+        "duration": 180,
+        "language": "ja",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    nodes = out["node.inputs"]
+    assert nodes["94"]["lyrics"] == plan["lyrics"]
+    assert nodes["94"]["language"] == "ja"
 
 
 def test_tti_mapper():
@@ -54,6 +72,7 @@ def test_uso_mapper():
         "style_ref": "refs/front.png",
         "style_guidance": "clean mv look",
         "delta": "small pose shift",
+        "space_relation": "glass stays camera-right",
         "filename_prefix": uso_frame_prefix("s_001", "start"),
     }
     out = map_uso_workflow(cfg, item)
@@ -61,6 +80,7 @@ def test_uso_mapper():
     assert nodes["47"]["image"] == "a.png"
     assert nodes["112:110"]["width"] == 1024
     assert "Start frame only" in nodes["112:6"]["text"]
+    assert "Preserve spatial relation: glass stays camera-right." in nodes["112:6"]["text"]
     assert "clean mv look" in nodes["112:6"]["text"]
 
 

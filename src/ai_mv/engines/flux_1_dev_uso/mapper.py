@@ -45,7 +45,7 @@ def _uso_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty USO prompt_text: {item['shot_id']}")
-    parts = [text, _frame_clause(item), _intent_clause(item)]
+    parts = [text, _frame_clause(item), _continuity_clause(item), _intent_clause(item)]
     return " ".join(x for x in parts if x).strip()
 
 
@@ -71,6 +71,11 @@ def _intent_clause(item: dict) -> str:
     ]
     text = ", ".join(x for x in vals if x)
     return f"Keep {text}." if text else ""
+
+
+def _continuity_clause(item: dict) -> str:
+    text = str(item.get("space_relation", "")).strip()
+    return f"Preserve spatial relation: {text}." if text else ""
 
 
 def _uso_size(config: dict) -> tuple[int, int]:

@@ -4,7 +4,9 @@ import traceback
 
 from ai_mv.core.artifacts.dashboard import write_dashboard
 from ai_mv.core.artifacts.manifest import write_manifest
+from ai_mv.core.artifacts.prompt_preview import write_prompt_preview
 from ai_mv.core.artifacts.summary import write_summary
+from ai_mv.core.artifacts.workflow_inputs_preview import write_workflow_inputs_preview
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.core.orchestration.input_gate import validate_stage_input
@@ -43,4 +45,6 @@ def run_pipeline(run_id: str = "", allow_existing_run: bool = False) -> str:
     write_manifest(state, stage_input.payload)
     write_summary(state, stage_input.payload)
     write_dashboard(state, stage_input.payload)
+    write_prompt_preview(state, stage_input.payload)
+    write_workflow_inputs_preview(state, stage_input.payload)
     return state["run_id"]

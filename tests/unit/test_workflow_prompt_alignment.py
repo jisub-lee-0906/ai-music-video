@@ -59,6 +59,10 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "Verse shots should often read as travel, drift, or body-in-space coverage" in prompt
     assert "Bridge shots should introduce emotional distance" in prompt
     assert "Honor each section's story_beat and location_anchor" in prompt
+    assert "space_relation must describe stable left-right or front-back geometry" in prompt
+    assert "visible action readable before it tries to be pretty" in prompt
+    assert "Bridge should visually interrupt the flow established before it" in prompt
+    assert "Outro framing should leave a residue image" in prompt
 
 
 def test_uso_prompt_mentions_mapper_appended_clauses():
@@ -81,6 +85,11 @@ def test_uso_prompt_mentions_mapper_appended_clauses():
     assert "avoid head-on beauty framing" in prompt
     assert "body line, silhouette, and space relation may lead more than close facial detail" in prompt
     assert "Honor the section story_beat and location_anchor" in prompt
+    assert "Honor the shot space_relation exactly" in prompt
+    assert "Do not silently mirror the scene between start and end frames" in prompt
+    assert "delta should usually be the smallest readable version of the section story_beat" in prompt
+    assert "Bridge items should feel meaningfully interrupted or isolated" in prompt
+    assert "Outro items should leave one memorable residue image" in prompt
 
 
 def test_wan_prompt_mentions_direct_text_encoder_alignment():
@@ -102,6 +111,9 @@ def test_wan_prompt_mentions_direct_text_encoder_alignment():
     assert "vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views" in prompt
     assert "Build motion like coverage for a finished edit" in prompt
     assert "Honor section story_beat and location_anchor" in prompt
+    assert "Honor space_relation from the shot blueprint" in prompt
+    assert "motion arc should visibly complete the section story_beat" in prompt
+    assert "Outro clips should resolve by leaving a lingering residue image" in prompt
 
 
 def test_wan_energy_policy_lifts_final_chorus():
@@ -143,6 +155,7 @@ def _anchor(shot_id: str, section_name: str, section_label: str) -> dict:
         "pose_delta": "small turn",
         "scene_detail": "rain glow",
         "motion_hint": "slow move",
+        "space_relation": "glass stays camera-right",
     }
 
 
@@ -155,4 +168,5 @@ def _clip(shot_id: str, section_name: str, section_label: str) -> dict:
         "emotion": "lift",
         "scene_detail": "rain glow",
         "motion_hint": "slow move",
+        "space_relation": "glass stays camera-right",
     }

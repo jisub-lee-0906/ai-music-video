@@ -4,6 +4,7 @@ from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.core.contracts.prompt_normalize import normalize_wan_clips
 from ai_mv.core.contracts.prompt_schema import wan_schema
 from ai_mv.infra.codex_cli_client import generate_structured
+from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
@@ -63,12 +64,14 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "positive_prompt must be 2-3 natural English sentences describing cinematic motion between start and end frames. "
         "Sentence 1: starting state and first movement impulse. "
         "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
+        "The motion arc should visibly complete the section story_beat rather than only adding atmosphere. "
         "Optional sentence 3: environment reaction details. "
         "positive_prompt must read like a usable motion direction for a renderer, not like marketing copy or a music review. "
         "positive_prompt is injected directly into the workflow text encoder, so do not use bullet points, labels, shot ids, or section headers. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
         "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
         "Honor section story_beat and location_anchor from the visual brief so consecutive clips feel like progression inside a small recurring world rather than location swapping. "
+        "Honor space_relation from the shot blueprint so left-right geometry, glass position, storefront side, and reflection side remain stable across the clip unless the action explicitly crosses the frame. "
         "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
         "For consecutive clips from the same shot series, treat the previous clip end as the immediate starting state of the next clip, not a visual reset. "
         "Think like a completed music video sequence: vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views across the song instead of keeping every clip face-on. "
@@ -80,8 +83,9 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
         "Keep the heroine readable in every sentence: face, posture, silhouette, and clear camera relation should stay understandable. "
         "Verse and transition clips should often move through profile travel, side-on glide, shoulder-led turns, reflective passes, or silhouette walk-throughs instead of defaulting to direct front-facing motion. "
-        "Bridge clips should usually introduce distance or suspended breath: slowed walk-through, reflective separation, lateral drift with negative space, or profile pause are stronger than another frontal beauty move. "
+        "Bridge clips should usually introduce distance or suspended breath: slowed walk-through, reflective separation, lateral drift with negative space, profile pause, or a partially obscured hold are stronger than another frontal beauty move. "
         "Final Chorus can return to a more direct hero relation, but it should feel earned as the payoff angle rather than the default angle for the whole song. "
+        "Outro clips should resolve by leaving a lingering residue image or motion, not by restating the same hero beat again. "
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Do not describe multiple competing action arcs in one clip. "
         "Avoid generic wording like cinematic motion, dynamic energy, dramatic atmosphere, or stylish movement unless tied to a concrete body, camera, or environment action. "
@@ -119,17 +123,18 @@ def _audio_map_text(payload: dict, key: str) -> str:
 
 
 def _brief_summary(brief: dict) -> str:
-    motifs = ", ".join(brief.get("visual_motifs", []))
-    rules = ", ".join(brief.get("negative_constraints", []))
+    world = world_bible(brief)
+    motifs = ", ".join(world.get("visual_motifs", []))
+    rules = ", ".join(world.get("negative_constraints", []))
     return (
-        f"hero={brief['hero_identity']}; world={brief['world_rules']}; "
+        f"hero={world['hero_identity']}; world={world['world_rules']}; "
         f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
     )
 
 
 def _section_briefs(brief: dict) -> str:
     rows = []
-    for row in brief.get("section_briefs", []):
+    for row in section_dramaturgy(brief):
         rows.append(
             f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
             f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"
@@ -178,7 +183,8 @@ def _clip_summary_row(clip: dict) -> str:
     emotion = str(clip.get("emotion", "")).strip() or "steady emotion"
     detail = str(clip.get("scene_detail", "")).strip() or "hero detail"
     motion = str(clip.get("motion_hint", "")).strip() or "smooth motion"
-    return f"{sid}({section}|{label}|{camera}|{emotion}|{detail}|{motion})"
+    relation = str(clip.get("space_relation", "")).strip() or "space stays stable"
+    return f"{sid}({section}|{label}|{camera}|{emotion}|{detail}|{motion}|{relation})"
 
 
 def _clip_ids(clips: list[dict]) -> str:
@@ -205,6 +211,7 @@ def _item_to_clip(item: dict, fps: int) -> dict:
         "emotion": str(item.get("emotion", "")),
         "scene_detail": str(item.get("scene_detail", "")),
         "motion_hint": str(item.get("motion_hint", "")),
+        "space_relation": str(item.get("space_relation", "")),
     }
 
 

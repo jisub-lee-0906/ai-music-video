@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.engines.acestep_1_5_split.planner import build_audio_plan
+from ai_mv.engines.acestep_1_5_split.mapper import AUDIO_TEXT, map_audio_workflow
+from ai_mv.engines.acestep_1_5_split.planner import _audio_prompt, build_audio_plan
 from ai_mv.engines.acestep_1_5_split.runner import run_audio_split
 
 
@@ -12,7 +13,25 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
     audio_map = run_audio_split(stage_input.config, plan)
     audio_map.update(_audio_context(plan))
     music_file = str(audio_map["music_file"])
-    return StageOutput("acestep_music", "done", {"audio_map": audio_map, "music_file": music_file}, [])
+    return StageOutput(
+        "acestep_music",
+        "done",
+        {
+            "audio_map": audio_map,
+            "music_file": music_file,
+            "planner_prompts": _merge_prompt_preview(
+                stage_input.payload,
+                "audio",
+                {"prompt": _audio_prompt(plan)},
+            ),
+            "workflow_inputs_preview": _merge_workflow_preview(
+                stage_input.payload,
+                "audio",
+                {"text_inputs": _audio_text_inputs(stage_input.config, plan)},
+            ),
+        },
+        [],
+    )
 
 
 def _audio_context(plan: dict) -> dict:
@@ -28,3 +47,20 @@ def _audio_context(plan: dict) -> dict:
         "visual_direction": str(plan.get("visual_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
     }
+
+
+def _merge_prompt_preview(payload: dict, key: str, value: dict) -> dict:
+    out = dict(payload.get("planner_prompts", {}))
+    out[key] = value
+    return out
+
+
+def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
+    out = dict(payload.get("workflow_inputs_preview", {}))
+    out[key] = value
+    return out
+
+
+def _audio_text_inputs(config: dict, plan: dict) -> dict:
+    wf = map_audio_workflow(config, plan)
+    return dict(wf["node.inputs"][AUDIO_TEXT])

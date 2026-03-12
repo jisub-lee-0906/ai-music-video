@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from ai_mv.utils.text_utils import ascii_safe_text
-
 AUDIO_TEXT = "94"
 AUDIO_LATENT = "98"
 AUDIO_KSAMPLER = "3"
@@ -10,8 +8,8 @@ AUDIO_SAVE = "104"
 
 def map_audio_workflow(config: dict, plan: dict) -> dict:
     text_inputs = {
-        "tags": ascii_safe_text(str(plan["genre_description"])),
-        "lyrics": ascii_safe_text(str(plan["lyrics"])),
+        "tags": _audio_conditioning_text(plan),
+        "lyrics": str(plan["lyrics"]),
         "seed": int(plan["seed"]),
         "bpm": int(plan["bpm"]),
         "duration": int(plan["duration"]),
@@ -45,3 +43,11 @@ def audio_required_inputs() -> dict[str, list[str]]:
 def _audio_language(plan: dict) -> str:
     raw = str(plan.get("language", "en")).strip().lower()
     return raw if raw in {"en", "ja", "ko"} else "en"
+
+
+def _audio_conditioning_text(plan: dict) -> str:
+    tags = str(plan.get("tags", "")).strip()
+    desc = str(plan.get("genre_description", "")).strip()
+    if tags and desc:
+        return f"{tags}. {desc}"
+    return tags or desc

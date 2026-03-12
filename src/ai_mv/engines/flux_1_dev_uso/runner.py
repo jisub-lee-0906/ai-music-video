@@ -65,6 +65,7 @@ def _pack_item(item: dict, start: str, end: str) -> dict:
         "emotion": str(item.get("emotion", "")),
         "scene_detail": str(item.get("scene_detail", "")),
         "motion_hint": str(item.get("motion_hint", "")),
+        "space_relation": str(item.get("space_relation", "")),
         "retry": 0,
         "error_body": "",
         "start": start,

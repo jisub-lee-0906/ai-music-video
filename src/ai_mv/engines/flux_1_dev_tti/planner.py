@@ -3,6 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
 from ai_mv.infra.codex_cli_client import generate_structured
+from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 
 
 def build_tti_plan(config: dict, payload: dict) -> dict:
@@ -66,6 +67,7 @@ def _planner_rules() -> str:
         "Use the visual brief as the source of truth for identity locks, world rules, motifs, and forbidden drift. "
         "master_anchor should absorb hero/world/motif rules, while shot items should absorb section-specific variation only. "
         "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that place, not a random fresh location. "
+        "Treat story_beat as the first priority for shot design: the frame must make the visible action readable before it tries to be pretty. "
         "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same heroine and world grammar. "
         "Use section labels as escalation hints: Chorus 2 should feel like a firmer return, and Final Chorus should feel like the visual payoff shot for the song. "
         "Map repeated-return escalation in clear steps: the first Chorus should feel like arrival or release, Chorus 2 should feel brighter, more open, and more assured, and Final Chorus should feel like the most resolved and luminous version of the same world. "
@@ -76,10 +78,11 @@ def _planner_rules() -> str:
         "Across the song, mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings where appropriate instead of defaulting to straight-on portraits. "
         "Not every shot should face camera; reserve the most frontal hero framing for major returns and payoff moments. "
         "Verse shots should often read as travel, drift, or body-in-space coverage: side-profile walk, shoulder-led crossing, reflected pass, or oblique medium-wide staging are preferred over repeated centered beauty frames. "
-        "Bridge shots should introduce emotional distance, pause, or separation through framing: silhouette, reflected profile, negative space, or isolated lateral placement. "
+        "Bridge shots should introduce emotional distance, pause, or separation through framing: silhouette, reflected profile, negative space, isolated lateral placement, or partial obstruction. "
+        "Bridge should visually interrupt the flow established before it so the final return feels earned, not merely brighter. "
         "Post-chorus and transition shots should reset rhythm through texture, reflection, or connective camera relation rather than another near-identical face angle. "
         "Treat profile_summary and visual_direction as the stable lane for future profiles: translate longer tag sets into one coherent heroine, world, and camera grammar. "
-        "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint. "
+        "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
         "Negative constraints and world rules override any section staging idea. "
         "camera_language should be a short cinematic phrase for framing/lens behavior only. "
@@ -88,16 +91,20 @@ def _planner_rules() -> str:
         "For verses and transitions, prefer oblique framings such as three-quarter portrait, side profile walk, over-shoulder drift, reflected profile, or silhouette follow rather than always using centered front view. "
         "For Chorus and Final Chorus, hero framing can return more frontally, but it should still feel like a staged music-video payoff rather than a static passport portrait. "
         "Use environment relation actively: foreground occlusion, passing reflections, corridor depth, storefront spill, sidewalk negative space, or shoulder-led lead-in are often better than another clean head-on pose. "
-        "pose_delta should describe exactly one readable body or gaze change. "
+        "pose_delta should describe exactly one readable body or gaze change that helps the story_beat land on screen. "
         "emotion should be concise and performance-oriented, not narrative. "
         "For Chorus 2 and Final Chorus, emotion should clearly sound more open, more assured, or more resolved than the earlier chorus rather than merely different. "
         "scene_detail should name exactly one concrete set or prop emphasis and should preserve the same master palette with only section accent shifts. "
+        "scene_detail should usually reinforce the location_anchor instead of inventing a fresh place. "
         "For repeated choruses, scene_detail should reveal a clearer, brighter, wider, or more resolved version of the same environment; Final Chorus should show the cleanest and most luminous environmental payoff. "
         "scene_detail should default to environment or lighting detail; use prop detail only when the shot_type truly calls for a brief insert. "
         "For CHAR_MASTER, PERF_WIDE, and EMOTION_CLOSE, keep scene_detail focused on environment, lighting, or silhouette rather than handheld objects. "
         "Except for brief detail inserts, do not let props, bags, or accessories become larger or more important than the hero face and performance. "
         "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
         "Final Chorus motion_hint should feel like the smoothest and most confident payoff move in the song, not just another generic slow move. "
+        "space_relation must describe stable left-right or front-back geometry in plain English, such as glass stays camera-right, storefront remains behind her left shoulder, open street ahead of her, or reflection runs beside her on camera-left. "
+        "space_relation should be simple, physically readable, and reusable across start and end frames so downstream image-to-image planners can preserve the same space logic. "
+        "Outro framing should leave a residue image rather than another performance beat: retreating figure, empty space after passage, or reflection that outlasts her body are strong options. "
         "Let motion_hint and camera_language work together like a music-video storyboard: profile walk, shoulder turn, silhouette drift, reflective pass, slow follow, and clean lateral glide are all valid when they fit the section. "
         "If the brief discourages fast camera or drift, use stillness, glide, slow dolly, gentle turn, or subtle gaze change instead of running or aggressive movement. "
         "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
@@ -201,17 +208,18 @@ def _escalation_reference(sections: list[dict]) -> str:
 
 
 def _brief_summary(brief: dict) -> str:
-    motifs = ", ".join(brief.get("visual_motifs", []))
-    rules = ", ".join(brief.get("negative_constraints", []))
+    world = world_bible(brief)
+    motifs = ", ".join(world.get("visual_motifs", []))
+    rules = ", ".join(world.get("negative_constraints", []))
     return (
-        f"hero={brief['hero_identity']}; world={brief['world_rules']}; "
+        f"hero={world['hero_identity']}; world={world['world_rules']}; "
         f"motifs={motifs}; avoid={rules}; section_rules={_section_briefs(brief)}"
     )
 
 
 def _section_briefs(brief: dict) -> str:
     rows = []
-    for row in brief.get("section_briefs", []):
+    for row in section_dramaturgy(brief):
         rows.append(
             f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
             f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"

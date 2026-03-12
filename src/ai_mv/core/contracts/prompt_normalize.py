@@ -18,8 +18,12 @@ def normalize_tti_shot(raw: dict, idx: int) -> dict:
         "emotion": str(raw["emotion"]).strip(),
         "scene_detail": str(raw["scene_detail"]).strip(),
         "motion_hint": str(raw["motion_hint"]).strip(),
+        "space_relation": str(raw["space_relation"]).strip(),
     }
-    if not all(out[key] for key in ("shot_id", "camera_language", "pose_delta", "emotion", "scene_detail", "motion_hint")):
+    if not all(
+        out[key]
+        for key in ("shot_id", "camera_language", "pose_delta", "emotion", "scene_detail", "motion_hint", "space_relation")
+    ):
         raise RuntimeError(f"incomplete TTI shot blueprint at {idx}")
     return out
 
@@ -102,13 +106,21 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
 def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
     if not sections:
         raise RuntimeError("visual brief sections missing")
-    return {
+    out = {
         "hero_identity": _require_text(raw, "hero_identity"),
         "world_rules": _require_text(raw, "world_rules"),
         "visual_motifs": _normalize_text_list(raw["visual_motifs"], "visual_motifs"),
         "negative_constraints": _normalize_text_list(raw["negative_constraints"], "negative_constraints"),
         "section_briefs": _normalize_section_briefs(raw["section_briefs"], sections),
     }
+    out["world_bible"] = {
+        "hero_identity": out["hero_identity"],
+        "world_rules": out["world_rules"],
+        "visual_motifs": list(out["visual_motifs"]),
+        "negative_constraints": list(out["negative_constraints"]),
+    }
+    out["section_dramaturgy"] = [dict(row) for row in out["section_briefs"]]
+    return out
 
 
 def _render_lyrics_blocks(blocks: list[dict]) -> str:
@@ -139,14 +151,18 @@ def _normalize_visual_section(row: dict, expected_name: str) -> dict:
     actual = _require_text(row, "section_name")
     if actual != expected_name:
         raise RuntimeError(f"visual brief section mismatch: expected={expected_name} actual={actual}")
+    story_beat = _require_text(row, "story_beat")
+    location_anchor = _require_text(row, "location_anchor")
+    _validate_story_beat(story_beat)
+    _validate_location_anchor(location_anchor)
     return {
         "section_name": actual,
         "emotional_arc": _require_text(row, "emotional_arc"),
         "palette_hint": _require_text(row, "palette_hint"),
         "lighting_hint": _require_text(row, "lighting_hint"),
         "staging_hint": _require_text(row, "staging_hint"),
-        "story_beat": _require_text(row, "story_beat"),
-        "location_anchor": _require_text(row, "location_anchor"),
+        "story_beat": story_beat,
+        "location_anchor": location_anchor,
     }
 
 
@@ -162,6 +178,92 @@ def _require_text(raw: dict, field: str) -> str:
     if not text:
         raise RuntimeError(f"{field} missing")
     return text
+
+
+def _validate_story_beat(text: str) -> None:
+    low = str(text).strip().lower()
+    mood_only = {
+        "searching",
+        "passing by",
+        "hesitating",
+        "opening up",
+        "moving on",
+        "circling back",
+        "leaning in",
+        "converging",
+        "separating",
+        "arriving",
+        "receding",
+    }
+    if low in mood_only:
+        raise RuntimeError("visual brief story_beat must describe a visible action, not only a mood label")
+    if len(low.split()) < 2:
+        raise RuntimeError("visual brief story_beat too thin")
+    verbs = (
+        "walk",
+        "walking",
+        "move",
+        "moves",
+        "moving",
+        "pause",
+        "paused",
+        "turn",
+        "turning",
+        "glance",
+        "glancing",
+        "look",
+        "looking",
+        "check",
+        "checks",
+        "checking",
+        "step",
+        "stepping",
+        "cross",
+        "crossing",
+        "clear",
+        "clears",
+        "clearing",
+        "drift",
+        "drifting",
+        "face",
+        "facing",
+        "pass",
+        "passing",
+        "stop",
+        "stopping",
+        "remain",
+        "remains",
+        "remaining",
+        "hold",
+        "holding",
+        "lean",
+        "leaning",
+        "enter",
+        "entering",
+        "leave",
+        "leaving",
+        "circle",
+        "circling",
+        "retreat",
+        "retreating",
+        "slow",
+        "slowing",
+        "meet",
+        "meeting",
+        "let",
+        "lets",
+        "letting",
+        "open",
+        "opening",
+    )
+    if not any(word in low for word in verbs):
+        raise RuntimeError("visual brief story_beat must include a visible action verb")
+
+
+def _validate_location_anchor(text: str) -> None:
+    low = str(text).strip().lower()
+    if len(low.split()) < 2:
+        raise RuntimeError("visual brief location_anchor too thin")
 
 
 def _normalize_keyscale(text: str) -> str:

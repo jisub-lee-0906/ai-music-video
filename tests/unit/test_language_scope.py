@@ -73,6 +73,8 @@ def _visual_brief() -> dict:
                 "palette_hint": "soft blue silver",
                 "lighting_hint": "wet neon haze",
                 "staging_hint": "still pose by rain-streaked window",
+                "story_beat": "slows by the window and checks the reflection",
+                "location_anchor": "station corridor glass",
             },
             {
                 "section_name": "chorus",
@@ -80,6 +82,8 @@ def _visual_brief() -> dict:
                 "palette_hint": "warmer rose accent",
                 "lighting_hint": "chrome flare on skin",
                 "staging_hint": "open shoulders and direct gaze",
+                "story_beat": "steps into the open street and finally faces forward",
+                "location_anchor": "crosswalk under neon",
             },
         ],
     }
