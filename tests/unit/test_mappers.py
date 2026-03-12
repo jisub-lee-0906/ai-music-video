@@ -8,6 +8,7 @@ from ai_mv.core.output_paths import audio_prefix, tti_anchor_prefix, uso_frame_p
 def test_audio_mapper():
     plan = {
         "tags": "kpop",
+        "audio_direction": "K-pop with glossy synth-pop drums, bright lead vocal focus, and a tight dance-pop pulse.",
         "genre_description": "Bright idol-pop with punchy 808s and layered hooks.",
         "lyrics": "we're alive",
         "seed": 1,
@@ -21,7 +22,10 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
-    assert nodes["94"]["tags"] == "kpop. Bright idol-pop with punchy 808s and layered hooks."
+    assert nodes["94"]["tags"] == (
+        "K-pop with glossy synth-pop drums, bright lead vocal focus, and a tight dance-pop pulse. "
+        "Bright idol-pop with punchy 808s and layered hooks"
+    )
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
 
@@ -29,6 +33,7 @@ def test_audio_mapper():
 def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     plan = {
         "tags": "jpop",
+        "audio_direction": "Japanese city pop with warm analog keys, mature graceful lead vocal, and a soft neon glide.",
         "genre_description": "Elegant Japanese city-pop with warm analog keys and soft neon glide.",
         "lyrics": "濡れた街灯を追いかけて\nあなたの影を見つけた",
         "seed": 7,
@@ -42,6 +47,7 @@ def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     nodes = out["node.inputs"]
     assert nodes["94"]["lyrics"] == plan["lyrics"]
     assert nodes["94"]["language"] == "ja"
+    assert nodes["94"]["tags"].startswith("Japanese city pop with warm analog keys")
 
 
 def test_tti_mapper():
