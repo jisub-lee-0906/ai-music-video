@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from functools import lru_cache
 import json
 from typing import Any
 
@@ -28,8 +27,6 @@ def run_workflow(
     patched = patch_workflow(workflow, bindings)
     return submit(config, patched)
 
-
-@lru_cache(maxsize=16)
 def _load_workflow_template(path: str) -> dict[str, Any]:
     return json.loads(resolve_project_path(path).read_text(encoding="utf-8"))
 
@@ -38,19 +35,8 @@ def submit(config: dict, workflow: dict[str, Any]) -> dict:
     validate_local_comfy_config(config)
     base_url = str(config["integrations"]["comfyui_base_url"])
     timeout = resolve_timeout(config)
-    attempts = _comfy_retry_attempts(config)
-    return submit_workflow(base_url, workflow, timeout, attempts=attempts)
+    return submit_workflow(base_url, workflow, timeout)
 
 
 def ping_comfy(base_url: str) -> bool:
     return transport_ping_comfy(base_url)
-
-
-def _comfy_retry_attempts(config: dict) -> int:
-    integ = config.get("integrations", {}) if isinstance(config, dict) else {}
-    raw = integ.get("comfy_retry_attempts", 1) if isinstance(integ, dict) else 1
-    try:
-        n = int(raw)
-    except Exception:
-        return 1
-    return max(1, n)

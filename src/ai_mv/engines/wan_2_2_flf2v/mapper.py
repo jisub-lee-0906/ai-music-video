@@ -18,7 +18,7 @@ WAN_TEXT_POS = "90"
 def map_wan_workflow(config: dict, clip: dict) -> dict:
     w, h = _wan_size(config, clip)
     idx = _shot_seed(str(clip["shot_id"]))
-    seed = 3000 + idx + int(clip["seed_offset"])
+    seed = 3000 + idx
     steps = _steps_for_energy(str(clip["energy"]))
     neg = str(clip["negative_prompt"])
     pos = str(clip["positive_prompt"])

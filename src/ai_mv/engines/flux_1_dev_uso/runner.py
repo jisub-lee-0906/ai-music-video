@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.output_paths import uso_frame_prefix
 from ai_mv.core.workflow_names import USO_WORKFLOW
-from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow, uso_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.infra.comfy_outputs import pick_image_file
@@ -42,14 +41,7 @@ def _render_end(config: dict, item: dict) -> str:
 
 
 def _run_shot_uso(config: dict, item: dict) -> dict:
-    attempts = int(config["limits"]["max_retries_per_shot"])
-
-    def _call(retry: int) -> dict:
-        payload = dict(item)
-        payload["frame_idx"] = int(item["frame_idx"]) + retry
-        return run_workflow(config, USO_WORKFLOW, map_uso_workflow(config, payload), uso_required_inputs())
-
-    return call_with_retries(attempts, _call, "USO", item["shot_id"])
+    return run_workflow(config, USO_WORKFLOW, map_uso_workflow(config, dict(item)), uso_required_inputs())
 
 
 def _pack_item(item: dict, start: str, end: str) -> dict:

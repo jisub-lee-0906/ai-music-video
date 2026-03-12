@@ -45,7 +45,7 @@ def test_load_output_rejects_invalid_json(tmp_path: Path):
         codex_cli_client._load_output(path)
 
 
-def test_generate_structured_does_not_retry_schema_failure(monkeypatch):
+def test_generate_structured_runs_once_on_schema_failure(monkeypatch):
     calls = {"n": 0}
 
     def _fake_run(*_args, **_kwargs):
@@ -56,7 +56,7 @@ def test_generate_structured_does_not_retry_schema_failure(monkeypatch):
 
     monkeypatch.setattr(codex_cli_client, "_run", _fake_run)
     monkeypatch.setattr(codex_cli_client, "_load_output", _fake_load)
-    cfg = {"integrations": {"codex_retry_attempts": 3}}
+    cfg = {"integrations": {}}
     schema = {
         "type": "object",
         "required": ["shots"],

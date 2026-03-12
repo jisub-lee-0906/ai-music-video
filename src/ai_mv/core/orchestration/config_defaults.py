@@ -5,7 +5,7 @@ DEFAULT_CONFIG: dict = {
     "audio": {
         "target_duration_sec": 200,
         "quality": "V0",
-        "planner_attempts": 5,
+        "planner_attempts": 1,
         "language": "en",
     },
     "profile": "",
@@ -20,7 +20,6 @@ DEFAULT_CONFIG: dict = {
         "strict_prompt_id_match": True,
     },
     "limits": {
-        "max_retries_per_shot": 1,
         "timeout_seconds": 900,
     },
     "integrations": {
@@ -30,8 +29,6 @@ DEFAULT_CONFIG: dict = {
         "codex_cli_path": "",
         "codex_model": "gpt-5.4",
         "codex_timeout_structured_sec": 600,
-        "comfy_retry_attempts": 1,
-        "codex_retry_attempts": 1,
         "workflows_dir": "workflows",
     },
     "runtime": {

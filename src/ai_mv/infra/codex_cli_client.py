@@ -18,16 +18,7 @@ def ping_codex() -> bool:
 
 
 def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
-    attempts = _codex_retry_attempts(config)
-    last: Exception | None = None
-    for idx in range(attempts):
-        try:
-            return _generate_once(config, prompt, schema)
-        except CodexCliRequestError as exc:
-            last = exc
-            if _is_non_retryable(exc) or idx + 1 >= attempts:
-                raise
-    raise last if last else CodexCliRequestError("Codex CLI retry failed")
+    return _generate_once(config, prompt, schema)
 
 
 def assert_codex_ready(config: dict) -> None:
@@ -137,13 +128,6 @@ def _run(args: list[str], prompt: str, timeout: int) -> None:
     if res.returncode != 0:
         detail = res.stderr.strip() or res.stdout.strip()
         raise CodexCliRequestError(f"Codex CLI exec failed: {detail}")
-
-
-def _is_non_retryable(exc: CodexCliRequestError) -> bool:
-    text = str(exc)
-    return "invalid JSON" in text or "schema validation failed" in text
-
-
 def _codex_command(config: dict) -> str:
     integ = config.get("integrations", {}) if isinstance(config, dict) else {}
     raw = integ.get("codex_cli_path", "") if isinstance(integ, dict) else ""
@@ -172,12 +156,3 @@ def _codex_timeout(config: dict) -> int:
         return max(10, int(raw))
     except Exception:
         return 600
-
-
-def _codex_retry_attempts(config: dict) -> int:
-    integ = config.get("integrations", {}) if isinstance(config, dict) else {}
-    raw = integ.get("codex_retry_attempts", 1) if isinstance(integ, dict) else 1
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 1

@@ -52,7 +52,6 @@ def _wan_workflow_inputs(config: dict, clips: list[dict]) -> list[dict]:
     for clip in clips:
         payload = dict(clip)
         payload["wan_size"] = wan_size
-        payload["seed_offset"] = 0
         payload["filename_prefix"] = f"preview/clips/{clip['shot_id']}"
         wf = map_wan_workflow(config, payload)
         inputs = wf["node.inputs"]

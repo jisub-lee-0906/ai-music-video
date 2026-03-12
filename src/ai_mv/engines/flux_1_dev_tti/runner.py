@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.output_paths import tti_anchor_prefix
 from ai_mv.core.workflow_names import TTI_WORKFLOW
-from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.infra.comfy_outputs import pick_image_file
 from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow, tti_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
@@ -28,22 +27,12 @@ def _run_master(config: dict, master: dict) -> str:
 
 
 def _run_shot_tti(config: dict, shot: dict, shot_id: str) -> dict:
-    attempts = int(config["limits"]["max_retries_per_shot"])
-    fn = lambda retry: run_workflow(
+    return run_workflow(
         config,
         TTI_WORKFLOW,
-        map_tti_workflow(config, _mutate_shot(shot, retry)),
+        map_tti_workflow(config, dict(shot)),
         tti_required_inputs(),
     )
-    return call_with_retries(attempts, fn, "TTI", shot_id)
-
-
-def _mutate_shot(shot: dict, retry: int) -> dict:
-    if retry == 0:
-        return dict(shot)
-    out = dict(shot)
-    out["seed"] = int(out["seed"]) + retry * 1009
-    return out
 
 
 def _pack_anchor(shot: dict, anchor: str) -> dict:

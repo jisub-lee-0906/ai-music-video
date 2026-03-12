@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.output_paths import wan_clip_prefix
 from ai_mv.core.workflow_names import WAN_WORKFLOW
-from ai_mv.engines.common.runner_exec import call_with_retries
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow, wan_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.infra.comfy_outputs import pick_video_file
@@ -22,24 +21,19 @@ def run_wan(config: dict, plan: dict) -> list[dict]:
 
 
 def _run_clip_wan(config: dict, clip: dict) -> dict:
-    attempts = int(config["limits"]["max_retries_per_shot"])
-    def _call(retry: int) -> dict:
-        payload = _mutate_clip(config, clip, retry)
-        return run_workflow(
-            config,
-            WAN_WORKFLOW,
-            map_wan_workflow(config, payload),
-            wan_required_inputs(),
-        )
-
-    return call_with_retries(attempts, _call, "WAN", clip["shot_id"])
+    payload = _prepare_clip(config, clip)
+    return run_workflow(
+        config,
+        WAN_WORKFLOW,
+        map_wan_workflow(config, payload),
+        wan_required_inputs(),
+    )
 
 
-def _mutate_clip(config: dict, clip: dict, retry: int) -> dict:
+def _prepare_clip(config: dict, clip: dict) -> dict:
     out = dict(clip)
     out["start"] = stage_image_for_comfy(config, str(out["start"]))
     out["end"] = stage_image_for_comfy(config, str(out["end"]))
-    out["seed_offset"] = retry * 101
     out["wan_size"] = str(config["render"]["wan_size"])
     out["filename_prefix"] = wan_clip_prefix(clip["shot_id"])
     return out

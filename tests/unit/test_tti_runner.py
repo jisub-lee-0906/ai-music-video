@@ -10,7 +10,7 @@ def test_run_tti_uses_single_master_anchor(monkeypatch):
         return {"files": [f"{tti_anchor_prefix()}.png"]}
 
     monkeypatch.setattr(tti_runner, "run_workflow", _fake_run)
-    cfg = {"limits": {"max_retries_per_shot": 1}, "render": {"tti_size": "1024x1024"}}
+    cfg = {"render": {"tti_size": "1024x1024"}}
     plan = {
         "master_anchor": {
             "prompt_text": "hero portrait, silver earrings, satin blouse, wet neon street, chrome reflections",

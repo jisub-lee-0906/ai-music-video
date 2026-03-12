@@ -19,16 +19,16 @@ def ping_comfy(base_url: str) -> bool:
         return False
 
 
-def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int, attempts: int = 1) -> dict:
-    queued = _queue_with_deadline(base_url, workflow, timeout, attempts)
+def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> dict:
+    queued = _queue_prompt(base_url, workflow, timeout)
     prompt_id = _prompt_id_from_queue(queued)
-    history = wait_history(base_url, prompt_id, timeout, attempts)
+    history = wait_history(base_url, prompt_id, timeout)
     _raise_if_execution_error(history, prompt_id)
     files = extract_files(history)
     return {"prompt_id": prompt_id, "history": history, "files": files}
 
 
-def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1) -> dict[str, Any]:
+def wait_history(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
     start = time.time()
     url = f"{base_url.rstrip('/')}/history/{prompt_id}"
     sleep_sec = 0.4
@@ -38,7 +38,7 @@ def wait_history(base_url: str, prompt_id: str, timeout: int, attempts: int = 1)
         if elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
         remaining = max(0.0, timeout - elapsed)
-        data = _history_get_with_retries(url, remaining, prompt_id, attempts)
+        data = _safe_history_get(url, remaining, prompt_id)
         record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
@@ -73,26 +73,6 @@ def _queue_prompt(base_url: str, workflow: dict[str, Any], timeout: int) -> dict
     return res.json()
 
 
-def _queue_with_deadline(base_url: str, workflow: dict[str, Any], timeout: int, attempts: int) -> dict:
-    last: Exception | None = None
-    start = time.time()
-    for _ in range(max(1, attempts)):
-        remaining = timeout - (time.time() - start)
-        if remaining <= 0:
-            break
-        try:
-            return _queue_prompt(base_url, workflow, max(0.05, remaining))
-        except ComfyRequestError as exc:
-            if _is_non_retryable_prompt_error(exc):
-                raise
-            last = exc
-        except Exception as exc:
-            last = exc
-    if last:
-        raise last
-    raise TimeoutError("ComfyUI queue timeout")
-
-
 def _safe_response_body(res: requests.Response) -> str:
     try:
         return json.dumps(res.json(), ensure_ascii=False)
@@ -125,27 +105,6 @@ def _safe_history_get(url: str, timeout: float, prompt_id: str) -> dict[str, Any
         raise ComfyRequestError(f"Comfy history request failed: {prompt_id}: {exc}") from exc
 
 
-def _history_get_with_retries(url: str, remaining: float, prompt_id: str, attempts: int) -> dict[str, Any]:
-    last: Exception | None = None
-    total = max(1, attempts)
-    for idx in range(total):
-        timeout = _history_attempt_timeout(remaining, total - idx)
-        try:
-            return _safe_history_get(url, timeout, prompt_id)
-        except ComfyRequestError as exc:
-            last = exc
-    if last:
-        raise last
-    raise ComfyRequestError(f"Comfy history request failed: {prompt_id}")
-
-
-def _history_attempt_timeout(remaining: float, attempts_left: int) -> float:
-    if remaining <= 0:
-        return 0.05
-    share = remaining / float(max(1, attempts_left))
-    return max(0.05, share)
-
-
 def _get_json(url: str, timeout: float) -> dict[str, Any]:
     res = requests.get(url, timeout=timeout)
     res.raise_for_status()
@@ -153,13 +112,6 @@ def _get_json(url: str, timeout: float) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ComfyRequestError("Comfy history response is not a dict")
     return data
-
-
-def _is_non_retryable_prompt_error(exc: ComfyRequestError) -> bool:
-    text = str(exc)
-    return text.startswith("Comfy prompt failed: 4")
-
-
 def _raise_if_execution_error(history: dict[str, Any], prompt_id: str) -> None:
     status = history["status"] if isinstance(history, dict) and "status" in history else {}
     if not isinstance(status, dict):
