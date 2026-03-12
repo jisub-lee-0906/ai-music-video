@@ -81,6 +81,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "delta describes a small progression from start to end frame, not a scene reset. "
         "delta should usually be the smallest readable version of the section story_beat. "
         "delta must be a natural English change phrase of roughly 6-16 words, never a number, score, placeholder, or shorthand token. "
+        "When a shot series is split into multiple clip parts, give each part a distinct micro-role inside the same location: earlier parts establish the space and body relation, middle parts advance the action, and the last part resolves or exits the beat. "
+        "Do not give identical prompt_text or identical delta to multiple consecutive parts of the same shot series. "
         "Do not change time period, world setting, or character species. "
         "Use the visual brief to keep hero identity, world rules, motifs, and section mood aligned. "
         "Honor the section story_beat and location_anchor from the visual brief: move the heroine through the same small set of places instead of inventing a new location for each item. "
@@ -233,7 +235,8 @@ def _anchor_summary_row(anchor: dict) -> str:
     pose = str(anchor.get("pose_delta", "")).strip() or "small pose shift"
     detail = str(anchor.get("scene_detail", "")).strip() or "hero focus"
     relation = str(anchor.get("space_relation", "")).strip() or "space stays stable"
-    return f"{sid}({section}|{label}|{shot_type}|{emotion}|{pose}|{detail}|{relation})"
+    phase = _clip_phase(anchor)
+    return f"{sid}({section}|{label}|{shot_type}|{emotion}|{pose}|{detail}|{relation}|{phase})"
 
 
 def _anchor_ids(anchors: list[dict]) -> str:
@@ -255,6 +258,9 @@ def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
         "negative_prompt": str(rule["negative_prompt"]),
         "style_guidance": style_guidance,
         "duration_sec": float(anchor["duration_sec"]),
+        "clip_index": int(anchor.get("clip_index", 1)),
+        "clip_count": int(anchor.get("clip_count", 1)),
+        "clip_phase": _clip_phase(anchor),
         "shot_type": str(anchor["shot_type"]),
         "section_name": str(anchor.get("section_name", "section")),
         "section_label": str(anchor.get("section_label", anchor.get("section_name", "section"))),
@@ -266,3 +272,15 @@ def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
         "motion_hint": str(anchor.get("motion_hint", "")),
         "space_relation": str(anchor.get("space_relation", "")),
     }
+
+
+def _clip_phase(anchor: dict) -> str:
+    index = int(anchor.get("clip_index", 1))
+    count = int(anchor.get("clip_count", 1))
+    if count <= 1:
+        return "single beat"
+    if index <= 1:
+        return "establish"
+    if index >= count:
+        return "resolve"
+    return "advance"

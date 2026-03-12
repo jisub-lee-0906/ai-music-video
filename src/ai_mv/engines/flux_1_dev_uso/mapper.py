@@ -45,13 +45,13 @@ def _uso_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty USO prompt_text: {item['shot_id']}")
-    parts = [text, _frame_clause(item), _continuity_clause(item), _intent_clause(item)]
+    parts = [text, _frame_clause(item), _phase_clause(item), _continuity_clause(item), _intent_clause(item)]
     return " ".join(x for x in parts if x).strip()
 
 
 def _frame_clause(item: dict) -> str:
     frame = str(item.get("frame_name", "")).strip().lower()
-    delta = str(item.get("delta", "")).strip()
+    delta = _delta_phrase(item)
     if not delta:
         return ""
     if frame == "start":
@@ -73,9 +73,29 @@ def _intent_clause(item: dict) -> str:
     return f"Keep {text}." if text else ""
 
 
+def _phase_clause(item: dict) -> str:
+    phase = str(item.get("clip_phase", "")).strip().lower()
+    if phase == "establish":
+        return "Preserve the setup clearly before the motion opens."
+    if phase == "advance":
+        return "Let the motion progress clearly inside the same space."
+    if phase == "resolve":
+        return "Land the action cleanly so the beat feels resolved."
+    return ""
+
+
 def _continuity_clause(item: dict) -> str:
     text = str(item.get("space_relation", "")).strip()
     return f"Preserve spatial relation: {text}." if text else ""
+
+
+def _delta_phrase(item: dict) -> str:
+    text = str(item.get("delta", "")).strip().rstrip(".!?;:")
+    if not text:
+        return ""
+    if len(text) == 1:
+        return text.lower()
+    return text[:1].lower() + text[1:]
 
 
 def _uso_size(config: dict) -> tuple[int, int]:

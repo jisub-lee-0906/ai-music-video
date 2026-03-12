@@ -15,3 +15,10 @@ def test_expand_anchor_clips_respects_hard_max_cap():
     durations = [float(x["duration_sec"]) for x in clips]
     assert len(clips) == 2
     assert max(durations) <= 5.0
+
+
+def test_expand_anchor_clips_assigns_clip_index_and_count():
+    anchors = [{"shot_id": "S001", "duration_sec": 12.0, "section_name": "chorus"}]
+    clips = expand_anchor_clips(anchors, fps=24, max_clip_sec=5.0)
+    assert [x["clip_index"] for x in clips] == [1, 2, 3]
+    assert [x["clip_count"] for x in clips] == [3, 3, 3]

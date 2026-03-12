@@ -6,10 +6,10 @@ def expand_anchor_clips(anchors: list[dict], fps: int, max_clip_sec: float | Non
     for anchor in anchors:
         parts = _split_frames(float(anchor["duration_sec"]), fps, max_clip_sec, str(anchor.get("section_name", "")))
         if len(parts) == 1:
-            out.append(_with_part(anchor, str(anchor["shot_id"]), parts[0], 1, fps))
+            out.append(_with_part(anchor, str(anchor["shot_id"]), parts[0], 1, len(parts), fps))
             continue
         for i, frames in enumerate(parts, start=1):
-            out.append(_with_part(anchor, _clip_id(str(anchor["shot_id"]), i), frames, i, fps))
+            out.append(_with_part(anchor, _clip_id(str(anchor["shot_id"]), i), frames, i, len(parts), fps))
     return out
 
 
@@ -26,10 +26,11 @@ def read_max_clip_sec(config: dict) -> float:
     return max(0.5, min(5.0, val))
 
 
-def _with_part(anchor: dict, shot_id: str, frames: int, clip_index: int, fps: int) -> dict:
+def _with_part(anchor: dict, shot_id: str, frames: int, clip_index: int, clip_count: int, fps: int) -> dict:
     out = dict(anchor)
     out["shot_id"] = shot_id
     out["clip_index"] = clip_index
+    out["clip_count"] = clip_count
     out["duration_sec"] = round(frames / float(max(1, fps)), 3)
     return out
 

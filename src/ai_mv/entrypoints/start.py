@@ -18,7 +18,7 @@ def run_start(run_id: str | None = None, profile: str | None = None) -> int:
         if _run_doctor_with_profile(cfg) != 0:
             return 1
         rid = _prepare_run_profile(cfg, rid)
-        run_pipeline(rid, allow_existing_run=True)
+        run_pipeline(cfg, rid, allow_existing_run=True)
         snap = read_snapshot(rid)
         print(f"run_id={rid}")
         print(f"status={snap['status']}")

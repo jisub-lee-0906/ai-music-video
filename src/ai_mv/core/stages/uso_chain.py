@@ -55,6 +55,7 @@ def _uso_workflow_inputs(config: dict, items: list[dict]) -> list[dict]:
             {
                 "shot_id": str(item["shot_id"]),
                 "space_relation": str(item.get("space_relation", "")),
+                "clip_phase": str(item.get("clip_phase", "")),
                 "start_text": start,
                 "end_text": end,
             }

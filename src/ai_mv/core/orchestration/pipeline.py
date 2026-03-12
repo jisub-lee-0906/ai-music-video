@@ -8,15 +8,14 @@ from ai_mv.core.artifacts.prompt_preview import write_prompt_preview
 from ai_mv.core.artifacts.summary import write_summary
 from ai_mv.core.artifacts.workflow_inputs_preview import write_workflow_inputs_preview
 from ai_mv.core.contracts.stage_io import StageInput
-from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.scheduler import schedule
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 
 
-def run_pipeline(run_id: str = "", allow_existing_run: bool = False) -> str:
-    cfg = default_config()
+def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = False) -> str:
+    cfg = dict(config)
     state = init_run_state(cfg, run_id, allow_existing=allow_existing_run)
     stage_input = StageInput(run_id=state["run_id"], config=cfg, payload={})
     save_snapshot(state, stage_input.payload)

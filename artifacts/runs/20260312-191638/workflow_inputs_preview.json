@@ -1,0 +1,16 @@
+{
+  "run_id": "20260312-191638",
+  "workflow_inputs": {
+    "audio": {
+      "text_inputs": {
+        "tags": "Sleek alt-pop with a tight 104 BPM pulse, sub-bass and clipped 808 support under glassy synth layers, muted guitar sparks, and wide impact transitions that bloom into the hook. The lead vocal should feel close and fast-breathing in the verses, then open into stacked harmonies and chant doubles in the chorus while the groove keeps a restless bounce with slight push on the downbeat.",
+        "lyrics": "[Intro - sparse, atmospheric, low-register hush]\nWet signs flicker\nCold mist, blue chrome\nYour shadow cuts first\n\n[Verse 1 - cinematic detail, tight cadence, nocturnal motion]\nSneakers hiss on the crosswalk paint\nTaxi spray hits the hem of my jeans\nYour laugh jumps loose from the station gate\nStreetlamp gold in the smoke between\n\n[Pre-Chorus - lifted, intimate, breath-spaced]\nYou move closer, the whole block sways\nRain on your wrist, heat through the gray\nOne more second and the sky gives way\n\n[Chorus - anthemic, chant-ready, bright release]\nNeon rain rush on my skin\nRed light flashing, pull me in\nNeon rain rush, run with it, run with it\nYour name sparks white on the window tint\nCity keeps spinning, we don't give in\n\n[Post-Chorus - echo hook, clipped callback]\nNeon rain rush\nRun with it\nOn my skin\n\n[Verse 2 - forward-driving, sharper imagery, scene advancement]\nNow we're half soaked under the market awning\nSteam rolls up from the late-night grills\nYou steal my ring, draw a heart in the fog there\nTrain brakes scream and the whole glass thrills\n\n[Pre-Chorus 2 - wider vowels, suspended tension]\nYour wet hair dark by the candy light\nMy pulse kicks hard when you lock your eyes\nSay go, and the storm turns bright\n\n[Chorus 2 - anthemic return with fresh support lines]\nNeon rain rush on my skin\nBlue sparks falling, pull me in\nNeon rain rush, run with it, run with it\nHeartbeat drumming through the billboard wind\nStreet keeps roaring, we don't give in\n\n[Bridge - stripped, reflective pivot, thinner language]\nWhen the last train leaves, will the glow stay warm\nIf the signs go black, do we fade or burn\nYou press my hand like an answer first\n\n[Final Chorus - largest payoff, expanded harmonies, emotional release]\nNeon rain rush on my skin\nAll this bright wreckage pulls me in\nNeon rain rush, run with it, run with it\nWe break the dawn in the drugstore glass\nYour smile hits gold and the storm rolls past\nCity still spinning, but we finally land\n\n[Outro - afterglow, soft comedown, lingering image]\nNeon rain on the hood\nDaybreak in your eyes\nRun with it",
+        "seed": 31,
+        "bpm": 104,
+        "duration": 200,
+        "language": "en",
+        "keyscale": "F# minor"
+      }
+    }
+  }
+}

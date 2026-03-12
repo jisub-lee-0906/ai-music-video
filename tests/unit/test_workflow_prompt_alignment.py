@@ -88,6 +88,8 @@ def test_uso_prompt_mentions_mapper_appended_clauses():
     assert "Honor the shot space_relation exactly" in prompt
     assert "Do not silently mirror the scene between start and end frames" in prompt
     assert "delta should usually be the smallest readable version of the section story_beat" in prompt
+    assert "earlier parts establish the space and body relation" in prompt
+    assert "Do not give identical prompt_text or identical delta to multiple consecutive parts" in prompt
     assert "Bridge items should feel meaningfully interrupted or isolated" in prompt
     assert "Outro items should leave one memorable residue image" in prompt
 
@@ -123,6 +125,24 @@ def test_wan_energy_policy_lifts_final_chorus():
     assert wan_planner._energy_policy(final_clip, "normal") == "high"
     assert wan_planner._energy_policy(chorus2_clip, "normal") == "normal"
     assert wan_planner._energy_policy(chorus_clip, "normal") == "normal"
+
+
+def test_uso_anchor_summary_includes_clip_phase():
+    row = uso_planner._anchor_summary_row(
+        {
+            "shot_id": "S010_C01",
+            "section_name": "chorus",
+            "section_label": "Final Chorus",
+            "shot_type": "PERF_WIDE",
+            "emotion": "lift",
+            "pose_delta": "small turn",
+            "scene_detail": "rain glow",
+            "space_relation": "glass stays camera-right",
+            "clip_index": 1,
+            "clip_count": 3,
+        }
+    )
+    assert "establish" in row
 
 
 def _brief() -> dict:
