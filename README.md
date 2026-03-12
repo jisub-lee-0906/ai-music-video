@@ -1,6 +1,6 @@
 # AI-MV
 
-ComfyUI + Ollama orchestration for long-form music-video generation.
+ComfyUI + Codex CLI orchestration for long-form music-video generation.
 
 ## Quick Start
 ```bash
@@ -12,7 +12,7 @@ ai-mv start --profile jpop_citypop
 - `audio.tags`: audio/music direction
 - `style.guidance`: visual direction
 
-Ollama expands those inputs into:
+Codex CLI expands those inputs into:
 - AceStep audio plan
 - visual bridge brief
 - TTI master anchor and shot blueprints
@@ -29,12 +29,14 @@ Pipeline flow:
 
 ## Doctor Checks
 - local ComfyUI base URL and input/output directories
-- configured Ollama model presence
+- Codex CLI readiness
 - workflow template files
 - `ffmpeg` and `ffprobe` on `PATH`
 
 ## Core Paths
 - profiles: creative profiles
 - workflows: ComfyUI API workflow exports
-- artifacts/runs_state: run snapshots and manifests
-- artifacts/reports: summaries
+- artifacts/runs: per-run user-facing summary, manifest, and dashboard
+- artifacts/latest: latest run summary, manifest, and dashboard
+- artifacts/reports: planner experiments and ad-hoc quality reports
+- artifacts/runs_state: internal snapshots and orchestration state

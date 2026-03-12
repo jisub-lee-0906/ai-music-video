@@ -26,5 +26,12 @@ def test_artifacts_safe_on_partial_payload(monkeypatch):
     summary.write_summary(state, payload)
     dashboard.write_dashboard(state, payload)
 
-    assert len(calls) == 3
-    assert all(isinstance(p, str) and isinstance(d, dict) for p, d in calls)
+    assert len(calls) == 6
+    paths = [str(p) for p, _ in calls]
+    assert "artifacts/runs/r1/manifest.json" in paths[0].replace("\\", "/") or any("artifacts/runs/r1/manifest.json" in x.replace("\\", "/") for x in paths)
+    assert any("artifacts/latest/manifest.json" in x.replace("\\", "/") for x in paths)
+    assert any("artifacts/runs/r1/summary.json" in x.replace("\\", "/") for x in paths)
+    assert any("artifacts/latest/summary.json" in x.replace("\\", "/") for x in paths)
+    assert any("artifacts/runs/r1/dashboard.json" in x.replace("\\", "/") for x in paths)
+    assert any("artifacts/latest/dashboard.json" in x.replace("\\", "/") for x in paths)
+    assert all(isinstance(d, dict) for _, d in calls)
