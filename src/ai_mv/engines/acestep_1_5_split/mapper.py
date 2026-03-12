@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.core.prompt_digests import compact_sentences, compact_series
+
 AUDIO_TEXT = "94"
 AUDIO_LATENT = "98"
 AUDIO_KSAMPLER = "3"
@@ -47,9 +49,9 @@ def _audio_language(plan: dict) -> str:
 
 def _audio_conditioning_text(plan: dict) -> str:
     tags = _split_tags(str(plan.get("tags", "")).strip())
-    audio_direction = _trim_sentence(str(plan.get("audio_direction", "")).strip())
-    profile_summary = _trim_sentence(str(plan.get("profile_summary", "")).strip())
-    desc = _compress_genre_description(str(plan.get("genre_description", "")).strip())
+    audio_direction = compact_sentences(plan.get("audio_direction", ""), 1)
+    profile_summary = compact_sentences(plan.get("profile_summary", ""), 1)
+    desc = compact_sentences(plan.get("genre_description", ""), 2)
     lead = _conditioning_lead(tags, audio_direction, profile_summary)
     if lead and desc:
         return lead if lead == desc else f"{lead}. {desc}"
@@ -61,14 +63,14 @@ def _trim_sentence(text: str) -> str:
 
 
 def _split_tags(text: str) -> list[str]:
-    vals = [part.strip(" .") for part in str(text).replace(";", ",").split(",")]
+    vals = [part.strip(" .") for part in compact_series(text, 20).split(",")]
     return [part for part in vals if part]
 
 
 def _audio_tag_spine(tags: list[str]) -> str:
-    genre = _pick_tags(tags, ("city pop", "synthpop", "pop", "rock", "ballad", "disco"), 1)
-    instruments = _pick_tags(tags, ("electric piano", "chorus guitar", "analog synth", "synth pad", "fretless bass", "string", "drum"), 4)
-    vocal = _pick_tags(tags, ("female solo vocal", "male solo vocal", "solo vocal", "lead vocal", "vocal"), 2)
+    genre = _pick_tags(tags, ("city pop", "synthpop", "pop", "rock", "ballad", "disco", "r&b", "neo soul", "hip hop", "dance"), 1)
+    instruments = _pick_tags(tags, ("electric piano", "chorus guitar", "analog synth", "synth pad", "fretless bass", "string", "drum", "bass", "guitar", "keys"), 4)
+    vocal = _pick_tags(tags, ("female solo vocal", "male solo vocal", "solo vocal", "lead vocal", "vocal"), 1)
     groove = _pick_tags(tags, ("bounce", "glide", "swing", "pulse", "groove", "lift"), 2)
     tail = _dedupe_tags(instruments + vocal + groove)
     if not genre and not tail:
@@ -83,9 +85,8 @@ def _conditioning_lead(tags: list[str], audio_direction: str, profile_summary: s
     spine = _audio_tag_spine(tags)
     if spine:
         return spine
-    detailed = _compress_audio_direction(audio_direction)
-    if detailed:
-        return detailed
+    if audio_direction:
+        return _sentenceize(audio_direction)
     return _sentenceize(profile_summary or "")
 
 
@@ -126,49 +127,3 @@ def _sentenceize(text: str) -> str:
     cleaned = _trim_sentence(text).replace(";", ",")
     return " ".join(cleaned.split())
 
-
-def _join_sentences(*parts: str) -> str:
-    vals = [_sentenceize(part) for part in parts if _sentenceize(part)]
-    if not vals:
-        return ""
-    return ". ".join(vals)
-
-
-def _compress_audio_direction(text: str) -> str:
-    sentence = _sentenceize(text)
-    if not sentence:
-        return ""
-    parts = [part.strip() for part in sentence.split(".") if part.strip()]
-    if not parts:
-        return ""
-    head = parts[0]
-    tail = parts[1] if len(parts) > 1 else ""
-    if tail:
-        lower = tail.lower()
-        for prefix in ("keep the arrangement ", "the arrangement "):
-            if lower.startswith(prefix):
-                tail = tail[len(prefix):]
-                break
-        tail = tail.rstrip(". ")
-        if tail:
-            return _join_sentences(head, f"Arrangement stays {tail}")
-    return head
-
-
-def _compress_genre_description(text: str) -> str:
-    sentence = _sentenceize(text)
-    if not sentence:
-        return ""
-    parts = [part.strip() for part in sentence.split(".") if part.strip()]
-    if not parts:
-        return ""
-    if len(parts) == 1:
-        return parts[0]
-    head = parts[0]
-    tail = parts[1]
-    lower = tail.lower()
-    for prefix in ("the groove should ", "groove should ", "it should "):
-        if lower.startswith(prefix):
-            tail = tail[len(prefix):]
-            break
-    return _join_sentences(head, tail)

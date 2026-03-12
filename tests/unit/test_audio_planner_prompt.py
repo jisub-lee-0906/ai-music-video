@@ -30,6 +30,8 @@ def test_audio_prompt_focuses_on_prompt_engineering_not_checklist():
     assert "emotionally inevitable" in prompt
     assert "Make the chorus easy to sing back after one listen" in prompt
     assert "Style guidance=" not in prompt
+    assert "Visual carryover=" not in prompt
+    assert "Profile world=retro city-pop lane." in prompt
     assert "Audio direction=mature female vocal, glossy piano, disco bounce." in prompt
     assert "Hook direction=neon rain and chrome reflections." in prompt
     assert "Avoid=no futuristic sci-fi tone." in prompt
@@ -72,7 +74,7 @@ def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
     assert normalized["keyscale"] == "F# minor"
 
 
-def test_plan_once_uses_single_pass_prompt_first_review(monkeypatch):
+def test_plan_once_returns_single_pass_plan_without_quality_review(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
         "_normalize_and_validate",

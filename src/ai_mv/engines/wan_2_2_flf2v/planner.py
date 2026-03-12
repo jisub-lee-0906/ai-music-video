@@ -3,6 +3,7 @@ from __future__ import annotations
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.core.contracts.prompt_normalize import normalize_wan_clips
 from ai_mv.core.contracts.prompt_schema import wan_schema
+from ai_mv.core.prompt_digests import lyrics_digest, negative_digest, profile_digest, style_digest, visual_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 from ai_mv.utils.bool_utils import parse_bool
@@ -44,15 +45,15 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 
 def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
-    guidance = _style_guidance(config, payload)
-    profile = _audio_map_text(payload, "profile_summary")
-    visual = _audio_map_text(payload, "visual_direction")
-    negative = _audio_map_text(payload, "negative_direction")
-    lyrics = _lyrics_excerpt(payload)
+    guidance = style_digest(payload.get("audio_map", {}), 2) or _style_guidance(config, payload)
+    profile = profile_digest(payload.get("audio_map", {}), 1)
+    visual = visual_digest(payload.get("audio_map", {}), 2)
+    negative = negative_digest(payload.get("audio_map", {}), 1)
+    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 6)
     brief = _brief_summary(payload["visual_brief"])
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
-    carry_clause = f"Previous batch continuity hint={carry}. " if carry else ""
+    carry_clause = f"Continuity carry={carry}. " if carry else ""
     return (
         "You are a senior first-last-frame video prompt director for WAN FLF2V. "
         "Return strict JSON only: {\"clips\":[...]}. No prose outside JSON. "
@@ -89,7 +90,6 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Do not describe multiple competing action arcs in one clip. "
         "Avoid generic wording like cinematic motion, dynamic energy, dramatic atmosphere, or stylish movement unless tied to a concrete body, camera, or environment action. "
-        "Treat profile_summary and visual_direction as the stable interpretation layer for future profiles: keep one coherent world and motion grammar instead of echoing long tag lists. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
@@ -107,21 +107,6 @@ def _style_guidance(config: dict, payload: dict) -> str:
         return guided
     style = config.get("style", {}) if isinstance(config, dict) else {}
     return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
-
-
-def _lyrics_excerpt(payload: dict) -> str:
-    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
-    text = str(audio_map.get("lyrics", "")).strip() if isinstance(audio_map, dict) else ""
-    if not text:
-        return ""
-    lines = [x.strip() for x in text.splitlines() if x.strip()]
-    return " | ".join(lines[:8])
-
-
-def _audio_map_text(payload: dict, key: str) -> str:
-    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
-    return str(audio_map.get(key, "")).strip() if isinstance(audio_map, dict) else ""
-
 
 def _brief_summary(brief: dict) -> str:
     world = world_bible(brief)
@@ -181,11 +166,8 @@ def _clip_summary_row(clip: dict) -> str:
     section = str(clip.get("section_name", "section"))
     label = str(clip.get("section_label", section))
     camera = str(clip.get("camera_language", "")).strip() or "clean framing"
-    emotion = str(clip.get("emotion", "")).strip() or "steady emotion"
-    detail = str(clip.get("scene_detail", "")).strip() or "hero detail"
-    motion = str(clip.get("motion_hint", "")).strip() or "smooth motion"
     relation = str(clip.get("space_relation", "")).strip() or "space stays stable"
-    return f"{sid}({section}|{label}|{camera}|{emotion}|{detail}|{motion}|{relation})"
+    return f"{sid}({section}|{label}|{camera}|{relation})"
 
 
 def _clip_ids(clips: list[dict]) -> str:

@@ -22,8 +22,7 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
-    assert nodes["94"]["tags"].startswith("kpop.")
-    assert "glossy synth-pop drums" not in nodes["94"]["tags"]
+    assert nodes["94"]["tags"].startswith("kpop")
     assert nodes["94"]["tags"].endswith("Bright idol-pop with punchy 808s and layered hooks")
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
@@ -46,8 +45,7 @@ def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     nodes = out["node.inputs"]
     assert nodes["94"]["lyrics"] == plan["lyrics"]
     assert nodes["94"]["language"] == "ja"
-    assert nodes["94"]["tags"].startswith("jpop.")
-    assert "mature graceful lead vocal" not in nodes["94"]["tags"]
+    assert nodes["94"]["tags"].startswith("jpop")
     assert nodes["94"]["tags"].endswith("Elegant Japanese city-pop with warm analog keys and soft neon glide")
 
 
@@ -77,7 +75,6 @@ def test_uso_mapper():
         "negative_prompt": "blurry, low detail",
         "shot_type": "CHAR_MASTER",
         "style_ref": "refs/front.png",
-        "style_guidance": "clean mv look",
         "delta": "small pose shift",
         "clip_phase": "establish",
         "space_relation": "glass stays camera-right",
@@ -87,10 +84,10 @@ def test_uso_mapper():
     nodes = out["node.inputs"]
     assert nodes["47"]["image"] == "a.png"
     assert nodes["112:110"]["width"] == 1024
-    assert "Start frame only" in nodes["112:6"]["text"]
-    assert "Preserve the setup clearly before the motion opens." in nodes["112:6"]["text"]
-    assert "Preserve spatial relation: glass stays camera-right." in nodes["112:6"]["text"]
-    assert "clean mv look" in nodes["112:6"]["text"]
+    assert nodes["112:6"]["text"].startswith(item["prompt_text"])
+    assert "Start frame before small pose shift." in nodes["112:6"]["text"]
+    assert "Keep the setup readable." in nodes["112:6"]["text"]
+    assert "Space relation stays glass stays camera-right." in nodes["112:6"]["text"]
 
 
 def test_uso_mapper_normalizes_delta_clause_punctuation_and_case():
@@ -104,7 +101,6 @@ def test_uso_mapper_normalizes_delta_clause_punctuation_and_case():
         "negative_prompt": "blurry, low detail",
         "shot_type": "CHAR_MASTER",
         "style_ref": "refs/front.png",
-        "style_guidance": "clean mv look",
         "delta": "She eases to a stop and lets her gaze meet the glass.",
         "clip_phase": "establish",
         "space_relation": "glass stays camera-right",
@@ -112,7 +108,7 @@ def test_uso_mapper_normalizes_delta_clause_punctuation_and_case():
     }
     out = map_uso_workflow(cfg, item)
     text = out["node.inputs"]["112:6"]["text"]
-    assert "before she eases to a stop and lets her gaze meet the glass." in text
+    assert "Start frame before she eases to a stop and lets her gaze meet the glass." in text
     assert "glass.." not in text
 
 

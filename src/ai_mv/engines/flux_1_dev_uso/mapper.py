@@ -45,7 +45,7 @@ def _uso_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty USO prompt_text: {item['shot_id']}")
-    parts = [text, _frame_clause(item), _phase_clause(item), _continuity_clause(item), _intent_clause(item)]
+    parts = [text, _frame_clause(item), _phase_clause(item), _continuity_clause(item)]
     return " ".join(x for x in parts if x).strip()
 
 
@@ -55,38 +55,26 @@ def _frame_clause(item: dict) -> str:
     if not delta:
         return ""
     if frame == "start":
-        return f"Start frame only; show the poised setup before {delta}."
+        return f"Start frame before {delta}."
     if frame == "end":
-        return f"End frame only; clearly land after {delta}."
-    return f"Show the moment around {delta}."
-
-
-def _intent_clause(item: dict) -> str:
-    vals = [
-        str(item.get("style_guidance", "")).strip(),
-        str(item.get("camera_language", "")).strip(),
-        str(item.get("emotion", "")).strip(),
-        str(item.get("scene_detail", "")).strip(),
-        str(item.get("motion_hint", "")).strip(),
-    ]
-    text = ", ".join(x for x in vals if x)
-    return f"Keep {text}." if text else ""
+        return f"End frame after {delta}."
+    return f"Moment around {delta}."
 
 
 def _phase_clause(item: dict) -> str:
     phase = str(item.get("clip_phase", "")).strip().lower()
     if phase == "establish":
-        return "Preserve the setup clearly before the motion opens."
+        return "Keep the setup readable."
     if phase == "advance":
-        return "Let the motion progress clearly inside the same space."
+        return "Keep the motion continuous."
     if phase == "resolve":
-        return "Land the action cleanly so the beat feels resolved."
+        return "Land the beat cleanly."
     return ""
 
 
 def _continuity_clause(item: dict) -> str:
     text = str(item.get("space_relation", "")).strip()
-    return f"Preserve spatial relation: {text}." if text else ""
+    return f"Space relation stays {text}." if text else ""
 
 
 def _delta_phrase(item: dict) -> str:

@@ -19,7 +19,8 @@ def test_uso_planner_allows_missing_style_guidance(monkeypatch):
     monkeypatch.setattr(uso_planner, "generate_structured", _fake_uso_generate)
     payload = {"anchors": [_anchor("a", False)], "visual_brief": _brief()}
     out = build_uso_plan({}, payload)
-    assert out["items"][0]["style_guidance"] == ""
+    assert out["items"][0]["prompt_text"]
+    assert "style_guidance" not in out["items"][0]
 
 
 def test_uso_planner_shot_id_coerce(monkeypatch):

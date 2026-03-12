@@ -51,7 +51,7 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
     assert "injected directly into the workflow text encoder" in prompt
-    assert "Map repeated-return escalation in clear steps" in prompt
+    assert "Order the phrase chain so identity lands first" in prompt
     assert "Escalation guide=" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Think like a finished music video" in prompt
@@ -78,7 +78,8 @@ def test_uso_prompt_mentions_mapper_appended_clauses():
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = uso_planner._planner_prompt({}, payload, anchors, "")
-    assert "mapper appends frame timing and intent clauses" in prompt
+    assert "prompt_text is the real workflow text anchor" in prompt
+    assert "prompt_text must be exactly one natural English sentence (18-30 words)" in prompt
     assert "Final Chorus should feel like the visual peak" in prompt
     assert "visible payoff detail" in prompt
     assert "three-quarter turns, profile walks, over-shoulder glances" in prompt

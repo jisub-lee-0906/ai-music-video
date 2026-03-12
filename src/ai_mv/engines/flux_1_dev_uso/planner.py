@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_uso_items
 from ai_mv.core.contracts.prompt_schema import uso_schema
+from ai_mv.core.prompt_digests import lyrics_digest, negative_digest, profile_digest, style_digest, visual_digest
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
@@ -14,10 +15,9 @@ def build_uso_plan(config: dict, payload: dict) -> dict:
     if not anchors:
         raise RuntimeError("anchors missing for USO")
     clip_anchors = _expand_clip_anchors(config, anchors)
-    style_guidance = _style_guidance(config, payload)
     spec = _plan_with_llm(config, payload, clip_anchors)
     rules = normalize_uso_items(spec["items"], clip_anchors)
-    items = [_build_item(a, style_guidance, rules[a["shot_id"]]) for a in clip_anchors]
+    items = [_build_item(a, rules[a["shot_id"]]) for a in clip_anchors]
     return {"items": items}
 
 
@@ -54,15 +54,15 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 
 def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
-    guidance = _style_guidance(config, payload)
-    profile = _audio_map_text(payload, "profile_summary")
-    visual = _audio_map_text(payload, "visual_direction")
-    negative = _audio_map_text(payload, "negative_direction")
-    lyrics = _lyrics_excerpt(payload)
+    guidance = style_digest(payload.get("audio_map", {}), 2) or _style_guidance(config, payload)
+    profile = profile_digest(payload.get("audio_map", {}), 1)
+    visual = visual_digest(payload.get("audio_map", {}), 2)
+    negative = negative_digest(payload.get("audio_map", {}), 1)
+    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 6)
     brief = _brief_summary(payload["visual_brief"])
     anchor_ids = _anchor_ids(anchors)
     summary = _anchor_summary(anchors)
-    carry_clause = f"Previous batch continuity hint={carry}. " if carry else ""
+    carry_clause = f"Continuity carry={carry}. " if carry else ""
     return (
         "You are a senior image-to-image keyframe director for character-consistent music videos. "
         "Return strict JSON only: {\"items\":[...]}. No prose outside JSON. "
@@ -72,15 +72,15 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "shot_id must be exactly one token from Anchors with no suffix, prefix, or punctuation changes. "
         "Clip suffixes such as _C01, _C02, _C03 are part of the required shot_id and must be preserved exactly. "
         "Item count must match the number of Anchors exactly. "
-        "prompt_text must be exactly one natural English sentence (18-34 words). "
+        "prompt_text must be exactly one natural English sentence (18-30 words). "
         "prompt_text must read like a usable diffusion prompt sentence, not a lyric caption, review, or screenplay line. "
-        "prompt_text is used as the base workflow text and the mapper appends frame timing and intent clauses, so do not mention start frame, end frame, delta wording, or 'keep' instructions inside prompt_text itself. "
+        "prompt_text is the real workflow text anchor, so make the sentence complete by itself without relying on mapper-added style paragraphs. "
         "prompt_text should foreground lead identity through face, posture, silhouette, and readable environment before mentioning any prop. "
         "For wider or travel-oriented shots, body line, silhouette, and space relation may lead more than close facial detail. "
         "Do not mention the hero prop in every item; mention it only when it materially supports the intended shot. "
         "delta describes a small progression from start to end frame, not a scene reset. "
         "delta should usually be the smallest readable version of the section story_beat. "
-        "delta must be a natural English change phrase of roughly 6-16 words, never a number, score, placeholder, or shorthand token. "
+        "delta must be a short natural English change phrase of roughly 4-10 words, never a number, score, placeholder, or shorthand token. "
         "When a shot series is split into multiple clip parts, give each part a distinct micro-role inside the same location: earlier parts establish the space and body relation, middle parts advance the action, and the last part resolves or exits the beat. "
         "Do not give identical prompt_text or identical delta to multiple consecutive parts of the same shot series. "
         "Do not change time period, world setting, or character species. "
@@ -89,7 +89,7 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Honor the shot space_relation exactly: if glass, curb, storefront, or reflection is placed on one side of the frame, keep that side relation stable across the start and end images for the same clip. "
         "Let the story_beat determine the keyframe change before beauty polish does; if the section is about passing, pausing, turning back, or facing forward, the frame pair should make that readable. "
         "Use concrete visual language: pose shift, gaze shift, hand motion, cloth motion, light direction, camera feel. "
-        "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint. "
+        "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint, but absorb those cues into one compact sentence instead of listing them back. "
         "Prefer readable, graceful progression over chaotic transformation. "
         "Think in finished music-video frames, not only stable portraits: allow three-quarter turns, profile walks, over-shoulder glances, reflected side views, and silhouette-friendly body lines when the shot blueprint suggests them. "
         "Do not keep solving every shot as another polished upper-body hero portrait; some clips should privilege body line, travel direction, or space relation while preserving the same lead subject. "
@@ -110,28 +110,12 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
         "Keep lead identity primary; in close shots the face can lead, while in wider motion shots silhouette, posture, and travel direction can lead. Props and bags should stay secondary unless the shot is a brief intentional detail insert. "
         "Avoid generic phrase pairs like beautiful lighting, emotional atmosphere, cinematic mood, stylish portrait, or dreamy vibes unless they are tied to a specific visual fact. "
-        "Treat profile_summary and visual_direction as the stable interpretation layer for future profiles: compress more tags into one readable image lane instead of listing them back. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, twisted limbs, broken wrists, warped torso, collapsed shoulders, text watermark, logo, subtitle. "
         f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; "
         f"Avoid={negative}; "
         f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Anchor ids={anchor_ids}; Anchors={summary}."
     )
-
-
-def _lyrics_excerpt(payload: dict) -> str:
-    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
-    text = str(audio_map.get("lyrics", "")).strip() if isinstance(audio_map, dict) else ""
-    if not text:
-        return ""
-    lines = [x.strip()[:120] for x in text.splitlines() if x.strip()]
-    return " | ".join(lines[:8])
-
-
-def _audio_map_text(payload: dict, key: str) -> str:
-    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
-    return str(audio_map.get(key, "")).strip() if isinstance(audio_map, dict) else ""
-
 
 def _uso_planner_batch_size(config: dict) -> int:
     render = config.get("render", {}) if isinstance(config, dict) else {}
@@ -209,6 +193,8 @@ def _next_item(pool: list[dict], idx: int) -> dict:
     if idx >= len(pool):
         raise RuntimeError("USO planner returned fewer items than anchors")
     return pool[idx]
+
+
 def _normalize_item_id(row: dict) -> dict:
     out = dict(row)
     sid = str(out.get("shot_id", "")).strip().strip(".;:")
@@ -247,7 +233,7 @@ def _anchor_ids(anchors: list[dict]) -> str:
     return ", ".join(ids)
 
 
-def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
+def _build_item(anchor: dict, rule: dict) -> dict:
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
         "shot_id": anchor["shot_id"],
@@ -257,7 +243,6 @@ def _build_item(anchor: dict, style_guidance: str, rule: dict) -> dict:
         "delta": str(rule["delta"]),
         "prompt_text": str(rule["prompt_text"]),
         "negative_prompt": str(rule["negative_prompt"]),
-        "style_guidance": style_guidance,
         "duration_sec": float(anchor["duration_sec"]),
         "clip_index": int(anchor.get("clip_index", 1)),
         "clip_count": int(anchor.get("clip_count", 1)),

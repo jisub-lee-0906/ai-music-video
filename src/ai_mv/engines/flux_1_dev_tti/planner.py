@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
+from ai_mv.core.prompt_digests import audio_digest, label_digest, lyrics_digest, negative_digest, profile_digest, section_digest, style_digest, visual_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 
@@ -33,16 +34,16 @@ def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[d
 
 def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict[str, str]:
     return {
-        "guidance": _style_guidance(config, audio_map),
-        "desc": str(audio_map.get("genre_description", "")).strip(),
-        "lyrics": _lyrics_excerpt(str(audio_map.get("lyrics", ""))),
+        "guidance": style_digest(audio_map, 2) or _style_guidance(config, audio_map),
+        "desc": audio_digest(audio_map, 1),
+        "lyrics": lyrics_digest(audio_map.get("lyrics", ""), 8),
         "tags": str(audio_map.get("tags", "")).strip(),
-        "profile": str(audio_map.get("profile_summary", "")).strip(),
-        "visual_direction": str(audio_map.get("visual_direction", "")).strip(),
-        "negative_direction": str(audio_map.get("negative_direction", "")).strip(),
+        "profile": profile_digest(audio_map, 1),
+        "visual_direction": visual_digest(audio_map, 2),
+        "negative_direction": negative_digest(audio_map, 1),
         "brief_view": _brief_summary(brief),
-        "section_view": _section_summary(sections),
-        "section_labels": _section_labels(sections),
+        "section_view": section_digest(sections),
+        "section_labels": label_digest(sections),
         "escalation": _escalation_reference(sections),
         "types": ", ".join(SHOT_TYPES),
     }
@@ -59,6 +60,7 @@ def _planner_rules() -> str:
         "prompt_text is injected directly into the workflow text encoder, so do not use lists, labels, shot ids, markdown, or prose commentary. "
         "Use raw visual prompt language only: subject identity, face traits, hair, wardrobe, fabric/material, pose, background set, lighting style, lens language, mood, palette, and finish. "
         "Match the workflow example style: short comma-separated noun phrases and modifier phrases, not full sentences and not paragraph prose. "
+        "Order the phrase chain so identity lands first, then styling, then environment, then light or palette, then finish. "
         "Keep the prompt lexically dense and image-led, more like 'high fashion, vintage couture, street photography' than like a screenplay description. "
         "Keep one consistent lead identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
         "Derive subject identity strictly from the visual brief; do not infer ethnicity, gender, genre-specific styling, or cultural lane unless the brief explicitly says so. "
@@ -69,8 +71,7 @@ def _planner_rules() -> str:
         "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that place, not a random fresh location. "
         "Treat story_beat as the first priority for shot design: the frame must make the visible action readable before it tries to be pretty. "
         "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same lead subject and world grammar. "
-        "Use section labels as escalation hints: Chorus 2 should feel like a firmer return, and Final Chorus should feel like the visual payoff shot for the song. "
-        "Map repeated-return escalation in clear steps: the first Chorus should feel like arrival or release, Chorus 2 should feel brighter, more open, and more assured, and Final Chorus should feel like the most resolved and luminous version of the same world. "
+        "Use section labels as escalation hints so repeated returns widen confidence and clarity without changing worlds. "
         "Think in editorial coverage across a whole song: every section does not need to prove face beauty in the same way, and some shots should primarily sell movement through space, distance, or environment relation. "
         "For repeated chorus labels, do not settle for mild synonyms at the same intensity: later returns must read as a real lift in emotion, posture, frame openness, and environmental clarity. "
         "Use a stable shot hierarchy across the song: intro/outro favor character master or environment setup, verses favor performance-wide, pre-chorus favors emotion-close, chorus favors performance hero framing, post-chorus favors detail or reflection, bridge favors emotion-close or reflective transition. "
@@ -162,37 +163,12 @@ def _sec_start(row: dict) -> float:
 def _sec_end(row: dict) -> float:
     return float(row.get("end_sec", row.get("end", 0.0)))
 
-
-def _lyrics_excerpt(text: str) -> str:
-    lines = [x.strip() for x in text.splitlines() if x.strip()]
-    return " | ".join(lines[:12]) if lines else ""
-
-
 def _style_guidance(config: dict, audio_map: dict) -> str:
     guided = str(audio_map.get("style_guidance", "")).strip()
     if guided:
         return guided
     style = config.get("style", {}) if isinstance(config, dict) else {}
     return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
-
-
-def _section_summary(sections: list[dict]) -> str:
-    out: list[str] = []
-    for row in sections:
-        name = str(row.get("name", "section")).strip()
-        out.append(f"{name}:{round(_sec_start(row), 2)}-{round(_sec_end(row), 2)}")
-    if not out:
-        raise RuntimeError("sections missing for TTI prompt planner")
-    return ", ".join(out)
-
-
-def _section_labels(sections: list[dict]) -> str:
-    out = [str(row.get("label", row.get("name", "section"))).strip() for row in sections]
-    vals = [x for x in out if x]
-    if not vals:
-        raise RuntimeError("sections missing for TTI prompt planner")
-    return ", ".join(vals)
-
 
 def _escalation_reference(sections: list[dict]) -> str:
     labels = {str(row.get("label", row.get("name", "section"))).strip().lower() for row in sections}

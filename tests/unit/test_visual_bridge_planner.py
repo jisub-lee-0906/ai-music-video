@@ -47,8 +47,14 @@ def test_visual_bridge_prompt_separates_names_and_timing():
     assert "Chorus 2 should feel like a stronger return" in prompt
     assert "Create a small location budget for the whole song" in prompt
     assert "story_beat must be a short plain-English visible action beat" in prompt
+    assert "Every story_beat must contain at least one visible action verb" in prompt
+    assert "Good story_beat examples: slows by the glass and checks the reflection" in prompt
+    assert "Bad story_beat examples: searching, opening up, separation" in prompt
     assert "Profile steering=retro japanese city-pop lane" in prompt
     assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
+    assert "Derive identity strictly from the profile and visual brief" in prompt
+    assert "never infer ethnicity, gender, genre-specific styling" in prompt
+    assert "Audio tags=" not in prompt
 
 
 def test_visual_bridge_rejects_non_action_story_beat():

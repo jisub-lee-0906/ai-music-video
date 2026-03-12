@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.output_paths import audio_prefix
+from ai_mv.core.prompt_digests import audio_digest, negative_digest, profile_digest
 from ai_mv.core.profile_brief import build_profile_brief, resolve_style_guidance
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
@@ -87,6 +88,7 @@ def _audio_artist_direction() -> str:
         "Each major return should create a new emotional release, not just restate the same information. "
         "Use the bridge to make a choice, confession, rupture, or reveal that changes how the Final Chorus lands. "
         "Treat the Final Chorus as the emotional arrival shot, and let the outro feel fully settled rather than abruptly cut off. "
+        "Keep the prompt centered on songwriting, topline, arrangement, and lyrical world; do not solve music-video staging inside the song plan. "
     )
 
 
@@ -164,10 +166,10 @@ def _language_clause(plan: dict) -> str:
 
 def _profile_clause(plan: dict) -> str:
     parts = [
-        _profile_line("Audio direction", plan.get("audio_direction", "")),
+        _profile_line("Profile world", profile_digest(plan)),
+        _profile_line("Audio direction", audio_digest(plan, 1)),
         _profile_line("Hook direction", plan.get("hook_direction", "")),
-        _profile_line("Visual carryover", plan.get("visual_direction", "")),
-        _profile_line("Avoid", plan.get("negative_direction", "")),
+        _profile_line("Avoid", negative_digest(plan)),
     ]
     return "".join(parts)
 
@@ -180,6 +182,8 @@ def _hook_shape_clause(plan: dict) -> str:
 def _profile_line(label: str, text: object) -> str:
     val = str(text).strip()
     return f"{label}={val}. " if val else ""
+
+
 def _plan_once(config: dict, plan: dict) -> dict:
     normalized = _normalize_and_validate(config, plan)
     return normalized
@@ -201,6 +205,8 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     if not str(normalized.get("keyscale", "")).strip():
         normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
     return normalized
+
+
 def _hook_shape_bias(seed: int, language: str) -> str:
     if language == "ja":
         shapes = (

@@ -25,7 +25,7 @@ def test_tti_prompt_uses_section_labels_for_escalation():
     sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
     assert "Section labels in order=Final Chorus" in prompt
-    assert "Final Chorus should feel like the visual payoff shot" in prompt
+    assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Profile steering=retro city-pop lane" in prompt
 
 
@@ -44,6 +44,7 @@ def test_uso_prompt_mentions_return_intensity():
     prompt = uso_planner._planner_prompt({}, payload, anchors, "")
     assert "Final Chorus should feel like the visual peak" in prompt
     assert "Profile steering=retro city-pop lane" in prompt
+    assert "prompt_text is the real workflow text anchor" in prompt
 
 
 def test_wan_prompt_mentions_final_chorus_payoff():
@@ -61,6 +62,7 @@ def test_wan_prompt_mentions_final_chorus_payoff():
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "Final Chorus should feel like the motion payoff" in prompt
     assert "Visual direction=harbor neon romance" in prompt
+    assert "Sentence 1: starting state and first movement impulse" in prompt
 
 
 def _brief() -> dict:

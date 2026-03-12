@@ -37,12 +37,12 @@ def build_profile_brief(config: dict) -> dict[str, str]:
         ),
         "hook_direction": _join_sentences(
             _text(audio, "hook_brief"),
-            _text(mv, "payoff_style"),
         ),
         "visual_direction": _join_sentences(
             _text(visual, "brief"),
             _text(mv, "story_world"),
             action,
+            _text(mv, "payoff_style"),
         ),
         "negative_direction": _join_sentences(_text(visual, "negative"), _text(mv, "avoid")),
     }
