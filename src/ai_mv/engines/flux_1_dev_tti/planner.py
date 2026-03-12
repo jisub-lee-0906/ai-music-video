@@ -34,12 +34,11 @@ def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[d
 
 def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict[str, str]:
     return {
-        "guidance": style_digest(audio_map, 2) or _style_guidance(config, audio_map),
+        "guidance": style_digest(audio_map, 1) or _style_guidance(config, audio_map),
         "desc": audio_digest(audio_map, 1),
-        "lyrics": lyrics_digest(audio_map.get("lyrics", ""), 8),
-        "tags": str(audio_map.get("tags", "")).strip(),
+        "lyrics": lyrics_digest(audio_map.get("lyrics", ""), 5),
         "profile": profile_digest(audio_map, 1),
-        "visual_direction": visual_digest(audio_map, 2),
+        "visual_direction": visual_digest(audio_map, 1),
         "negative_direction": negative_digest(audio_map, 1),
         "brief_view": _brief_summary(brief),
         "section_view": section_digest(sections),
@@ -61,6 +60,8 @@ def _planner_rules() -> str:
         "Use raw visual prompt language only: subject identity, face traits, hair, wardrobe, fabric/material, pose, background set, lighting style, lens language, mood, palette, and finish. "
         "Match the workflow example style: short comma-separated noun phrases and modifier phrases, not full sentences and not paragraph prose. "
         "Order the phrase chain so identity lands first, then styling, then environment, then light or palette, then finish. "
+        "A strong master_anchor reads like: refined lead subject, signature hair and coat silhouette, rain-streaked station glass, warm storefront glow, soft teal-rose reflections, cinematic 50mm, polished film finish. "
+        "A weak master_anchor reads like: beautiful singer in a dramatic scene with emotional vibes at night. "
         "Keep the prompt lexically dense and image-led, more like 'high fashion, vintage couture, street photography' than like a screenplay description. "
         "Keep one consistent lead identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
         "Derive subject identity strictly from the visual brief; do not infer ethnicity, gender, genre-specific styling, or cultural lane unless the brief explicitly says so. "
@@ -72,8 +73,6 @@ def _planner_rules() -> str:
         "Treat story_beat as the first priority for shot design: the frame must make the visible action readable before it tries to be pretty. "
         "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same lead subject and world grammar. "
         "Use section labels as escalation hints so repeated returns widen confidence and clarity without changing worlds. "
-        "Think in editorial coverage across a whole song: every section does not need to prove face beauty in the same way, and some shots should primarily sell movement through space, distance, or environment relation. "
-        "For repeated chorus labels, do not settle for mild synonyms at the same intensity: later returns must read as a real lift in emotion, posture, frame openness, and environmental clarity. "
         "Use a stable shot hierarchy across the song: intro/outro favor character master or environment setup, verses favor performance-wide, pre-chorus favors emotion-close, chorus favors performance hero framing, post-chorus favors detail or reflection, bridge favors emotion-close or reflective transition. "
         "Think like a finished music video, not a portrait generator: the shot list should create angle variety, movement variety, and staging progression while preserving the same lead subject. "
         "Across the song, mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings where appropriate instead of defaulting to straight-on portraits. "
@@ -82,7 +81,6 @@ def _planner_rules() -> str:
         "Bridge shots should introduce emotional distance, pause, or separation through framing: silhouette, reflected profile, negative space, isolated lateral placement, or partial obstruction. "
         "Bridge should visually interrupt the flow established before it so the final return feels earned, not merely brighter. "
         "Post-chorus and transition shots should reset rhythm through texture, reflection, or connective camera relation rather than another near-identical face angle. "
-        "Treat profile_summary and visual_direction as the stable lane for future profiles: translate longer tag sets into one coherent lead identity, world, and camera grammar. "
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
         "Negative constraints and world rules override any section staging idea. "
@@ -107,7 +105,6 @@ def _planner_rules() -> str:
         "space_relation should be simple, physically readable, and reusable across start and end frames so downstream image-to-image planners can preserve the same space logic. "
         "Outro framing should leave a residue image rather than another performance beat: retreating figure, empty space after passage, or reflection that outlasts her body are strong options. "
         "Let motion_hint and camera_language work together like a music-video storyboard: profile walk, shoulder turn, silhouette drift, reflective pass, slow follow, and clean lateral glide are all valid when they fit the section. "
-        "If the brief discourages fast camera or drift, use stillness, glide, slow dolly, gentle turn, or subtle gaze change instead of running or aggressive movement. "
         "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
         "Avoid empty prestige phrases like cinematic vibes, dramatic aura, stylish composition, or emotional energy without a concrete visible setup. "
         "Shot count must match section count exactly. "
@@ -117,8 +114,8 @@ def _planner_rules() -> str:
 def _planner_inputs(context: dict[str, str]) -> str:
     return (
         f"Use shot_type only from enum: {context['types']}. "
-        f"Audio tags={context['tags']}; Audio direction={context['desc']}; "
-        f"Style guidance={context['guidance']}; Profile steering={context['profile']}; "
+        f"Audio direction={context['desc']}; "
+        f"Style lane={context['guidance']}; Profile steering={context['profile']}; "
         f"Visual direction={context['visual_direction']}; "
         f"Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
         f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; "
@@ -190,7 +187,7 @@ def _brief_summary(brief: dict) -> str:
     rules = ", ".join(world.get("negative_constraints", []))
     return (
         f"hero={world['hero_identity']}; world={world['world_rules']}; "
-        f"motifs={motifs}; avoid={rules}; section_rules={_section_briefs(brief)}"
+        f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
     )
 
 
@@ -198,8 +195,7 @@ def _section_briefs(brief: dict) -> str:
     rows = []
     for row in section_dramaturgy(brief):
         rows.append(
-            f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
-            f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"
+            f"{row['section_name']}|{row['story_beat']}|{row['location_anchor']}"
         )
     return ", ".join(rows)
 

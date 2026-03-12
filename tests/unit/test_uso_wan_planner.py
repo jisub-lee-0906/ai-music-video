@@ -171,6 +171,7 @@ def test_wan_clip_summary_uses_shot_ids_only():
     summary = wan_planner._clip_summary([_uso("x", 1.0), _uso("y", 1.0)])
     assert "x(" in summary
     assert "y(" in summary
+    assert "smooth motion" in summary
 
 
 def test_wan_chains_split_clip_starts_from_previous_end():

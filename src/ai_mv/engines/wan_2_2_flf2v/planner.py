@@ -45,11 +45,11 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 
 def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
-    guidance = style_digest(payload.get("audio_map", {}), 2) or _style_guidance(config, payload)
+    guidance = style_digest(payload.get("audio_map", {}), 1) or _style_guidance(config, payload)
     profile = profile_digest(payload.get("audio_map", {}), 1)
-    visual = visual_digest(payload.get("audio_map", {}), 2)
+    visual = visual_digest(payload.get("audio_map", {}), 1)
     negative = negative_digest(payload.get("audio_map", {}), 1)
-    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 6)
+    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 4)
     brief = _brief_summary(payload["visual_brief"])
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
@@ -67,6 +67,8 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
         "The motion arc should visibly complete the section story_beat rather than only adding atmosphere. "
         "Optional sentence 3: environment reaction details. "
+        "A strong clip prompt uses readable motion verbs like steps, turns, slows, pauses, passes, drifts, follows, or settles. "
+        "A weak clip prompt uses abstract phrases like cinematic energy, emotional atmosphere, or dynamic movement without saying what moves. "
         "positive_prompt must read like a usable motion direction for a renderer, not like marketing copy or a music review. "
         "positive_prompt is injected directly into the workflow text encoder, so do not use bullet points, labels, shot ids, or section headers. "
         "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
@@ -81,7 +83,6 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "For Chorus 2 and Final Chorus, express the lift through clearer posture, cleaner camera relation, stronger reflection response, or a more resolved facial turn rather than generic statements about bigger emotion. "
         "Final Chorus should read like the lead subject and the world have finally locked into the same beat, with one readable motion payoff rather than extra spectacle. "
         "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
-        "If the section is emotional or performance-focused, prefer elegant motion and micro-movements over spectacle. "
         "Keep the lead subject readable in every sentence: face, posture, silhouette, and clear camera relation should stay understandable. "
         "Verse and transition clips should often move through profile travel, side-on glide, shoulder-led turns, reflective passes, or silhouette walk-throughs instead of defaulting to direct front-facing motion. "
         "Bridge clips should usually introduce distance or suspended breath: slowed walk-through, reflective separation, lateral drift with negative space, profile pause, or a partially obscured hold are stronger than another frontal beauty move. "
@@ -93,7 +94,7 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
-        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; "
+        f"{carry_clause}Style lane={guidance}; Profile steering={profile}; Visual direction={visual}; "
         f"Avoid={negative}; "
         f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Exact ClipIds={clip_ids}; ClipSummary={summary}."
@@ -122,8 +123,7 @@ def _section_briefs(brief: dict) -> str:
     rows = []
     for row in section_dramaturgy(brief):
         rows.append(
-            f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
-            f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"
+            f"{row['section_name']}|{row['story_beat']}|{row['location_anchor']}"
         )
     return ", ".join(rows)
 
@@ -167,7 +167,8 @@ def _clip_summary_row(clip: dict) -> str:
     label = str(clip.get("section_label", section))
     camera = str(clip.get("camera_language", "")).strip() or "clean framing"
     relation = str(clip.get("space_relation", "")).strip() or "space stays stable"
-    return f"{sid}({section}|{label}|{camera}|{relation})"
+    motion = str(clip.get("motion_hint", "")).strip() or "steady motion"
+    return f"{sid}({section}|{label}|{camera}|{motion}|{relation})"
 
 
 def _clip_ids(clips: list[dict]) -> str:

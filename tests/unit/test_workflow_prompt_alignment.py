@@ -52,6 +52,8 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
     assert "injected directly into the workflow text encoder" in prompt
     assert "Order the phrase chain so identity lands first" in prompt
+    assert "A strong master_anchor reads like" in prompt
+    assert "A weak master_anchor reads like" in prompt
     assert "Escalation guide=" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Think like a finished music video" in prompt
@@ -111,6 +113,7 @@ def test_wan_prompt_mentions_direct_text_encoder_alignment():
     assert "injected directly into the workflow text encoder" in prompt
     assert "motion payoff" in prompt
     assert "lead subject and the world have finally locked into the same beat" in prompt
+    assert "A strong clip prompt uses readable motion verbs" in prompt
     assert "vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views" in prompt
     assert "Build motion like coverage for a finished edit" in prompt
     assert "Honor section story_beat and location_anchor" in prompt
