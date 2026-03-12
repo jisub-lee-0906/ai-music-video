@@ -1,7 +1,0 @@
-{
-  "run_id": "test-failed-run",
-  "status": "failed",
-  "stages": [
-    "ok_stage"
-  ]
-}
