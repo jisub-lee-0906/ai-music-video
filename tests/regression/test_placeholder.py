@@ -29,7 +29,7 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     ):
         path.unlink(missing_ok=True)
 
-    run_id = pipeline_mod.run_pipeline(str(temp_cfg), "test-failed-run")
+    run_id = pipeline_mod.run_pipeline("test-failed-run")
 
     snapshot = read_snapshot(run_id)
     assert snapshot["status"] == "failed"

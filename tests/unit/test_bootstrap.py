@@ -20,7 +20,7 @@ def test_bootstrap_applies_profile_audio_and_style(tmp_path, monkeypatch):
         "runtime": {"template_hash_lock": False, "template_hashes": {}},
     }
     (tmp_path / "workflows").mkdir()
-    profile_dir = tmp_path / "configs" / "profiles"
+    profile_dir = tmp_path / "profiles"
     profile_dir.mkdir(parents=True)
     (profile_dir / "city.yaml").write_text(_profile_yaml(), encoding="utf-8")
     for name in _wf_names():

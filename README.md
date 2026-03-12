@@ -23,8 +23,8 @@ Pipeline flow:
 - `acestep_music -> visual_bridge -> tti_anchor -> uso_chain -> wan_interpolation -> merge_mux`
 
 ## Commands
-- `ai-mv start [--config <yaml>] [--run-id <id>] [--profile <name>]`
-- `ai-mv doctor [--config <yaml>]`
+- `ai-mv start [--run-id <id>] [--profile <name>]`
+- `ai-mv doctor`
 - `ai-mv status --run-id <id>`
 
 ## Doctor Checks
@@ -34,7 +34,7 @@ Pipeline flow:
 - `ffmpeg` and `ffprobe` on `PATH`
 
 ## Core Paths
-- configs/profiles: creative profiles
+- profiles: creative profiles
 - workflows: ComfyUI API workflow exports
 - artifacts/runs_state: run snapshots and manifests
 - artifacts/reports: summaries
