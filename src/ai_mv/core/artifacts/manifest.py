@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.artifacts.paths import latest_file, run_file
 from ai_mv.utils.json_utils import write_json
 
 
@@ -15,7 +16,8 @@ def write_manifest(state: dict, payload: dict) -> None:
         "merge_status": str(payload.get("merge_status", "")),
         "final_video": str(payload.get("final_video", "")),
     }
-    write_json(f"artifacts/runs_state/{state['run_id']}/manifest.json", out)
+    write_json(run_file(state["run_id"], "manifest.json"), out)
+    write_json(latest_file("manifest.json"), out)
 
 
 def _anchor_rows(payload: dict) -> list[dict]:

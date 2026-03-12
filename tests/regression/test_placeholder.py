@@ -18,10 +18,14 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     temp_cfg.parent.mkdir(parents=True, exist_ok=True)
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")
     shutil.rmtree(Path("artifacts/runs_state/test-failed-run"), ignore_errors=True)
+    shutil.rmtree(Path("artifacts/runs/test-failed-run"), ignore_errors=True)
     for path in (
-        Path("artifacts/reports/test-failed-run_summary.json"),
-        Path("artifacts/runs_state/test-failed-run/manifest.json"),
-        Path("artifacts/dashboards/test-failed-run.json"),
+        Path("artifacts/runs/test-failed-run/summary.json"),
+        Path("artifacts/runs/test-failed-run/manifest.json"),
+        Path("artifacts/runs/test-failed-run/dashboard.json"),
+        Path("artifacts/latest/summary.json"),
+        Path("artifacts/latest/manifest.json"),
+        Path("artifacts/latest/dashboard.json"),
     ):
         path.unlink(missing_ok=True)
 
@@ -31,9 +35,9 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     assert snapshot["status"] == "failed"
     assert snapshot["failure_reason"] == "boom_stage: planned failure"
 
-    summary = read_json(Path(f"artifacts/reports/{run_id}_summary.json"))
-    manifest = read_json(Path(f"artifacts/runs_state/{run_id}/manifest.json"))
-    dashboard = read_json(Path(f"artifacts/dashboards/{run_id}.json"))
+    summary = read_json(Path(f"artifacts/runs/{run_id}/summary.json"))
+    manifest = read_json(Path(f"artifacts/runs/{run_id}/manifest.json"))
+    dashboard = read_json(Path(f"artifacts/runs/{run_id}/dashboard.json"))
 
     assert summary["failure_reason"] == "boom_stage: planned failure"
     assert manifest["status"] == "failed"

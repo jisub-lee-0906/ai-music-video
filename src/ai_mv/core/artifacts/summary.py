@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.artifacts.paths import latest_file, run_file
 from ai_mv.utils.json_utils import write_json
 
 
@@ -15,4 +16,5 @@ def write_summary(state: dict, payload: dict) -> None:
         "shots": len(anchors) if isinstance(anchors, list) else 0,
         "clips": len(clips) if isinstance(clips, list) else 0,
     }
-    write_json(f"artifacts/reports/{state['run_id']}_summary.json", summary)
+    write_json(run_file(state["run_id"], "summary.json"), summary)
+    write_json(latest_file("summary.json"), summary)

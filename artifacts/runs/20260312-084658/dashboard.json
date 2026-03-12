@@ -1,0 +1,9 @@
+{
+  "run_id": "20260312-084658",
+  "status": "failed",
+  "stages": [
+    "acestep_music",
+    "visual_bridge",
+    "tti_anchor"
+  ]
+}

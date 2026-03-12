@@ -1,0 +1,7 @@
+{
+  "run_id": "test-smoke",
+  "status": "done",
+  "stages": [
+    "fake_stage"
+  ]
+}

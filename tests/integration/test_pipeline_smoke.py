@@ -17,8 +17,9 @@ def test_pipeline_smoke(monkeypatch):
     temp_cfg.parent.mkdir(parents=True, exist_ok=True)
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")
     shutil.rmtree(Path("artifacts/runs_state/test-smoke"), ignore_errors=True)
-    Path("artifacts/reports/test-smoke_summary.json").unlink(missing_ok=True)
-    Path("artifacts/dashboards/test-smoke.json").unlink(missing_ok=True)
+    shutil.rmtree(Path("artifacts/runs/test-smoke"), ignore_errors=True)
+    Path("artifacts/latest/summary.json").unlink(missing_ok=True)
+    Path("artifacts/latest/dashboard.json").unlink(missing_ok=True)
     rid = run_pipeline(str(temp_cfg), "test-smoke")
     assert rid == "test-smoke"
 

@@ -1,0 +1,11 @@
+{
+  "run_id": "test-failed-run",
+  "status": "failed",
+  "failure_reason": "boom_stage: planned failure",
+  "visual_brief": {},
+  "anchors": [],
+  "uso_images": [],
+  "clips": [],
+  "merge_status": "",
+  "final_video": ""
+}
