@@ -114,17 +114,14 @@ def test_wan_prompt_mentions_motion_atom_contract():
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "Do not write the final positive_prompt prose" in prompt
     assert "motion payoff" in prompt
-    assert "lead subject and the world have finally locked into the same beat" in prompt
     assert "subject_motion must combine the visible starting state and the main body motion" in prompt
-    assert "camera_relation must be one short framing or camera phrase" in prompt
+    assert "camera_relation should be one short framing phrase" in prompt
     assert "Good environment_detail examples" in prompt
     assert "Profile steering=" not in prompt
     assert "motifs=" not in prompt
-    assert "vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views" in prompt
-    assert "Build motion like coverage for a finished edit" in prompt
     assert "Honor section story_beat and location_anchor" in prompt
     assert "Honor space_relation from the shot blueprint" in prompt
-    assert "Outro clips should resolve by leaving a lingering residue image" in prompt
+    assert "Later chorus returns can feel slightly clearer or more resolved" in prompt
 
 
 def test_wan_energy_policy_lifts_final_chorus():

@@ -78,3 +78,25 @@ def test_wan_compose_prefers_environment_sentence_when_camera_relation_is_static
         }
     )
     assert text == "She moves through the lane and lifts her eyes toward the station light. Wet stripes brighten underfoot."
+
+
+def test_wan_compose_keeps_relation_phrase_without_forcing_camera_prefix():
+    text = _compose_positive_prompt(
+        {
+            "subject_motion": "She continues across the crossing with a calmer stride",
+            "camera_relation": "glides backward in front of her",
+            "environment_detail": "Wet lane marks flare softly",
+        }
+    )
+    assert text == "She continues across the crossing with a calmer stride. Glides backward in front of her, while wet lane marks flare softly."
+
+
+def test_wan_compose_prefers_environment_when_relation_uses_technical_subject():
+    text = _compose_positive_prompt(
+        {
+            "subject_motion": "She keeps walking and lets her gaze return forward",
+            "camera_relation": "the track settles beside her",
+            "environment_detail": "wet pavement glow slips under the glass line",
+        }
+    )
+    assert text == "She keeps walking and lets her gaze return forward. Wet pavement glow slips under the glass line."

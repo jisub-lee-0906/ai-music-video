@@ -120,7 +120,7 @@ def test_wan_planner_uses_start_end_only(monkeypatch):
     assert out["clips"][0]["positive_prompt"]
     assert out["clips"][0]["subject_motion"]
     assert out["clips"][0]["camera_relation"]
-    assert "The camera" in out["clips"][0]["positive_prompt"]
+    assert "Glides back without breaking alignment" in out["clips"][0]["positive_prompt"]
 
 
 def test_wan_planner_shot_id_coerce(monkeypatch):
@@ -241,6 +241,23 @@ def test_wan_chains_split_clip_starts_from_previous_end():
     assert clips[1]["start"] == "e1.png"
     assert clips[2]["start"] == "e2.png"
     assert clips[3]["start"] == "s4.png"
+
+
+def test_wan_normalize_allows_concrete_quality_words_when_motion_is_readable():
+    out = normalize_wan_clips(
+        [
+            {
+                "shot_id": "x",
+                "subject_motion": "She keeps a clear forward walk line and settles into a shorter final step",
+                "camera_relation": "holds a close side profile",
+                "environment_detail": "clean neon reflections stretch along the crossing",
+                "negative_prompt": "overexposed, static frame, low quality",
+                "energy": "normal",
+            }
+        ],
+        [{"shot_id": "x"}],
+    )
+    assert out["x"]["subject_motion"].startswith("She keeps a clear forward walk line")
 
 
 def _anchor(shot_id: str, chorus: bool) -> dict:

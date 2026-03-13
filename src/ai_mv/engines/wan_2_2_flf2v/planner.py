@@ -48,7 +48,7 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
     guidance = style_digest(payload.get("audio_map", {}), 1) or _style_guidance(config, payload)
     visual = visual_digest(payload.get("audio_map", {}), 1)
     negative = negative_digest(payload.get("audio_map", {}), 1)
-    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 3)
+    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 2)
     brief = _brief_summary(payload["visual_brief"])
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
@@ -63,32 +63,24 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "Clip item count must match the number of ClipIds exactly. "
         "Do not write the final positive_prompt prose. Return short motion-ready fragments only. "
         "subject_motion must combine the visible starting state and the main body motion in one short natural clause. "
-        "Good subject_motion examples: She pauses by the rain-marked glass and turns into the crossing; She moves through the lane and lifts her eyes toward the station light; She holds at the curb and then steps forward with a calmer chest line. "
+        "Good subject_motion examples: She pauses by the rain-marked glass and turns into the crossing; She moves through the lane and lifts her eyes toward the station light. "
         "Bad subject_motion examples: emotional chorus arrival; cleaner visual payoff; stronger confidence; cinematic motion energy. "
-        "camera_relation must be one short framing or camera phrase describing how the shot holds, follows, glides, tracks, drifts, or frames the subject motion. "
-        "Good camera_relation examples: glides backward in front of her; holds a close side profile; follows just behind her shoulder; keeps a frontal tracking frame. "
-        "Bad camera_relation examples: brighter reflections on the glass; more dramatic atmosphere; stronger visual confidence. "
+        "camera_relation should be one short framing phrase when it adds something useful, not a second full director note. "
+        "Prefer movement or placement around the performer, not technical wording with the frame, the track, or the follow as the grammatical subject. "
+        "Good camera_relation examples: a slow inward drift follows her; a steady glide stays in front of her; a side-on hold keeps her in profile. "
+        "Bad camera_relation examples: the frame holds a close side profile; the track settles beside her; brighter reflections on the glass; more dramatic atmosphere; stronger visual confidence. "
         "environment_detail is optional and must stay short, concrete, and visual. "
         "Good environment_detail examples: wet stripes brighten underfoot; sodium reflections tremble across the glass; storefront glow slides along her coat hem. "
         "Bad environment_detail examples: the scene feels more emotional; the world becomes more cinematic; the atmosphere grows stronger. "
         "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
         "Honor section story_beat and location_anchor from the visual brief so consecutive clips feel like progression inside a small recurring world rather than location swapping. "
         "Honor space_relation from the shot blueprint so left-right geometry, glass position, storefront side, and reflection side remain stable across the clip unless the action explicitly crosses the frame. "
-        "Prefer one clear motion arc, stable readable subject framing, and deliberate pacing. "
         "For consecutive clips from the same shot series, treat the previous clip end as the immediate starting state of the next clip, not a visual reset. "
-        "Think like a completed music video sequence: vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views across the song instead of keeping every clip face-on. "
-        "Build motion like coverage for a finished edit, not a loop of glamour poses: some clips should sell travel, passing space, or the lead subject's relation to the environment more than direct face presentation. "
-        "Use section labels to shape escalation: Chorus 2 should feel like a stronger return than Chorus, and Final Chorus should feel like the motion payoff while staying inside the same visual grammar. "
-        "For Chorus 2 and Final Chorus, express the lift through clearer posture, cleaner camera relation, stronger reflection response, or a more resolved facial turn rather than generic statements about bigger emotion. "
-        "Final Chorus should read like the lead subject and the world have finally locked into the same beat, with one readable motion payoff rather than extra spectacle. "
+        "Later chorus returns can feel slightly clearer or more resolved, but they must stay in the same world and not become a new concept. "
+        "Final Chorus should feel like the motion payoff without adding spectacle or a new visual language. "
         "Avoid frantic camera swings, hyperactive subject motion, over-cranked action, or too many simultaneous movements. "
-        "Keep the lead subject readable in every sentence: face, posture, silhouette, and clear camera relation should stay understandable. "
-        "Verse and transition clips should often move through profile travel, side-on glide, shoulder-led turns, reflective passes, or silhouette walk-throughs instead of defaulting to direct front-facing motion. "
-        "Bridge clips should usually introduce distance or suspended breath: slowed walk-through, reflective separation, lateral drift with negative space, profile pause, or a partially obscured hold are stronger than another frontal beauty move. "
-        "Final Chorus can return to a more direct hero relation, but it should feel earned as the payoff angle rather than the default angle for the whole song. "
-        "Outro clips should resolve by leaving a lingering residue image or motion, not by restating the same hero beat again. "
-        "Preserve the same master palette and lighting baseline; section palette_hint and lighting_hint are accents, not resets. "
-        "Do not describe multiple competing action arcs in one clip. "
+        "Keep the lead subject readable in every sentence. "
+        "Preserve the same master palette and lighting baseline; section accents should not reset the world. "
         "Avoid generic wording like cinematic motion, dynamic energy, dramatic atmosphere, or stylish movement unless tied to a concrete body, camera, or environment action. "
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
@@ -162,12 +154,10 @@ def _clip_summary(clips: list[dict]) -> str:
 
 def _clip_summary_row(clip: dict) -> str:
     sid = str(clip["shot_id"])
-    section = str(clip.get("section_name", "section"))
-    label = str(clip.get("section_label", section))
-    camera = str(clip.get("camera_language", "")).strip() or "clean framing"
     relation = str(clip.get("space_relation", "")).strip() or "space stays stable"
     motion = str(clip.get("motion_hint", "")).strip() or "steady motion"
-    return f"{sid}({section}|{label}|{camera}|{motion}|{relation})"
+    label = str(clip.get("section_label", clip.get("section_name", "section")))
+    return f"{sid}({label}|{motion}|{relation})"
 
 
 def _clip_ids(clips: list[dict]) -> str:
@@ -284,7 +274,9 @@ def _clause(text: object) -> str:
 
 def _sentence(text: str) -> str:
     cleaned = str(text).strip().rstrip(". ")
-    return f"{cleaned}." if cleaned else ""
+    if not cleaned:
+        return ""
+    return f"{_capitalize_first(cleaned)}."
 
 
 def _compose_second_sentence(camera_relation: str, environment_detail: str) -> str:
@@ -292,24 +284,49 @@ def _compose_second_sentence(camera_relation: str, environment_detail: str) -> s
         return _sentence(environment_detail)
     if not camera_relation:
         return ""
-    relation = _camera_clause(camera_relation)
+    relation = _clean_relation(camera_relation)
     if environment_detail:
-        return _sentence(f"{relation}, while {environment_detail}")
+        return _sentence(f"{relation}, while {_lowercase_first(environment_detail)}")
     return _sentence(relation)
 
 
-def _camera_clause(text: str) -> str:
-    low = text.lower()
+def _clean_relation(text: str) -> str:
+    cleaned = str(text).strip()
+    if not cleaned:
+        return ""
+    low = cleaned.lower()
     if low.startswith("the camera "):
-        return text
+        return cleaned
     if low.startswith("camera "):
-        return f"The {text}"
-    return f"The camera {text}"
+        return cleaned
+    return _capitalize_first(cleaned)
+
+
+def _capitalize_first(text: str) -> str:
+    cleaned = str(text)
+    if not cleaned:
+        return ""
+    return cleaned[:1].upper() + cleaned[1:]
+
+
+def _lowercase_first(text: str) -> str:
+    cleaned = str(text).strip()
+    if not cleaned:
+        return ""
+    return cleaned[:1].lower() + cleaned[1:]
 
 
 def _camera_relation_is_weak(text: str) -> bool:
     low = str(text).strip().lower()
     if not low:
+        return True
+    technical_subjects = (
+        "the frame ",
+        "the track ",
+        "the side track ",
+        "the follow ",
+    )
+    if low.startswith(technical_subjects):
         return True
     dynamic = ("glide", "glides", "follow", "follows", "track", "tracks", "push", "pushes", "pull", "pulls", "drift", "drifts")
     return not any(word in low for word in dynamic)
