@@ -67,7 +67,7 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "Outro framing should leave a residue image" in prompt
 
 
-def test_uso_prompt_mentions_mapper_appended_clauses():
+def test_uso_prompt_mentions_atom_generation_contract():
     payload = {
         "audio_map": {
             "lyrics": "line",
@@ -80,24 +80,26 @@ def test_uso_prompt_mentions_mapper_appended_clauses():
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = uso_planner._planner_prompt({}, payload, anchors, "")
-    assert "prompt_text is the real workflow text anchor" in prompt
-    assert "prompt_text must be exactly one natural English sentence (18-30 words)" in prompt
+    assert "Each item must include shot_id,subject_clause,action_clause,environment_clause,continuity_clause,negative_prompt" in prompt
+    assert "Do not write full final prompt sentences" in prompt
+    assert "subject_clause must be a short identity clause" in prompt
+    assert "action_clause must describe one small visible change axis only" in prompt
+    assert "Good action_clause examples" in prompt
+    assert "Good environment_clause examples" in prompt
     assert "Final Chorus should feel like the visual peak" in prompt
     assert "visible payoff detail" in prompt
     assert "three-quarter turns, profile walks, over-shoulder glances" in prompt
     assert "avoid head-on beauty framing" in prompt
-    assert "body line, silhouette, and space relation may lead more than close facial detail" in prompt
     assert "Honor the section story_beat and location_anchor" in prompt
     assert "Honor the shot space_relation exactly" in prompt
     assert "Do not silently mirror the scene between start and end frames" in prompt
-    assert "delta should usually be the smallest readable version of the section story_beat" in prompt
     assert "earlier parts establish the space and body relation" in prompt
-    assert "Do not give identical prompt_text or identical delta to multiple consecutive parts" in prompt
+    assert "Do not give identical action_clause to multiple consecutive parts" in prompt
     assert "Bridge items should feel meaningfully interrupted or isolated" in prompt
     assert "Outro items should leave one memorable residue image" in prompt
 
 
-def test_wan_prompt_mentions_direct_text_encoder_alignment():
+def test_wan_prompt_mentions_motion_atom_contract():
     payload = {
         "audio_map": {
             "lyrics": "line",
@@ -110,15 +112,18 @@ def test_wan_prompt_mentions_direct_text_encoder_alignment():
     }
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
-    assert "injected directly into the workflow text encoder" in prompt
+    assert "Do not write the final positive_prompt prose" in prompt
     assert "motion payoff" in prompt
     assert "lead subject and the world have finally locked into the same beat" in prompt
-    assert "A strong clip prompt uses readable motion verbs" in prompt
+    assert "subject_motion must combine the visible starting state and the main body motion" in prompt
+    assert "camera_relation must be one short framing or camera phrase" in prompt
+    assert "Good environment_detail examples" in prompt
+    assert "Profile steering=" not in prompt
+    assert "motifs=" not in prompt
     assert "vary frontal, three-quarter, profile, reflected, and silhouette-friendly motion views" in prompt
     assert "Build motion like coverage for a finished edit" in prompt
     assert "Honor section story_beat and location_anchor" in prompt
     assert "Honor space_relation from the shot blueprint" in prompt
-    assert "motion arc should visibly complete the section story_beat" in prompt
     assert "Outro clips should resolve by leaving a lingering residue image" in prompt
 
 

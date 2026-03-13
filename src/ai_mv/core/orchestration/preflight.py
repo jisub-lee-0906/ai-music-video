@@ -21,18 +21,23 @@ from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
 
 def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = False) -> str:
     cfg = dict(config)
-    state = init_run_state(cfg, run_id, allow_existing=allow_existing_run)
+    state = init_run_state(cfg, run_id, allow_existing=allow_existing_run, scope="preflight")
     payload = {"selected_profile": str(cfg.get("profile", "")).strip()}
     save_snapshot(state, payload)
     stage_input = StageInput(run_id=state["run_id"], config=cfg, payload=payload)
-    _add_audio(stage_input)
-    _add_visual(stage_input)
-    _add_tti(stage_input)
-    _add_uso(stage_input)
-    _add_wan(stage_input)
-    state["current_stage"] = "preflight"
-    state["completed_stages"] = ["acestep_music", "visual_bridge", "tti_anchor", "uso_chain", "wan_interpolation"]
-    state["status"] = "done"
+    try:
+        _run_preflight_stage(state, stage_input, "acestep_music", _add_audio)
+        _run_preflight_stage(state, stage_input, "visual_bridge", _add_visual)
+        _run_preflight_stage(state, stage_input, "tti_anchor", _add_tti)
+        _run_preflight_stage(state, stage_input, "uso_chain", _add_uso)
+        _run_preflight_stage(state, stage_input, "wan_interpolation", _add_wan)
+        state["current_stage"] = "preflight"
+        state["status"] = "done"
+    except Exception as exc:
+        state["status"] = "failed"
+        state["failure_reason"] = f"{state['current_stage']}: {exc}" if state["current_stage"] else str(exc)
+        save_snapshot(state, stage_input.payload)
+        raise
     save_snapshot(state, stage_input.payload)
     write_manifest(state, stage_input.payload)
     write_summary(state, stage_input.payload)
@@ -42,6 +47,14 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
     write_quality_review(state, quality_review)
     write_run_summary(state, build_run_summary(state, stage_input.payload, quality_review))
     return state["run_id"]
+
+
+def _run_preflight_stage(state: dict, stage_input: StageInput, name: str, fn) -> None:
+    state["current_stage"] = name
+    save_snapshot(state, stage_input.payload)
+    fn(stage_input)
+    state["completed_stages"].append(name)
+    save_snapshot(state, stage_input.payload)
 
 
 def _add_audio(stage_input: StageInput) -> None:

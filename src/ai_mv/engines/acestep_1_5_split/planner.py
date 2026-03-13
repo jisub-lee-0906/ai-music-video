@@ -166,8 +166,8 @@ def _language_clause(plan: dict) -> str:
 
 def _profile_clause(plan: dict) -> str:
     parts = [
-        _profile_line("Profile world", profile_digest(plan)),
         _profile_line("Audio direction", audio_digest(plan, 1)),
+        _profile_line("World lane", profile_digest(plan)),
         _profile_line("Hook direction", plan.get("hook_direction", "")),
         _profile_line("Avoid", negative_digest(plan)),
     ]

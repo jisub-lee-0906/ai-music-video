@@ -13,6 +13,7 @@ def test_uso_planner_double(monkeypatch):
     shot_ids = [x["shot_id"] for x in out["items"]]
     assert shot_ids == ["a", "b"]
     assert out["items"][0]["prompt_text"]
+    assert out["items"][0]["subject_clause"]
 
 
 def test_uso_planner_allows_missing_style_guidance(monkeypatch):
@@ -20,6 +21,7 @@ def test_uso_planner_allows_missing_style_guidance(monkeypatch):
     payload = {"anchors": [_anchor("a", False)], "visual_brief": _brief()}
     out = build_uso_plan({}, payload)
     assert out["items"][0]["prompt_text"]
+    assert out["items"][0]["action_clause"]
     assert "style_guidance" not in out["items"][0]
 
 
@@ -47,8 +49,10 @@ def test_uso_planner_batches_requests(monkeypatch):
             "items": [
                 {
                     "shot_id": "x",
-                    "delta": "gentle gaze shifts left under warm city light",
-                    "prompt_text": "A performer turns gently with subtle smile under warm city lights and clean cinematic framing.",
+                    "subject_clause": "A performer in a clean medium frame",
+                    "action_clause": "turns gently toward the light",
+                    "environment_clause": "under warm city reflections",
+                    "continuity_clause": "keeping the same left-to-right drift",
                     "negative_prompt": "low quality, blurry, jpeg artifacts, bad hands",
                 }
             ]
@@ -95,6 +99,10 @@ def test_wan_planner_uses_start_end_only(monkeypatch):
     assert len(out["clips"]) == 1
     assert out["clips"][0]["shot_id"] == "x"
     assert out["clips"][0]["camera_language"] == "clean hero framing"
+    assert out["clips"][0]["positive_prompt"]
+    assert out["clips"][0]["subject_motion"]
+    assert out["clips"][0]["camera_relation"]
+    assert "The camera" in out["clips"][0]["positive_prompt"]
 
 
 def test_wan_planner_shot_id_coerce(monkeypatch):
@@ -123,7 +131,18 @@ def test_wan_planner_batches_requests(monkeypatch):
 
     def _fake(_config, _prompt, _schema):
         calls["n"] += 1
-        return {"clips": [{"shot_id": "x", "positive_prompt": "p", "negative_prompt": "n", "energy": "normal"}]}
+        return {
+            "clips": [
+                {
+                    "shot_id": "x",
+                    "subject_motion": "She holds at the curb and steps into the crossing with measured confidence",
+                    "camera_relation": "glides back in a steady front relation",
+                    "environment_detail": "Wet stripes brighten under her stride",
+                    "negative_prompt": "overexposed, static frame, low quality",
+                    "energy": "normal",
+                }
+            ]
+        }
 
     monkeypatch.setattr(wan_planner, "generate_structured", _fake)
     payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
@@ -226,14 +245,18 @@ def _fake_uso_generate(_config, _prompt, _schema):
         "items": [
             {
                 "shot_id": "a",
-                "delta": "gentle gaze shifts left with calm breath",
-                "prompt_text": "A European girl smiles warmly in a summer flower field.",
+                "subject_clause": "A European girl with a heartfelt smile",
+                "action_clause": "lets her gaze drift left",
+                "environment_clause": "in a summer flower field",
+                "continuity_clause": "keeping the same open field relation",
                 "negative_prompt": "blurry, deformed face, low detail",
             },
             {
                 "shot_id": "b",
-                "delta": "soft shoulder turn under sunset light",
-                "prompt_text": "A performer breathes slowly under sunset light with calm expression.",
+                "subject_clause": "A performer with calm expression",
+                "action_clause": "turns one shoulder under sunset light",
+                "environment_clause": "against a soft evening horizon",
+                "continuity_clause": "holding the same side profile direction",
                 "negative_prompt": "artifact, bad anatomy, extra limbs",
             },
         ]
@@ -245,8 +268,10 @@ def _fake_uso_generate_mismatch(_config, _prompt, _schema):
         "items": [
             {
                 "shot_id": "intro_001",
-                "delta": "small gaze shift",
-                "prompt_text": "A European girl with a heartfelt smile stands in an endless blooming flower field under a clear summer sky with warm daylight.",
+                "subject_clause": "A European girl with a heartfelt smile",
+                "action_clause": "holds a small gaze shift",
+                "environment_clause": "in an endless blooming flower field",
+                "continuity_clause": "keeping the same summer sky behind her",
                 "negative_prompt": "low quality, blurry, jpeg artifacts, bad hands",
             }
         ]
@@ -256,7 +281,14 @@ def _fake_uso_generate_mismatch(_config, _prompt, _schema):
 def _fake_wan_generate(_config, _prompt, _schema):
     return {
         "clips": [
-            {"shot_id": "x", "positive_prompt": "p1", "negative_prompt": "n1", "energy": "normal"},
+            {
+                "shot_id": "x",
+                "subject_motion": "She faces forward at the curb and steps into the lane with steady rhythm",
+                "camera_relation": "glides back without breaking alignment",
+                "environment_detail": "Wet light gathers underfoot",
+                "negative_prompt": "overexposed, static frame, unclear details, low quality",
+                "energy": "normal",
+            },
         ]
     }
 
@@ -266,7 +298,9 @@ def _fake_wan_generate_mismatch(_config, _prompt, _schema):
         "clips": [
             {
                 "shot_id": "x_alt",
-                "positive_prompt": "A kitten made of ice crystals is suddenly awakened and begins to transform into a giant beast with vivid fur.",
+                "subject_motion": "A kitten made of ice crystals jolts awake and drifts into a giant beast transformation",
+                "camera_relation": "holds a close frame while the body expands",
+                "environment_detail": "Colored fur catches the harsh light",
                 "negative_prompt": "overexposed, static frame, unclear details, low quality",
                 "energy": "high",
             }

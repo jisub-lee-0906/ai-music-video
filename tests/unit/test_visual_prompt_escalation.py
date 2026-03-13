@@ -26,7 +26,7 @@ def test_tti_prompt_uses_section_labels_for_escalation():
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
     assert "Section labels in order=Final Chorus" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
-    assert "Profile steering=retro city-pop lane" in prompt
+    assert "Visual direction=harbor neon romance" in prompt
 
 
 def test_uso_prompt_mentions_return_intensity():
@@ -43,8 +43,9 @@ def test_uso_prompt_mentions_return_intensity():
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = uso_planner._planner_prompt({}, payload, anchors, "")
     assert "Final Chorus should feel like the visual peak" in prompt
-    assert "Profile steering=retro city-pop lane" in prompt
-    assert "prompt_text is the real workflow text anchor" in prompt
+    assert "Profile steering=" not in prompt
+    assert "Do not write full final prompt sentences" in prompt
+    assert "subject_clause must be a short identity clause" in prompt
 
 
 def test_wan_prompt_mentions_final_chorus_payoff():
@@ -62,7 +63,10 @@ def test_wan_prompt_mentions_final_chorus_payoff():
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "Final Chorus should feel like the motion payoff" in prompt
     assert "Visual direction=harbor neon romance" in prompt
-    assert "Sentence 1: starting state and first movement impulse" in prompt
+    assert "Profile steering=" not in prompt
+    assert "motifs=" not in prompt
+    assert "subject_motion must combine the visible starting state and the main body motion" in prompt
+    assert "Do not write the final positive_prompt prose" in prompt
 
 
 def _brief() -> dict:

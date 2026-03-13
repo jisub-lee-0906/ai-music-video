@@ -75,41 +75,13 @@ def test_uso_mapper():
         "negative_prompt": "blurry, low detail",
         "shot_type": "CHAR_MASTER",
         "style_ref": "refs/front.png",
-        "delta": "small pose shift",
-        "clip_phase": "establish",
-        "space_relation": "glass stays camera-right",
         "filename_prefix": uso_frame_prefix("s_001", "start"),
     }
     out = map_uso_workflow(cfg, item)
     nodes = out["node.inputs"]
     assert nodes["47"]["image"] == "a.png"
     assert nodes["112:110"]["width"] == 1024
-    assert nodes["112:6"]["text"].startswith(item["prompt_text"])
-    assert "Start frame before small pose shift." in nodes["112:6"]["text"]
-    assert "Keep the setup readable." in nodes["112:6"]["text"]
-    assert "Space relation stays glass stays camera-right." in nodes["112:6"]["text"]
-
-
-def test_uso_mapper_normalizes_delta_clause_punctuation_and_case():
-    cfg = {"render": {"uso_size": "1024x576"}}
-    item = {
-        "shot_id": "s_002",
-        "frame_idx": 0,
-        "frame_name": "start",
-        "ref": "a.png",
-        "prompt_text": "The same heroine stands by the station glass with calm posture and warm streetlight tracing her cheek.",
-        "negative_prompt": "blurry, low detail",
-        "shot_type": "CHAR_MASTER",
-        "style_ref": "refs/front.png",
-        "delta": "She eases to a stop and lets her gaze meet the glass.",
-        "clip_phase": "establish",
-        "space_relation": "glass stays camera-right",
-        "filename_prefix": uso_frame_prefix("s_002", "start"),
-    }
-    out = map_uso_workflow(cfg, item)
-    text = out["node.inputs"]["112:6"]["text"]
-    assert "Start frame before she eases to a stop and lets her gaze meet the glass." in text
-    assert "glass.." not in text
+    assert nodes["112:6"]["text"] == item["prompt_text"]
 
 
 def test_wan_mapper():

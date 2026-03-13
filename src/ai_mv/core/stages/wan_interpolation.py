@@ -42,7 +42,17 @@ def _wan_prompt_batches(stage_input: StageInput, plan: dict) -> list[dict]:
         chunk = clips[i : i + batch_size]
         prompt = _planner_prompt(stage_input.config, stage_input.payload, chunk, carry)
         batches.append({"index": len(batches) + 1, "shot_ids": [x["shot_id"] for x in chunk], "prompt": prompt})
-        carry = str(chunk[-1].get("positive_prompt", "")).strip()[:220] if chunk else carry
+        if chunk:
+            last = chunk[-1]
+            carry = " | ".join(
+                part
+                for part in (
+                    str(last.get("subject_motion", "")).strip(),
+                    str(last.get("camera_relation", "")).strip(),
+                    str(last.get("environment_detail", "")).strip(),
+                )
+                if part
+            )[:120]
     return batches
 
 
@@ -62,6 +72,7 @@ def _wan_workflow_inputs(config: dict, clips: list[dict]) -> list[dict]:
                 "negative_prompt": str(inputs[WAN_TEXT_NEG]["text"]),
                 "energy": str(clip.get("energy", "")),
                 "space_relation": str(clip.get("space_relation", "")),
+                "atoms": _wan_atom_view(clip),
             }
         )
     return out
@@ -77,4 +88,12 @@ def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
     out = dict(payload.get("workflow_inputs_preview", {}))
     out[key] = value
     return out
+
+
+def _wan_atom_view(clip: dict) -> dict:
+    return {
+        "subject_motion": str(clip.get("subject_motion", "")),
+        "camera_relation": str(clip.get("camera_relation", "")),
+        "environment_detail": str(clip.get("environment_detail", "")),
+    }
 

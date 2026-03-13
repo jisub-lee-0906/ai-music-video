@@ -5,6 +5,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
+def _scope_name(scope: str) -> str:
+    return "preflight" if str(scope).strip().lower() == "preflight" else "run"
+
+
 def artifacts_root() -> Path:
     root = PROJECT_ROOT / "artifacts"
     root.mkdir(parents=True, exist_ok=True)
@@ -23,17 +27,30 @@ def runs_root() -> Path:
     return root
 
 
-def latest_root() -> Path:
-    root = artifacts_root() / "latest"
+def preflight_root() -> Path:
+    root = artifacts_root() / "preflight"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
-def run_file(run_id: str, name: str) -> Path:
-    root = runs_root() / str(run_id).strip()
+def scoped_runs_root(scope: str = "run") -> Path:
+    return preflight_root() if _scope_name(scope) == "preflight" else runs_root()
+
+
+def latest_root(scope: str = "run") -> Path:
+    if _scope_name(scope) == "preflight":
+        root = preflight_root() / "latest"
+    else:
+        root = artifacts_root() / "latest"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def run_file(run_id: str, name: str, scope: str = "run") -> Path:
+    root = scoped_runs_root(scope) / str(run_id).strip()
     root.mkdir(parents=True, exist_ok=True)
     return root / name
 
 
-def latest_file(name: str) -> Path:
-    return latest_root() / name
+def latest_file(name: str, scope: str = "run") -> Path:
+    return latest_root(scope) / name

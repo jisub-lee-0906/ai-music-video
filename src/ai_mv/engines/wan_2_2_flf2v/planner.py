@@ -3,9 +3,9 @@ from __future__ import annotations
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.core.contracts.prompt_normalize import normalize_wan_clips
 from ai_mv.core.contracts.prompt_schema import wan_schema
-from ai_mv.core.prompt_digests import lyrics_digest, negative_digest, profile_digest, style_digest, visual_digest
+from ai_mv.core.prompt_digests import lyrics_digest, negative_digest, style_digest, visual_digest
 from ai_mv.infra.codex_cli_client import generate_structured
-from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
+from ai_mv.engines.visual_bridge.brief_views import compact_section_atoms, compact_world_atoms
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
@@ -46,10 +46,9 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
     guidance = style_digest(payload.get("audio_map", {}), 1) or _style_guidance(config, payload)
-    profile = profile_digest(payload.get("audio_map", {}), 1)
     visual = visual_digest(payload.get("audio_map", {}), 1)
     negative = negative_digest(payload.get("audio_map", {}), 1)
-    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 4)
+    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 3)
     brief = _brief_summary(payload["visual_brief"])
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
@@ -57,21 +56,21 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
     return (
         "You are a senior first-last-frame video prompt director for WAN FLF2V. "
         "Return strict JSON only: {\"clips\":[...]}. No prose outside JSON. "
-        "Each clip item must include shot_id,positive_prompt,negative_prompt,energy. "
+        "Each clip item must include shot_id,subject_motion,camera_relation,environment_detail,negative_prompt,energy. "
         "Use shot_id values exactly from ClipIds list, without creating new ids. "
         "shot_id must be exactly one token from ClipIds with no suffix, prefix, or punctuation changes. "
         "Clip suffixes such as _C01, _C02, _C03 are part of the required shot_id and must be preserved exactly. "
         "Clip item count must match the number of ClipIds exactly. "
-        "positive_prompt must be 2-3 natural English sentences describing cinematic motion between start and end frames. "
-        "Sentence 1: starting state and first movement impulse. "
-        "Sentence 2: transition motion arc and camera behavior with concrete dynamic verbs. "
-        "The motion arc should visibly complete the section story_beat rather than only adding atmosphere. "
-        "Optional sentence 3: environment reaction details. "
-        "A strong clip prompt uses readable motion verbs like steps, turns, slows, pauses, passes, drifts, follows, or settles. "
-        "A weak clip prompt uses abstract phrases like cinematic energy, emotional atmosphere, or dynamic movement without saying what moves. "
-        "positive_prompt must read like a usable motion direction for a renderer, not like marketing copy or a music review. "
-        "positive_prompt is injected directly into the workflow text encoder, so do not use bullet points, labels, shot ids, or section headers. "
-        "Use concrete dynamic verbs and visual detail. Avoid vague wording. "
+        "Do not write the final positive_prompt prose. Return short motion-ready fragments only. "
+        "subject_motion must combine the visible starting state and the main body motion in one short natural clause. "
+        "Good subject_motion examples: She pauses by the rain-marked glass and turns into the crossing; She moves through the lane and lifts her eyes toward the station light; She holds at the curb and then steps forward with a calmer chest line. "
+        "Bad subject_motion examples: emotional chorus arrival; cleaner visual payoff; stronger confidence; cinematic motion energy. "
+        "camera_relation must be one short framing or camera phrase describing how the shot holds, follows, glides, tracks, drifts, or frames the subject motion. "
+        "Good camera_relation examples: glides backward in front of her; holds a close side profile; follows just behind her shoulder; keeps a frontal tracking frame. "
+        "Bad camera_relation examples: brighter reflections on the glass; more dramatic atmosphere; stronger visual confidence. "
+        "environment_detail is optional and must stay short, concrete, and visual. "
+        "Good environment_detail examples: wet stripes brighten underfoot; sodium reflections tremble across the glass; storefront glow slides along her coat hem. "
+        "Bad environment_detail examples: the scene feels more emotional; the world becomes more cinematic; the atmosphere grows stronger. "
         "Use the visual brief and section rules to preserve hero identity, palette, lighting, and atmosphere during motion. "
         "Honor section story_beat and location_anchor from the visual brief so consecutive clips feel like progression inside a small recurring world rather than location swapping. "
         "Honor space_relation from the shot blueprint so left-right geometry, glass position, storefront side, and reflection side remain stable across the clip unless the action explicitly crosses the frame. "
@@ -94,7 +93,7 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
         "negative_prompt must be a comma-separated suppression list for artifacts and defects. "
         "Always include: overexposed, static frame, unclear details, subtitle, watermark, logo, low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background. "
         "Set energy as low, normal, or high based on motion intensity and pacing. "
-        f"{carry_clause}Style lane={guidance}; Profile steering={profile}; Visual direction={visual}; "
+        f"{carry_clause}Style lane={guidance}; Visual direction={visual}; "
         f"Avoid={negative}; "
         f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Exact ClipIds={clip_ids}; ClipSummary={summary}."
@@ -110,18 +109,18 @@ def _style_guidance(config: dict, payload: dict) -> str:
     return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
 
 def _brief_summary(brief: dict) -> str:
-    world = world_bible(brief)
-    motifs = ", ".join(world.get("visual_motifs", []))
-    rules = ", ".join(world.get("negative_constraints", []))
+    world = compact_world_atoms(brief)
     return (
         f"hero={world['hero_identity']}; world={world['world_rules']}; "
-        f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
+        f"sections={_section_briefs(brief)}"
     )
 
 
 def _section_briefs(brief: dict) -> str:
     rows = []
-    for row in section_dramaturgy(brief):
+    names = [str(row.get("section_name", "")).strip() for row in brief.get("section_briefs", [])]
+    for name in names:
+        row = compact_section_atoms(brief, name)
         rows.append(
             f"{row['section_name']}|{row['story_beat']}|{row['location_anchor']}"
         )
@@ -240,8 +239,13 @@ def _strict_id_match(config: dict) -> bool:
 def _carry_hint(rows: list[dict]) -> str:
     if not rows:
         return ""
-    text = str(rows[-1].get("positive_prompt", "")).strip()
-    return text[:220]
+    last = rows[-1]
+    parts = [
+        str(last.get("subject_motion", "")).strip(),
+        str(last.get("camera_relation", "")).strip(),
+        str(last.get("environment_detail", "")).strip(),
+    ]
+    return " | ".join(part for part in parts if part)[:120]
 
 
 def _frame_floor(fps: int) -> int:
@@ -254,10 +258,51 @@ def _clip_series_key(shot_id: str) -> str:
 
 def _apply_prompt(clip: dict, row: dict) -> dict:
     out = dict(clip)
-    out["positive_prompt"] = str(row["positive_prompt"])
+    out["subject_motion"] = str(row["subject_motion"])
+    out["camera_relation"] = str(row["camera_relation"])
+    out["environment_detail"] = str(row["environment_detail"])
+    out["positive_prompt"] = _compose_positive_prompt(row)
     out["negative_prompt"] = str(row["negative_prompt"])
     out["energy"] = _energy_policy(clip, str(row["energy"]))
     return out
+
+
+def _compose_positive_prompt(row: dict) -> str:
+    subject_motion = _sentence(_clause(row.get("subject_motion", "")))
+    camera_relation = _compose_camera_sentence(
+        _clause(row.get("camera_relation", "")),
+        _clause(row.get("environment_detail", "")),
+    )
+    if not subject_motion or not camera_relation:
+        raise RuntimeError("empty composed WAN prompt")
+    return f"{subject_motion} {camera_relation}".strip()
+
+
+def _clause(text: object) -> str:
+    return " ".join(str(text).strip().rstrip(". ").split())
+
+
+def _sentence(text: str) -> str:
+    cleaned = str(text).strip().rstrip(". ")
+    return f"{cleaned}." if cleaned else ""
+
+
+def _compose_camera_sentence(camera_relation: str, environment_detail: str) -> str:
+    if not camera_relation:
+        return ""
+    relation = _camera_clause(camera_relation)
+    if environment_detail:
+        return _sentence(f"{relation}, while {environment_detail}")
+    return _sentence(relation)
+
+
+def _camera_clause(text: str) -> str:
+    low = text.lower()
+    if low.startswith("the camera "):
+        return text
+    if low.startswith("camera "):
+        return f"The {text}"
+    return f"The camera {text}"
 
 
 def _energy_policy(clip: dict, suggested: str) -> str:

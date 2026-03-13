@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_uso_items
 from ai_mv.core.contracts.prompt_schema import uso_schema
-from ai_mv.core.prompt_digests import lyrics_digest, negative_digest, profile_digest, style_digest, visual_digest
+from ai_mv.core.prompt_digests import lyrics_digest, negative_digest, style_digest, visual_digest
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
 from ai_mv.infra.codex_cli_client import generate_structured
-from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
+from ai_mv.engines.visual_bridge.brief_views import compact_section_atoms, compact_world_atoms
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import parse_target
 
@@ -55,10 +55,9 @@ def _plan_chunk_rows(config: dict, payload: dict, chunk: list[dict], carry: str,
 
 def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
     guidance = style_digest(payload.get("audio_map", {}), 2) or _style_guidance(config, payload)
-    profile = profile_digest(payload.get("audio_map", {}), 1)
     visual = visual_digest(payload.get("audio_map", {}), 2)
     negative = negative_digest(payload.get("audio_map", {}), 1)
-    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 6)
+    lyrics = lyrics_digest(payload.get("audio_map", {}).get("lyrics", ""), 4)
     brief = _brief_summary(payload["visual_brief"])
     anchor_ids = _anchor_ids(anchors)
     summary = _anchor_summary(anchors)
@@ -66,40 +65,42 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
     return (
         "You are a senior image-to-image keyframe director for character-consistent music videos. "
         "Return strict JSON only: {\"items\":[...]}. No prose outside JSON. "
-        "Each item must include shot_id,delta,prompt_text,negative_prompt. "
+        "Each item must include shot_id,subject_clause,action_clause,environment_clause,continuity_clause,negative_prompt. "
         "Use shot_id values exactly from Anchors list, without creating new ids. "
         "All anchors refer to the same master identity image. Preserve exact face, hair, outfit, body proportions, styling, and accessories across every item. "
         "shot_id must be exactly one token from Anchors with no suffix, prefix, or punctuation changes. "
         "Clip suffixes such as _C01, _C02, _C03 are part of the required shot_id and must be preserved exactly. "
         "Item count must match the number of Anchors exactly. "
-        "prompt_text must be exactly one natural English sentence (18-30 words). "
-        "prompt_text must read like a usable diffusion prompt sentence, not a lyric caption, review, or screenplay line. "
-        "prompt_text is the real workflow text anchor, so make the sentence complete by itself without relying on mapper-added style paragraphs. "
-        "prompt_text should foreground lead identity through face, posture, silhouette, and readable environment before mentioning any prop. "
-        "For wider or travel-oriented shots, body line, silhouette, and space relation may lead more than close facial detail. "
-        "Do not mention the hero prop in every item; mention it only when it materially supports the intended shot. "
-        "delta describes a small progression from start to end frame, not a scene reset. "
-        "delta should usually be the smallest readable version of the section story_beat. "
-        "delta must be a short natural English change phrase of roughly 4-10 words, never a number, score, placeholder, or shorthand token. "
+        "subject_clause must be a short identity clause naming the same lead subject, readable pose or silhouette, and one stable styling cue. "
+        "action_clause must describe one small visible change axis only: gaze, pose, hand, orientation, or travel. "
+        "environment_clause must ground the same place, light, or reflection relation in short visual language. "
+        "continuity_clause must preserve the same side relation or travel direction in short plain English. "
+        "Good action_clause examples: lifts her gaze toward the crossing; turns one shoulder away from the glass; slows into a shorter step; eases her chin toward the reflection. "
+        "Bad action_clause examples: stronger chorus energy; more emotional release; deeper confidence; cinematic payoff. "
+        "Good environment_clause examples: under wet storefront glow; beside rain-marked station glass; with the crosswalk light opening ahead; against teal reflections on the pavement. "
+        "Bad environment_clause examples: nostalgic city atmosphere; elegant nighttime emotion; polished visual mood. "
+        "Good continuity_clause examples: keeping the glass on camera-right; holding the same left-to-right walk line; with the reflection still running beside her; keeping the curb low in frame. "
+        "Bad continuity_clause examples: same mood as before; continuity remains strong; visual grammar holds. "
+        "Do not write full final prompt sentences. Return only short reusable clauses. "
+        "Do not mention the hero prop in every item; mention it only when it materially supports the shot. "
         "When a shot series is split into multiple clip parts, give each part a distinct micro-role inside the same location: earlier parts establish the space and body relation, middle parts advance the action, and the last part resolves or exits the beat. "
-        "Do not give identical prompt_text or identical delta to multiple consecutive parts of the same shot series. "
+        "Do not give identical action_clause to multiple consecutive parts of the same shot series. "
         "Do not change time period, world setting, or character species. "
-        "Use the visual brief to keep hero identity, world rules, motifs, and section mood aligned. "
+        "Use the visual brief to keep hero identity, world rules, and section mood aligned. "
         "Honor the section story_beat and location_anchor from the visual brief: move the lead subject through the same small set of places instead of inventing a new location for each item. "
         "Honor the shot space_relation exactly: if glass, curb, storefront, or reflection is placed on one side of the frame, keep that side relation stable across the start and end images for the same clip. "
         "Let the story_beat determine the keyframe change before beauty polish does; if the section is about passing, pausing, turning back, or facing forward, the frame pair should make that readable. "
         "Use concrete visual language: pose shift, gaze shift, hand motion, cloth motion, light direction, camera feel. "
-        "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint, but absorb those cues into one compact sentence instead of listing them back. "
+        "Respect each shot blueprint for camera language, pose delta, emotion, scene detail, and motion hint, but absorb those cues into short clauses instead of restating them as prose. "
         "Prefer readable, graceful progression over chaotic transformation. "
         "Think in finished music-video frames, not only stable portraits: allow three-quarter turns, profile walks, over-shoulder glances, reflected side views, and silhouette-friendly body lines when the shot blueprint suggests them. "
         "Do not keep solving every shot as another polished upper-body hero portrait; some clips should privilege body line, travel direction, or space relation while preserving the same lead subject. "
         "Each item should express one clear change axis only: pose, gaze, hand, cloth, or lighting. "
         "A valid change axis can also be camera relation or body orientation: quarter turn, profile pass, shoulder reveal, or entering/leaving frame. "
         "Do not silently mirror the scene between start and end frames; preserve the same left-right geometry unless the shot blueprint explicitly says the subject crosses the frame. "
-        "Keep prompt_text concrete enough that a renderer could stage the shot without guessing. "
         "Use section labels to control return intensity: later chorus returns may look more open or radiant, while Final Chorus should feel like the visual peak without becoming a different world. "
         "For Chorus 2 and Final Chorus, prefer a visible payoff detail such as brighter eye contact, wider chest line, cleaner silhouette, or stronger boulevard reflection rather than vague intensity words. "
-        "For Final Chorus, make the sentence feel like the lead subject has arrived at the emotional image promised by the song, while staying in the same wardrobe, world, and palette family. "
+        "For Final Chorus, make the clauses feel like the lead subject has arrived at the emotional image promised by the song, while staying in the same wardrobe, world, and palette family. "
         "Verse and bridge items should usually avoid head-on beauty framing unless the shot blueprint explicitly asks for it; profile travel, reflected glide, side-on walk, and over-shoulder look-backs are often better MV coverage. "
         "Bridge items should feel meaningfully interrupted or isolated: a stop behind glass, a partial obstruction, a held profile, or a separated silhouette are stronger than another smooth glamour pose. "
         "Outro items should leave one memorable residue image instead of another forward-moving portrait. "
@@ -111,7 +112,7 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "Keep lead identity primary; in close shots the face can lead, while in wider motion shots silhouette, posture, and travel direction can lead. Props and bags should stay secondary unless the shot is a brief intentional detail insert. "
         "Avoid generic phrase pairs like beautiful lighting, emotional atmosphere, cinematic mood, stylish portrait, or dreamy vibes unless they are tied to a specific visual fact. "
         "negative_prompt must suppress defects: low quality, blurry, jpeg artifacts, extra fingers, bad hands, bad face, deformed anatomy, twisted limbs, broken wrists, warped torso, collapsed shoulders, text watermark, logo, subtitle. "
-        f"{carry_clause}Style guidance={guidance}; Profile steering={profile}; Visual direction={visual}; "
+        f"{carry_clause}Style guidance={guidance}; Visual direction={visual}; "
         f"Avoid={negative}; "
         f"Visual brief={brief}; Lyrics context={lyrics}; "
         f"Anchor ids={anchor_ids}; Anchors={summary}."
@@ -139,21 +140,20 @@ def _style_guidance(config: dict, payload: dict) -> str:
 
 
 def _brief_summary(brief: dict) -> str:
-    world = world_bible(brief)
-    motifs = ", ".join(world.get("visual_motifs", []))
-    rules = ", ".join(world.get("negative_constraints", []))
+    world = compact_world_atoms(brief)
     return (
         f"hero={world['hero_identity']}; world={world['world_rules']}; "
-        f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
+        f"sections={_section_briefs(brief)}"
     )
 
 
 def _section_briefs(brief: dict) -> str:
     rows = []
-    for row in section_dramaturgy(brief):
+    names = [str(row.get("section_name", "")).strip() for row in brief.get("section_briefs", [])]
+    for name in names:
+        row = compact_section_atoms(brief, name)
         rows.append(
-            f"{row['section_name']}|{row['emotional_arc']}|{row['palette_hint']}|"
-            f"{row['lighting_hint']}|{row['staging_hint']}|{row['story_beat']}|{row['location_anchor']}"
+            f"{row['section_name']}|{row['story_beat']}|{row['location_anchor']}"
         )
     return ", ".join(rows)
 
@@ -162,8 +162,12 @@ def _batch_tail(rows: list[dict]) -> str:
     if not rows:
         return ""
     last = rows[-1]
-    text = str(last.get("prompt_text", "")).strip()
-    return text[:220]
+    parts = [
+        str(last.get("subject_clause", "")).strip(),
+        str(last.get("action_clause", "")).strip(),
+        str(last.get("continuity_clause", "")).strip(),
+    ]
+    return " | ".join(part for part in parts if part)[:140]
 
 
 def _coerce_item_ids(items: list[dict], anchors: list[dict], strict: bool) -> list[dict]:
@@ -235,14 +239,18 @@ def _anchor_ids(anchors: list[dict]) -> str:
 
 def _build_item(anchor: dict, rule: dict) -> dict:
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
+    prompt_text = _compose_uso_prompt(anchor, rule)
     return {
         "shot_id": anchor["shot_id"],
         "anchor": anchor["anchor"],
         "ref": ref,
         "style_ref": "",
-        "delta": str(rule["delta"]),
-        "prompt_text": str(rule["prompt_text"]),
+        "prompt_text": prompt_text,
         "negative_prompt": str(rule["negative_prompt"]),
+        "subject_clause": str(rule["subject_clause"]),
+        "action_clause": str(rule["action_clause"]),
+        "environment_clause": str(rule["environment_clause"]),
+        "continuity_clause": str(rule["continuity_clause"]),
         "duration_sec": float(anchor["duration_sec"]),
         "clip_index": int(anchor.get("clip_index", 1)),
         "clip_count": int(anchor.get("clip_count", 1)),
@@ -258,6 +266,31 @@ def _build_item(anchor: dict, rule: dict) -> dict:
         "motion_hint": str(anchor.get("motion_hint", "")),
         "space_relation": str(anchor.get("space_relation", "")),
     }
+
+
+def _compose_uso_prompt(anchor: dict, rule: dict) -> str:
+    parts = [
+        _clause(rule.get("subject_clause", "")),
+        _clause(rule.get("action_clause", "")),
+        _clause(rule.get("environment_clause", "")),
+    ]
+    continuity = _clause(rule.get("continuity_clause", ""))
+    section = str(anchor.get("section_label", anchor.get("section_name", ""))).strip().lower()
+    text = ", ".join(part for part in parts if part)
+    if continuity and ("final chorus" in section or "outro" in section):
+        text = f"{text}, {continuity}" if text else continuity
+    if not text:
+        raise RuntimeError(f"empty composed USO prompt: {anchor['shot_id']}")
+    return _sentence(text)
+
+
+def _clause(text: object) -> str:
+    return " ".join(str(text).strip().rstrip(". ").split())
+
+
+def _sentence(text: str) -> str:
+    cleaned = str(text).strip().rstrip(". ")
+    return f"{cleaned}."
 
 
 def _clip_phase(anchor: dict) -> str:

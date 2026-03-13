@@ -53,8 +53,9 @@ def _audio_conditioning_text(plan: dict) -> str:
     profile_summary = compact_sentences(plan.get("profile_summary", ""), 1)
     desc = compact_sentences(plan.get("genre_description", ""), 2)
     lead = _conditioning_lead(tags, audio_direction, profile_summary)
+    desc = _novel_desc(desc, lead)
     if lead and desc:
-        return lead if lead == desc else f"{lead}. {desc}"
+        return f"{lead}. {desc}"
     return lead or desc
 
 
@@ -127,3 +128,50 @@ def _sentenceize(text: str) -> str:
     cleaned = _trim_sentence(text).replace(";", ",")
     return " ".join(cleaned.split())
 
+
+def _novel_desc(desc: str, lead: str) -> str:
+    if not desc:
+        return ""
+    parts = [part.strip(" .") for part in str(desc).split(".") if part.strip(" .")]
+    if not lead:
+        return ". ".join(parts[:2])
+    lead_words = _signal_words(lead)
+    ranked = sorted(parts, key=lambda part: (_overlap_ratio(_signal_words(part), lead_words), len(part)))
+    best = ranked[0] if ranked else ""
+    return _sentenceize(best)
+
+
+def _signal_words(text: str) -> set[str]:
+    stop = {
+        "a",
+        "an",
+        "and",
+        "the",
+        "with",
+        "for",
+        "into",
+        "that",
+        "this",
+        "from",
+        "then",
+        "over",
+        "under",
+        "should",
+        "keep",
+        "make",
+        "feel",
+        "more",
+        "less",
+    }
+    words = []
+    for raw in str(text).lower().replace("-", " ").split():
+        token = "".join(ch for ch in raw if ch.isalnum())
+        if len(token) > 2 and token not in stop:
+            words.append(token)
+    return set(words)
+
+
+def _overlap_ratio(words: set[str], base: set[str]) -> float:
+    if not words or not base:
+        return 0.0
+    return len(words & base) / max(1, len(words))

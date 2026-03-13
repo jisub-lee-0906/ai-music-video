@@ -6,6 +6,7 @@ __pycache__/
 src/*.egg-info/
 *.egg-info/
 
+artifacts/
 artifacts/latest/
 artifacts/runs/
 artifacts/runs_state/

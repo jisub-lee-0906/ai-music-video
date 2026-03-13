@@ -9,22 +9,28 @@ from ai_mv.utils.json_utils import read_json
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
-def runs_root() -> Path:
-    root = PROJECT_ROOT / "artifacts" / "runs_state"
+def _scope_name(scope: str) -> str:
+    return "preflight" if str(scope).strip().lower() == "preflight" else "run"
+
+
+def runs_root(scope: str = "run") -> Path:
+    folder = "preflight_state" if _scope_name(scope) == "preflight" else "runs_state"
+    root = PROJECT_ROOT / "artifacts" / folder
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
-def ensure_run_dir(run_id: str | None, allow_existing: bool = False) -> Path:
+def ensure_run_dir(run_id: str | None, allow_existing: bool = False, scope: str = "run") -> Path:
     if str(run_id or "").strip():
-        return _explicit_run_dir(str(run_id).strip(), allow_existing)
-    return _generated_run_dir()
+        return _explicit_run_dir(str(run_id).strip(), allow_existing, scope)
+    return _generated_run_dir(scope)
 
 
-def init_run_state(config: dict[str, Any], run_id: str | None, allow_existing: bool = False) -> dict[str, Any]:
-    run_dir = ensure_run_dir(run_id, allow_existing=allow_existing)
+def init_run_state(config: dict[str, Any], run_id: str | None, allow_existing: bool = False, scope: str = "run") -> dict[str, Any]:
+    run_dir = ensure_run_dir(run_id, allow_existing=allow_existing, scope=scope)
     return {
         "run_id": run_dir.name,
+        "scope": _scope_name(scope),
         "status": "running",
         "current_stage": "",
         "failure_reason": "",
@@ -32,21 +38,24 @@ def init_run_state(config: dict[str, Any], run_id: str | None, allow_existing: b
     }
 
 
-def read_snapshot(run_id: str) -> dict[str, Any]:
-    snap = runs_root() / run_id / "snapshot.json"
-    if not snap.exists():
-        return {
-            "run_id": run_id,
-            "status": "missing",
-            "current_stage": "",
-            "failure_reason": "",
-            "completed_stages": [],
-        }
-    return read_json(snap)
+def read_snapshot(run_id: str, scope: str = "auto") -> dict[str, Any]:
+    scopes = ("run", "preflight") if str(scope).strip().lower() == "auto" else (_scope_name(scope),)
+    for item in scopes:
+        snap = runs_root(item) / run_id / "snapshot.json"
+        if snap.exists():
+            return read_json(snap)
+    return {
+        "run_id": run_id,
+        "scope": _scope_name(scope) if str(scope).strip().lower() != "auto" else "",
+        "status": "missing",
+        "current_stage": "",
+        "failure_reason": "",
+        "completed_stages": [],
+    }
 
 
-def _explicit_run_dir(run_id: str, allow_existing: bool) -> Path:
-    out = runs_root() / run_id
+def _explicit_run_dir(run_id: str, allow_existing: bool, scope: str) -> Path:
+    out = runs_root(scope) / run_id
     if out.exists():
         if allow_existing and out.is_dir():
             return out
@@ -55,11 +64,11 @@ def _explicit_run_dir(run_id: str, allow_existing: bool) -> Path:
     return out
 
 
-def _generated_run_dir() -> Path:
+def _generated_run_dir(scope: str) -> Path:
     stamp = time.strftime("%Y%m%d-%H%M%S")
     for idx in range(100):
         suffix = f"-{idx:02d}" if idx else ""
-        out = runs_root() / f"{stamp}{suffix}"
+        out = runs_root(scope) / f"{stamp}{suffix}"
         try:
             out.mkdir(parents=True, exist_ok=False)
             return out

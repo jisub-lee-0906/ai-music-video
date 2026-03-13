@@ -76,11 +76,13 @@ def audio_schema() -> dict:
 def uso_schema() -> dict:
     item = {
         "type": "object",
-        "required": ["shot_id", "delta", "prompt_text", "negative_prompt"],
+        "required": ["shot_id", "subject_clause", "action_clause", "environment_clause", "continuity_clause", "negative_prompt"],
         "properties": {
             "shot_id": {"type": "string"},
-            "delta": {"type": "string"},
-            "prompt_text": {"type": "string"},
+            "subject_clause": {"type": "string"},
+            "action_clause": {"type": "string"},
+            "environment_clause": {"type": "string"},
+            "continuity_clause": {"type": "string"},
             "negative_prompt": {"type": "string"},
         },
     }
@@ -90,10 +92,12 @@ def uso_schema() -> dict:
 def wan_schema() -> dict:
     clip = {
         "type": "object",
-        "required": ["shot_id", "positive_prompt", "negative_prompt", "energy"],
+        "required": ["shot_id", "subject_motion", "camera_relation", "environment_detail", "negative_prompt", "energy"],
         "properties": {
             "shot_id": {"type": "string"},
-            "positive_prompt": {"type": "string"},
+            "subject_motion": {"type": "string"},
+            "camera_relation": {"type": "string"},
+            "environment_detail": {"type": "string"},
             "negative_prompt": {"type": "string"},
             "energy": {"type": "string", "enum": ["low", "normal", "high"]},
         },

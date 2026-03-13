@@ -5,6 +5,7 @@ from ai_mv.utils.json_utils import write_json
 
 
 def write_manifest(state: dict, payload: dict) -> None:
+    scope = str(state.get("scope", "run"))
     out = {
         "run_id": state["run_id"],
         "status": state["status"],
@@ -16,8 +17,8 @@ def write_manifest(state: dict, payload: dict) -> None:
         "merge_status": str(payload.get("merge_status", "")),
         "final_video": str(payload.get("final_video", "")),
     }
-    write_json(run_file(state["run_id"], "manifest.json"), out)
-    write_json(latest_file("manifest.json"), out)
+    write_json(run_file(state["run_id"], "manifest.json", scope), out)
+    write_json(latest_file("manifest.json", scope), out)
 
 
 def _anchor_rows(payload: dict) -> list[dict]:

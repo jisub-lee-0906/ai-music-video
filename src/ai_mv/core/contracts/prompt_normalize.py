@@ -77,12 +77,12 @@ def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str,
         sid = str(anchor["shot_id"])
         row = keyed[sid]
         out[sid] = {
-            "delta": _normalize_uso_delta(row["delta"], sid),
-            "prompt_text": str(row["prompt_text"]).strip(),
-            "negative_prompt": str(row["negative_prompt"]).strip(),
+            "subject_clause": _normalize_atom_clause(row["subject_clause"], sid, "subject_clause", 24),
+            "action_clause": _normalize_atom_clause(row["action_clause"], sid, "action_clause", 16),
+            "environment_clause": _normalize_atom_clause(row["environment_clause"], sid, "environment_clause", 20),
+            "continuity_clause": _normalize_atom_clause(row["continuity_clause"], sid, "continuity_clause", 22),
+            "negative_prompt": _normalize_negative_list(row["negative_prompt"], sid),
         }
-        if not out[sid]["prompt_text"]:
-            raise RuntimeError(f"empty uso prompt_text: {sid}")
     return out
 
 
@@ -96,8 +96,10 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
         if energy not in {"low", "normal", "high"}:
             raise RuntimeError(f"invalid wan energy: {energy}")
         out[sid] = {
-            "positive_prompt": str(row["positive_prompt"]),
-            "negative_prompt": str(row["negative_prompt"]),
+            "subject_motion": _normalize_subject_motion(row["subject_motion"], sid),
+            "camera_relation": _normalize_camera_relation(row["camera_relation"], sid),
+            "environment_detail": _normalize_optional_clause(row["environment_detail"], 16),
+            "negative_prompt": _normalize_negative_list(row["negative_prompt"], sid),
             "energy": energy,
         }
     return out
@@ -318,12 +320,147 @@ def _normalize_keyscale(text: str) -> str:
     return raw
 
 
-def _normalize_uso_delta(raw: object, shot_id: str) -> str:
-    text = str(raw).strip()
+def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int) -> str:
+    text = " ".join(str(raw).strip().split())
     words = [x for x in text.replace(",", " ").split() if x]
     has_alpha = any(ch.isalpha() for ch in text)
-    if len(words) < 3 or not has_alpha:
-        raise RuntimeError(f"invalid uso delta: {shot_id}")
+    if len(words) < 2 or not has_alpha:
+        raise RuntimeError(f"invalid {field}: {shot_id}")
+    if len(words) > max_words:
+        raise RuntimeError(f"{field} too long: {shot_id}")
+    return text.rstrip(". ")
+
+
+def _normalize_optional_clause(raw: object, max_words: int) -> str:
+    text = " ".join(str(raw).strip().split()).rstrip(". ")
+    if not text:
+        return ""
+    words = [x for x in text.replace(",", " ").split() if x]
+    if len(words) > max_words:
+        raise RuntimeError("optional clause too long")
+    return text
+
+
+def _normalize_subject_motion(raw: object, shot_id: str) -> str:
+    text = _normalize_atom_clause(raw, shot_id, "subject_motion", 22)
+    low = text.lower()
+    verbs = (
+        "step",
+        "steps",
+        "turn",
+        "turns",
+        "slow",
+        "slows",
+        "pause",
+        "pauses",
+        "pass",
+        "passes",
+        "drift",
+        "drifts",
+        "settle",
+        "settles",
+        "walk",
+        "walks",
+        "hold",
+        "holds",
+        "glide",
+        "glides",
+        "enter",
+        "enters",
+        "leave",
+        "leaves",
+        "keep",
+        "keeps",
+        "continue",
+        "continues",
+        "carry",
+        "carries",
+        "maintain",
+        "maintains",
+        "move",
+        "moves",
+        "draw",
+        "draws",
+        "break",
+        "breaks",
+        "lift",
+        "lifts",
+        "lower",
+        "lowers",
+        "rise",
+        "rises",
+        "pivot",
+        "pivots",
+        "reorient",
+        "reorients",
+        "open",
+        "opens",
+        "shift",
+        "shifts",
+        "ease",
+        "eases",
+        "lean",
+        "leans",
+        "jolt",
+        "jolts",
+        "wake",
+        "wakes",
+        "sprout",
+        "sprouts",
+        "transform",
+        "transforms",
+        "bare",
+        "bares",
+        "widen",
+        "widens",
+    )
+    if not any(word in low for word in verbs):
+        raise RuntimeError(f"subject_motion must include readable motion verb: {shot_id}")
+    return text
+
+
+def _normalize_camera_relation(raw: object, shot_id: str) -> str:
+    text = _normalize_atom_clause(raw, shot_id, "camera_relation", 16)
+    low = text.lower()
+    cues = (
+        "camera",
+        "frame",
+        "framing",
+        "view",
+        "angle",
+        "glide",
+        "glides",
+        "follow",
+        "follows",
+        "drift",
+        "drifts",
+        "hold",
+        "holds",
+        "track",
+        "tracks",
+        "push",
+        "pushes",
+        "pull",
+        "pulls",
+        "profile",
+        "close",
+        "wide",
+        "frontal",
+        "three-quarter",
+        "over-shoulder",
+        "side-on",
+    )
+    if not any(word in low for word in cues):
+        raise RuntimeError(f"camera_relation must include readable framing cue: {shot_id}")
+    return text
+
+
+def _normalize_negative_list(raw: object, shot_id: str) -> str:
+    text = " ".join(str(raw).strip().split())
+    if not text:
+        raise RuntimeError(f"negative_prompt missing: {shot_id}")
+    if "." in text and "," not in text:
+        raise RuntimeError(f"negative_prompt must be suppression list: {shot_id}")
     return text
 
 

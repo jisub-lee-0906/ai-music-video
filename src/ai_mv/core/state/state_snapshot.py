@@ -5,6 +5,6 @@ from ai_mv.utils.json_utils import write_json
 
 
 def save_snapshot(state: dict, payload: dict) -> None:
-    out = runs_root() / state["run_id"] / "snapshot.json"
+    out = runs_root(str(state.get("scope", "run"))) / state["run_id"] / "snapshot.json"
     write_json(out, {**state, "payload_keys": sorted(list(payload.keys()))})
 

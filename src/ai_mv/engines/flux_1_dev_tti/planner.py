@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
-from ai_mv.core.prompt_digests import audio_digest, label_digest, lyrics_digest, negative_digest, profile_digest, section_digest, style_digest, visual_digest
+from ai_mv.core.prompt_digests import audio_digest, label_digest, lyrics_digest, negative_digest, section_digest, style_digest, visual_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 
@@ -37,7 +37,6 @@ def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[
         "guidance": style_digest(audio_map, 1) or _style_guidance(config, audio_map),
         "desc": audio_digest(audio_map, 1),
         "lyrics": lyrics_digest(audio_map.get("lyrics", ""), 5),
-        "profile": profile_digest(audio_map, 1),
         "visual_direction": visual_digest(audio_map, 1),
         "negative_direction": negative_digest(audio_map, 1),
         "brief_view": _brief_summary(brief),
@@ -65,10 +64,9 @@ def _planner_rules() -> str:
         "Keep the prompt lexically dense and image-led, more like 'high fashion, vintage couture, street photography' than like a screenplay description. "
         "Keep one consistent lead identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
         "Derive subject identity strictly from the visual brief; do not infer ethnicity, gender, genre-specific styling, or cultural lane unless the brief explicitly says so. "
-        "Treat the signature prop as a supporting identity accent; the face and upper-body performance remain the primary subject. "
-        "Do not let the signature prop become the visual anchor of the master image; use face, posture, wardrobe silhouette, and environment first. "
-        "Use the visual brief as the source of truth for identity locks, world rules, motifs, and forbidden drift. "
-        "master_anchor should absorb hero/world/motif rules, while shot items should absorb section-specific variation only. "
+        "Treat any signature prop as a supporting accent, not the primary subject. "
+        "Use the visual brief as the source of truth for identity locks, world rules, and forbidden drift. "
+        "master_anchor should absorb hero/world rules, while shot items should absorb section-specific variation only. "
         "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that place, not a random fresh location. "
         "Treat story_beat as the first priority for shot design: the frame must make the visible action readable before it tries to be pretty. "
         "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same lead subject and world grammar. "
@@ -84,9 +82,7 @@ def _planner_rules() -> str:
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
         "Negative constraints and world rules override any section staging idea. "
-        "camera_language should be a short cinematic phrase for framing/lens behavior only. "
-        "camera_language must describe face framing, body framing, or lens feel, not prop framing; avoid phrases like close-up on bag, mirror, prop, or accessory. "
-        "camera_language must stay smooth and readable; avoid explosive, frantic, handheld, whip, crash zoom, or fast-pan language unless the brief explicitly allows it. "
+        "camera_language should be a short cinematic phrase for framing or lens behavior only, and it must stay smooth and readable. "
         "For verses and transitions, prefer oblique framings such as three-quarter portrait, side profile walk, over-shoulder drift, reflected profile, or silhouette follow rather than always using centered front view. "
         "For Chorus and Final Chorus, hero framing can return more frontally, but it should still feel like a staged music-video payoff rather than a static passport portrait. "
         "Use environment relation actively: foreground occlusion, passing reflections, corridor depth, storefront spill, sidewalk negative space, or shoulder-led lead-in are often better than another clean head-on pose. "
@@ -96,15 +92,12 @@ def _planner_rules() -> str:
         "scene_detail should name exactly one concrete set or prop emphasis and should preserve the same master palette with only section accent shifts. "
         "scene_detail should usually reinforce the location_anchor instead of inventing a fresh place. "
         "For repeated choruses, scene_detail should reveal a clearer, brighter, wider, or more resolved version of the same environment; Final Chorus should show the cleanest and most luminous environmental payoff. "
-        "scene_detail should default to environment or lighting detail; use prop detail only when the shot_type truly calls for a brief insert. "
-        "For CHAR_MASTER, PERF_WIDE, and EMOTION_CLOSE, keep scene_detail focused on environment, lighting, or silhouette rather than handheld objects. "
-        "Except for brief detail inserts, do not let props, bags, or accessories become larger or more important than the hero face and performance. "
+        "Keep scene_detail focused on environment, lighting, or silhouette unless the shot truly needs a brief insert. "
         "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
         "Final Chorus motion_hint should feel like the smoothest and most confident payoff move in the song, not just another generic slow move. "
         "space_relation must describe stable left-right or front-back geometry in plain English, such as glass stays camera-right, storefront remains behind her left shoulder, open street ahead of her, or reflection runs beside her on camera-left. "
         "space_relation should be simple, physically readable, and reusable across start and end frames so downstream image-to-image planners can preserve the same space logic. "
         "Outro framing should leave a residue image rather than another performance beat: retreating figure, empty space after passage, or reflection that outlasts her body are strong options. "
-        "Let motion_hint and camera_language work together like a music-video storyboard: profile walk, shoulder turn, silhouette drift, reflective pass, slow follow, and clean lateral glide are all valid when they fit the section. "
         "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
         "Avoid empty prestige phrases like cinematic vibes, dramatic aura, stylish composition, or emotional energy without a concrete visible setup. "
         "Shot count must match section count exactly. "
@@ -114,8 +107,7 @@ def _planner_rules() -> str:
 def _planner_inputs(context: dict[str, str]) -> str:
     return (
         f"Use shot_type only from enum: {context['types']}. "
-        f"Audio direction={context['desc']}; "
-        f"Style lane={context['guidance']}; Profile steering={context['profile']}; "
+        f"Style lane={context['guidance']}; Audio direction={context['desc']}; "
         f"Visual direction={context['visual_direction']}; "
         f"Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
         f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; "
@@ -183,11 +175,9 @@ def _escalation_reference(sections: list[dict]) -> str:
 
 def _brief_summary(brief: dict) -> str:
     world = world_bible(brief)
-    motifs = ", ".join(world.get("visual_motifs", []))
-    rules = ", ".join(world.get("negative_constraints", []))
     return (
         f"hero={world['hero_identity']}; world={world['world_rules']}; "
-        f"motifs={motifs}; avoid={rules}; sections={_section_briefs(brief)}"
+        f"sections={_section_briefs(brief)}"
     )
 
 

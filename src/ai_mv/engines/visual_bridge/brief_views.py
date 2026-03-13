@@ -39,3 +39,35 @@ def section_dramaturgy(brief: dict) -> list[dict]:
     if isinstance(data, list) and data:
         return build_section_dramaturgy({"section_briefs": data})
     return build_section_dramaturgy(brief)
+
+
+def compact_world_atoms(brief: dict) -> dict:
+    world = world_bible(brief)
+    return {
+        "hero_identity": str(world.get("hero_identity", "")).strip(),
+        "world_rules": str(world.get("world_rules", "")).strip(),
+    }
+
+
+def compact_section_atoms(brief: dict, section_name: str) -> dict:
+    target = str(section_name).strip()
+    for row in section_dramaturgy(brief):
+        if str(row.get("section_name", "")).strip() == target:
+            return {
+                "section_name": target,
+                "story_beat": str(row.get("story_beat", "")).strip(),
+                "location_anchor": str(row.get("location_anchor", "")).strip(),
+                "staging_hint": str(row.get("staging_hint", "")).strip(),
+                "lighting_hint": str(row.get("lighting_hint", "")).strip(),
+                "palette_hint": str(row.get("palette_hint", "")).strip(),
+                "emotional_arc": str(row.get("emotional_arc", "")).strip(),
+            }
+    return {
+        "section_name": target,
+        "story_beat": "",
+        "location_anchor": "",
+        "staging_hint": "",
+        "lighting_hint": "",
+        "palette_hint": "",
+        "emotional_arc": "",
+    }

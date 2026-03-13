@@ -42,7 +42,17 @@ def _uso_prompt_batches(stage_input: StageInput, plan: dict) -> list[dict]:
         chunk = anchors[i : i + batch_size]
         prompt = _planner_prompt(stage_input.config, stage_input.payload, chunk, carry)
         batches.append({"index": len(batches) + 1, "shot_ids": [x["shot_id"] for x in chunk], "prompt": prompt})
-        carry = str(chunk[-1].get("prompt_text", "")).strip()[:220] if chunk else carry
+        if chunk:
+            last = chunk[-1]
+            carry = " | ".join(
+                part
+                for part in (
+                    str(last.get("subject_clause", "")).strip(),
+                    str(last.get("action_clause", "")).strip(),
+                    str(last.get("continuity_clause", "")).strip(),
+                )
+                if part
+            )[:140]
     return batches
 
 
@@ -56,6 +66,7 @@ def _uso_workflow_inputs(config: dict, items: list[dict]) -> list[dict]:
                 "shot_id": str(item["shot_id"]),
                 "space_relation": str(item.get("space_relation", "")),
                 "clip_phase": str(item.get("clip_phase", "")),
+                "atoms": _uso_atom_view(item),
                 "start_text": start,
                 "end_text": end,
             }
@@ -82,4 +93,13 @@ def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
     out = dict(payload.get("workflow_inputs_preview", {}))
     out[key] = value
     return out
+
+
+def _uso_atom_view(item: dict) -> dict:
+    return {
+        "subject_clause": str(item.get("subject_clause", "")),
+        "action_clause": str(item.get("action_clause", "")),
+        "environment_clause": str(item.get("environment_clause", "")),
+        "continuity_clause": str(item.get("continuity_clause", "")),
+    }
 

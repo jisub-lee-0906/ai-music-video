@@ -45,45 +45,7 @@ def _uso_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty USO prompt_text: {item['shot_id']}")
-    parts = [text, _frame_clause(item), _phase_clause(item), _continuity_clause(item)]
-    return " ".join(x for x in parts if x).strip()
-
-
-def _frame_clause(item: dict) -> str:
-    frame = str(item.get("frame_name", "")).strip().lower()
-    delta = _delta_phrase(item)
-    if not delta:
-        return ""
-    if frame == "start":
-        return f"Start frame before {delta}."
-    if frame == "end":
-        return f"End frame after {delta}."
-    return f"Moment around {delta}."
-
-
-def _phase_clause(item: dict) -> str:
-    phase = str(item.get("clip_phase", "")).strip().lower()
-    if phase == "establish":
-        return "Keep the setup readable."
-    if phase == "advance":
-        return "Keep the motion continuous."
-    if phase == "resolve":
-        return "Land the beat cleanly."
-    return ""
-
-
-def _continuity_clause(item: dict) -> str:
-    text = str(item.get("space_relation", "")).strip()
-    return f"Space relation stays {text}." if text else ""
-
-
-def _delta_phrase(item: dict) -> str:
-    text = str(item.get("delta", "")).strip().rstrip(".!?;:")
-    if not text:
-        return ""
-    if len(text) == 1:
-        return text.lower()
-    return text[:1].lower() + text[1:]
+    return text
 
 
 def _uso_size(config: dict) -> tuple[int, int]:

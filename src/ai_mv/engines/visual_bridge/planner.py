@@ -16,10 +16,9 @@ def build_visual_brief(config: dict, payload: dict) -> dict:
 def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
     guidance = style_digest(audio_map, 1)
     genre = audio_digest(audio_map, 1)
-    profile = profile_digest(audio_map, 1)
     direction = visual_digest(audio_map, 1)
     negative = negative_digest(audio_map, 1)
-    lyrics = lyrics_digest(audio_map.get("lyrics", ""), 6)
+    lyrics = lyrics_digest(audio_map.get("lyrics", ""), 4)
     names = _section_names(sections)
     labels = label_digest(sections)
     timing = _timing_reference(sections)
@@ -61,9 +60,8 @@ def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
         "If a section name repeats, return repeated section_briefs entries in the same repeated order; never merge duplicate section names. "
         "section_name must be a bare section token only, never include timing, punctuation ranges, or extra annotation. "
         "Avoid generic section_brief language like cinematic mood, emotional scene, stylish lighting, or dramatic performance unless grounded in a clear visual setup. "
-        f"Audio direction={genre}; Profile steering={profile}; "
+        f"Style lane={guidance}; Audio direction={genre}; "
         f"Visual direction={direction}; Avoid={negative}; Lyrics excerpt={lyrics}; "
-        f"Style lane={guidance}; "
         f"Section names only={names}; Section labels in order={labels}; Timing reference={timing}."
     )
 

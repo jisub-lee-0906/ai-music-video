@@ -31,8 +31,8 @@ def test_audio_prompt_focuses_on_prompt_engineering_not_checklist():
     assert "Make the chorus easy to sing back after one listen" in prompt
     assert "Style guidance=" not in prompt
     assert "Visual carryover=" not in prompt
-    assert "Profile world=retro city-pop lane." in prompt
     assert "Audio direction=mature female vocal, glossy piano, disco bounce." in prompt
+    assert "World lane=retro city-pop lane." in prompt
     assert "Hook direction=neon rain and chrome reflections." in prompt
     assert "Avoid=no futuristic sci-fi tone." in prompt
     assert "quality failure" not in prompt

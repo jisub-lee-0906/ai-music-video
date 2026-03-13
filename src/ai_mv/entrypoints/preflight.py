@@ -31,7 +31,7 @@ def _load_prepared_config(profile: str | None) -> dict:
 
 
 def _prepare_run_profile(cfg: dict, run_id: str) -> str:
-    run_dir = ensure_run_dir(run_id, allow_existing=False)
+    run_dir = ensure_run_dir(run_id, allow_existing=False, scope="preflight")
     rid = run_dir.name
     profile = str(cfg.get("profile", "")).strip()
     if profile:
