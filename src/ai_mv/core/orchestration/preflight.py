@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import traceback
+
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.prompt_preview import write_prompt_preview
 from ai_mv.core.artifacts.quality_review import write_quality_review
 from ai_mv.core.artifacts.run_summary import write_run_summary
 from ai_mv.core.artifacts.summary import write_summary
 from ai_mv.core.artifacts.workflow_inputs_preview import write_workflow_inputs_preview
+from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.quality_review import build_quality_review, build_run_summary
 from ai_mv.core.state.state_snapshot import save_snapshot
@@ -36,22 +39,19 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
     except Exception as exc:
         state["status"] = "failed"
         state["failure_reason"] = f"{state['current_stage']}: {exc}" if state["current_stage"] else str(exc)
+        state["failure_traceback"] = traceback.format_exc()
         save_snapshot(state, stage_input.payload)
+        _write_preflight_artifacts(state, stage_input.payload, cfg)
         raise
     save_snapshot(state, stage_input.payload)
-    write_manifest(state, stage_input.payload)
-    write_summary(state, stage_input.payload)
-    write_prompt_preview(state, stage_input.payload)
-    write_workflow_inputs_preview(state, stage_input.payload)
-    quality_review = build_quality_review(cfg, stage_input.payload)
-    write_quality_review(state, quality_review)
-    write_run_summary(state, build_run_summary(state, stage_input.payload, quality_review))
+    _write_preflight_artifacts(state, stage_input.payload, cfg)
     return state["run_id"]
 
 
 def _run_preflight_stage(state: dict, stage_input: StageInput, name: str, fn) -> None:
     state["current_stage"] = name
     save_snapshot(state, stage_input.payload)
+    validate_stage_input(name, stage_input.payload)
     fn(stage_input)
     state["completed_stages"].append(name)
     save_snapshot(state, stage_input.payload)
@@ -195,3 +195,13 @@ def _merge(payload: dict, key: str, value: dict) -> dict:
         out[key] = value
         return out
     raise RuntimeError(f"unsupported preview key: {key}")
+
+
+def _write_preflight_artifacts(state: dict, payload: dict, config: dict) -> None:
+    write_manifest(state, payload)
+    write_summary(state, payload)
+    write_prompt_preview(state, payload)
+    write_workflow_inputs_preview(state, payload)
+    quality_review = build_quality_review(config, payload)
+    write_quality_review(state, quality_review)
+    write_run_summary(state, build_run_summary(state, payload, quality_review))

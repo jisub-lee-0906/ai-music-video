@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.artifacts.paths import latest_file, run_file
+from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_file
 from ai_mv.utils.json_utils import write_json
 
 
@@ -19,3 +19,5 @@ def write_summary(state: dict, payload: dict) -> None:
     }
     write_json(run_file(state["run_id"], "summary.json", scope), summary)
     write_json(latest_file("summary.json", scope), summary)
+    if str(state.get("status", "")) == "done":
+        write_json(latest_success_file("summary.json", scope), summary)

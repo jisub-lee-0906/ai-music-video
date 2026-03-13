@@ -1,7 +1,8 @@
 from ai_mv.core.artifacts.run_summary import write_run_summary
 from ai_mv.core.artifacts.quality_review import write_quality_review
-from ai_mv.core.artifacts.paths import latest_file, run_file
+from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_file
 from ai_mv.core.quality_review import build_quality_review, build_run_summary
+from ai_mv.engines.wan_2_2_flf2v.planner import _compose_positive_prompt
 
 
 def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
@@ -33,7 +34,7 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
 
 def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     monkeypatch.setattr("ai_mv.core.artifacts.paths.PROJECT_ROOT", tmp_path)
-    state = {"run_id": "r1", "completed_stages": ["acestep_music"], "current_stage": "done", "failure_reason": ""}
+    state = {"run_id": "r1", "status": "done", "completed_stages": ["acestep_music"], "current_stage": "done", "failure_reason": ""}
     payload = {
         "selected_profile": "jpop_citypop",
         "audio_map": {
@@ -49,3 +50,31 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     assert run_file("r1", "run_summary.json").exists()
     assert latest_file("quality_review.json").exists()
     assert latest_file("run_summary.json").exists()
+    assert latest_success_file("quality_review.json").exists()
+    assert latest_success_file("run_summary.json").exists()
+
+
+def test_run_summary_failure_does_not_overwrite_latest_success(tmp_path, monkeypatch):
+    monkeypatch.setattr("ai_mv.core.artifacts.paths.PROJECT_ROOT", tmp_path)
+    success_state = {"run_id": "r1", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
+    failed_state = {"run_id": "r2", "status": "failed", "completed_stages": ["acestep_music"], "current_stage": "wan_interpolation", "failure_reason": "boom"}
+    summary = {"run_id": "r1"}
+    failed_summary = {"run_id": "r2"}
+
+    write_run_summary(success_state, summary)
+    write_run_summary(failed_state, failed_summary)
+
+    assert latest_file("run_summary.json").exists()
+    assert latest_success_file("run_summary.json").exists()
+    assert latest_success_file("run_summary.json").read_text(encoding="utf-8").find('"run_id": "r1"') >= 0
+
+
+def test_wan_compose_prefers_environment_sentence_when_camera_relation_is_static():
+    text = _compose_positive_prompt(
+        {
+            "subject_motion": "She moves through the lane and lifts her eyes toward the station light",
+            "camera_relation": "holds a close side profile",
+            "environment_detail": "Wet stripes brighten underfoot",
+        }
+    )
+    assert text == "She moves through the lane and lifts her eyes toward the station light. Wet stripes brighten underfoot."

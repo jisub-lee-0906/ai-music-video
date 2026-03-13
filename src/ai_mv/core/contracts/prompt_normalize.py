@@ -75,7 +75,9 @@ def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str,
     out: dict[str, dict] = {}
     for anchor in anchors:
         sid = str(anchor["shot_id"])
-        row = keyed[sid]
+        row = keyed.get(sid)
+        if row is None:
+            raise RuntimeError(f"USO planner missing shot_id: {sid}")
         out[sid] = {
             "subject_clause": _normalize_atom_clause(row["subject_clause"], sid, "subject_clause", 24),
             "action_clause": _normalize_atom_clause(row["action_clause"], sid, "action_clause", 16),
@@ -91,7 +93,9 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
     out: dict[str, dict] = {}
     for clip in clips:
         sid = str(clip["shot_id"])
-        row = keyed[sid]
+        row = keyed.get(sid)
+        if row is None:
+            raise RuntimeError(f"WAN planner missing shot_id: {sid}")
         energy = str(row["energy"])
         if energy not in {"low", "normal", "high"}:
             raise RuntimeError(f"invalid wan energy: {energy}")
@@ -344,7 +348,21 @@ def _normalize_optional_clause(raw: object, max_words: int) -> str:
 def _normalize_subject_motion(raw: object, shot_id: str) -> str:
     text = _normalize_atom_clause(raw, shot_id, "subject_motion", 22)
     low = text.lower()
-    verbs = (
+    banned = (
+        "emotional",
+        "cinematic",
+        "confidence",
+        "payoff",
+        "energy",
+        "atmosphere",
+        "stylish",
+        "dramatic",
+        "beautiful",
+        "powerful",
+    )
+    if any(word in low for word in banned):
+        raise RuntimeError(f"subject_motion too abstract: {shot_id}")
+    cues = (
         "step",
         "steps",
         "turn",
@@ -401,6 +419,22 @@ def _normalize_subject_motion(raw: object, shot_id: str) -> str:
         "eases",
         "lean",
         "leans",
+        "look",
+        "looks",
+        "glance",
+        "glances",
+        "cross",
+        "crosses",
+        "raise",
+        "raises",
+        "tilt",
+        "tilts",
+        "slip",
+        "slips",
+        "sway",
+        "sways",
+        "sweep",
+        "sweeps",
         "jolt",
         "jolts",
         "wake",
@@ -414,7 +448,7 @@ def _normalize_subject_motion(raw: object, shot_id: str) -> str:
         "widen",
         "widens",
     )
-    if not any(word in low for word in verbs):
+    if not any(word in low for word in cues):
         raise RuntimeError(f"subject_motion must include readable motion verb: {shot_id}")
     return text
 
@@ -422,6 +456,20 @@ def _normalize_subject_motion(raw: object, shot_id: str) -> str:
 def _normalize_camera_relation(raw: object, shot_id: str) -> str:
     text = _normalize_atom_clause(raw, shot_id, "camera_relation", 16)
     low = text.lower()
+    banned = (
+        "emotional",
+        "cinematic",
+        "confidence",
+        "payoff",
+        "energy",
+        "atmosphere",
+        "stylish",
+        "dramatic",
+        "beautiful",
+        "powerful",
+    )
+    if any(word in low for word in banned):
+        raise RuntimeError(f"camera_relation too abstract: {shot_id}")
     cues = (
         "camera",
         "frame",
@@ -446,9 +494,18 @@ def _normalize_camera_relation(raw: object, shot_id: str) -> str:
         "close",
         "wide",
         "frontal",
+        "front",
         "three-quarter",
         "over-shoulder",
+        "shoulder",
         "side-on",
+        "side",
+        "ahead",
+        "behind",
+        "alongside",
+        "level",
+        "centered",
+        "center",
     )
     if not any(word in low for word in cues):
         raise RuntimeError(f"camera_relation must include readable framing cue: {shot_id}")

@@ -269,13 +269,13 @@ def _apply_prompt(clip: dict, row: dict) -> dict:
 
 def _compose_positive_prompt(row: dict) -> str:
     subject_motion = _sentence(_clause(row.get("subject_motion", "")))
-    camera_relation = _compose_camera_sentence(
+    second_sentence = _compose_second_sentence(
         _clause(row.get("camera_relation", "")),
         _clause(row.get("environment_detail", "")),
     )
-    if not subject_motion or not camera_relation:
+    if not subject_motion or not second_sentence:
         raise RuntimeError("empty composed WAN prompt")
-    return f"{subject_motion} {camera_relation}".strip()
+    return f"{subject_motion} {second_sentence}".strip()
 
 
 def _clause(text: object) -> str:
@@ -287,7 +287,9 @@ def _sentence(text: str) -> str:
     return f"{cleaned}." if cleaned else ""
 
 
-def _compose_camera_sentence(camera_relation: str, environment_detail: str) -> str:
+def _compose_second_sentence(camera_relation: str, environment_detail: str) -> str:
+    if environment_detail and _camera_relation_is_weak(camera_relation):
+        return _sentence(environment_detail)
     if not camera_relation:
         return ""
     relation = _camera_clause(camera_relation)
@@ -303,6 +305,14 @@ def _camera_clause(text: str) -> str:
     if low.startswith("camera "):
         return f"The {text}"
     return f"The camera {text}"
+
+
+def _camera_relation_is_weak(text: str) -> bool:
+    low = str(text).strip().lower()
+    if not low:
+        return True
+    dynamic = ("glide", "glides", "follow", "follows", "track", "tracks", "push", "pushes", "pull", "pulls", "drift", "drifts")
+    return not any(word in low for word in dynamic)
 
 
 def _energy_policy(clip: dict, suggested: str) -> str:

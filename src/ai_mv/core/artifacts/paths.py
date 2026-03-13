@@ -46,6 +46,15 @@ def latest_root(scope: str = "run") -> Path:
     return root
 
 
+def latest_success_root(scope: str = "run") -> Path:
+    if _scope_name(scope) == "preflight":
+        root = preflight_root() / "latest_success"
+    else:
+        root = artifacts_root() / "latest_success"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
 def run_file(run_id: str, name: str, scope: str = "run") -> Path:
     root = scoped_runs_root(scope) / str(run_id).strip()
     root.mkdir(parents=True, exist_ok=True)
@@ -54,3 +63,7 @@ def run_file(run_id: str, name: str, scope: str = "run") -> Path:
 
 def latest_file(name: str, scope: str = "run") -> Path:
     return latest_root(scope) / name
+
+
+def latest_success_file(name: str, scope: str = "run") -> Path:
+    return latest_success_root(scope) / name

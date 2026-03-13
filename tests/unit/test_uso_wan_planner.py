@@ -1,5 +1,6 @@
 import pytest
 
+from ai_mv.core.contracts.prompt_normalize import normalize_uso_items, normalize_wan_clips
 from ai_mv.engines.flux_1_dev_uso.planner import build_uso_plan
 from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
 import ai_mv.engines.flux_1_dev_uso.planner as uso_planner
@@ -81,6 +82,23 @@ def test_uso_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
         build_uso_plan({"render": {"uso_planner_batch_size": 2}}, payload)
 
 
+def test_uso_normalize_missing_shot_id_raises_runtimeerror():
+    with pytest.raises(RuntimeError, match="USO planner missing shot_id: missing"):
+        normalize_uso_items(
+            [
+                {
+                    "shot_id": "other",
+                    "subject_clause": "A performer in frame",
+                    "action_clause": "turns toward the light",
+                    "environment_clause": "under wet neon",
+                    "continuity_clause": "keeping the same lane relation",
+                    "negative_prompt": "low quality, blurry",
+                }
+            ],
+            [{"shot_id": "missing"}],
+        )
+
+
 def test_uso_anchor_summary_uses_shot_ids_only():
     summary = uso_planner._anchor_summary([_anchor("a", False), _anchor("b", True)])
     assert "a(" in summary
@@ -135,7 +153,7 @@ def test_wan_planner_batches_requests(monkeypatch):
             "clips": [
                 {
                     "shot_id": "x",
-                    "subject_motion": "She holds at the curb and steps into the crossing with measured confidence",
+                    "subject_motion": "She holds at the curb and steps into the crossing with a measured stride",
                     "camera_relation": "glides back in a steady front relation",
                     "environment_detail": "Wet stripes brighten under her stride",
                     "negative_prompt": "overexposed, static frame, low quality",
@@ -162,6 +180,23 @@ def test_wan_planner_strict_batch_mismatch_splits_to_single(monkeypatch):
     payload = {"uso_images": [_uso("x", 1.0), _uso("y", 1.0)], "audio_map": {"lyrics": "[v] line", "style_guidance": "g"}, "visual_brief": _brief()}
     with pytest.raises(RuntimeError, match="shot_id mismatch"):
         build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_planner_batch_size": 2}}, payload)
+
+
+def test_wan_normalize_missing_shot_id_raises_runtimeerror():
+    with pytest.raises(RuntimeError, match="WAN planner missing shot_id: missing"):
+        normalize_wan_clips(
+            [
+                {
+                    "shot_id": "other",
+                    "subject_motion": "She crosses the lane and lifts her eyes",
+                    "camera_relation": "holds a close side profile",
+                    "environment_detail": "wet stripes brighten below",
+                    "negative_prompt": "overexposed, static frame, low quality",
+                    "energy": "normal",
+                }
+            ],
+            [{"shot_id": "missing"}],
+        )
 
 
 def test_wan_planner_clip_cap_guard(monkeypatch):
