@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
 from ai_mv.core.prompt_digests import audio_digest, label_digest, section_digest, style_digest, visual_digest
-from ai_mv.core.visual_pipeline import attach_tti_metadata, section_semantics_digest
+from ai_mv.core.visual_pipeline import attach_tti_metadata, location_grammar_digest, section_semantics_digest, shot_type_guidance_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 
@@ -43,6 +43,8 @@ def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[
         "section_labels": label_digest(sections),
         "section_semantics": section_semantics_digest(audio_map),
         "escalation": _escalation_reference(sections),
+        "shot_type_guidance": shot_type_guidance_digest(config),
+        "location_grammar": location_grammar_digest(config),
         "types": ", ".join(SHOT_TYPES),
     }
 
@@ -59,7 +61,7 @@ def _planner_rules() -> str:
         "Use raw visual prompt language only: subject identity, face traits, hair, wardrobe, fabric/material, pose, background set, lighting style, lens language, mood, palette, and finish. "
         "Match the workflow example style: short comma-separated noun phrases and modifier phrases, not full sentences and not paragraph prose. "
         "Order the phrase chain so identity lands first, then styling, then environment, then light or palette, then finish. "
-        "A strong master_anchor reads like: refined lead subject, signature hair and coat silhouette, rain-streaked station glass, warm storefront glow, soft teal-rose reflections, cinematic 50mm, polished film finish. "
+        "A strong master_anchor reads like: refined lead subject, signature hair and silhouette, reflective threshold, warm practical glow, soft teal-rose reflections, cinematic 50mm, polished film finish. "
         "A weak master_anchor reads like: beautiful singer in a dramatic scene with emotional vibes at night. "
         "Keep the prompt lexically dense and image-led, more like 'high fashion, vintage couture, street photography' than like a screenplay description. "
         "Keep one consistent lead identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
@@ -68,11 +70,11 @@ def _planner_rules() -> str:
         "Do not let the master anchor collapse into a centered fashion portrait if the world and framing cues suggest a more grounded music-video setup. "
         "Use the visual brief as the source of truth for identity locks, world rules, and forbidden drift. "
         "master_anchor should absorb hero/world rules, while shot items should absorb section-specific variation only. "
-        "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that place, not a random fresh location. "
+        "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that environment family, not a random fresh location. "
         "Treat story_beat as the first priority for shot design: the frame must make the visible action readable before it tries to be pretty. "
         "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same lead subject and world grammar. "
         "Use section labels as escalation hints so repeated returns widen confidence and clarity without changing worlds. "
-        "Use a stable shot hierarchy across the song: intro/outro favor character master or environment setup, verses favor performance-wide, pre-chorus favors emotion-close, chorus favors performance hero framing, post-chorus favors detail or reflection, bridge favors emotion-close or reflective transition. "
+        "Use the profile-driven shot grammar guidance instead of a single global hierarchy; section shots should follow the current profile's preferred framing mix. "
         "Think like a finished music video, not a portrait generator: the shot list should create angle variety, movement variety, and staging progression while preserving the same lead subject. "
         "Across the song, mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings where appropriate instead of defaulting to straight-on portraits. "
         "Not every shot should face camera; reserve the most frontal hero framing for major returns and payoff moments. "
@@ -111,7 +113,8 @@ def _planner_inputs(context: dict[str, str]) -> str:
         f"Use shot_type only from enum: {context['types']}. "
         f"Style lane={context['guidance']}; Audio direction={context['desc']}; "
         f"Visual direction={context['visual_direction']}; "
-        f"Visual brief={context['brief_view']}; "
+        f"Visual brief={context['brief_view']}; Shot grammar={context['shot_type_guidance']}; "
+        f"Location grammar={context['location_grammar']}; "
         f"Section labels in order={context['section_labels']}; Section semantics={context['section_semantics']}; "
         f"Escalation guide={context['escalation']}; Timing reference={context['section_view']}."
     )
@@ -139,7 +142,7 @@ def _assign_one_shot_per_section(shots: list[dict], sections: list[dict]) -> lis
         item["shot_id"] = f"S{idx:03d}"
         item["section_name"] = str(sec.get("name", "section"))
         item["section_label"] = str(sec.get("label", sec.get("name", "section")))
-        item["shot_type"] = _shot_type_for_section(item["section_name"])
+        item["shot_type"] = str(item.get("shot_type", "PERF_WIDE")).strip().upper() or "PERF_WIDE"
         item["is_chorus"] = _is_chorus(item["section_name"])
         item["duration_sec"] = round(max(0.001, _sec_end(sec) - _sec_start(sec)), 3)
         out.append(attach_tti_metadata(item, item["section_name"], item["section_label"]))
@@ -196,20 +199,3 @@ def _section_briefs(brief: dict) -> str:
     return ", ".join(rows)
 
 
-def _shot_type_for_section(name: str) -> str:
-    sec = str(name).strip().lower()
-    if sec == "intro":
-        return "CHAR_MASTER"
-    if sec.startswith("verse"):
-        return "PERF_WIDE"
-    if sec == "pre_chorus":
-        return "EMOTION_CLOSE"
-    if sec == "chorus":
-        return "PERF_WIDE"
-    if sec == "post_chorus":
-        return "DETAIL_INSERT"
-    if sec == "bridge":
-        return "EMOTION_CLOSE"
-    if sec == "outro":
-        return "ENV_TRANSITION"
-    return "PERF_WIDE"

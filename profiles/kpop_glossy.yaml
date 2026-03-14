@@ -1,0 +1,46 @@
+audio:
+  language: ko
+  tags:
+    - glossy k-pop
+    - young adult female solo vocal
+    - polished confident lead vocal
+    - punchy pop drums
+    - sleek synth bass
+    - bright hook topline
+    - crisp rhythm guitar
+    - high-shine chorus payoff
+    - luxury pop finish
+  brief: >
+    Polished modern K-pop for a young adult female solo singer, with punchy pop drums, sleek
+    synth bass, crisp rhythm guitar, and a bright high-impact hook. Keep the arrangement clean,
+    premium, and direct, with clear dynamic lift into the chorus and strong mainstream visual-pop
+    appeal instead of indie looseness or trap-heavy drag.
+  hook_brief: >
+    Build the hook around one instantly memorable phrase and make it clean, repeatable, and
+    performance-ready in natural Korean. The hook should feel confident, addictive, and sharply
+    visual rather than abstract or meandering.
+visual:
+  brief: >
+    A glossy high-impact pop music video with a young adult East Asian heroine, premium styling,
+    mirror-clean surfaces, luminous thresholds, sleek passages, and open performance lanes. Keep
+    the heroine stylish, photogenic, and instantly readable, with confident modern glamour rather
+    than moody melancholy.
+  negative: >
+    Avoid grungy decay, sleepy wandering, random props, messy streetwear drift, muddy lighting,
+    and disconnected spaces that weaken pop payoff.
+mv:
+  story_world: >
+    The video should feel like one controlled high-shine night world built from recurring
+    environment families: reflective thresholds, sleek passages, polished platforms, and open
+    performance lanes. The same heroine and the same luxurious pulse should hold through the
+    whole piece.
+  action_vocabulary: >
+    Prefer readable pop actions: stepping into center, turning shoulders into light, holding a
+    direct stare, pivoting through a lane, brushing past reflective walls, and landing a strong
+    stop. Keep motion sharp, clean, and legible rather than theatrical or overbusy.
+  payoff_style: >
+    The final return should feel like total pop command: strongest center framing, cleaner lines,
+    brighter reflections, and a sense that the heroine owns the whole beat.
+  avoid: >
+    Avoid overcomplicated narrative acting, dull atmosphere, passive body language, random
+    geography changes, and endings that shrink instead of peak.

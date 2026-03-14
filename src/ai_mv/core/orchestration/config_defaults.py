@@ -22,6 +22,22 @@ DEFAULT_CONFIG: dict = {
         "hero_shot_types": ["EMOTION_CLOSE"],
         "reference_priority_sections": ["Final Chorus", "Chorus 2", "Chorus 1"],
         "allow_face_drift_in_nonhero": True,
+        "location_budget": {"min": 2, "max": 3},
+        "location_family_examples": [
+            "reflective threshold",
+            "lit passage",
+            "open night lane",
+            "sheltered edge",
+        ],
+        "shot_type_guidance": {
+            "intro": ["CHAR_MASTER", "ENV_TRANSITION"],
+            "verse": ["PERF_WIDE", "ENV_TRANSITION"],
+            "pre_chorus": ["EMOTION_CLOSE", "PERF_WIDE"],
+            "chorus": ["PERF_WIDE", "EMOTION_CLOSE"],
+            "post_chorus": ["DETAIL_INSERT", "ENV_TRANSITION"],
+            "bridge": ["EMOTION_CLOSE", "ENV_TRANSITION"],
+            "outro": ["ENV_TRANSITION", "CHAR_MASTER"],
+        },
         "mv_grammar": {
             "verse_coverage_bias": "travel coverage",
             "chorus_payoff_bias": "clear hero payoff",

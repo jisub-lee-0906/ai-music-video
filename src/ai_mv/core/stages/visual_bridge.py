@@ -16,7 +16,7 @@ def run_visual_bridge(stage_input: StageInput) -> StageOutput:
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "visual_bridge",
-                {"prompt": _planner_prompt(audio_map, sections)},
+                {"prompt": _planner_prompt(stage_input.config, audio_map, sections)},
             ),
         },
         [],

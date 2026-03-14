@@ -204,7 +204,7 @@ def _audio_inputs(config: dict, plan: dict) -> dict:
 def _visual_prompt(audio_map: dict) -> str:
     from ai_mv.engines.visual_bridge.planner import _planner_prompt
 
-    return _planner_prompt(audio_map, list(audio_map["sections"]))
+    return _planner_prompt({}, audio_map, list(audio_map["sections"]))
 
 
 def _preflight_flux2_ref_item(item: dict) -> dict:

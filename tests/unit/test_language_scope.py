@@ -33,7 +33,7 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
         "anchors": [_anchor("S001"), _anchor("S002")],
         "flux2_ref_images": [_flux2_ref_image("S001"), _flux2_ref_image("S002")],
     }
-    visual_prompt = visual_planner._planner_prompt(_audio_map(), sections)
+    visual_prompt = visual_planner._planner_prompt({}, _audio_map(), sections)
     tti_prompt = tti_planner._planner_prompt({}, _audio_map(), brief, sections)
     flux2_ref_prompt = flux2_ref_planner._planner_prompt({}, payload, payload["anchors"], "")
     wan_prompt = wan_planner._planner_prompt({}, payload, [_wan_clip("S001"), _wan_clip("S002")], "")
@@ -41,6 +41,9 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
     for prompt in (visual_prompt, tti_prompt, flux2_ref_prompt, wan_prompt):
         assert "Lyrics language=" not in prompt
         assert "language=ja" not in prompt.lower()
+        assert "storefront pavement" not in prompt
+        assert "station corridor glass" not in prompt
+        assert "crosswalk under neon" not in prompt
 
 
 def _audio_map() -> dict:
@@ -74,7 +77,7 @@ def _visual_brief() -> dict:
                 "lighting_hint": "wet neon haze",
                 "staging_hint": "still pose by rain-streaked window",
                 "story_beat": "slows by the window and checks the reflection",
-                "location_anchor": "station corridor glass",
+                "location_anchor": "reflective threshold",
             },
             {
                 "section_name": "chorus",
@@ -83,7 +86,7 @@ def _visual_brief() -> dict:
                 "lighting_hint": "chrome flare on skin",
                 "staging_hint": "open shoulders and direct gaze",
                 "story_beat": "steps into the open street and finally faces forward",
-                "location_anchor": "crosswalk under neon",
+                "location_anchor": "open night lane",
             },
         ],
     }

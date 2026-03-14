@@ -17,6 +17,9 @@ def visual_pipeline_settings(config: dict) -> dict:
         consistency = "selective"
     hero_types = node.get("hero_shot_types", ["EMOTION_CLOSE"])
     sections = node.get("reference_priority_sections", ["Final Chorus", "Chorus 2", "Chorus 1"])
+    location_budget = node.get("location_budget", {}) if isinstance(node.get("location_budget", {}), dict) else {}
+    location_examples = node.get("location_family_examples", ["reflective threshold", "lit passage", "open night lane", "sheltered edge"])
+    shot_guidance = node.get("shot_type_guidance", {}) if isinstance(node.get("shot_type_guidance", {}), dict) else {}
     grammar = node.get("mv_grammar", {}) if isinstance(node.get("mv_grammar", {}), dict) else {}
     return {
         "visual_pipeline_mode": mode,
@@ -24,6 +27,16 @@ def visual_pipeline_settings(config: dict) -> dict:
         "hero_shot_types": [str(x).strip().upper() for x in hero_types if str(x).strip()],
         "reference_priority_sections": [str(x).strip().lower() for x in sections if str(x).strip()],
         "allow_face_drift_in_nonhero": bool(node.get("allow_face_drift_in_nonhero", True)),
+        "location_budget": {
+            "min": max(1, int(location_budget.get("min", 2))),
+            "max": max(1, int(location_budget.get("max", 3))),
+        },
+        "location_family_examples": [str(x).strip() for x in location_examples if str(x).strip()],
+        "shot_type_guidance": {
+            str(key).strip().lower(): [str(x).strip().upper() for x in value if str(x).strip()]
+            for key, value in shot_guidance.items()
+            if str(key).strip() and isinstance(value, list)
+        },
         "mv_grammar": {
             "verse_coverage_bias": str(grammar.get("verse_coverage_bias", "travel coverage")).strip(),
             "chorus_payoff_bias": str(grammar.get("chorus_payoff_bias", "clear hero payoff")).strip(),
@@ -31,6 +44,28 @@ def visual_pipeline_settings(config: dict) -> dict:
             "outro_residue_bias": str(grammar.get("outro_residue_bias", "residue image")).strip(),
         },
     }
+
+
+def shot_type_guidance_digest(config: dict) -> str:
+    settings = visual_pipeline_settings(config)
+    guidance = settings.get("shot_type_guidance", {})
+    order = ["intro", "verse", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"]
+    rows: list[str] = []
+    for key in order:
+        vals = guidance.get(key, [])
+        if vals:
+            rows.append(f"{key}={','.join(vals)}")
+    return "; ".join(rows)
+
+
+def location_grammar_digest(config: dict) -> str:
+    settings = visual_pipeline_settings(config)
+    budget = settings.get("location_budget", {"min": 2, "max": 3})
+    examples = settings.get("location_family_examples", [])
+    return (
+        f"budget={budget.get('min', 2)}-{budget.get('max', 3)} recurring families; "
+        f"examples={', '.join(examples)}"
+    )
 
 
 def build_mv_directives(config: dict) -> dict:

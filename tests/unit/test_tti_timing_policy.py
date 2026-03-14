@@ -130,7 +130,7 @@ def test_tti_plan_allows_missing_creative_seed_fields(monkeypatch):
     assert len(out["shots"]) == 2
 
 
-def test_tti_shot_hierarchy_is_forced_by_section(monkeypatch):
+def test_tti_preserves_planner_shot_types_instead_of_forcing_section_defaults(monkeypatch):
     monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_five)
     payload = {
         "audio_map": {
@@ -151,7 +151,7 @@ def test_tti_shot_hierarchy_is_forced_by_section(monkeypatch):
     }
     out = build_tti_plan({}, payload)
     types = [shot["shot_type"] for shot in out["shots"]]
-    assert types == ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "PERF_WIDE", "ENV_TRANSITION"]
+    assert types == ["DETAIL_INSERT"] * 5
 
 
 def _brief(names: list[str]) -> dict:
@@ -189,7 +189,10 @@ def _fake_tti_generate_two(_config, _prompt, _schema):
 
 
 def _fake_tti_generate_five(_config, _prompt, _schema):
-    return {"master_anchor": _master(401), "shots": [_shot(i, detail=f"detail {i}") for i in range(5)]}
+    return {
+        "master_anchor": _master(401),
+        "shots": [_shot(i, detail=f"detail {i}", shot_type="DETAIL_INSERT") for i in range(5)],
+    }
 
 
 def _master(seed: int) -> dict:
@@ -206,10 +209,11 @@ def _shot(
     emotion: str = "focused confidence",
     detail: str = "neon stage architecture",
     motion: str = "smooth performance motion",
+    shot_type: str = "PERF_WIDE",
 ) -> dict:
     return {
         "shot_id": f"s_{idx:03d}",
-        "shot_type": "PERF_WIDE",
+        "shot_type": shot_type,
         "is_chorus": False,
         "camera_language": camera,
         "pose_delta": pose,

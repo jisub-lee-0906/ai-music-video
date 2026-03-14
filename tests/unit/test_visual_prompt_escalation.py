@@ -26,6 +26,7 @@ def test_tti_prompt_uses_section_labels_for_escalation():
     assert "Section labels in order=Final Chorus" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Visual direction=harbor neon romance" in prompt
+    assert "Use the profile-driven shot grammar guidance instead of a single global hierarchy" in prompt
 
 
 def test_flux2_ref_prompt_mentions_return_intensity():

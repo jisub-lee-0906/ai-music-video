@@ -41,16 +41,18 @@ def test_visual_bridge_prompt_separates_names_and_timing():
         {"name": "intro", "start_sec": 0.0, "end_sec": 6.0},
         {"name": "chorus", "start_sec": 6.0, "end_sec": 14.0},
     ]
-    prompt = bridge_planner._planner_prompt(audio_map, sections)
+    prompt = bridge_planner._planner_prompt({}, audio_map, sections)
     assert "Section names only=intro, chorus" in prompt
     assert "Section labels in order=intro, chorus" in prompt
     assert "section_name must be a bare section token only" in prompt
     assert "Chorus 2 should feel like a stronger return" in prompt
-    assert "Create a small location budget for the whole song" in prompt
+    assert "Create a small reusable location family budget for the whole song" in prompt
     assert "story_beat must be a short plain-English visible action beat" in prompt
     assert "Every story_beat must contain at least one visible action verb" in prompt
     assert "Good story_beat examples: slows by the glass and checks the reflection" in prompt
     assert "Bad story_beat examples: searching, opening up, separation" in prompt
+    assert "Good location_anchor examples: reflective threshold, lit passage, open night lane, sheltered edge" in prompt
+    assert "Location grammar=budget=2-3 recurring families; examples=reflective threshold, lit passage, open night lane, sheltered edge" in prompt
     assert "Style lane=night drive" in prompt
     assert "Audio direction=glossy retro pop" in prompt
     assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
@@ -74,7 +76,7 @@ def test_visual_bridge_rejects_non_action_story_beat():
                 "lighting_hint": "soft",
                 "staging_hint": "still frame",
                 "story_beat": "searching",
-                "location_anchor": "station corridor glass",
+                "location_anchor": "reflective threshold",
             }
         ],
     }
@@ -98,8 +100,8 @@ def _fake_generate(_config, _prompt, _schema):
                 "palette_hint": "teal and blue",
                 "lighting_hint": "soft rim light",
                 "staging_hint": "clean stage depth",
-                "story_beat": "passes through the storefront without looking back",
-                "location_anchor": "storefront pavement",
+                "story_beat": "passes through the threshold without looking back",
+                "location_anchor": "reflective threshold",
             },
             {
                 "section_name": "chorus",
@@ -107,8 +109,8 @@ def _fake_generate(_config, _prompt, _schema):
                 "palette_hint": "pink and gold",
                 "lighting_hint": "wide spotlight bloom",
                 "staging_hint": "expanded performance space",
-                "story_beat": "opens up in the same street with clearer confidence",
-                "location_anchor": "storefront pavement",
+                "story_beat": "opens up in the same lane with clearer confidence",
+                "location_anchor": "reflective threshold",
             },
         ],
     }

@@ -3,23 +3,25 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_visual_brief
 from ai_mv.core.contracts.prompt_schema import visual_brief_schema
 from ai_mv.core.prompt_digests import audio_digest, label_digest, style_digest, visual_digest
+from ai_mv.core.visual_pipeline import location_grammar_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 
 
 def build_visual_brief(config: dict, payload: dict) -> dict:
     audio_map = payload["audio_map"]
     sections = list(audio_map["sections"])
-    raw = generate_structured(config, _planner_prompt(audio_map, sections), visual_brief_schema())
+    raw = generate_structured(config, _planner_prompt(config, audio_map, sections), visual_brief_schema())
     return normalize_visual_brief(raw, sections)
 
 
-def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
+def _planner_prompt(config: dict, audio_map: dict, sections: list[dict]) -> str:
     guidance = style_digest(audio_map, 1)
     genre = audio_digest(audio_map, 1)
     direction = visual_digest(audio_map, 1)
     names = _section_names(sections)
     labels = label_digest(sections)
     semantics = _section_semantics(audio_map)
+    location_grammar = location_grammar_digest(config)
     return (
         "You are a senior music-video world-lock planner building a thin reusable visual brief for downstream planners. "
         "Return strict JSON only. No prose outside JSON. "
@@ -37,7 +39,7 @@ def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
         "negative_constraints must be short forbidden drift items, not explanations. "
         "Each section_brief should stay short and practical while preserving the same lead identity and world. "
         "Use section labels as escalation hints: Chorus 2 should feel like a stronger return than Chorus, and Final Chorus should feel like the peak return without changing worlds. "
-        "Create a small location budget for the whole song: reuse 2-3 recurring spaces rather than inventing a new place every section. "
+        "Create a small reusable location family budget for the whole song instead of inventing a fresh place every section. "
         "palette_hint and lighting_hint must be short accent cues, not a full reset. "
         "staging_hint must stay physically simple and camera-safe: one clear setup, one readable action, no frantic verbs. "
         "story_beat must be a short plain-English visible action beat for that section, not just a mood label. "
@@ -47,15 +49,16 @@ def _planner_prompt(audio_map: dict, sections: list[dict]) -> str:
         "Good story_beat examples: slows by the glass and checks the reflection; passes the storefront without looking back; pauses at the curb before turning; steps into the open crosswalk and finally faces forward. "
         "Bad story_beat examples: searching, opening up, separation, confidence, romantic release, emotional climax. "
         "If a draft story_beat sounds abstract, replace it with the concrete body action that would make the emotion visible on screen. "
-        "location_anchor must be a short recurring place phrase like storefront pavement, station corridor glass, crosswalk under neon, or alley reflection. "
-        "Most adjacent sections should reuse the same location_anchor or move to one closely related place, so the video feels like progression inside one world instead of random location hopping. "
+        "location_anchor must be a short recurring environment-family phrase, not a named fixed set from one genre. "
+        "Good location_anchor examples: reflective threshold, lit passage, open night lane, sheltered edge. "
+        "Most adjacent sections should reuse the same location_anchor family or move to one closely related family, so the video feels like progression inside one world instead of random location hopping. "
         "Keep the brief practical for downstream planners: concise, reusable, and low-ambiguity. "
         "section_briefs must match Section names exactly in count and order. "
         "If a section name repeats, return repeated section_briefs entries in the same repeated order; never merge duplicate section names. "
         "section_name must be a bare section token only, never include timing, punctuation ranges, or extra annotation. "
         "Avoid generic section_brief language like cinematic mood, emotional scene, stylish lighting, or dramatic performance unless grounded in a clear visual setup. "
         f"Style lane={guidance}; Audio direction={genre}; "
-        f"Visual direction={direction}; Section semantics={semantics}; "
+        f"Visual direction={direction}; Section semantics={semantics}; Location grammar={location_grammar}; "
         f"Section names only={names}; Section labels in order={labels}."
     )
 

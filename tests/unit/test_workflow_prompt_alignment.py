@@ -35,7 +35,7 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
                 "lighting_hint": "glow",
                 "staging_hint": "front portrait",
                 "story_beat": "opens up in the same street",
-                "location_anchor": "storefront pavement",
+                "location_anchor": "reflective threshold",
             }
         ],
     }
@@ -66,6 +66,8 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "visible action readable before it tries to be pretty" in prompt
     assert "Bridge should visually interrupt the flow established before it" in prompt
     assert "Outro framing should leave a residue image" in prompt
+    assert "Shot grammar=" in prompt
+    assert "Location grammar=" in prompt
     assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
     assert "Lyrics excerpt=" not in prompt
     assert "Avoid=" not in prompt
@@ -99,7 +101,7 @@ def test_flux2_ref_prompt_mentions_atom_generation_contract():
     assert "Do not give identical action_clause to multiple consecutive parts" in prompt
     assert "Bridge items should feel interrupted or isolated" in prompt
     assert "Outro items should leave one residue image" in prompt
-    assert "Visual brief=hero=hero; world=world; sections=chorus|opens up in the same street|storefront pavement" in prompt
+    assert "Visual brief=hero=hero; world=world; sections=chorus|opens up in the same street|reflective threshold" in prompt
     assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
     assert "Lyrics context=" not in prompt
     assert "Avoid=" not in prompt
@@ -173,7 +175,7 @@ def _brief() -> dict:
                 "lighting_hint": "glow",
                 "staging_hint": "front portrait",
                 "story_beat": "opens up in the same street",
-                "location_anchor": "storefront pavement",
+                "location_anchor": "reflective threshold",
             }
         ],
     }
