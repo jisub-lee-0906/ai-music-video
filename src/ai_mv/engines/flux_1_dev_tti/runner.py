@@ -51,6 +51,13 @@ def _pack_anchor(shot: dict, anchor: str) -> dict:
         "scene_detail": str(shot.get("scene_detail", "")),
         "motion_hint": str(shot.get("motion_hint", "")),
         "space_relation": str(shot.get("space_relation", "")),
+        "hero_frame_score": int(shot.get("hero_frame_score", 1)),
+        "consistency_need": str(shot.get("consistency_need", "low")),
+        "mv_function": str(shot.get("mv_function", "coverage")),
+        "return_weight": int(shot.get("return_weight", 1)),
+        "edit_density": str(shot.get("edit_density", "medium")),
+        "shot_priority": str(shot.get("shot_priority", "support")),
+        "transition_role": str(shot.get("transition_role", "carry")),
         "retry": 0,
         "error_body": "",
     }

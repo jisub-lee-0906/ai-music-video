@@ -32,8 +32,10 @@ def test_visual_bridge_prompt_separates_names_and_timing():
         "genre_description": "glossy retro pop",
         "profile_summary": "retro japanese city-pop lane",
         "visual_direction": "neon harbor nightlife with graceful poise",
-        "negative_direction": "no futuristic sci-fi tone",
-        "lyrics": "line one\nline two",
+        "section_semantics": [
+            {"section_name": "intro", "section_label": "intro", "movement_bias": "travel coverage", "release_level": "low"},
+            {"section_name": "chorus", "section_label": "chorus", "movement_bias": "clear hero payoff", "release_level": "high"},
+        ],
     }
     sections = [
         {"name": "intro", "start_sec": 0.0, "end_sec": 6.0},
@@ -42,7 +44,6 @@ def test_visual_bridge_prompt_separates_names_and_timing():
     prompt = bridge_planner._planner_prompt(audio_map, sections)
     assert "Section names only=intro, chorus" in prompt
     assert "Section labels in order=intro, chorus" in prompt
-    assert "Timing reference=intro(0.0-6.0), chorus(6.0-14.0)" in prompt
     assert "section_name must be a bare section token only" in prompt
     assert "Chorus 2 should feel like a stronger return" in prompt
     assert "Create a small location budget for the whole song" in prompt
@@ -53,6 +54,7 @@ def test_visual_bridge_prompt_separates_names_and_timing():
     assert "Style lane=night drive" in prompt
     assert "Audio direction=glossy retro pop" in prompt
     assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
+    assert "Section semantics=intro|travel coverage|low, chorus|clear hero payoff|high" in prompt
     assert "Derive identity strictly from the profile and visual brief" in prompt
     assert "never infer ethnicity, gender, genre-specific styling" in prompt
     assert "Audio tags=" not in prompt

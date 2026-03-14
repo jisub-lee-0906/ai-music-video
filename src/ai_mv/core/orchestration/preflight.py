@@ -13,11 +13,12 @@ from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.quality_review import build_quality_review, build_run_summary
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
+from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
 from ai_mv.engines.acestep_1_5_split.planner import _audio_prompt, build_audio_plan
 from ai_mv.engines.acestep_1_5_split.runner import _sections
+from ai_mv.engines.flux2_reference.planner import build_flux2_ref_plan
 from ai_mv.engines.flux_1_dev_tti.planner import build_tti_plan
 from ai_mv.engines.flux_1_dev_tti.runner import _pack_anchor
-from ai_mv.engines.flux_1_dev_uso.planner import build_uso_plan
 from ai_mv.engines.visual_bridge.planner import build_visual_brief
 from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
 
@@ -32,7 +33,8 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
         _run_preflight_stage(state, stage_input, "acestep_music", _add_audio)
         _run_preflight_stage(state, stage_input, "visual_bridge", _add_visual)
         _run_preflight_stage(state, stage_input, "tti_anchor", _add_tti)
-        _run_preflight_stage(state, stage_input, "uso_chain", _add_uso)
+        _run_preflight_stage(state, stage_input, "shot_router", _add_shot_router)
+        _run_preflight_stage(state, stage_input, "flux2_ref_chain", _add_flux2_ref)
         _run_preflight_stage(state, stage_input, "wan_interpolation", _add_wan)
         state["current_stage"] = "preflight"
         state["status"] = "done"
@@ -60,7 +62,7 @@ def _run_preflight_stage(state: dict, stage_input: StageInput, name: str, fn) ->
 def _add_audio(stage_input: StageInput) -> None:
     plan = build_audio_plan(stage_input.config, dict(stage_input.payload, run_id=stage_input.run_id))
     audio_map = _preflight_audio_map(plan)
-    audio_map.update(_audio_context(plan))
+    audio_map.update(_audio_context(stage_input.config, audio_map, plan))
     stage_input.payload.update(
         {
             "audio_map": audio_map,
@@ -107,19 +109,36 @@ def _add_tti(stage_input: StageInput) -> None:
     )
 
 
-def _add_uso(stage_input: StageInput) -> None:
-    from ai_mv.core.stages.uso_chain import _uso_prompt_batches, _uso_workflow_inputs
+def _add_shot_router(stage_input: StageInput) -> None:
+    from ai_mv.core.stages.shot_router import _route_policy_summary, _route_preview, build_shot_routes
 
-    plan = build_uso_plan(stage_input.config, stage_input.payload)
-    uso_images = [_preflight_uso_item(item) for item in plan["items"]]
+    routes = build_shot_routes(stage_input.config, stage_input.payload)
     stage_input.payload.update(
         {
-            "uso_images": uso_images,
-            "planner_prompts": _merge(stage_input.payload, "uso_chain", {"batches": _uso_prompt_batches(stage_input, plan)}),
+            "clip_routes": routes,
+            "planner_prompts": _merge(stage_input.payload, "shot_router", {"prompt": _route_policy_summary(stage_input.config)}),
             "workflow_inputs_preview": _merge(
                 stage_input.payload,
-                "uso_chain",
-                {"items": _uso_workflow_inputs(stage_input.config, plan["items"])},
+                "shot_router",
+                {"decisions": _route_preview(routes)},
+            ),
+        }
+    )
+
+
+def _add_flux2_ref(stage_input: StageInput) -> None:
+    from ai_mv.core.stages.flux2_ref_chain import _flux2_ref_prompt_batches, _flux2_ref_workflow_inputs
+
+    plan = build_flux2_ref_plan(stage_input.config, stage_input.payload)
+    flux2_ref_images = [_preflight_flux2_ref_item(item) for item in plan["items"]]
+    stage_input.payload.update(
+        {
+            "flux2_ref_images": flux2_ref_images,
+            "planner_prompts": _merge(stage_input.payload, "flux2_ref_chain", {"batches": _flux2_ref_prompt_batches(stage_input, plan)}),
+            "workflow_inputs_preview": _merge(
+                stage_input.payload,
+                "flux2_ref_chain",
+                {"items": _flux2_ref_workflow_inputs(stage_input.config, plan["items"])},
             ),
         }
     )
@@ -147,12 +166,18 @@ def _preflight_audio_map(plan: dict) -> dict:
     return {
         "duration_sec": duration,
         "bpm_estimate": int(plan["bpm"]),
-        "sections": _sections(duration, plan.get("lyrics_blocks", [])),
+        "sections": _sections(
+            duration,
+            plan.get("lyrics_blocks", []),
+            int(plan.get("bpm", 0)),
+            int(plan.get("beats_per_bar", 4)),
+            plan.get("section_bars", {}),
+        ),
         "music_file": "",
     }
 
 
-def _audio_context(plan: dict) -> dict:
+def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
     return {
         "genre_description": str(plan.get("genre_description", "")).strip(),
         "lyrics": str(plan.get("lyrics", "")).strip(),
@@ -164,6 +189,8 @@ def _audio_context(plan: dict) -> dict:
         "hook_direction": str(plan.get("hook_direction", "")).strip(),
         "visual_direction": str(plan.get("visual_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
+        "section_semantics": build_section_semantics(config, list(audio_map.get("sections", []))),
+        "mv_directives": build_mv_directives(config),
     }
 
 
@@ -180,16 +207,16 @@ def _visual_prompt(audio_map: dict) -> str:
     return _planner_prompt(audio_map, list(audio_map["sections"]))
 
 
-def _preflight_uso_item(item: dict) -> dict:
+def _preflight_flux2_ref_item(item: dict) -> dict:
     out = dict(item)
     sid = str(item["shot_id"])
-    out["start"] = f"preflight://uso/{sid}_start.png"
-    out["end"] = f"preflight://uso/{sid}_end.png"
+    out["start"] = f"preflight://flux2_ref/{sid}_start.png"
+    out["end"] = f"preflight://flux2_ref/{sid}_end.png"
     return out
 
 
 def _merge(payload: dict, key: str, value: dict) -> dict:
-    if key == "audio" or key == "visual_bridge" or key == "tti_anchor" or key == "uso_chain" or key == "wan_interpolation":
+    if key in {"audio", "visual_bridge", "tti_anchor", "shot_router", "flux2_ref_chain", "wan_interpolation"}:
         root = "planner_prompts" if "prompt" in value or "batches" in value else "workflow_inputs_preview"
         out = dict(payload.get(root, {}))
         out[key] = value

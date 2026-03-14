@@ -39,11 +39,12 @@ def _audio_prompt(plan: dict) -> str:
     language_clause = _language_clause(plan)
     profile_clause = _profile_clause(plan)
     hook_shape_clause = _hook_shape_clause(plan)
+    bar_lane_clause = _bar_lane_clause(plan)
     bpm_clause = _target_bpm_clause(plan)
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
     return _audio_prompt_rules(plan) + (
         f"Target duration={int(plan['duration'])} sec. "
-        f"{bpm_clause}{seed_clause}{tags_clause}{language_clause}{profile_clause}{hook_shape_clause}"
+        f"{bpm_clause}{bar_lane_clause}{seed_clause}{tags_clause}{language_clause}{profile_clause}{hook_shape_clause}"
     )
 
 
@@ -179,6 +180,11 @@ def _hook_shape_clause(plan: dict) -> str:
     return f"Hook contour bias={text}. " if text else ""
 
 
+def _bar_lane_clause(plan: dict) -> str:
+    text = str(plan.get("bar_lane", "")).strip()
+    return f"Bar lane={text}. " if text else ""
+
+
 def _profile_line(label: str, text: object) -> str:
     val = str(text).strip()
     return f"{label}={val}. " if val else ""
@@ -192,6 +198,7 @@ def _plan_once(config: dict, plan: dict) -> dict:
 def _normalize_and_validate(config: dict, plan: dict) -> dict:
     planned = _plan_with_llm(config, plan)
     normalized = normalize_audio_fields(planned)
+    normalized["duration"] = _resolved_duration(plan, normalized)
     normalized["tags"] = plan["tags"]
     normalized["style_guidance"] = plan["style_guidance"]
     normalized["language"] = plan["language"]
@@ -202,9 +209,25 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["negative_direction"] = plan["negative_direction"]
     normalized["filename_prefix"] = plan["filename_prefix"]
     normalized["quality"] = plan["quality"]
+    normalized["beats_per_bar"] = int(plan.get("beats_per_bar", 4))
+    normalized["section_bars"] = dict(plan.get("section_bars", {}))
+    normalized["bar_lane"] = str(plan.get("bar_lane", "")).strip()
     if not str(normalized.get("keyscale", "")).strip():
         normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
     return normalized
+
+
+def _resolved_duration(plan: dict, normalized: dict) -> int:
+    if bool(plan.get("duration_override")):
+        return int(plan["duration"])
+    from ai_mv.engines.acestep_1_5_split.policy import compute_duration_from_blocks, resolve_section_bars
+
+    return compute_duration_from_blocks(
+        normalized.get("lyrics_blocks", []),
+        int(normalized.get("bpm", 0)),
+        int(plan.get("beats_per_bar", 4)),
+        resolve_section_bars({"section_bars": plan.get("section_bars", {})}),
+    )
 
 
 def _hook_shape_bias(seed: int, language: str) -> str:

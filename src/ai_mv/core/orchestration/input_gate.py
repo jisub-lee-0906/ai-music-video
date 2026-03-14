@@ -6,8 +6,9 @@ from ai_mv.core.contracts.errors import StageFailure
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
     "visual_bridge": ("audio_map",),
     "tti_anchor": ("audio_map", "visual_brief"),
-    "uso_chain": ("anchors", "audio_map", "visual_brief"),
-    "wan_interpolation": ("uso_images", "audio_map", "visual_brief"),
+    "shot_router": ("anchors", "audio_map", "visual_brief"),
+    "flux2_ref_chain": ("clip_routes", "audio_map", "visual_brief"),
+    "wan_interpolation": ("clip_routes", "audio_map", "visual_brief"),
     "merge_mux": ("clips", "music_file"),
 }
 

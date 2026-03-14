@@ -1,6 +1,6 @@
 import ai_mv.engines.acestep_1_5_split.planner as audio_planner
 import ai_mv.engines.flux_1_dev_tti.planner as tti_planner
-import ai_mv.engines.flux_1_dev_uso.planner as uso_planner
+import ai_mv.engines.flux2_reference.planner as flux2_ref_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 
 
@@ -41,12 +41,11 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     }
     audio_map = {
         "genre_description": "desc",
-        "lyrics": "line",
         "tags": "city pop",
         "style_guidance": "guide",
         "profile_summary": "retro city-pop lane",
         "visual_direction": "harbor neon romance",
-        "negative_direction": "no sci-fi drift",
+        "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
     }
     sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
@@ -57,7 +56,9 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "Escalation guide=" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Think like a finished music video" in prompt
+    assert "do not invent a handheld prop unless the brief explicitly locks it" in prompt
     assert "mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings" in prompt
+    assert "do not silently reset it to a centered beauty frame" in prompt
     assert "Verse shots should often read as travel, drift, or body-in-space coverage" in prompt
     assert "Bridge shots should introduce emotional distance" in prompt
     assert "Honor each section's story_beat and location_anchor" in prompt
@@ -65,48 +66,52 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "visible action readable before it tries to be pretty" in prompt
     assert "Bridge should visually interrupt the flow established before it" in prompt
     assert "Outro framing should leave a residue image" in prompt
+    assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
+    assert "Lyrics excerpt=" not in prompt
+    assert "Avoid=" not in prompt
 
 
-def test_uso_prompt_mentions_atom_generation_contract():
+def test_flux2_ref_prompt_mentions_atom_generation_contract():
     payload = {
         "audio_map": {
-            "lyrics": "line",
             "style_guidance": "guide",
             "profile_summary": "retro city-pop lane",
             "visual_direction": "harbor neon romance",
-            "negative_direction": "no sci-fi drift",
+            "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
         },
         "visual_brief": _brief(),
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
-    prompt = uso_planner._planner_prompt({}, payload, anchors, "")
-    assert "Each item must include shot_id,subject_clause,action_clause,environment_clause,continuity_clause,negative_prompt" in prompt
+    prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
+    assert "Each item must include shot_id,subject_clause,action_clause,environment_clause,continuity_clause" in prompt
     assert "Do not write full final prompt sentences" in prompt
     assert "subject_clause must be a short identity clause" in prompt
     assert "action_clause must describe one small visible change axis only" in prompt
     assert "Good action_clause examples" in prompt
     assert "Good environment_clause examples" in prompt
     assert "Final Chorus should feel like the visual peak" in prompt
-    assert "visible payoff detail" in prompt
-    assert "three-quarter turns, profile walks, over-shoulder glances" in prompt
-    assert "avoid head-on beauty framing" in prompt
     assert "Honor the section story_beat and location_anchor" in prompt
     assert "Honor the shot space_relation exactly" in prompt
-    assert "Do not silently mirror the scene between start and end frames" in prompt
-    assert "earlier parts establish the space and body relation" in prompt
+    assert "keep the same left-right geometry" in prompt
+    assert "Do not invent a new handheld prop" in prompt
+    assert "camera-right, camera-left, left-to-right, or right-to-left" in prompt
+    assert "earlier parts should establish the body and space relation" in prompt
     assert "Do not give identical action_clause to multiple consecutive parts" in prompt
-    assert "Bridge items should feel meaningfully interrupted or isolated" in prompt
-    assert "Outro items should leave one memorable residue image" in prompt
+    assert "Bridge items should feel interrupted or isolated" in prompt
+    assert "Outro items should leave one residue image" in prompt
+    assert "Visual brief=hero=hero; world=world; sections=chorus|opens up in the same street|storefront pavement" in prompt
+    assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
+    assert "Lyrics context=" not in prompt
+    assert "Avoid=" not in prompt
 
 
 def test_wan_prompt_mentions_motion_atom_contract():
     payload = {
         "audio_map": {
-            "lyrics": "line",
             "style_guidance": "guide",
             "profile_summary": "retro city-pop lane",
             "visual_direction": "harbor neon romance",
-            "negative_direction": "no sci-fi drift",
+            "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
         },
         "visual_brief": _brief(),
     }
@@ -122,6 +127,9 @@ def test_wan_prompt_mentions_motion_atom_contract():
     assert "Honor section story_beat and location_anchor" in prompt
     assert "Honor space_relation from the shot blueprint" in prompt
     assert "Later chorus returns can feel slightly clearer or more resolved" in prompt
+    assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
+    assert "Lyrics context=" not in prompt
+    assert "Avoid=" not in prompt
 
 
 def test_wan_energy_policy_lifts_final_chorus():
@@ -133,8 +141,8 @@ def test_wan_energy_policy_lifts_final_chorus():
     assert wan_planner._energy_policy(chorus_clip, "normal") == "normal"
 
 
-def test_uso_anchor_summary_includes_clip_phase():
-    row = uso_planner._anchor_summary_row(
+def test_flux2_ref_anchor_summary_includes_clip_phase():
+    row = flux2_ref_planner._anchor_summary_row(
         {
             "shot_id": "S010_C01",
             "section_name": "chorus",

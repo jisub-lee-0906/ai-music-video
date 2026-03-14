@@ -1,6 +1,6 @@
 from ai_mv.engines.acestep_1_5_split import planner as audio_planner
 from ai_mv.engines.flux_1_dev_tti import planner as tti_planner
-from ai_mv.engines.flux_1_dev_uso import planner as uso_planner
+from ai_mv.engines.flux2_reference import planner as flux2_ref_planner
 from ai_mv.engines.visual_bridge import planner as visual_planner
 from ai_mv.engines.wan_2_2_flf2v import planner as wan_planner
 
@@ -31,14 +31,14 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
         "audio_map": _audio_map(),
         "visual_brief": brief,
         "anchors": [_anchor("S001"), _anchor("S002")],
-        "uso_images": [_uso_image("S001"), _uso_image("S002")],
+        "flux2_ref_images": [_flux2_ref_image("S001"), _flux2_ref_image("S002")],
     }
     visual_prompt = visual_planner._planner_prompt(_audio_map(), sections)
     tti_prompt = tti_planner._planner_prompt({}, _audio_map(), brief, sections)
-    uso_prompt = uso_planner._planner_prompt({}, payload, payload["anchors"], "")
+    flux2_ref_prompt = flux2_ref_planner._planner_prompt({}, payload, payload["anchors"], "")
     wan_prompt = wan_planner._planner_prompt({}, payload, [_wan_clip("S001"), _wan_clip("S002")], "")
 
-    for prompt in (visual_prompt, tti_prompt, uso_prompt, wan_prompt):
+    for prompt in (visual_prompt, tti_prompt, flux2_ref_prompt, wan_prompt):
         assert "Lyrics language=" not in prompt
         assert "language=ja" not in prompt.lower()
 
@@ -109,7 +109,7 @@ def _anchor(shot_id: str) -> dict:
     }
 
 
-def _uso_image(shot_id: str) -> dict:
+def _flux2_ref_image(shot_id: str) -> dict:
     row = _anchor(shot_id)
     row["ref"] = "anchors/master.png"
     row["prompt_text"] = "An East Asian heroine turns slightly toward the lens with rain-lit boulevard reflections behind her."
@@ -120,7 +120,7 @@ def _uso_image(shot_id: str) -> dict:
 
 
 def _wan_clip(shot_id: str) -> dict:
-    row = _uso_image(shot_id)
+    row = _flux2_ref_image(shot_id)
     row["fps"] = 24
     row["frames"] = 96
     return row

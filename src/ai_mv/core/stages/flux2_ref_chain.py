@@ -1,41 +1,43 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.engines.flux_1_dev_uso.mapper import USO_TEXT_POS, map_uso_workflow
-from ai_mv.engines.flux_1_dev_uso.planner import (
+from ai_mv.engines.flux2_reference.mapper import FLUX2_REF_TEXT_POS, map_flux2_ref_workflow
+from ai_mv.engines.flux2_reference.planner import (
     _planner_prompt,
-    _uso_planner_batch_size,
-    build_uso_plan,
+    _flux2_ref_planner_batch_size,
+    build_flux2_ref_plan,
 )
-from ai_mv.engines.flux_1_dev_uso.runner import run_uso
+from ai_mv.engines.flux2_reference.runner import run_flux2_ref
 
 
-def run_uso_chain(stage_input: StageInput) -> StageOutput:
-    plan = build_uso_plan(stage_input.config, stage_input.payload)
-    uso_images = run_uso(stage_input.config, plan)
+def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
+    plan = build_flux2_ref_plan(stage_input.config, stage_input.payload)
+    flux2_ref_images = run_flux2_ref(stage_input.config, plan) if plan["items"] else []
     return StageOutput(
-        "uso_chain",
+        "flux2_ref_chain",
         "done",
         {
-            "uso_images": uso_images,
+            "flux2_ref_images": flux2_ref_images,
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
-                "uso_chain",
-                {"batches": _uso_prompt_batches(stage_input, plan)},
+                "flux2_ref_chain",
+                {"batches": _flux2_ref_prompt_batches(stage_input, plan)},
             ),
             "workflow_inputs_preview": _merge_workflow_preview(
                 stage_input.payload,
-                "uso_chain",
-                {"items": _uso_workflow_inputs(stage_input.config, plan["items"])},
+                "flux2_ref_chain",
+                {"items": _flux2_ref_workflow_inputs(stage_input.config, plan["items"])},
             ),
         },
         [],
     )
 
 
-def _uso_prompt_batches(stage_input: StageInput, plan: dict) -> list[dict]:
+def _flux2_ref_prompt_batches(stage_input: StageInput, plan: dict) -> list[dict]:
     anchors = plan["items"]
-    batch_size = min(len(anchors), _uso_planner_batch_size(stage_input.config))
+    if not anchors:
+        return []
+    batch_size = min(len(anchors), _flux2_ref_planner_batch_size(stage_input.config))
     batches: list[dict] = []
     carry = ""
     for i in range(0, len(anchors), batch_size):
@@ -56,17 +58,18 @@ def _uso_prompt_batches(stage_input: StageInput, plan: dict) -> list[dict]:
     return batches
 
 
-def _uso_workflow_inputs(config: dict, items: list[dict]) -> list[dict]:
+def _flux2_ref_workflow_inputs(config: dict, items: list[dict]) -> list[dict]:
     out: list[dict] = []
     for item in items:
-        start = _uso_text_input(config, item, "start", 0)
-        end = _uso_text_input(config, item, "end", 1)
+        start = _flux2_ref_text_input(config, item, "start", 0)
+        end = _flux2_ref_text_input(config, item, "end", 1)
         out.append(
             {
                 "shot_id": str(item["shot_id"]),
+                "route_reason": str(item.get("route_reason", "")),
                 "space_relation": str(item.get("space_relation", "")),
                 "clip_phase": str(item.get("clip_phase", "")),
-                "atoms": _uso_atom_view(item),
+                "atoms": _flux2_ref_atom_view(item),
                 "start_text": start,
                 "end_text": end,
             }
@@ -74,13 +77,13 @@ def _uso_workflow_inputs(config: dict, items: list[dict]) -> list[dict]:
     return out
 
 
-def _uso_text_input(config: dict, item: dict, frame_name: str, frame_idx: int) -> str:
+def _flux2_ref_text_input(config: dict, item: dict, frame_name: str, frame_idx: int) -> str:
     payload = dict(item)
     payload["frame_name"] = frame_name
     payload["frame_idx"] = frame_idx
-    payload["filename_prefix"] = f"preview/uso/{item['shot_id']}/{frame_name}"
-    wf = map_uso_workflow(config, payload)
-    return str(wf["node.inputs"][USO_TEXT_POS]["text"])
+    payload["filename_prefix"] = f"preview/flux2_ref/{item['shot_id']}/{frame_name}"
+    wf = map_flux2_ref_workflow(config, payload)
+    return str(wf["node.inputs"][FLUX2_REF_TEXT_POS]["text"])
 
 
 def _merge_prompt_preview(payload: dict, key: str, value: dict) -> dict:
@@ -95,7 +98,7 @@ def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
     return out
 
 
-def _uso_atom_view(item: dict) -> dict:
+def _flux2_ref_atom_view(item: dict) -> dict:
     return {
         "subject_clause": str(item.get("subject_clause", "")),
         "action_clause": str(item.get("action_clause", "")),

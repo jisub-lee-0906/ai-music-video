@@ -72,6 +72,8 @@ def _wan_workflow_inputs(config: dict, clips: list[dict]) -> list[dict]:
                 "negative_prompt": str(inputs[WAN_TEXT_NEG]["text"]),
                 "energy": str(clip.get("energy", "")),
                 "space_relation": str(clip.get("space_relation", "")),
+                "use_ref": bool(clip.get("use_ref", False)),
+                "route_reason": str(clip.get("route_reason", "")),
                 "atoms": _wan_atom_view(clip),
             }
         )

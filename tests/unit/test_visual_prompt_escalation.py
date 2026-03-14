@@ -1,5 +1,5 @@
 import ai_mv.engines.flux_1_dev_tti.planner as tti_planner
-import ai_mv.engines.flux_1_dev_uso.planner as uso_planner
+import ai_mv.engines.flux2_reference.planner as flux2_ref_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 
 
@@ -15,12 +15,11 @@ def test_tti_prompt_uses_section_labels_for_escalation():
     }
     audio_map = {
         "genre_description": "desc",
-        "lyrics": "line",
         "tags": "city pop",
         "style_guidance": "guide",
         "profile_summary": "retro city-pop lane",
         "visual_direction": "harbor neon romance",
-        "negative_direction": "no sci-fi drift",
+        "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
     }
     sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
@@ -29,33 +28,33 @@ def test_tti_prompt_uses_section_labels_for_escalation():
     assert "Visual direction=harbor neon romance" in prompt
 
 
-def test_uso_prompt_mentions_return_intensity():
+def test_flux2_ref_prompt_mentions_return_intensity():
     payload = {
         "audio_map": {
-            "lyrics": "line",
             "style_guidance": "guide",
             "profile_summary": "retro city-pop lane",
             "visual_direction": "harbor neon romance",
-            "negative_direction": "no sci-fi drift",
+            "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
         },
         "visual_brief": _brief(),
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
-    prompt = uso_planner._planner_prompt({}, payload, anchors, "")
+    prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
     assert "Final Chorus should feel like the visual peak" in prompt
     assert "Profile steering=" not in prompt
     assert "Do not write full final prompt sentences" in prompt
     assert "subject_clause must be a short identity clause" in prompt
+    assert "Lyrics context=" not in prompt
+    assert "Avoid=" not in prompt
 
 
 def test_wan_prompt_mentions_final_chorus_payoff():
     payload = {
         "audio_map": {
-            "lyrics": "line",
             "style_guidance": "guide",
             "profile_summary": "retro city-pop lane",
             "visual_direction": "harbor neon romance",
-            "negative_direction": "no sci-fi drift",
+            "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
         },
         "visual_brief": _brief(),
     }

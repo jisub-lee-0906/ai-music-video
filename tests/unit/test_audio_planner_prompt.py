@@ -52,6 +52,11 @@ def test_audio_prompt_includes_hook_shape_bias():
     assert "Hook contour bias=" in prompt
 
 
+def test_audio_prompt_includes_bar_lane():
+    prompt = audio_planner._audio_prompt(_prompt_plan(bar_lane="intro 4, verse 12, pre 8, chorus 12, final chorus 16, outro 4"))
+    assert "Bar lane=intro 4, verse 12, pre 8, chorus 12, final chorus 16, outro 4." in prompt
+
+
 def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
@@ -72,6 +77,28 @@ def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
     assert normalized["genre_description"] == "日本語でも 통과"
     assert normalized["language"] == "ja"
     assert normalized["keyscale"] == "F# minor"
+
+
+def test_normalize_and_validate_recomputes_duration_from_generated_songform(monkeypatch):
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_with_llm",
+        lambda _config, _plan: {
+            "genre_description": "brief",
+            "bpm": 120,
+            "keyscale": "",
+            "seed": 31,
+            "duration": 999,
+            "lyrics_blocks": [
+                {"section": "intro", "label": "Intro", "style": "set", "lines": ["a"]},
+                {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["b"]},
+                {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["c"]},
+                {"section": "outro", "label": "Outro", "style": "land", "lines": ["d"]},
+            ],
+        },
+    )
+    normalized = audio_planner._normalize_and_validate({}, _prompt_plan(duration=200))
+    assert normalized["duration"] == 72
 
 
 def test_plan_once_returns_single_pass_plan_without_quality_review(monkeypatch):

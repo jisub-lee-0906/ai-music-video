@@ -70,26 +70,27 @@ def validate_audio_genre_description_language(text: str) -> None:
         raise RuntimeError("audio genre_description language mismatch: expected English production brief")
 
 
-def normalize_uso_items(raw_items: list[dict], anchors: list[dict]) -> dict[str, dict]:
-    keyed = {str(x["shot_id"]): x for x in raw_items if isinstance(x, dict)}
+def normalize_flux2_ref_items(raw_items: list[dict], anchors: list[dict]) -> dict[str, dict]:
+    keyed = _strict_keyed_rows(raw_items, "Flux2 reference planner")
+    _validate_expected_ids(keyed, anchors, "Flux2 reference planner")
     out: dict[str, dict] = {}
     for anchor in anchors:
         sid = str(anchor["shot_id"])
         row = keyed.get(sid)
         if row is None:
-            raise RuntimeError(f"USO planner missing shot_id: {sid}")
+            raise RuntimeError(f"Flux2 reference planner missing shot_id: {sid}")
         out[sid] = {
             "subject_clause": _normalize_atom_clause(row["subject_clause"], sid, "subject_clause", 24),
             "action_clause": _normalize_atom_clause(row["action_clause"], sid, "action_clause", 16),
             "environment_clause": _normalize_atom_clause(row["environment_clause"], sid, "environment_clause", 20),
             "continuity_clause": _normalize_atom_clause(row["continuity_clause"], sid, "continuity_clause", 22),
-            "negative_prompt": _normalize_negative_list(row["negative_prompt"], sid),
         }
     return out
 
 
 def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, dict]:
-    keyed = {str(x["shot_id"]): x for x in raw_clips if isinstance(x, dict)}
+    keyed = _strict_keyed_rows(raw_clips, "WAN planner")
+    _validate_expected_ids(keyed, clips, "WAN planner")
     out: dict[str, dict] = {}
     for clip in clips:
         sid = str(clip["shot_id"])
@@ -119,6 +120,7 @@ def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
         "negative_constraints": _normalize_text_list(raw["negative_constraints"], "negative_constraints"),
         "section_briefs": _normalize_section_briefs(raw["section_briefs"], sections),
     }
+    recurring_spaces = _recurring_spaces(out["section_briefs"])
     out["world_bible"] = {
         "hero_identity": out["hero_identity"],
         "world_rules": out["world_rules"],
@@ -126,6 +128,21 @@ def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
         "negative_constraints": list(out["negative_constraints"]),
     }
     out["section_dramaturgy"] = [dict(row) for row in out["section_briefs"]]
+    out["hero_identity_lock"] = out["hero_identity"]
+    out["world_lock"] = {
+        "master_setting": out["world_rules"],
+        "palette_baseline": out["world_rules"],
+        "lighting_baseline": out["world_rules"],
+        "recurring_spaces": recurring_spaces,
+    }
+    out["section_locks"] = [
+        {
+            "section_name": row["section_name"],
+            "story_beat": row["story_beat"],
+            "location_anchor": row["location_anchor"],
+        }
+        for row in out["section_briefs"]
+    ]
     return out
 
 
@@ -177,6 +194,17 @@ def _normalize_text_list(raw: list[str], field: str) -> list[str]:
     if not vals:
         raise RuntimeError(f"{field} missing")
     return vals
+
+
+def _recurring_spaces(section_briefs: list[dict]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for row in section_briefs:
+        text = str(row.get("location_anchor", "")).strip()
+        if text and text not in seen:
+            seen.add(text)
+            out.append(text)
+    return out
 
 
 def _require_text(raw: dict, field: str) -> str:
@@ -360,6 +388,38 @@ def _normalize_negative_list(raw: object, shot_id: str) -> str:
     if "." in text and "," not in text:
         raise RuntimeError(f"negative_prompt must be suppression list: {shot_id}")
     return text
+
+
+def _strict_keyed_rows(rows: list[dict], label: str) -> dict[str, dict]:
+    keyed: dict[str, dict] = {}
+    raw_count = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw_count += 1
+        sid = str(row.get("shot_id", "")).strip()
+        if not sid:
+            raise RuntimeError(f"{label} missing shot_id")
+        if sid in keyed:
+            raise RuntimeError(f"{label} duplicate shot_id: {sid}")
+        keyed[sid] = row
+    if raw_count != len(keyed):
+        raise RuntimeError(f"{label} shot_id count mismatch")
+    return keyed
+
+
+def _validate_expected_ids(keyed: dict[str, dict], expected_rows: list[dict], label: str) -> None:
+    expected = [str(row["shot_id"]) for row in expected_rows]
+    actual = list(keyed.keys())
+    expected_set = set(expected)
+    missing = [sid for sid in expected if sid not in keyed]
+    extra = [sid for sid in actual if sid not in expected_set]
+    if missing:
+        raise RuntimeError(f"{label} missing shot_id: {missing[0]}")
+    if extra:
+        raise RuntimeError(f"{label} unknown shot_id: {extra[0]}")
+    if len(actual) != len(expected):
+        raise RuntimeError(f"{label} shot_id count mismatch: expected={len(expected)} actual={len(actual)}")
 
 
 def _script_counts(text: str) -> dict[str, int]:

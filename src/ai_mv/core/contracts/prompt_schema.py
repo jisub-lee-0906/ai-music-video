@@ -73,17 +73,16 @@ def audio_schema() -> dict:
         "lyrics_blocks": {"type": "array", "items": block, "minItems": 1, "maxItems": 16},
     }
     return {"type": "object", "required": list(props.keys()), "properties": props}
-def uso_schema() -> dict:
+def flux2_ref_schema() -> dict:
     item = {
         "type": "object",
-        "required": ["shot_id", "subject_clause", "action_clause", "environment_clause", "continuity_clause", "negative_prompt"],
+        "required": ["shot_id", "subject_clause", "action_clause", "environment_clause", "continuity_clause"],
         "properties": {
             "shot_id": {"type": "string"},
             "subject_clause": {"type": "string"},
             "action_clause": {"type": "string"},
             "environment_clause": {"type": "string"},
             "continuity_clause": {"type": "string"},
-            "negative_prompt": {"type": "string"},
         },
     }
     return {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "items": item}}}

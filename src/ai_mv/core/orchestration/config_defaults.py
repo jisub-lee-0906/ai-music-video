@@ -3,20 +3,31 @@ from __future__ import annotations
 
 DEFAULT_CONFIG: dict = {
     "audio": {
-        "target_duration_sec": 200,
         "quality": "V0",
         "language": "en",
+        "beats_per_bar": 4,
     },
     "profile": "",
     "video": {"target": "1920x1080@24"},
     "render": {
         "tti_size": "1024x1024",
-        "uso_size": "1024x1024",
         "wan_size": "640x640",
         "wan_max_clip_sec": 5.0,
         "wan_planner_batch_size": 20,
-        "uso_planner_batch_size": 4,
-        "strict_prompt_id_match": True,
+        "flux2_ref_planner_batch_size": 4,
+    },
+    "visual_pipeline": {
+        "visual_pipeline_mode": "tti_selective_ref",
+        "consistency_mode": "selective",
+        "hero_shot_types": ["EMOTION_CLOSE"],
+        "reference_priority_sections": ["Final Chorus", "Chorus 2", "Chorus 1"],
+        "allow_face_drift_in_nonhero": True,
+        "mv_grammar": {
+            "verse_coverage_bias": "travel coverage",
+            "chorus_payoff_bias": "clear hero payoff",
+            "bridge_interrupt_bias": "interrupted isolation",
+            "outro_residue_bias": "residue image",
+        },
     },
     "limits": {
         "timeout_seconds": 900,

@@ -12,7 +12,8 @@ def write_manifest(state: dict, payload: dict) -> None:
         "failure_reason": state["failure_reason"],
         "visual_brief": dict(payload.get("visual_brief", {})),
         "anchors": _anchor_rows(payload),
-        "uso_images": _uso_rows(payload),
+        "clip_routes": _route_rows(payload),
+        "flux2_ref_images": _flux2_ref_rows(payload),
         "clips": list(payload.get("clips", [])),
         "merge_status": str(payload.get("merge_status", "")),
         "final_video": str(payload.get("final_video", "")),
@@ -39,9 +40,9 @@ def _anchor_rows(payload: dict) -> list[dict]:
     return out
 
 
-def _uso_rows(payload: dict) -> list[dict]:
+def _flux2_ref_rows(payload: dict) -> list[dict]:
     out: list[dict] = []
-    for row in payload.get("uso_images", []):
+    for row in payload.get("flux2_ref_images", []):
         if not isinstance(row, dict):
             continue
         out.append(
@@ -51,6 +52,24 @@ def _uso_rows(payload: dict) -> list[dict]:
                 "end": str(row.get("end", "")),
                 "retry": int(row.get("retry", 0)),
                 "error_body": str(row.get("error_body", "")),
+            }
+        )
+    return out
+
+
+def _route_rows(payload: dict) -> list[dict]:
+    out: list[dict] = []
+    for row in payload.get("clip_routes", []):
+        if not isinstance(row, dict):
+            continue
+        out.append(
+            {
+                "shot_id": str(row.get("shot_id", "")),
+                "use_ref": bool(row.get("use_ref", False)),
+                "route_reason": str(row.get("route_reason", "")),
+                "mv_function": str(row.get("mv_function", "")),
+                "hero_frame_score": int(row.get("hero_frame_score", 0)),
+                "consistency_need": str(row.get("consistency_need", "")),
             }
         )
     return out

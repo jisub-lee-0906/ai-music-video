@@ -14,7 +14,7 @@ def tti_anchor_prefix() -> str:
     return f"{ANCHOR_DIR}/character_master"
 
 
-def uso_frame_prefix(shot_id: str, frame_name: str) -> str:
+def flux2_ref_frame_prefix(shot_id: str, frame_name: str) -> str:
     return f"{KEYFRAME_DIR}/{str(shot_id).strip()}_{str(frame_name).strip()}"
 
 

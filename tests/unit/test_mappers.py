@@ -1,8 +1,8 @@
 from ai_mv.engines.acestep_1_5_split.mapper import map_audio_workflow
 from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow
-from ai_mv.engines.flux_1_dev_uso.mapper import map_uso_workflow
+from ai_mv.engines.flux2_reference.mapper import map_flux2_ref_workflow
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow
-from ai_mv.core.output_paths import audio_prefix, tti_anchor_prefix, uso_frame_prefix, wan_clip_prefix
+from ai_mv.core.output_paths import audio_prefix, flux2_ref_frame_prefix, tti_anchor_prefix, wan_clip_prefix
 
 
 def test_audio_mapper():
@@ -64,8 +64,8 @@ def test_tti_mapper():
     assert nodes["98:25"]["noise_seed"] == 3
 
 
-def test_uso_mapper():
-    cfg = {"render": {"uso_size": "1024x576"}}
+def test_flux2_ref_mapper():
+    cfg = {"render": {"tti_size": "1024x576"}}
     item = {
         "shot_id": "s_001",
         "frame_idx": 0,
@@ -75,13 +75,14 @@ def test_uso_mapper():
         "negative_prompt": "blurry, low detail",
         "shot_type": "CHAR_MASTER",
         "style_ref": "refs/front.png",
-        "filename_prefix": uso_frame_prefix("s_001", "start"),
+        "filename_prefix": flux2_ref_frame_prefix("s_001", "start"),
     }
-    out = map_uso_workflow(cfg, item)
+    out = map_flux2_ref_workflow(cfg, item)
     nodes = out["node.inputs"]
-    assert nodes["47"]["image"] == "a.png"
-    assert nodes["112:110"]["width"] == 1024
-    assert nodes["112:6"]["text"] == item["prompt_text"]
+    assert nodes["46"]["image"] == "a.png"
+    assert nodes["68:47"]["width"] == 1024
+    assert nodes["68:6"]["text"] == item["prompt_text"]
+    assert nodes["68:25"]["noise_seed"] > 2000
 
 
 def test_wan_mapper():

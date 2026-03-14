@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
-from ai_mv.core.prompt_digests import audio_digest, label_digest, lyrics_digest, negative_digest, section_digest, style_digest, visual_digest
+from ai_mv.core.prompt_digests import audio_digest, label_digest, section_digest, style_digest, visual_digest
+from ai_mv.core.visual_pipeline import attach_tti_metadata, section_semantics_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
 
@@ -36,12 +37,11 @@ def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[
     return {
         "guidance": style_digest(audio_map, 1) or _style_guidance(config, audio_map),
         "desc": audio_digest(audio_map, 1),
-        "lyrics": lyrics_digest(audio_map.get("lyrics", ""), 5),
         "visual_direction": visual_digest(audio_map, 1),
-        "negative_direction": negative_digest(audio_map, 1),
         "brief_view": _brief_summary(brief),
         "section_view": section_digest(sections),
         "section_labels": label_digest(sections),
+        "section_semantics": section_semantics_digest(audio_map),
         "escalation": _escalation_reference(sections),
         "types": ", ".join(SHOT_TYPES),
     }
@@ -64,7 +64,8 @@ def _planner_rules() -> str:
         "Keep the prompt lexically dense and image-led, more like 'high fashion, vintage couture, street photography' than like a screenplay description. "
         "Keep one consistent lead identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
         "Derive subject identity strictly from the visual brief; do not infer ethnicity, gender, genre-specific styling, or cultural lane unless the brief explicitly says so. "
-        "Treat any signature prop as a supporting accent, not the primary subject. "
+        "Treat any signature prop as a supporting accent, not the primary subject, and do not invent a handheld prop unless the brief explicitly locks it. "
+        "Do not let the master anchor collapse into a centered fashion portrait if the world and framing cues suggest a more grounded music-video setup. "
         "Use the visual brief as the source of truth for identity locks, world rules, and forbidden drift. "
         "master_anchor should absorb hero/world rules, while shot items should absorb section-specific variation only. "
         "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that place, not a random fresh location. "
@@ -75,13 +76,13 @@ def _planner_rules() -> str:
         "Think like a finished music video, not a portrait generator: the shot list should create angle variety, movement variety, and staging progression while preserving the same lead subject. "
         "Across the song, mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings where appropriate instead of defaulting to straight-on portraits. "
         "Not every shot should face camera; reserve the most frontal hero framing for major returns and payoff moments. "
+        "If the shot blueprint implies profile, shoulder-led travel, reflection, or offset blocking, do not silently reset it to a centered beauty frame. "
         "Verse shots should often read as travel, drift, or body-in-space coverage: side-profile walk, shoulder-led crossing, reflected pass, or oblique medium-wide staging are preferred over repeated centered beauty frames. "
         "Bridge shots should introduce emotional distance, pause, or separation through framing: silhouette, reflected profile, negative space, isolated lateral placement, or partial obstruction. "
         "Bridge should visually interrupt the flow established before it so the final return feels earned, not merely brighter. "
         "Post-chorus and transition shots should reset rhythm through texture, reflection, or connective camera relation rather than another near-identical face angle. "
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation. "
         "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
-        "Negative constraints and world rules override any section staging idea. "
         "camera_language should be a short cinematic phrase for framing or lens behavior only, and it must stay smooth and readable. "
         "For verses and transitions, prefer oblique framings such as three-quarter portrait, side profile walk, over-shoulder drift, reflected profile, or silhouette follow rather than always using centered front view. "
         "For Chorus and Final Chorus, hero framing can return more frontally, but it should still feel like a staged music-video payoff rather than a static passport portrait. "
@@ -101,6 +102,7 @@ def _planner_rules() -> str:
         "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
         "Avoid empty prestige phrases like cinematic vibes, dramatic aura, stylish composition, or emotional energy without a concrete visible setup. "
         "Shot count must match section count exactly. "
+        "Use section semantics to decide whether a shot should establish, cover, lift, pay off, interrupt, or leave residue. "
     )
 
 
@@ -109,8 +111,8 @@ def _planner_inputs(context: dict[str, str]) -> str:
         f"Use shot_type only from enum: {context['types']}. "
         f"Style lane={context['guidance']}; Audio direction={context['desc']}; "
         f"Visual direction={context['visual_direction']}; "
-        f"Avoid={context['negative_direction']}; Visual brief={context['brief_view']}; "
-        f"Lyrics excerpt={context['lyrics']}; Section labels in order={context['section_labels']}; "
+        f"Visual brief={context['brief_view']}; "
+        f"Section labels in order={context['section_labels']}; Section semantics={context['section_semantics']}; "
         f"Escalation guide={context['escalation']}; Timing reference={context['section_view']}."
     )
 
@@ -121,9 +123,13 @@ def _normalize_shots(shots: list[dict], sections: list[dict]) -> list[dict]:
         raise RuntimeError("no valid shots from TTI planner")
     if not sections:
         raise RuntimeError("sections missing for TTI planner")
-    if len(parsed) != len(sections):
-        raise RuntimeError(f"TTI planner shot count mismatch: expected={len(sections)} actual={len(parsed)}")
+    _validate_tti_shot_count(parsed, sections)
     return _assign_one_shot_per_section(parsed, sections)
+
+
+def _validate_tti_shot_count(shots: list[dict], sections: list[dict]) -> None:
+    if len(shots) != len(sections):
+        raise RuntimeError(f"TTI planner shot count mismatch: expected={len(sections)} actual={len(shots)}")
 
 
 def _assign_one_shot_per_section(shots: list[dict], sections: list[dict]) -> list[dict]:
@@ -136,7 +142,7 @@ def _assign_one_shot_per_section(shots: list[dict], sections: list[dict]) -> lis
         item["shot_type"] = _shot_type_for_section(item["section_name"])
         item["is_chorus"] = _is_chorus(item["section_name"])
         item["duration_sec"] = round(max(0.001, _sec_end(sec) - _sec_start(sec)), 3)
-        out.append(item)
+        out.append(attach_tti_metadata(item, item["section_name"], item["section_label"]))
     return out
 
 

@@ -1,7 +1,7 @@
 from ai_mv.engines.acestep_1_5_split.runner import _sections
 from ai_mv.engines.flux_1_dev_tti.planner import _assign_one_shot_per_section
 from ai_mv.engines.flux_1_dev_tti.runner import _pack_anchor
-from ai_mv.engines.flux_1_dev_uso.runner import _pack_item
+from ai_mv.engines.flux2_reference.runner import _pack_item
 
 
 def test_audio_sections_preserve_labels_for_downstream():

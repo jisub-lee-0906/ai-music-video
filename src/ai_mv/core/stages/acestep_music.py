@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
 from ai_mv.engines.acestep_1_5_split.mapper import AUDIO_TEXT, map_audio_workflow
 from ai_mv.engines.acestep_1_5_split.planner import _audio_prompt, build_audio_plan
 from ai_mv.engines.acestep_1_5_split.runner import run_audio_split
@@ -11,7 +12,7 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
     payload["run_id"] = stage_input.run_id
     plan = build_audio_plan(stage_input.config, payload)
     audio_map = run_audio_split(stage_input.config, plan)
-    audio_map.update(_audio_context(plan))
+    audio_map.update(_audio_context(stage_input.config, audio_map, plan))
     music_file = str(audio_map["music_file"])
     return StageOutput(
         "acestep_music",
@@ -35,7 +36,7 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
     )
 
 
-def _audio_context(plan: dict) -> dict:
+def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
     return {
         "genre_description": str(plan.get("genre_description", "")).strip(),
         "lyrics": str(plan.get("lyrics", "")).strip(),
@@ -47,6 +48,8 @@ def _audio_context(plan: dict) -> dict:
         "hook_direction": str(plan.get("hook_direction", "")).strip(),
         "visual_direction": str(plan.get("visual_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
+        "section_semantics": build_section_semantics(config, list(audio_map.get("sections", []))),
+        "mv_directives": build_mv_directives(config),
     }
 
 

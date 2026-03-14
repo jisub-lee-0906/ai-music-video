@@ -16,7 +16,7 @@ def test_bootstrap_applies_profile_audio_and_style(tmp_path, monkeypatch):
         "profile": "city",
         "integrations": {"workflows_dir": str(Path("workflows"))},
         "video": {"target": "1920x1080@24"},
-        "render": {"tti_size": "1024x1024", "uso_size": "1024x1024", "wan_size": "640x640"},
+        "render": {"tti_size": "1024x1024", "wan_size": "640x640"},
         "runtime": {"template_hash_lock": False, "template_hashes": {}},
     }
     (tmp_path / "workflows").mkdir()

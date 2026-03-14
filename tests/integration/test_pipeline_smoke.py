@@ -31,7 +31,7 @@ def test_pipeline_writes_initial_snapshot_before_first_stage(monkeypatch):
 
     def _fake_stage(_stage_input):
         assert seen["count"] == 2
-        return StageOutput("fake_stage", "done", {"anchors": [], "uso_images": [], "clips": []}, [])
+        return StageOutput("fake_stage", "done", {"anchors": [], "flux2_ref_images": [], "clips": []}, [])
 
     monkeypatch.setattr(pipeline_mod, "schedule", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
@@ -52,7 +52,7 @@ def test_pipeline_writes_stage_name_before_stage_runs(monkeypatch):
 
     def _fake_stage(_stage_input):
         assert "fake_stage" in seen
-        return StageOutput("fake_stage", "done", {"anchors": [], "uso_images": [], "clips": []}, [])
+        return StageOutput("fake_stage", "done", {"anchors": [], "flux2_ref_images": [], "clips": []}, [])
 
     monkeypatch.setattr(pipeline_mod, "schedule", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
@@ -71,7 +71,7 @@ def _fake_schedule():
 def _fake_stage(_stage_input):
     payload = {
         "anchors": [],
-        "uso_images": [],
+        "flux2_ref_images": [],
         "clips": [],
         "merge_status": "done",
         "final_video": "x.mp4",

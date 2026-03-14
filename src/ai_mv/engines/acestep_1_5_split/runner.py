@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.workflow_names import AUDIO_WORKFLOW
 from ai_mv.engines.acestep_1_5_split.mapper import audio_required_inputs, map_audio_workflow
+from ai_mv.engines.acestep_1_5_split.policy import compute_section_windows
 from ai_mv.infra.comfy_outputs import pick_audio_file
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.utils.path_utils import resolve_generated_file
@@ -20,49 +21,30 @@ def run_audio_split(config: dict, plan: dict) -> dict:
     return {
         "duration_sec": duration,
         "bpm_estimate": int(plan["bpm"]),
-        "sections": _sections(duration, plan.get("lyrics_blocks", [])),
+        "sections": _sections(
+            duration,
+            plan.get("lyrics_blocks", []),
+            int(plan.get("bpm", 0)),
+            int(plan.get("beats_per_bar", 4)),
+            plan.get("section_bars", {}),
+        ),
         "music_file": music_file,
     }
 
 
-def _sections(duration: float, blocks: list[dict]) -> list[dict]:
+def _sections(
+    duration: float,
+    blocks: list[dict],
+    bpm: int = 0,
+    beats_per_bar: int = 4,
+    section_bars: dict | None = None,
+) -> list[dict]:
     rows = [x for x in blocks if isinstance(x, dict)] if isinstance(blocks, list) else []
     rows = _limit_section_rows(rows)
     rows = _validate_and_fix_order(rows)
     if not rows:
         raise RuntimeError("lyrics_blocks empty after validation")
-    weights = [_block_weight(x) for x in rows]
-    mass = sum(weights)
-    if mass <= 0:
-        raise RuntimeError("invalid lyrics block weights")
-    out: list[dict] = []
-    cursor = 0.0
-    for i, row in enumerate(rows):
-        name = str(row.get("section", "section")).strip().lower()
-        label = str(row.get("label", "")).strip() or name
-        seg = duration * (weights[i] / mass)
-        end = duration if i == len(rows) - 1 else min(duration, cursor + seg)
-        out.append({"name": name, "label": label, "start_sec": round(cursor, 3), "end_sec": round(end, 3)})
-        cursor = end
-    if not out:
-        raise RuntimeError("sections build produced no rows")
-    return out
-
-
-def _block_weight(row: dict) -> float:
-    section = str(row.get("section", "section")).lower()
-    lines = row.get("lines", [])
-    line_cnt = len([x for x in lines if str(x).strip()]) if isinstance(lines, list) else 0
-    base = 1.0 + (0.35 * max(1, line_cnt))
-    if "chorus" in section:
-        return base * 1.25
-    if "bridge" in section:
-        return base * 1.1
-    if "outro" in section:
-        return base * 0.9
-    if "intro" in section:
-        return base * 0.8
-    return base
+    return compute_section_windows(float(duration), rows, int(bpm), int(beats_per_bar), section_bars or {})
 
 
 def _limit_section_rows(rows: list[dict]) -> list[dict]:
