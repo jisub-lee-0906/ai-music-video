@@ -34,7 +34,7 @@ def apply_profile(config: dict) -> None:
 def validate_sizes(config: dict) -> None:
     w, h, _ = parse_target(config["video"]["target"])
     ensure_16_9(w, h)
-    for key in ("tti_size", "wan_size"):
+    for key in ("tti_size", "ref_size", "wan_size"):
         rw, rh = parse_size(str(config["render"][key]))
         ensure_positive_size(rw, rh)
 

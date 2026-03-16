@@ -58,7 +58,8 @@ def _flux2_ref_prompt(item: dict) -> str:
 
 
 def _flux2_ref_size(config: dict) -> tuple[int, int]:
-    size = str(config["render"]["tti_size"])
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    size = str(render.get("ref_size", render.get("tti_size", "")))
     w, h = parse_size(size)
     vw, vh, _ = parse_target(str(config["video"]["target"]))
     ratio = float(w) / float(max(1, h))
@@ -66,7 +67,7 @@ def _flux2_ref_size(config: dict) -> tuple[int, int]:
     if abs(ratio - target_ratio) > 0.05:
         logging.warning(
             "Aspect ratio mismatch: ffmpeg will stretch/crop the output (%s=%sx%s vs video.target=%sx%s)",
-            "tti_size",
+            "ref_size",
             w,
             h,
             vw,
