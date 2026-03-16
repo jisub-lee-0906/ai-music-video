@@ -72,5 +72,6 @@ def _profile_yaml() -> str:
         "  story_world: One small city night\n"
         "  action_vocabulary: Slow pass, reflection check\n"
         "  payoff_style: Open, resolved return\n"
+        "  outro_feel: Final look seals the night\n"
         "  avoid: Random spectacle\n"
     )

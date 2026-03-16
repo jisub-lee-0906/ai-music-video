@@ -10,6 +10,7 @@ _REQUIRED_FIELDS = (
     ("visual", "negative"),
     ("mv", "story_world"),
     ("mv", "payoff_style"),
+    ("mv", "outro_feel"),
     ("mv", "avoid"),
 )
 
@@ -46,7 +47,7 @@ def build_profile_intent(config: dict) -> dict:
         escalation_intent={
             "chorus_payoff": _text(mv, "payoff_style"),
             "bridge_interrupt": _text(mv, "action_vocabulary"),
-            "outro_residue": _text(mv, "avoid"),
+            "outro_residue": _text(mv, "outro_feel"),
         },
     )
     return {
