@@ -1,7 +1,7 @@
 import pytest
 
-from ai_mv.engines.flux_1_dev_tti.planner import build_tti_plan
-import ai_mv.engines.flux_1_dev_tti.planner as tti_planner
+from ai_mv.engines.flux_2_dev_tti.planner import build_tti_plan
+import ai_mv.engines.flux_2_dev_tti.planner as tti_planner
 
 
 def test_tti_section_timing_policy(monkeypatch):
@@ -21,7 +21,8 @@ def test_tti_section_timing_policy(monkeypatch):
                 {"name": "outro", "start_sec": 60.0, "end_sec": 80.0},
             ],
         },
-        "visual_brief": _brief(["intro", "verse", "chorus", "outro"]),
+        "visual_story_bible": _story_bible(["intro", "verse", "chorus", "outro"]),
+        "lyrics_timeline": _timeline(["intro", "verse", "chorus", "outro"], [10.0, 30.0, 20.0, 20.0]),
     }
     out = build_tti_plan(cfg, payload)
     assert out["master_anchor"]["prompt_text"]
@@ -55,7 +56,8 @@ def test_tti_distribution_when_sections_exceed_shots(monkeypatch):
                 {"name": "outro", "start_sec": 10.0, "end_sec": 12.0},
             ],
         },
-        "visual_brief": _brief(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+        "visual_story_bible": _story_bible(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+        "lyrics_timeline": _timeline(["intro", "verse", "pre_chorus", "chorus", "outro"], [2.0, 3.0, 2.0, 3.0, 2.0]),
     }
     with pytest.raises(RuntimeError, match="shot count mismatch"):
         build_tti_plan(cfg, payload)
@@ -76,7 +78,8 @@ def test_tti_duration_scaling_preserves_target_total(monkeypatch):
                 {"name": "chorus", "start_sec": 5.0, "end_sec": 10.0},
             ],
         },
-        "visual_brief": _brief(["verse", "chorus"]),
+        "visual_story_bible": _story_bible(["verse", "chorus"]),
+        "lyrics_timeline": _timeline(["verse", "chorus"], [5.0, 5.0]),
     }
     out = build_tti_plan(cfg, payload)
     shots = out["shots"]
@@ -100,7 +103,8 @@ def test_tti_pre_chorus_not_marked_as_chorus(monkeypatch):
                 {"name": "chorus", "start_sec": 4.0, "end_sec": 8.0},
             ],
         },
-        "visual_brief": _brief(["pre_chorus", "chorus"]),
+        "visual_story_bible": _story_bible(["pre_chorus", "chorus"]),
+        "lyrics_timeline": _timeline(["pre_chorus", "chorus"], [4.0, 4.0]),
     }
     out = build_tti_plan(cfg, payload)
     shots = out["shots"]
@@ -124,7 +128,8 @@ def test_tti_plan_allows_missing_creative_seed_fields(monkeypatch):
                 {"name": "chorus", "start_sec": 5.0, "end_sec": 10.0},
             ],
         },
-        "visual_brief": _brief(["verse", "chorus"]),
+        "visual_story_bible": _story_bible(["verse", "chorus"]),
+        "lyrics_timeline": _timeline(["verse", "chorus"], [5.0, 5.0]),
     }
     out = build_tti_plan({}, payload)
     assert len(out["shots"]) == 2
@@ -147,33 +152,65 @@ def test_tti_preserves_planner_shot_types_instead_of_forcing_section_defaults(mo
                 {"name": "outro", "start_sec": 16.0, "end_sec": 20.0},
             ],
         },
-        "visual_brief": _brief(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+        "visual_story_bible": _story_bible(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+        "lyrics_timeline": _timeline(["intro", "verse", "pre_chorus", "chorus", "outro"], [4.0, 4.0, 4.0, 4.0, 4.0]),
     }
     out = build_tti_plan({}, payload)
     types = [shot["shot_type"] for shot in out["shots"]]
     assert types == ["DETAIL_INSERT"] * 5
 
 
-def _brief(names: list[str]) -> dict:
+def _story_bible(names: list[str]) -> dict:
     return {
-        "hero_identity": "silver-haired nightclub heroine with sharp styling",
+        "hero_identity_lock": "silver-haired nightclub heroine with sharp styling",
         "world_rules": "retro neon nightlife world with polished concert staging",
-        "visual_motifs": ["neon reflections", "chrome microphone", "teal-magenta glow"],
-        "negative_constraints": ["identity drift", "period change", "random sci-fi props"],
-        "section_briefs": [_section(name) for name in names],
+        "recurring_location_families": ["neon-lit stage runway"],
+        "forbidden_drift": ["identity drift", "period change", "random sci-fi props"],
+        "lyric_beats": [_beat(name, idx) for idx, name in enumerate(names, start=1)],
+        "section_progression": [
+            {"section_name": name, "section_label": name, "dominant_emotion": "focused lift", "story_function": "coverage", "lyric_beat_ids": [f"LB{idx:02d}_01"]}
+            for idx, name in enumerate(names, start=1)
+        ],
+        "repeat_escalation_rules": ["repeats must vary"],
     }
 
 
-def _section(name: str) -> dict:
+def _beat(name: str, idx: int) -> dict:
     return {
+        "beat_id": f"LB{idx:02d}_01",
         "section_name": name,
-        "emotional_arc": "focused lift",
+        "section_label": name,
+        "line_refs": [1],
+        "literal_image": "neon-lit stage runway",
+        "visible_action": "walks through the lit stage depth and keeps moving",
+        "emotional_turn": "focused lift",
+        "continuity_anchor": "pose shift",
+        "payoff_role": "develop",
+        "repeat_variant_of": "",
+        "location_family": "neon-lit stage runway",
         "palette_hint": "teal and magenta",
         "lighting_hint": "soft rim light",
-        "staging_hint": "clean stage depth",
-        "story_beat": "walks through the lit stage depth and keeps moving",
-        "location_anchor": "neon-lit stage runway",
+        "camera_commitment": "clean stage depth",
     }
+
+
+def _timeline(names: list[str], durations: list[float]) -> dict:
+    sections = []
+    cursor = 0.0
+    for idx, (name, duration) in enumerate(zip(names, durations), start=1):
+        sections.append(
+            {
+                "section_name": name,
+                "section_label": name,
+                "start_sec": cursor,
+                "end_sec": cursor + duration,
+                "lines": [{"line_index": 1, "text": "line"}],
+                "hook_lines": [],
+                "lyric_beats": [{"beat_id": f"LB{idx:02d}_01", "line_refs": [1], "start_sec": cursor, "end_sec": cursor + duration}],
+            }
+        )
+        cursor += duration
+    return {"sections": sections}
 
 
 def _fake_tti_generate_four(_config, _prompt, _schema):
@@ -212,13 +249,15 @@ def _shot(
     shot_type: str = "PERF_WIDE",
 ) -> dict:
     return {
-        "shot_id": f"s_{idx:03d}",
+        "lyric_beat_id": f"LB{idx+1:02d}_01",
         "shot_type": shot_type,
-        "is_chorus": False,
         "camera_language": camera,
         "pose_delta": pose,
         "emotion": emotion,
         "scene_detail": detail,
         "motion_hint": motion,
         "space_relation": "light spill stays camera-right while stage depth opens behind her",
+        "edit_role": "release" if idx % 2 else "develop",
+        "continuity_lock": "same heroine and world",
+        "clip_count": 1,
     }

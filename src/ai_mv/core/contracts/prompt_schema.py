@@ -3,6 +3,56 @@ from __future__ import annotations
 SHOT_TYPES = ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "DETAIL_INSERT", "ENV_TRANSITION"]
 
 
+def lyrics_timeline_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["sections"],
+        "properties": {
+            "sections": {
+                "type": "array",
+                "items": _lyrics_section_schema(),
+                "minItems": 1,
+                "maxItems": 24,
+            }
+        },
+    }
+
+
+def visual_story_bible_schema() -> dict:
+    return {
+        "type": "object",
+        "required": [
+            "hero_identity_lock",
+            "world_rules",
+            "recurring_location_families",
+            "forbidden_drift",
+            "lyric_beats",
+            "section_progression",
+            "repeat_escalation_rules",
+        ],
+        "properties": {
+            "hero_identity_lock": {"type": "string"},
+            "world_rules": {"type": "string"},
+            "recurring_location_families": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 6},
+            "forbidden_drift": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 12},
+            "lyric_beats": {"type": "array", "items": _story_bible_beat_schema(), "minItems": 1, "maxItems": 48},
+            "section_progression": {"type": "array", "items": _section_progression_schema(), "minItems": 1, "maxItems": 24},
+            "repeat_escalation_rules": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 10},
+        },
+    }
+
+
+def shot_timeline_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["master_anchor", "shots"],
+        "properties": {
+            "master_anchor": _tti_master_schema(),
+            "shots": {"type": "array", "items": _shot_timeline_item_schema(), "minItems": 1, "maxItems": 48},
+        },
+    }
+
+
 def tti_schema() -> dict:
     return {
         "type": "object",
@@ -102,56 +152,137 @@ def wan_schema() -> dict:
         },
     }
     return {"type": "object", "required": ["clips"], "properties": {"clips": {"type": "array", "items": clip}}}
-
-
-def visual_brief_schema() -> dict:
+def _lyrics_section_schema() -> dict:
     return {
         "type": "object",
-        "required": [
-            "hero_identity",
-            "world_rules",
-            "recurring_location_families",
-            "allowed_visual_variation",
-            "visual_motifs",
-            "negative_constraints",
-            "section_briefs",
-        ],
+        "required": ["section_name", "section_label", "lines", "hook_lines", "lyric_beats"],
         "properties": {
-            "hero_identity": {"type": "string"},
-            "world_rules": {"type": "string"},
-            "recurring_location_families": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 6},
-            "allowed_visual_variation": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
-            "visual_motifs": {"type": "array", "items": {"type": "string"}, "minItems": 0, "maxItems": 8},
-            "negative_constraints": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 10},
-            "section_briefs": {"type": "array", "items": _visual_section_schema()},
+            "section_name": {"type": "string"},
+            "section_label": {"type": "string"},
+            "lines": {"type": "array", "items": _lyric_line_schema(), "minItems": 1, "maxItems": 12},
+            "hook_lines": {"type": "array", "items": {"type": "integer"}, "minItems": 0, "maxItems": 8},
+            "lyric_beats": {"type": "array", "items": _lyric_beat_schema(), "minItems": 1, "maxItems": 4},
         },
     }
 
 
-def _visual_section_schema() -> dict:
+def _lyric_line_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["line_index", "text"],
+        "properties": {
+            "line_index": {"type": "integer"},
+            "text": {"type": "string"},
+        },
+    }
+
+
+def _lyric_beat_schema() -> dict:
     return {
         "type": "object",
         "required": [
-            "section_name",
-            "emotional_arc",
-            "palette_hint",
-            "lighting_hint",
-            "staging_hint",
-            "story_beat",
-            "location_anchor",
-            "escalation_level",
-            "motion_axis",
+            "beat_id",
+            "line_refs",
+            "literal_image",
+            "visible_action",
+            "emotional_turn",
+            "continuity_anchor",
+            "payoff_role",
+            "repeat_variant_of",
         ],
         "properties": {
+            "beat_id": {"type": "string"},
+            "line_refs": {"type": "array", "items": {"type": "integer"}, "minItems": 1, "maxItems": 8},
+            "literal_image": {"type": "string"},
+            "visible_action": {"type": "string"},
+            "emotional_turn": {"type": "string"},
+            "continuity_anchor": {"type": "string"},
+            "payoff_role": {"type": "string"},
+            "repeat_variant_of": {"type": "string"},
+        },
+    }
+
+
+def _story_bible_beat_schema() -> dict:
+    return {
+        "type": "object",
+        "required": [
+            "beat_id",
+            "section_name",
+            "section_label",
+            "line_refs",
+            "literal_image",
+            "visible_action",
+            "emotional_turn",
+            "continuity_anchor",
+            "payoff_role",
+            "repeat_variant_of",
+            "location_family",
+            "palette_hint",
+            "lighting_hint",
+            "camera_commitment",
+        ],
+        "properties": {
+            "beat_id": {"type": "string"},
             "section_name": {"type": "string"},
-            "emotional_arc": {"type": "string"},
+            "section_label": {"type": "string"},
+            "line_refs": {"type": "array", "items": {"type": "integer"}, "minItems": 1, "maxItems": 8},
+            "literal_image": {"type": "string"},
+            "visible_action": {"type": "string"},
+            "emotional_turn": {"type": "string"},
+            "continuity_anchor": {"type": "string"},
+            "payoff_role": {"type": "string"},
+            "repeat_variant_of": {"type": "string"},
+            "location_family": {"type": "string"},
             "palette_hint": {"type": "string"},
             "lighting_hint": {"type": "string"},
-            "staging_hint": {"type": "string"},
-            "story_beat": {"type": "string"},
-            "location_anchor": {"type": "string"},
-            "escalation_level": {"type": "string"},
-            "motion_axis": {"type": "string"},
+            "camera_commitment": {"type": "string"},
+        },
+    }
+
+
+def _section_progression_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["section_name", "section_label", "dominant_emotion", "story_function", "lyric_beat_ids"],
+        "properties": {
+            "section_name": {"type": "string"},
+            "section_label": {"type": "string"},
+            "dominant_emotion": {"type": "string"},
+            "story_function": {"type": "string"},
+            "lyric_beat_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 6},
+        },
+    }
+
+
+def _shot_timeline_item_schema() -> dict:
+    return {
+        "type": "object",
+        "required": [
+            "lyric_beat_id",
+            "shot_type",
+            "camera_language",
+            "pose_delta",
+            "emotion",
+            "scene_detail",
+            "motion_hint",
+            "space_relation",
+            "edit_role",
+            "continuity_lock",
+            "clip_count",
+        ],
+        "properties": {
+            "lyric_beat_id": {"type": "string"},
+            "shot_type": {"type": "string", "enum": SHOT_TYPES},
+            "camera_language": {"type": "string"},
+            "pose_delta": {"type": "string"},
+            "emotion": {"type": "string"},
+            "scene_detail": {"type": "string"},
+            "motion_hint": {"type": "string"},
+            "space_relation": {"type": "string"},
+            "edit_role": {"type": "string"},
+            "continuity_lock": {"type": "string"},
+            "clip_count": {"type": "integer"},
         },
     }
 

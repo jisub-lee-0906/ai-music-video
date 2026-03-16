@@ -110,49 +110,146 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
     return out
 
 
-def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
-    if not sections:
-        raise RuntimeError("visual brief sections missing")
-    fallback_section_rows = [x for x in raw.get("section_briefs", []) if isinstance(x, dict)]
-    fallback_families = [str(row.get("location_anchor", "")).strip() for row in fallback_section_rows if str(row.get("location_anchor", "")).strip()]
-    recurring_families = _normalize_text_list(raw.get("recurring_location_families", fallback_families), "recurring_location_families")
-    fallback_variation = [str(row.get("staging_hint", "")).strip() for row in fallback_section_rows if str(row.get("staging_hint", "")).strip()]
-    allowed_variation = _normalize_text_list(raw.get("allowed_visual_variation", fallback_variation or ["section-level framing variation"]), "allowed_visual_variation")
+def normalize_lyrics_timeline(raw: dict, sections: list[dict]) -> dict:
+    rows = [row for row in raw.get("sections", []) if isinstance(row, dict)]
+    if len(rows) != len(sections):
+        raise RuntimeError("lyrics timeline section count mismatch")
+    out_sections: list[dict] = []
+    for idx, (row, section) in enumerate(zip(rows, sections), start=1):
+        section_name = str(section.get("name", "section")).strip()
+        section_label = str(section.get("label", section_name)).strip()
+        lines = [x for x in row.get("lines", []) if isinstance(x, dict)]
+        if not lines:
+            raise RuntimeError("lyrics timeline lines missing")
+        parsed_lines = []
+        valid_refs: set[int] = set()
+        for line in lines:
+            line_index = int(line.get("line_index", 0))
+            text = str(line.get("text", "")).strip()
+            if line_index <= 0 or not text:
+                raise RuntimeError("lyrics timeline line missing index or text")
+            parsed_lines.append({"line_index": line_index, "text": text})
+            valid_refs.add(line_index)
+        beats = [x for x in row.get("lyric_beats", []) if isinstance(x, dict)]
+        if not beats:
+            raise RuntimeError("lyrics timeline lyric_beats missing")
+        parsed_beats = []
+        for beat in beats:
+            refs = [int(x) for x in beat.get("line_refs", []) if int(x) > 0]
+            if not refs or any(ref not in valid_refs for ref in refs):
+                raise RuntimeError(f"lyrics timeline beat refs invalid: {section_name}")
+            parsed_beats.append(
+                {
+                    "beat_id": str(beat.get("beat_id", "")).strip() or f"LB{idx:02d}_{len(parsed_beats)+1:02d}",
+                    "section_name": section_name,
+                    "section_label": section_label,
+                    "line_refs": refs,
+                    "literal_image": _require_text(beat, "literal_image"),
+                    "visible_action": _require_text(beat, "visible_action"),
+                    "emotional_turn": _require_text(beat, "emotional_turn"),
+                    "continuity_anchor": _require_text(beat, "continuity_anchor"),
+                    "payoff_role": _require_text(beat, "payoff_role"),
+                    "repeat_variant_of": _normalize_optional_clause(beat.get("repeat_variant_of", ""), 8),
+                }
+            )
+        out_sections.append(
+            {
+                "section_name": section_name,
+                "section_label": section_label,
+                "lines": parsed_lines,
+                "hook_lines": [int(x) for x in row.get("hook_lines", []) if int(x) in valid_refs],
+                "lyric_beats": parsed_beats,
+                "start_sec": float(section.get("start_sec", section.get("start", 0.0))),
+                "end_sec": float(section.get("end_sec", section.get("end", 0.0))),
+            }
+        )
+    _validate_repeated_hook_variation(out_sections)
+    return {"sections": out_sections}
+
+
+def normalize_visual_story_bible(raw: dict, sections: list[dict]) -> dict:
+    beats = [row for row in raw.get("lyric_beats", []) if isinstance(row, dict)]
+    if not beats:
+        raise RuntimeError("visual story bible lyric_beats missing")
+    progression = [row for row in raw.get("section_progression", []) if isinstance(row, dict)]
+    if len(progression) != len(sections):
+        raise RuntimeError("visual story bible section progression mismatch")
+    out_beats = []
+    for row in beats:
+        out_beats.append(
+            {
+                "beat_id": _require_text(row, "beat_id"),
+                "section_name": _require_text(row, "section_name"),
+                "section_label": _require_text(row, "section_label"),
+                "line_refs": [int(x) for x in row.get("line_refs", []) if int(x) > 0],
+                "literal_image": _require_text(row, "literal_image"),
+                "visible_action": _require_text(row, "visible_action"),
+                "emotional_turn": _require_text(row, "emotional_turn"),
+                "continuity_anchor": _require_text(row, "continuity_anchor"),
+                "payoff_role": _require_text(row, "payoff_role"),
+                "repeat_variant_of": _normalize_optional_clause(row.get("repeat_variant_of", ""), 8),
+                "location_family": _require_text(row, "location_family"),
+                "palette_hint": _require_text(row, "palette_hint"),
+                "lighting_hint": _require_text(row, "lighting_hint"),
+                "camera_commitment": _require_text(row, "camera_commitment"),
+            }
+        )
     out = {
-        "hero_identity": _require_text(raw, "hero_identity"),
+        "hero_identity_lock": _require_text(raw, "hero_identity_lock"),
         "world_rules": _require_text(raw, "world_rules"),
-        "recurring_location_families": recurring_families,
-        "allowed_visual_variation": allowed_variation,
-        "visual_motifs": _normalize_text_list(raw.get("visual_motifs", []), "visual_motifs") if raw.get("visual_motifs", []) else list(recurring_families),
-        "negative_constraints": _normalize_text_list(raw["negative_constraints"], "negative_constraints"),
-        "section_briefs": _normalize_section_briefs(raw["section_briefs"], sections),
+        "recurring_location_families": _normalize_text_list(raw.get("recurring_location_families", []), "recurring_location_families"),
+        "forbidden_drift": _normalize_text_list(raw.get("forbidden_drift", []), "forbidden_drift"),
+        "lyric_beats": out_beats,
+        "section_progression": [
+            {
+                "section_name": _require_text(row, "section_name"),
+                "section_label": _require_text(row, "section_label"),
+                "dominant_emotion": _require_text(row, "dominant_emotion"),
+                "story_function": _require_text(row, "story_function"),
+                "lyric_beat_ids": [str(x).strip() for x in row.get("lyric_beat_ids", []) if str(x).strip()],
+            }
+            for row in progression
+        ],
+        "repeat_escalation_rules": _normalize_text_list(raw.get("repeat_escalation_rules", []), "repeat_escalation_rules"),
     }
-    recurring_spaces = _recurring_spaces(out["section_briefs"])
-    out["world_bible"] = {
-        "hero_identity": out["hero_identity"],
-        "world_rules": out["world_rules"],
-        "recurring_location_families": list(out["recurring_location_families"]),
-        "allowed_visual_variation": list(out["allowed_visual_variation"]),
-        "visual_motifs": list(out["visual_motifs"]),
-        "negative_constraints": list(out["negative_constraints"]),
-    }
-    out["section_dramaturgy"] = [dict(row) for row in out["section_briefs"]]
-    out["hero_identity_lock"] = out["hero_identity"]
-    out["world_lock"] = {
-        "master_setting": out["world_rules"],
-        "palette_baseline": out["world_rules"],
-        "lighting_baseline": out["world_rules"],
-        "recurring_spaces": recurring_spaces,
-    }
-    out["section_locks"] = [
-        {
-            "section_name": row["section_name"],
-            "story_beat": row["story_beat"],
-            "location_anchor": row["location_anchor"],
-        }
-        for row in out["section_briefs"]
-    ]
     return out
+
+
+def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
+    beats = {str(row.get("beat_id", "")).strip(): row for row in lyric_beats if isinstance(row, dict)}
+    master = normalize_tti_master(raw["master_anchor"])
+    shots = [row for row in raw.get("shots", []) if isinstance(row, dict)]
+    if len(shots) != len(beats):
+        raise RuntimeError("shot count mismatch")
+    out: list[dict] = []
+    for idx, row in enumerate(shots, start=1):
+        beat_id = str(row.get("lyric_beat_id", "")).strip()
+        beat = beats.get(beat_id)
+        if beat is None:
+            raise RuntimeError(f"unknown lyric beat id: {beat_id}")
+        shot_type = str(row.get("shot_type", "")).strip().upper()
+        if shot_type not in SHOT_TYPES:
+            raise RuntimeError(f"invalid shot type: {shot_type}")
+        out.append(
+            {
+                "shot_id": f"S{idx:03d}",
+                "lyric_beat_id": beat_id,
+                "section_name": str(beat.get("section_name", "")),
+                "section_label": str(beat.get("section_label", beat.get("section_name", ""))),
+                "is_chorus": _is_chorus_section(str(beat.get("section_name", ""))),
+                "shot_type": shot_type,
+                "camera_language": _require_text(row, "camera_language"),
+                "pose_delta": _require_text(row, "pose_delta"),
+                "emotion": _require_text(row, "emotion"),
+                "scene_detail": _require_text(row, "scene_detail"),
+                "motion_hint": _require_text(row, "motion_hint"),
+                "space_relation": _require_text(row, "space_relation"),
+                "edit_role": _require_text(row, "edit_role"),
+                "continuity_lock": _require_text(row, "continuity_lock"),
+                "clip_count": max(1, int(row.get("clip_count", 1))),
+            }
+        )
+    return {"master_anchor": master, "shots": out}
 
 
 def _render_lyrics_blocks(blocks: list[dict]) -> str:
@@ -172,50 +269,11 @@ def _render_lyrics_blocks(blocks: list[dict]) -> str:
     return text
 
 
-def _normalize_section_briefs(raw: list[dict], sections: list[dict]) -> list[dict]:
-    rows = [x for x in raw if isinstance(x, dict)]
-    if len(rows) != len(sections):
-        raise RuntimeError("visual brief section count mismatch")
-    return [_normalize_visual_section(row, str(section.get("name", "section"))) for row, section in zip(rows, sections)]
-
-
-def _normalize_visual_section(row: dict, expected_name: str) -> dict:
-    actual = _require_text(row, "section_name")
-    if actual != expected_name:
-        raise RuntimeError(f"visual brief section mismatch: expected={expected_name} actual={actual}")
-    story_beat = _require_text(row, "story_beat")
-    location_anchor = _require_text(row, "location_anchor")
-    _validate_story_beat(story_beat)
-    _validate_location_anchor(location_anchor)
-    return {
-        "section_name": actual,
-        "emotional_arc": _require_text(row, "emotional_arc"),
-        "palette_hint": _require_text(row, "palette_hint"),
-        "lighting_hint": _require_text(row, "lighting_hint"),
-        "staging_hint": _require_text(row, "staging_hint"),
-        "story_beat": story_beat,
-        "location_anchor": location_anchor,
-        "escalation_level": _normalize_optional_clause(row.get("escalation_level", ""), 8) or _default_escalation_level(expected_name),
-        "motion_axis": _normalize_optional_clause(row.get("motion_axis", ""), 10) or _default_motion_axis(story_beat),
-    }
-
-
 def _normalize_text_list(raw: list[str], field: str) -> list[str]:
     vals = [str(x).strip() for x in raw if str(x).strip()] if isinstance(raw, list) else []
     if not vals:
         raise RuntimeError(f"{field} missing")
     return vals
-
-
-def _recurring_spaces(section_briefs: list[dict]) -> list[str]:
-    out: list[str] = []
-    seen: set[str] = set()
-    for row in section_briefs:
-        text = str(row.get("location_anchor", "")).strip()
-        if text and text not in seen:
-            seen.add(text)
-            out.append(text)
-    return out
 
 
 def _require_text(raw: dict, field: str) -> str:
@@ -225,55 +283,30 @@ def _require_text(raw: dict, field: str) -> str:
     return text
 
 
-def _validate_story_beat(text: str) -> None:
-    low = str(text).strip().lower()
-    mood_only = {
-        "searching",
-        "passing by",
-        "hesitating",
-        "opening up",
-        "moving on",
-        "circling back",
-        "leaning in",
-        "converging",
-        "separating",
-        "arriving",
-        "receding",
-    }
-    if low in mood_only:
-        raise RuntimeError("visual brief story_beat must describe a visible action, not only a mood label")
-    if len(low.split()) < 2:
-        raise RuntimeError("visual brief story_beat too thin")
+def _validate_repeated_hook_variation(section_rows: list[dict]) -> None:
+    repeated: dict[tuple[str, tuple[int, ...]], list[dict]] = {}
+    for section in section_rows:
+        for beat in section.get("lyric_beats", []):
+            key = (str(section.get("section_name", "")), tuple(int(x) for x in beat.get("line_refs", [])))
+            repeated.setdefault(key, []).append(beat)
+    for key, beats in repeated.items():
+        if len(beats) <= 1:
+            continue
+        signatures = {
+            (
+                str(beat.get("emotional_turn", "")).strip().lower(),
+                str(beat.get("payoff_role", "")).strip().lower(),
+                str(beat.get("visible_action", "")).strip().lower(),
+            )
+            for beat in beats
+        }
+        if len(signatures) <= 1:
+            raise RuntimeError(f"repeated lyric beat lacks variation: {key[0]}")
 
 
-def _validate_location_anchor(text: str) -> None:
-    low = str(text).strip().lower()
-    if len(low.split()) < 1 or not any(ch.isalpha() for ch in low):
-        raise RuntimeError("visual brief location_anchor too thin")
-
-
-def _default_escalation_level(section_name: str) -> str:
+def _is_chorus_section(section_name: str) -> bool:
     sec = str(section_name).strip().lower()
-    if sec == "chorus":
-        return "payoff"
-    if sec == "bridge":
-        return "interrupt"
-    if sec == "outro":
-        return "residue"
-    if sec == "pre_chorus":
-        return "lift"
-    return "steady"
-
-
-def _default_motion_axis(story_beat: str) -> str:
-    low = str(story_beat).strip().lower()
-    if "turn" in low or "glance" in low or "gaze" in low:
-        return "gaze shift"
-    if "step" in low or "walk" in low or "cross" in low or "pass" in low:
-        return "travel line"
-    if "hold" in low or "pause" in low or "stop" in low:
-        return "stillness hold"
-    return "pose shift"
+    return sec == "chorus" or sec.startswith("chorus_")
 
 
 def _normalize_keyscale(text: str) -> str:

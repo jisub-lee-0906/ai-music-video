@@ -16,7 +16,7 @@ def test_artifacts_safe_on_partial_payload(monkeypatch):
         "status": "failed",
         "failure_reason": "tti failed",
         "completed_stages": ["acestep_music"],
-        "current_stage": "tti_anchor",
+        "current_stage": "shot_timeline",
     }
     payload = {"audio_map": {"duration_sec": 20.0}}
 

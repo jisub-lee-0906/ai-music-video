@@ -1,5 +1,5 @@
-import ai_mv.engines.flux_1_dev_tti.runner as tti_runner
-from ai_mv.core.output_paths import tti_anchor_prefix
+import ai_mv.engines.flux_2_dev_tti.runner as tti_runner
+from ai_mv.core.output_paths import master_anchor_prefix
 
 
 def test_run_tti_uses_single_master_anchor(monkeypatch):
@@ -7,7 +7,7 @@ def test_run_tti_uses_single_master_anchor(monkeypatch):
 
     def _fake_run(_config, _workflow, _bindings, _required):
         calls["n"] += 1
-        return {"files": [f"{tti_anchor_prefix()}.png"]}
+        return {"files": [f"{master_anchor_prefix()}.png"]}
 
     monkeypatch.setattr(tti_runner, "run_workflow", _fake_run)
     cfg = {"render": {"tti_size": "1024x1024"}}
@@ -24,4 +24,4 @@ def test_run_tti_uses_single_master_anchor(monkeypatch):
     out = tti_runner.run_tti(cfg, plan)
     assert calls["n"] == 1
     assert out[0]["anchor"] == out[1]["anchor"]
-    assert out[0]["identity_anchor"] == f"{tti_anchor_prefix()}.png"
+    assert out[0]["identity_anchor"] == f"{master_anchor_prefix()}.png"

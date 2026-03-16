@@ -1,16 +1,26 @@
-import ai_mv.engines.acestep_1_5_split.planner as audio_planner
+import ai_mv.engines.acestep_1_5_aio.planner as audio_planner
 
 
 def _prompt_plan(**extra):
     plan = {
         "tags": "city pop, neon",
-        "style_guidance": "night drive romance",
         "language": "ja",
-        "profile_summary": "retro city-pop lane",
-        "audio_direction": "mature female vocal, glossy piano, disco bounce",
-        "hook_direction": "neon rain and chrome reflections",
-        "visual_direction": "warm urban nightlife",
-        "negative_direction": "no futuristic sci-fi tone",
+        "profile_intent": {
+            "audio_intent": {
+                "brief": "mature female vocal, glossy piano, disco bounce",
+                "hook_brief": "neon rain and chrome reflections",
+            },
+            "world_intent": {
+                "visual_intent": "warm urban nightlife",
+                "story_world": "retro city-pop lane",
+                "action_vocabulary": "small graceful actions",
+                "payoff_style": "clear return",
+            },
+            "negative_intent": {
+                "visual_negative": "no futuristic sci-fi tone",
+                "mv_avoid": "",
+            },
+        },
         "duration": 200,
         "bpm": 108,
         "seed": 31,
@@ -31,9 +41,10 @@ def test_audio_prompt_focuses_on_prompt_engineering_not_checklist():
     assert "Make the chorus easy to sing back after one listen" in prompt
     assert "Style guidance=" not in prompt
     assert "Visual carryover=" not in prompt
-    assert "Audio direction=mature female vocal, glossy piano, disco bounce." in prompt
-    assert "World lane=retro city-pop lane." in prompt
-    assert "Hook direction=neon rain and chrome reflections." in prompt
+    assert "Audio intent=mature female vocal, glossy piano, disco bounce." in prompt
+    assert "World intent=warm urban nightlife." in prompt
+    assert "Hook intent=neon rain and chrome reflections." in prompt
+    assert "Story world=retro city-pop lane." in prompt
     assert "Avoid=no futuristic sci-fi tone." in prompt
     assert "quality failure" not in prompt
     assert "heuristic" not in prompt

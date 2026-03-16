@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.output_paths import flux2_ref_frame_prefix
 from ai_mv.core.workflow_names import FLUX2_REF_WORKFLOW
-from ai_mv.engines.flux2_reference.mapper import map_flux2_ref_workflow, flux2_ref_required_inputs
+from ai_mv.engines.flux_2_dev_ref.mapper import map_flux2_ref_workflow, flux2_ref_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.infra.comfy_outputs import pick_image_file
 from ai_mv.utils.path_utils import stage_image_for_comfy

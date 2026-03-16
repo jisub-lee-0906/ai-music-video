@@ -9,18 +9,19 @@ def test_gate_requires_anchors_for_shot_router():
         validate_stage_input("shot_router", {})
 
 
-def test_gate_requires_visual_brief_for_tti():
+def test_gate_requires_story_bible_for_shot_timeline():
     with pytest.raises(StageFailure):
-        validate_stage_input("tti_anchor", {"audio_map": {"sections": [1]}})
+        validate_stage_input("shot_timeline", {"lyrics_timeline": {"sections": [1]}})
 
 
-def test_gate_wan_no_longer_requires_flux2_ref_images():
+def test_gate_wan_requires_new_story_payload_but_not_flux2_ref_images():
     validate_stage_input(
         "wan_interpolation",
         {
             "clip_routes": [{"shot_id": "x"}],
             "audio_map": {"sections": [{"name": "verse"}]},
-            "visual_brief": {"section_briefs": [{"section_name": "verse"}]},
+            "visual_story_bible": {"lyric_beats": [{"beat_id": "b1"}]},
+            "shot_timeline": {"shots": [{"lyric_beat_id": "b1"}]},
         },
     )
 

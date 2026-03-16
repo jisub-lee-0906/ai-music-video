@@ -1,7 +1,7 @@
-from ai_mv.engines.acestep_1_5_split import planner as audio_planner
-from ai_mv.engines.flux_1_dev_tti import planner as tti_planner
-from ai_mv.engines.flux2_reference import planner as flux2_ref_planner
-from ai_mv.engines.visual_bridge import planner as visual_planner
+from ai_mv.engines.acestep_1_5_aio import planner as audio_planner
+from ai_mv.engines.flux_2_dev_tti import planner as tti_planner
+from ai_mv.engines.flux_2_dev_ref import planner as flux2_ref_planner
+from ai_mv.engines.visual_story_bible import planner as visual_planner
 from ai_mv.engines.wan_2_2_flf2v import planner as wan_planner
 
 
@@ -26,15 +26,15 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
     assert "profile's concrete world" in audio_prompt
 
     sections = [_section("intro", "Intro"), _section("chorus", "Final Chorus")]
-    brief = _visual_brief()
+    brief = _story_bible()
     payload = {
         "audio_map": _audio_map(),
-        "visual_brief": brief,
+        "visual_story_bible": brief,
         "anchors": [_anchor("S001"), _anchor("S002")],
         "flux2_ref_images": [_flux2_ref_image("S001"), _flux2_ref_image("S002")],
     }
-    visual_prompt = visual_planner._planner_prompt({}, _audio_map(), sections)
-    tti_prompt = tti_planner._planner_prompt({}, _audio_map(), brief, sections)
+    visual_prompt = visual_planner._planner_prompt({}, {"profile_intent": _audio_map().get("profile_intent", {}), "lyrics_timeline": _timeline()})
+    tti_prompt = tti_planner._planner_prompt({}, {"visual_story_bible": brief, "lyrics_timeline": _timeline()})
     flux2_ref_prompt = flux2_ref_planner._planner_prompt({}, payload, payload["anchors"], "")
     wan_prompt = wan_planner._planner_prompt({}, payload, [_wan_clip("S001"), _wan_clip("S002")], "")
 
@@ -63,32 +63,60 @@ def _section(name: str, label: str) -> dict:
     return {"name": name, "label": label, "start_sec": 0.0, "end_sec": 8.0}
 
 
-def _visual_brief() -> dict:
+def _story_bible() -> dict:
     return {
-        "hero_identity": "East Asian heroine, graceful late-20s, sleek bob, satin blouse, gold earrings",
+        "hero_identity_lock": "East Asian heroine, graceful late-20s, sleek bob, satin blouse, gold earrings",
         "world_rules": "Wet city streets at night with polished reflections and restrained glamour.",
-        "visual_motifs": ["rain on glass", "chrome reflections"],
-        "negative_constraints": ["no sci-fi drift", "no chaotic motion"],
-        "section_briefs": [
+        "recurring_location_families": ["reflective threshold", "open night lane"],
+        "forbidden_drift": ["no sci-fi drift", "no chaotic motion"],
+        "lyric_beats": [
             {
+                "beat_id": "LB01_01",
                 "section_name": "intro",
-                "emotional_arc": "quiet anticipation",
+                "section_label": "Intro",
+                "line_refs": [1],
+                "literal_image": "rain on glass",
+                "visible_action": "slows by the window and checks the reflection",
+                "emotional_turn": "quiet anticipation",
+                "continuity_anchor": "gaze shift",
+                "payoff_role": "entry",
+                "repeat_variant_of": "",
+                "location_family": "reflective threshold",
                 "palette_hint": "soft blue silver",
                 "lighting_hint": "wet neon haze",
-                "staging_hint": "still pose by rain-streaked window",
-                "story_beat": "slows by the window and checks the reflection",
-                "location_anchor": "reflective threshold",
+                "camera_commitment": "still pose by rain-streaked window",
             },
             {
+                "beat_id": "LB02_01",
                 "section_name": "chorus",
-                "emotional_arc": "radiant return",
+                "section_label": "Final Chorus",
+                "line_refs": [1],
+                "literal_image": "chrome reflections",
+                "visible_action": "steps into the open street and finally faces forward",
+                "emotional_turn": "radiant return",
+                "continuity_anchor": "travel line",
+                "payoff_role": "release",
+                "repeat_variant_of": "",
+                "location_family": "open night lane",
                 "palette_hint": "warmer rose accent",
                 "lighting_hint": "chrome flare on skin",
-                "staging_hint": "open shoulders and direct gaze",
-                "story_beat": "steps into the open street and finally faces forward",
-                "location_anchor": "open night lane",
+                "camera_commitment": "open shoulders and direct gaze",
             },
         ],
+        "section_progression": [
+            {"section_name": "intro", "section_label": "Intro", "dominant_emotion": "quiet anticipation", "story_function": "entry", "lyric_beat_ids": ["LB01_01"]},
+            {"section_name": "chorus", "section_label": "Final Chorus", "dominant_emotion": "radiant return", "story_function": "payoff", "lyric_beat_ids": ["LB02_01"]},
+        ],
+        "repeat_escalation_rules": ["final chorus escalates"],
+    }
+
+
+def _timeline() -> dict:
+    return {
+        "sections": [
+            {"section_name": "intro", "section_label": "Intro", "lines": [{"line_index": 1, "text": "rain on glass"}], "hook_lines": [], "lyric_beats": [{"beat_id": "LB01_01", "line_refs": [1]}]},
+            {"section_name": "chorus", "section_label": "Final Chorus", "lines": [{"line_index": 1, "text": "chrome reflections"}], "hook_lines": [1], "lyric_beats": [{"beat_id": "LB02_01", "line_refs": [1]}]},
+        ]
     }
 
 

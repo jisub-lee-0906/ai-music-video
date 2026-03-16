@@ -1,6 +1,6 @@
 import ai_mv.core.orchestration.preflight as preflight_mod
-from ai_mv.engines.acestep_1_5_split.policy import audio_policy
-from ai_mv.engines.acestep_1_5_split.runner import _sections
+from ai_mv.engines.acestep_1_5_aio.policy import audio_policy
+from ai_mv.engines.acestep_1_5_aio.runner import _sections
 
 
 def test_audio_policy_auto_duration_uses_bpm_and_default_songform_bars():

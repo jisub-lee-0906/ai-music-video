@@ -1,6 +1,6 @@
 import pytest
 
-import ai_mv.engines.acestep_1_5_split.runner as audio_runner
+import ai_mv.engines.acestep_1_5_aio.runner as audio_runner
 
 
 def test_sections_preserve_verse_ids():

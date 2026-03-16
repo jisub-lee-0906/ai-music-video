@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from ai_mv.core.output_paths import audio_prefix
-from ai_mv.core.profile_brief import build_profile_brief, build_profile_intent, resolve_style_guidance
+from ai_mv.core.profile_brief import build_profile_intent
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
 )
 from ai_mv.core.contracts.prompt_schema import audio_schema
-from ai_mv.engines.acestep_1_5_split.policy import audio_policy
+from ai_mv.engines.acestep_1_5_aio.policy import audio_policy
 from ai_mv.infra.codex_cli_client import generate_structured
 
 
@@ -14,15 +14,12 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     audio = _audio_config(config)
     tags = _audio_tags(audio)
     intent = build_profile_intent(config)
-    profile = build_profile_brief(config)
     plan = {
         "tags": tags,
         "profile_intent": intent,
-        "style_guidance": resolve_style_guidance(config),
         "language": _audio_language(audio),
         "filename_prefix": audio_prefix(payload["run_id"]),
     }
-    plan.update(profile)
     plan.update(audio_policy(config))
     plan["hook_shape_bias"] = _hook_shape_bias(int(plan.get("seed", 31)), str(plan.get("language", "")).strip().lower())
     return _plan_once(config, plan)
@@ -169,17 +166,10 @@ def _intent_clause(plan: dict) -> str:
     parts = [
         _profile_line("Audio intent", audio.get("brief", "")),
         _profile_line("Hook intent", audio.get("hook_brief", "")),
-        _profile_line("World intent", world.get("visual_brief", "")),
+        _profile_line("World intent", world.get("visual_intent", "")),
         _profile_line("Story world", world.get("story_world", "")),
         _profile_line("Avoid", " ".join([str(negative.get("visual_negative", "")).strip(), str(negative.get("mv_avoid", "")).strip()]).strip()),
     ]
-    if not any(str(part).strip() for part in parts):
-        parts = [
-            _profile_line("Audio direction", plan.get("audio_direction", "")),
-            _profile_line("World lane", plan.get("profile_summary", "")),
-            _profile_line("Hook direction", plan.get("hook_direction", "")),
-            _profile_line("Avoid", plan.get("negative_direction", "")),
-        ]
     return "".join(parts)
 
 
@@ -206,16 +196,11 @@ def _plan_once(config: dict, plan: dict) -> dict:
 def _normalize_and_validate(config: dict, plan: dict) -> dict:
     planned = _plan_with_llm(config, plan)
     normalized = normalize_audio_fields(planned)
+    normalized["lyrics_blocks"] = _attach_line_indexes(normalized.get("lyrics_blocks", []))
     normalized["duration"] = _resolved_duration(plan, normalized)
     normalized["tags"] = plan["tags"]
     normalized["profile_intent"] = dict(plan.get("profile_intent", {}))
-    normalized["style_guidance"] = str(plan.get("style_guidance", "")).strip()
     normalized["language"] = plan["language"]
-    normalized["profile_summary"] = plan["profile_summary"]
-    normalized["audio_direction"] = plan["audio_direction"]
-    normalized["hook_direction"] = plan["hook_direction"]
-    normalized["visual_direction"] = plan["visual_direction"]
-    normalized["negative_direction"] = plan["negative_direction"]
     normalized["filename_prefix"] = plan["filename_prefix"]
     normalized["quality"] = plan["quality"]
     normalized["beats_per_bar"] = int(plan.get("beats_per_bar", 4))
@@ -226,10 +211,20 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     return normalized
 
 
+def _attach_line_indexes(blocks: list[dict]) -> list[dict]:
+    out: list[dict] = []
+    for block in blocks:
+        row = dict(block)
+        lines = [str(x).strip() for x in block.get("lines", []) if str(x).strip()]
+        row["indexed_lines"] = [{"line_index": idx, "text": text} for idx, text in enumerate(lines, start=1)]
+        out.append(row)
+    return out
+
+
 def _resolved_duration(plan: dict, normalized: dict) -> int:
     if bool(plan.get("duration_override")):
         return int(plan["duration"])
-    from ai_mv.engines.acestep_1_5_split.policy import compute_duration_from_blocks, resolve_section_bars
+    from ai_mv.engines.acestep_1_5_aio.policy import compute_duration_from_blocks, resolve_section_bars
 
     return compute_duration_from_blocks(
         normalized.get("lyrics_blocks", []),

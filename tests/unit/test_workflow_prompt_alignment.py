@@ -1,6 +1,6 @@
-import ai_mv.engines.acestep_1_5_split.planner as audio_planner
-import ai_mv.engines.flux_1_dev_tti.planner as tti_planner
-import ai_mv.engines.flux2_reference.planner as flux2_ref_planner
+import ai_mv.engines.acestep_1_5_aio.planner as audio_planner
+import ai_mv.engines.flux_2_dev_tti.planner as tti_planner
+import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 
 
@@ -15,7 +15,7 @@ def test_audio_prompt_mentions_acestep_tags_field_alignment():
             "negative_direction": "no futuristic sci-fi tone",
             "profile_intent": {
                 "audio_intent": {"brief": "mature female vocal, glossy piano", "hook_brief": "rain on glass, boulevard pulse"},
-                "world_intent": {"visual_brief": "warm urban nightlife", "story_world": "retro city-pop lane"},
+        "world_intent": {"visual_intent": "warm urban nightlife", "story_world": "retro city-pop lane"},
                 "negative_intent": {"visual_negative": "no futuristic sci-fi tone", "mv_avoid": "no clutter"},
             },
             "duration": 200,
@@ -27,51 +27,21 @@ def test_audio_prompt_mentions_acestep_tags_field_alignment():
 
 
 def test_tti_prompt_mentions_direct_text_encoder_alignment():
-    brief = {
-        "hero_identity": "hero",
-        "world_rules": "world",
-        "recurring_location_families": ["reflective threshold"],
-        "allowed_visual_variation": ["framing changes"],
-        "visual_motifs": ["rain"],
-        "negative_constraints": ["drift"],
-        "section_briefs": [
-            {
-                "section_name": "chorus",
-                "emotional_arc": "lift",
-                "palette_hint": "red",
-                "lighting_hint": "glow",
-                "staging_hint": "front portrait",
-                "story_beat": "opens up in the same street",
-                "location_anchor": "reflective threshold",
-                "escalation_level": "payoff",
-                "motion_axis": "gaze shift",
-            }
-        ],
+    payload = {
+        "visual_story_bible": _story_bible(),
+        "lyrics_timeline": _timeline(),
     }
-    audio_map = {
-        "profile_intent": {
-            "audio_intent": {"brief": "desc", "hook_brief": "hook"},
-            "world_intent": {"visual_brief": "harbor neon romance", "story_world": "retro city-pop lane"},
-        },
-        "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
-    }
-    sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
-    prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
-    assert "deterministic visual contract" in prompt
-    assert "master_anchor prompt_text must be a compact diffusion prompt string composed of stable identity and world facts only" in prompt
-    assert "Escalation guide=" in prompt
-    assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
-    assert "Honor each section's story_beat, location_anchor, escalation_level, and motion_axis" in prompt
-    assert "Shot grammar=" in prompt
-    assert "Location grammar=" in prompt
-    assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
-    assert "Audio intent=desc" in prompt
-    assert "World intent=harbor neon romance" in prompt
+    prompt = tti_planner._planner_prompt({}, payload)
+    assert "lyric-first shot planner building a shot timeline" in prompt
+    assert "master_anchor prompt_text must contain only stable identity and world facts" in prompt
+    assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation,edit_role,continuity_lock,clip_count" in prompt
+    assert "Story bible=" in prompt
+    assert "Lyric timeline=" in prompt
 
 
 def test_flux2_ref_prompt_mentions_atom_generation_contract():
     payload = {
-        "visual_brief": _brief(),
+        "visual_story_bible": _story_bible(),
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
@@ -83,7 +53,7 @@ def test_flux2_ref_prompt_mentions_atom_generation_contract():
 
 def test_wan_prompt_mentions_motion_atom_contract():
     payload = {
-        "visual_brief": _brief(),
+        "visual_story_bible": _story_bible(),
     }
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
@@ -120,27 +90,48 @@ def test_flux2_ref_anchor_summary_includes_clip_phase():
     assert "establish" in row
 
 
-def _brief() -> dict:
+def _story_bible() -> dict:
     return {
-        "hero_identity": "hero",
+        "hero_identity_lock": "hero",
         "world_rules": "world",
         "recurring_location_families": ["reflective threshold"],
-        "allowed_visual_variation": ["framing changes"],
-        "visual_motifs": ["rain"],
-        "negative_constraints": ["drift"],
-        "section_briefs": [
+        "forbidden_drift": ["drift"],
+        "lyric_beats": [
             {
+                "beat_id": "LB01_01",
                 "section_name": "chorus",
-                "emotional_arc": "lift",
+                "section_label": "Final Chorus",
+                "line_refs": [1],
+                "literal_image": "rain street",
+                "visible_action": "opens up in the same street",
+                "emotional_turn": "lift",
+                "continuity_anchor": "gaze shift",
+                "payoff_role": "release",
+                "repeat_variant_of": "",
+                "location_family": "reflective threshold",
                 "palette_hint": "red",
                 "lighting_hint": "glow",
-                "staging_hint": "front portrait",
-                "story_beat": "opens up in the same street",
-                "location_anchor": "reflective threshold",
-                "escalation_level": "payoff",
-                "motion_axis": "gaze shift",
+                "camera_commitment": "front portrait",
             }
         ],
+        "section_progression": [
+            {"section_name": "chorus", "section_label": "Final Chorus", "dominant_emotion": "lift", "story_function": "payoff", "lyric_beat_ids": ["LB01_01"]}
+        ],
+        "repeat_escalation_rules": ["final chorus must escalate visually"],
+    }
+
+
+def _timeline() -> dict:
+    return {
+        "sections": [
+            {
+                "section_name": "chorus",
+                "section_label": "Final Chorus",
+                "lines": [{"line_index": 1, "text": "rain street"}],
+                "hook_lines": [1],
+                "lyric_beats": [{"beat_id": "LB01_01", "line_refs": [1]}],
+            }
+        ]
     }
 
 

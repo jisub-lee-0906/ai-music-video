@@ -14,12 +14,13 @@ from ai_mv.core.quality_review import build_quality_review, build_run_summary
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
-from ai_mv.engines.acestep_1_5_split.planner import _audio_prompt, build_audio_plan
-from ai_mv.engines.acestep_1_5_split.runner import _sections
-from ai_mv.engines.flux2_reference.planner import build_flux2_ref_plan
-from ai_mv.engines.flux_1_dev_tti.planner import build_tti_plan
-from ai_mv.engines.flux_1_dev_tti.runner import _pack_anchor
-from ai_mv.engines.visual_bridge.planner import build_visual_brief
+from ai_mv.engines.acestep_1_5_aio.planner import _audio_prompt, build_audio_plan
+from ai_mv.engines.acestep_1_5_aio.runner import _sections
+from ai_mv.engines.flux_2_dev_ref.planner import build_flux2_ref_plan
+from ai_mv.engines.flux_2_dev_tti.planner import build_tti_plan
+from ai_mv.engines.flux_2_dev_tti.runner import _pack_anchor
+from ai_mv.engines.lyrics_timeline.planner import build_lyrics_timeline
+from ai_mv.engines.visual_story_bible.planner import build_visual_story_bible
 from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
 
 
@@ -31,8 +32,9 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
     stage_input = StageInput(run_id=state["run_id"], config=cfg, payload=payload)
     try:
         _run_preflight_stage(state, stage_input, "acestep_music", _add_audio)
-        _run_preflight_stage(state, stage_input, "visual_bridge", _add_visual)
-        _run_preflight_stage(state, stage_input, "tti_anchor", _add_tti)
+        _run_preflight_stage(state, stage_input, "lyrics_timeline", _add_lyrics_timeline)
+        _run_preflight_stage(state, stage_input, "visual_story_bible", _add_story_bible)
+        _run_preflight_stage(state, stage_input, "shot_timeline", _add_shot_timeline)
         _run_preflight_stage(state, stage_input, "shot_router", _add_shot_router)
         _run_preflight_stage(state, stage_input, "flux2_ref_chain", _add_flux2_ref)
         _run_preflight_stage(state, stage_input, "wan_interpolation", _add_wan)
@@ -79,36 +81,54 @@ def _add_audio(stage_input: StageInput) -> None:
     )
 
 
-def _add_visual(stage_input: StageInput) -> None:
-    brief = build_visual_brief(stage_input.config, stage_input.payload)
+def _add_lyrics_timeline(stage_input: StageInput) -> None:
+    from ai_mv.engines.lyrics_timeline.planner import _planner_prompt
+
+    timeline = build_lyrics_timeline(stage_input.config, stage_input.payload)
     stage_input.payload.update(
         {
-            "visual_brief": brief,
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), visual_brief=brief),
+            "lyrics_timeline": timeline,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), lyrics_timeline=timeline),
             "planner_prompts": _merge(
                 stage_input.payload,
-                "visual_bridge",
-                {"prompt": _visual_prompt(stage_input.payload["audio_map"])},
+                "lyrics_timeline",
+                {"prompt": _planner_prompt(stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])},
             ),
+            "workflow_inputs_preview": _merge(stage_input.payload, "lyrics_timeline", {"sections": list(timeline.get("sections", []))}),
         }
     )
 
 
-def _add_tti(stage_input: StageInput) -> None:
-    from ai_mv.core.stages.tti_anchor import _tti_prompt, _tti_workflow_input
+def _add_story_bible(stage_input: StageInput) -> None:
+    from ai_mv.engines.visual_story_bible.planner import _planner_prompt
+
+    story_bible = build_visual_story_bible(stage_input.config, stage_input.payload)
+    stage_input.payload.update(
+        {
+            "visual_story_bible": story_bible,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), visual_story_bible=story_bible),
+            "planner_prompts": _merge(stage_input.payload, "visual_story_bible", {"prompt": _planner_prompt(stage_input.config, stage_input.payload)}),
+            "workflow_inputs_preview": _merge(stage_input.payload, "visual_story_bible", {"story_bible_preview": story_bible}),
+        }
+    )
+
+
+def _add_shot_timeline(stage_input: StageInput) -> None:
+    from ai_mv.core.stages.shot_timeline import _tti_workflow_input
+    from ai_mv.engines.flux_2_dev_tti.planner import _planner_prompt
 
     plan = build_tti_plan(stage_input.config, stage_input.payload)
     anchors = [_pack_anchor(shot, "preflight://anchor/master.png") for shot in plan["shots"]]
     stage_input.payload.update(
         {
             "anchors": anchors,
-            "shot_plan": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), shot_plan={"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}),
-            "planner_prompts": _merge(stage_input.payload, "tti_anchor", {"prompt": _tti_prompt(stage_input, plan)}),
+            "shot_timeline": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), shot_timeline={"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}),
+            "planner_prompts": _merge(stage_input.payload, "shot_timeline", {"prompt": _planner_prompt(stage_input.config, stage_input.payload)}),
             "workflow_inputs_preview": _merge(
                 stage_input.payload,
-                "tti_anchor",
-                {"master_anchor": _tti_workflow_input(stage_input.config, plan["master_anchor"])},
+                "shot_timeline",
+                {"master_anchor": _tti_workflow_input(stage_input.config, plan["master_anchor"]), "shots": list(plan["shots"])},
             ),
         }
     )
@@ -191,29 +211,17 @@ def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
         "lyrics": str(plan.get("lyrics", "")).strip(),
         "tags": str(plan.get("tags", "")).strip(),
         "profile_intent": dict(plan.get("profile_intent", {})),
-        "style_guidance": str(plan.get("style_guidance", "")).strip(),
         "language": str(plan.get("language", "")).strip(),
-        "profile_summary": str(plan.get("profile_summary", "")).strip(),
-        "audio_direction": str(plan.get("audio_direction", "")).strip(),
-        "hook_direction": str(plan.get("hook_direction", "")).strip(),
-        "visual_direction": str(plan.get("visual_direction", "")).strip(),
-        "negative_direction": str(plan.get("negative_direction", "")).strip(),
         "section_semantics": build_section_semantics(config, list(audio_map.get("sections", []))),
         "mv_directives": build_mv_directives(config),
     }
 
 
 def _audio_inputs(config: dict, plan: dict) -> dict:
-    from ai_mv.engines.acestep_1_5_split.mapper import AUDIO_TEXT, map_audio_workflow
+    from ai_mv.engines.acestep_1_5_aio.mapper import AUDIO_TEXT, map_audio_workflow
 
     wf = map_audio_workflow(config, plan)
     return dict(wf["node.inputs"][AUDIO_TEXT])
-
-
-def _visual_prompt(audio_map: dict) -> str:
-    from ai_mv.engines.visual_bridge.planner import _planner_prompt
-
-    return _planner_prompt({}, audio_map, list(audio_map["sections"]))
 
 
 def _preflight_flux2_ref_item(item: dict) -> dict:
@@ -225,7 +233,7 @@ def _preflight_flux2_ref_item(item: dict) -> dict:
 
 
 def _merge(payload: dict, key: str, value: dict) -> dict:
-    if key in {"audio", "visual_bridge", "tti_anchor", "shot_router", "flux2_ref_chain", "wan_interpolation"}:
+    if key in {"audio", "lyrics_timeline", "visual_story_bible", "shot_timeline", "shot_router", "flux2_ref_chain", "wan_interpolation"}:
         root = "planner_prompts" if "prompt" in value or "batches" in value else "workflow_inputs_preview"
         out = dict(payload.get(root, {}))
         out[key] = value

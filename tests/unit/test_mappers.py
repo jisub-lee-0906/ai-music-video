@@ -1,8 +1,8 @@
-from ai_mv.engines.acestep_1_5_split.mapper import map_audio_workflow
-from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow
-from ai_mv.engines.flux2_reference.mapper import map_flux2_ref_workflow
+from ai_mv.engines.acestep_1_5_aio.mapper import map_audio_workflow
+from ai_mv.engines.flux_2_dev_tti.mapper import map_tti_workflow
+from ai_mv.engines.flux_2_dev_ref.mapper import map_flux2_ref_workflow
 from ai_mv.engines.wan_2_2_flf2v.mapper import map_wan_workflow
-from ai_mv.core.output_paths import audio_prefix, flux2_ref_frame_prefix, tti_anchor_prefix, wan_clip_prefix
+from ai_mv.core.output_paths import audio_prefix, flux2_ref_frame_prefix, master_anchor_prefix, wan_clip_prefix
 
 
 def test_audio_mapper():
@@ -54,7 +54,7 @@ def test_tti_mapper():
     shot = {
         "prompt_text": "cinematic portrait, silver hair, magical butterflies, glass roses, soft rim light, dream garden",
         "seed": 3,
-        "filename_prefix": tti_anchor_prefix(),
+        "filename_prefix": master_anchor_prefix(),
     }
     out = map_tti_workflow(cfg, shot)
     nodes = out["node.inputs"]

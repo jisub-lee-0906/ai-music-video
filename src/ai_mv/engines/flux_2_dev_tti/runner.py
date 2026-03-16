@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from ai_mv.core.output_paths import tti_anchor_prefix
+from ai_mv.core.output_paths import master_anchor_prefix
 from ai_mv.core.workflow_names import TTI_WORKFLOW
 from ai_mv.infra.comfy_outputs import pick_image_file
-from ai_mv.engines.flux_1_dev_tti.mapper import map_tti_workflow, tti_required_inputs
+from ai_mv.engines.flux_2_dev_tti.mapper import map_tti_workflow, tti_required_inputs
 from ai_mv.infra.comfy_client import run_workflow
 
 
@@ -21,7 +21,7 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
 
 def _run_master(config: dict, master: dict) -> str:
     payload = dict(master)
-    payload["filename_prefix"] = tti_anchor_prefix()
+    payload["filename_prefix"] = master_anchor_prefix()
     result = _run_shot_tti(config, payload, "character_master")
     return pick_image_file(result["files"], "TTI character_master")
 
@@ -45,6 +45,11 @@ def _pack_anchor(shot: dict, anchor: str) -> dict:
         "section_label": str(shot.get("section_label", shot.get("section_name", "section"))),
         "duration_sec": float(shot["duration_sec"]),
         "is_chorus": bool(shot["is_chorus"]),
+        "lyric_beat_id": str(shot.get("lyric_beat_id", "")),
+        "line_refs": list(shot.get("line_refs", [])),
+        "literal_image": str(shot.get("literal_image", "")),
+        "continuity_lock": str(shot.get("continuity_lock", "")),
+        "edit_role": str(shot.get("edit_role", "")),
         "camera_language": str(shot.get("camera_language", "")),
         "pose_delta": str(shot.get("pose_delta", "")),
         "emotion": str(shot.get("emotion", "")),

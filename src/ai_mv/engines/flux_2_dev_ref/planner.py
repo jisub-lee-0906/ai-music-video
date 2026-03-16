@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from ai_mv.engines.visual_bridge.brief_views import compact_section_atoms, compact_world_atoms
+from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 
 
 def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
     routes = [dict(row) for row in payload.get("clip_routes", []) if isinstance(row, dict) and bool(row.get("use_ref", False))]
     if not routes:
         return {"items": []}
-    items = [_build_item(route, payload["visual_brief"]) for route in routes]
+    items = [_build_item(route, payload["visual_story_bible"]) for route in routes]
     return {"items": items}
 
 
 def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
-    world = compact_world_atoms(payload["visual_brief"])
+    world = compact_world_atoms(payload["visual_story_bible"])
     summary = _anchor_summary(anchors)
     carry_clause = f"carry={carry}; " if carry else ""
     escalation = " Final Chorus should feel like the visual peak." if any("final chorus" in str(anchor.get("section_label", "")).lower() for anchor in anchors) else ""
@@ -32,7 +32,7 @@ def _flux2_ref_planner_batch_size(config: dict) -> int:
 
 
 def _build_item(anchor: dict, brief: dict) -> dict:
-    section = compact_section_atoms(brief, str(anchor.get("section_name", "")))
+    section = _beat_atoms(brief, anchor)
     subject_clause = _subject_clause(brief, anchor)
     action_clause = _action_clause(anchor, section)
     environment_clause = _environment_clause(anchor, section)
@@ -90,7 +90,11 @@ def _action_clause(anchor: dict, section: dict) -> str:
 def _environment_clause(anchor: dict, section: dict) -> str:
     palette = str(section.get("palette_hint", "")).strip()
     lighting = str(section.get("lighting_hint", "")).strip()
-    location = str(section.get("location_anchor", "")).strip() or str(anchor.get("scene_detail", "")).strip()
+    location = (
+        str(section.get("location_family", "")).strip()
+        or str(section.get("location_anchor", "")).strip()
+        or str(anchor.get("scene_detail", "")).strip()
+    )
     parts = [location, palette, lighting]
     return _trim_words(", ".join(part for part in parts if part), 20)
 
@@ -141,6 +145,17 @@ def _trim_words(text: str, max_words: int) -> str:
     words = [word for word in str(text).replace(",", " ,").split() if word]
     out = " ".join(words[: max_words]).replace(" ,", ",")
     return out.strip(" ,")
+
+
+def _beat_atoms(brief: dict, anchor: dict) -> dict:
+    beat_id = str(anchor.get("lyric_beat_id", "")).strip()
+    if beat_id:
+        for beat in brief.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            if str(beat.get("beat_id", "")).strip() == beat_id:
+                return dict(beat)
+    return compact_section_atoms(brief, str(anchor.get("section_name", "")))
 
 
 def _action_fragment(text: str) -> str:

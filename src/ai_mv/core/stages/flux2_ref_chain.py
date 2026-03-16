@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.engines.flux2_reference.mapper import FLUX2_REF_TEXT_POS, map_flux2_ref_workflow
-from ai_mv.engines.flux2_reference.planner import (
+from ai_mv.engines.flux_2_dev_ref.mapper import FLUX2_REF_TEXT_POS, map_flux2_ref_workflow
+from ai_mv.engines.flux_2_dev_ref.planner import (
     _planner_prompt,
     _flux2_ref_planner_batch_size,
     build_flux2_ref_plan,
 )
-from ai_mv.engines.flux2_reference.runner import run_flux2_ref
+from ai_mv.engines.flux_2_dev_ref.runner import run_flux2_ref
 
 
 def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:

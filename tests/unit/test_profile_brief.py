@@ -1,6 +1,6 @@
 import pytest
 
-from ai_mv.core.profile_brief import build_profile_brief, resolve_style_guidance, validate_profile_brief_config
+from ai_mv.core.profile_brief import build_profile_intent, validate_profile_brief_config
 
 
 def _profile() -> dict:
@@ -29,18 +29,10 @@ def test_validate_profile_brief_config_requires_explicit_fields():
         validate_profile_brief_config(bad)
 
 
-def test_build_profile_brief_uses_only_explicit_fields():
-    brief = build_profile_brief(_profile())
-    assert "Explicit audio brief" in brief["audio_direction"]
-    assert "Explicit hook brief" in brief["hook_direction"]
-    assert "Explicit visual brief" in brief["visual_direction"]
-    assert "Explicit visual negative" in brief["negative_direction"]
-
-
-def test_resolve_style_guidance_uses_brief_fields_only():
-    text = resolve_style_guidance(_profile())
-    assert "Explicit audio brief." in text
-    assert "Explicit visual brief." in text
-    assert "Explicit story world." in text
-    assert "Explicit actions." in text
-    assert "Explicit payoff style." in text
+def test_build_profile_intent_uses_only_explicit_fields():
+    intent = build_profile_intent(_profile())
+    assert intent["audio_intent"]["brief"] == "Explicit audio brief."
+    assert intent["audio_intent"]["hook_brief"] == "Explicit hook brief."
+    assert intent["world_intent"]["visual_intent"] == "Explicit visual brief."
+    assert intent["negative_intent"]["visual_negative"] == "Explicit visual negative."
+    assert intent["negative_intent"]["mv_avoid"] == "Explicit avoid."

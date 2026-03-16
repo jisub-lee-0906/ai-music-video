@@ -10,7 +10,7 @@ def audio_prefix(run_id: str) -> str:
     return f"{MUSIC_DIR}/{str(run_id).strip()}_music"
 
 
-def tti_anchor_prefix() -> str:
+def master_anchor_prefix() -> str:
     return f"{ANCHOR_DIR}/character_master"
 
 

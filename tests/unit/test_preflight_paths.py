@@ -26,14 +26,14 @@ def test_preflight_state_uses_dedicated_root(tmp_path, monkeypatch):
         "run_id": run_dir.name,
         "scope": "preflight",
         "status": "running",
-        "current_stage": "visual_bridge",
+        "current_stage": "visual_story_bible",
         "failure_reason": "",
         "completed_stages": ["acestep_music"],
     }
     save_snapshot(state, {"selected_profile": "demo"})
     snap = read_snapshot(run_id, scope="preflight")
     assert snap["scope"] == "preflight"
-    assert snap["current_stage"] == "visual_bridge"
+    assert snap["current_stage"] == "visual_story_bible"
     assert (run_dir / "snapshot.json").exists()
 
 
@@ -46,15 +46,15 @@ def test_read_snapshot_auto_finds_preflight_state(tmp_path, monkeypatch):
             "run_id": run_dir.name,
             "scope": "preflight",
             "status": "failed",
-            "current_stage": "tti_anchor",
-            "failure_reason": "tti_anchor: boom",
-            "completed_stages": ["acestep_music", "visual_bridge"],
+            "current_stage": "shot_timeline",
+            "failure_reason": "shot_timeline: boom",
+            "completed_stages": ["acestep_music", "lyrics_timeline", "visual_story_bible"],
         },
         {"selected_profile": "demo"},
     )
     snap = read_snapshot(run_id)
     assert snap["scope"] == "preflight"
-    assert snap["failure_reason"] == "tti_anchor: boom"
+    assert snap["failure_reason"] == "shot_timeline: boom"
 
 
 def test_preflight_failure_writes_partial_artifacts_and_traceback(monkeypatch):
@@ -112,6 +112,6 @@ def test_preflight_stage_validates_input(monkeypatch):
     state = {"current_stage": "", "completed_stages": []}
     stage_input = type("StageInputStub", (), {"payload": {"audio_map": {"x": 1}}})()
 
-    preflight_mod._run_preflight_stage(state, stage_input, "visual_bridge", lambda _stage_input: None)
+    preflight_mod._run_preflight_stage(state, stage_input, "visual_story_bible", lambda _stage_input: None)
 
-    assert calls == ["visual_bridge"]
+    assert calls == ["visual_story_bible"]

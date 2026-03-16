@@ -4,11 +4,12 @@ from ai_mv.core.contracts.errors import StageFailure
 
 
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
-    "visual_bridge": ("audio_map",),
-    "tti_anchor": ("audio_map", "visual_brief"),
-    "shot_router": ("anchors", "audio_map", "visual_brief"),
-    "flux2_ref_chain": ("clip_routes", "audio_map", "visual_brief"),
-    "wan_interpolation": ("clip_routes", "audio_map", "visual_brief"),
+    "lyrics_timeline": ("audio_plan", "audio_map"),
+    "visual_story_bible": ("profile_intent", "lyrics_timeline"),
+    "shot_timeline": ("lyrics_timeline", "visual_story_bible"),
+    "shot_router": ("anchors", "audio_map", "shot_timeline"),
+    "flux2_ref_chain": ("clip_routes", "audio_map", "visual_story_bible", "shot_timeline"),
+    "wan_interpolation": ("clip_routes", "audio_map", "visual_story_bible", "shot_timeline"),
     "merge_mux": ("clips", "music_file"),
 }
 

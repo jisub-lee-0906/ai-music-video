@@ -178,6 +178,7 @@ def route_summary(routes: list[dict]) -> list[dict]:
         out.append(
             {
                 "shot_id": str(row.get("shot_id", "")),
+                "lyric_beat_id": str(row.get("lyric_beat_id", "")),
                 "use_ref": bool(row.get("use_ref", False)),
                 "reason": str(row.get("route_reason", "")),
                 "mv_function": str(row.get("mv_function", "")),

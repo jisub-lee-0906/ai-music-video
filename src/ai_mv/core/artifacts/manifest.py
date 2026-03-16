@@ -10,7 +10,9 @@ def write_manifest(state: dict, payload: dict) -> None:
         "run_id": state["run_id"],
         "status": state["status"],
         "failure_reason": state["failure_reason"],
-        "visual_brief": dict(payload.get("visual_brief", {})),
+        "lyrics_timeline": dict(payload.get("lyrics_timeline", {})),
+        "visual_story_bible": dict(payload.get("visual_story_bible", {})),
+        "shot_timeline": dict(payload.get("shot_timeline", {})),
         "anchors": _anchor_rows(payload),
         "clip_routes": _route_rows(payload),
         "flux2_ref_images": _flux2_ref_rows(payload),
@@ -32,6 +34,7 @@ def _anchor_rows(payload: dict) -> list[dict]:
         out.append(
             {
                 "shot_id": str(row.get("shot_id", "")),
+                "lyric_beat_id": str(row.get("lyric_beat_id", "")),
                 "anchor": str(row.get("anchor", "")),
                 "retry": int(row.get("retry", 0)),
                 "error_body": str(row.get("error_body", "")),
@@ -65,6 +68,7 @@ def _route_rows(payload: dict) -> list[dict]:
         out.append(
             {
                 "shot_id": str(row.get("shot_id", "")),
+                "lyric_beat_id": str(row.get("lyric_beat_id", "")),
                 "use_ref": bool(row.get("use_ref", False)),
                 "route_reason": str(row.get("route_reason", "")),
                 "mv_function": str(row.get("mv_function", "")),

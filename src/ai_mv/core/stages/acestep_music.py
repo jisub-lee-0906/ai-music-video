@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
-from ai_mv.engines.acestep_1_5_split.mapper import AUDIO_TEXT, map_audio_workflow
-from ai_mv.engines.acestep_1_5_split.planner import _audio_prompt, build_audio_plan
-from ai_mv.engines.acestep_1_5_split.runner import run_audio_split
+from ai_mv.engines.acestep_1_5_aio.mapper import AUDIO_TEXT, map_audio_workflow
+from ai_mv.engines.acestep_1_5_aio.planner import _audio_prompt, build_audio_plan
+from ai_mv.engines.acestep_1_5_aio.runner import run_audio_split
 
 
 def run_acestep_music(stage_input: StageInput) -> StageOutput:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from ai_mv.core.workflow_names import AUDIO_WORKFLOW
-from ai_mv.engines.acestep_1_5_split.mapper import audio_required_inputs, map_audio_workflow
-from ai_mv.engines.acestep_1_5_split.policy import compute_section_windows
+from ai_mv.engines.acestep_1_5_aio.mapper import audio_required_inputs, map_audio_workflow
+from ai_mv.engines.acestep_1_5_aio.policy import compute_section_windows
 from ai_mv.infra.comfy_outputs import pick_audio_file
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.utils.path_utils import resolve_generated_file

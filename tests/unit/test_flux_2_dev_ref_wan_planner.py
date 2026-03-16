@@ -1,9 +1,9 @@
-from ai_mv.engines.flux2_reference.planner import build_flux2_ref_plan
+from ai_mv.engines.flux_2_dev_ref.planner import build_flux2_ref_plan
 from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
 
 
 def test_flux2_ref_plan_is_deterministic():
-    payload = {"clip_routes": [_route("a", True), _route("b", True)], "visual_brief": _brief()}
+    payload = {"clip_routes": [_route("a", True), _route("b", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
     shot_ids = [x["shot_id"] for x in out["items"]]
     assert shot_ids == ["a", "b"]
@@ -13,12 +13,12 @@ def test_flux2_ref_plan_is_deterministic():
 
 
 def test_flux2_ref_plan_empty_when_no_ref_routes():
-    out = build_flux2_ref_plan({}, {"clip_routes": [], "visual_brief": _brief()})
+    out = build_flux2_ref_plan({}, {"clip_routes": [], "visual_story_bible": _story_bible()})
     assert out["items"] == []
 
 
 def test_flux2_ref_prompt_text_includes_subject_action_and_environment():
-    payload = {"clip_routes": [_route("a", True)], "visual_brief": _brief()}
+    payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
     text = out["items"][0]["prompt_text"]
     assert "silver-haired city-pop heroine" in text
@@ -30,7 +30,7 @@ def test_wan_plan_uses_start_end_only():
     payload = {
         "clip_routes": [_route("x", False)],
         "flux2_ref_images": [_flux2_ref("x", 4.0)],
-        "visual_brief": _brief(),
+        "visual_story_bible": _story_bible(),
     }
     out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
     assert len(out["clips"]) == 1
@@ -47,7 +47,7 @@ def test_wan_plan_prefers_ref_frames_when_route_requires_it():
     payload = {
         "clip_routes": [_route("x", True)],
         "flux2_ref_images": [_flux2_ref("x", 4.0)],
-        "visual_brief": _brief(),
+        "visual_story_bible": _story_bible(),
     }
     out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
     assert out["clips"][0]["start"] == "s.png"
@@ -58,7 +58,7 @@ def test_wan_plan_requires_ref_frames_for_ref_routed_clip():
     payload = {
         "clip_routes": [_route("x", True)],
         "flux2_ref_images": [],
-        "visual_brief": _brief(),
+        "visual_story_bible": _story_bible(),
     }
     try:
         build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
@@ -68,7 +68,7 @@ def test_wan_plan_requires_ref_frames_for_ref_routed_clip():
 
 
 def test_wan_planner_clip_cap_guard():
-    payload = {"clip_routes": [_route("x", False, duration=6.0)], "flux2_ref_images": [_flux2_ref("x", 6.0)], "visual_brief": _brief()}
+    payload = {"clip_routes": [_route("x", False, duration=6.0)], "flux2_ref_images": [_flux2_ref("x", 6.0)], "visual_story_bible": _story_bible()}
     try:
         build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 5.0}}, payload)
         assert False, "expected RuntimeError"
@@ -82,7 +82,7 @@ def test_wan_energy_policy_pre_chorus_not_forced_high():
         {
             "clip_routes": [{**_route("x", False), "section_name": "pre_chorus", "section_label": "Pre-Chorus"}],
             "flux2_ref_images": [_flux2_ref("x", 4.0)],
-            "visual_brief": _brief_with_section("pre_chorus", "pre chorus lift", "lit passage", "lift", "travel line"),
+            "visual_story_bible": _story_bible_with_section("pre_chorus", "pre chorus lift", "lit passage", "lift", "travel line"),
         },
     )
     assert out["clips"][0]["energy"] == "normal"
@@ -98,7 +98,7 @@ def test_wan_chains_split_clip_starts_from_previous_end():
                 {**_route("S001_C03", False), "shot_id": "S001_C03"},
             ],
             "flux2_ref_images": [],
-            "visual_brief": _brief(),
+            "visual_story_bible": _story_bible(),
         },
     )["clips"]
     assert clips[0]["start"] == "S001_C01.png"
@@ -116,7 +116,7 @@ def test_wan_plan_varies_subject_motion_by_clip_phase():
                 {**_route("S001_C03", False), "shot_id": "S001_C03", "clip_index": 3, "clip_count": 3},
             ],
             "flux2_ref_images": [],
-            "visual_brief": _brief(),
+            "visual_story_bible": _story_bible(),
         },
     )["clips"]
     motions = [clip["subject_motion"].lower() for clip in clips]
@@ -128,7 +128,7 @@ def test_wan_plan_varies_subject_motion_by_clip_phase():
 
 
 def test_flux2_ref_action_clause_is_not_prefixed_with_duplicate_subject():
-    payload = {"clip_routes": [_route("a", True)], "visual_brief": _brief()}
+    payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
     assert "she she" not in out["items"][0]["prompt_text"].lower()
 
@@ -153,6 +153,7 @@ def _flux2_ref(shot_id: str, duration: float) -> dict:
 def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
     return {
         "shot_id": shot_id,
+        "lyric_beat_id": "LB02_01" if chorus else "LB01_01",
         "anchor": f"{shot_id}.png",
         "identity_anchor": f"{shot_id}.png",
         "is_chorus": chorus,
@@ -177,60 +178,80 @@ def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
     }
 
 
-def _brief() -> dict:
+def _story_bible() -> dict:
     return {
-        "hero_identity": "silver-haired city-pop heroine",
+        "hero_identity_lock": "silver-haired city-pop heroine",
         "world_rules": "retro neon nightlife with polished stage depth",
         "recurring_location_families": ["reflective threshold", "lit passage"],
-        "allowed_visual_variation": ["framing changes", "palette accents"],
-        "visual_motifs": ["neon reflections", "chrome microphone"],
-        "negative_constraints": ["identity drift", "random fantasy props"],
-        "section_briefs": [
+        "forbidden_drift": ["identity drift", "random fantasy props"],
+        "lyric_beats": [
             {
+                "beat_id": "LB01_01",
                 "section_name": "verse",
-                "emotional_arc": "steady confidence",
+                "section_label": "Verse 1",
+                "line_refs": [1],
+                "literal_image": "reflective threshold",
+                "visible_action": "passes the reflective threshold with a calm step",
+                "emotional_turn": "steady confidence",
+                "continuity_anchor": "travel line",
+                "payoff_role": "develop",
+                "repeat_variant_of": "",
+                "location_family": "reflective threshold",
                 "palette_hint": "teal-magenta glow",
                 "lighting_hint": "soft rim light",
-                "staging_hint": "clean stage depth",
-                "story_beat": "passes the reflective threshold with a calm step",
-                "location_anchor": "reflective threshold",
-                "escalation_level": "steady",
-                "motion_axis": "travel line",
+                "camera_commitment": "clean stage depth",
             },
             {
+                "beat_id": "LB02_01",
                 "section_name": "chorus",
-                "emotional_arc": "bright release",
+                "section_label": "Final Chorus",
+                "line_refs": [1],
+                "literal_image": "reflective threshold",
+                "visible_action": "opens up in the same lane and holds the look",
+                "emotional_turn": "bright release",
+                "continuity_anchor": "gaze shift",
+                "payoff_role": "release",
+                "repeat_variant_of": "",
+                "location_family": "reflective threshold",
                 "palette_hint": "rose-cyan bloom",
                 "lighting_hint": "wide glow",
-                "staging_hint": "hero frontal release",
-                "story_beat": "opens up in the same lane and holds the look",
-                "location_anchor": "reflective threshold",
-                "escalation_level": "payoff",
-                "motion_axis": "gaze shift",
+                "camera_commitment": "hero frontal release",
             },
         ],
+        "section_progression": [
+            {"section_name": "verse", "section_label": "Verse 1", "dominant_emotion": "steady confidence", "story_function": "coverage", "lyric_beat_ids": ["LB01_01"]},
+            {"section_name": "chorus", "section_label": "Final Chorus", "dominant_emotion": "bright release", "story_function": "payoff", "lyric_beat_ids": ["LB02_01"]},
+        ],
+        "repeat_escalation_rules": ["final chorus should escalate"],
     }
 
 
-def _brief_with_section(name: str, beat: str, location: str, escalation: str, motion_axis: str) -> dict:
+def _story_bible_with_section(name: str, beat: str, location: str, escalation: str, motion_axis: str) -> dict:
     return {
-        "hero_identity": "silver-haired city-pop heroine",
+        "hero_identity_lock": "silver-haired city-pop heroine",
         "world_rules": "retro neon nightlife with polished stage depth",
         "recurring_location_families": [location],
-        "allowed_visual_variation": ["framing changes"],
-        "visual_motifs": [location],
-        "negative_constraints": ["identity drift"],
-        "section_briefs": [
+        "forbidden_drift": ["identity drift"],
+        "lyric_beats": [
             {
+                "beat_id": "LB01_01",
                 "section_name": name,
-                "emotional_arc": "lift",
+                "section_label": name,
+                "line_refs": [1],
+                "literal_image": location,
+                "visible_action": beat,
+                "emotional_turn": "lift",
+                "continuity_anchor": motion_axis,
+                "payoff_role": escalation,
+                "repeat_variant_of": "",
+                "location_family": location,
                 "palette_hint": "teal glow",
                 "lighting_hint": "soft rim light",
-                "staging_hint": "clean stage depth",
-                "story_beat": beat,
-                "location_anchor": location,
-                "escalation_level": escalation,
-                "motion_axis": motion_axis,
+                "camera_commitment": "clean stage depth",
             }
         ],
+        "section_progression": [
+            {"section_name": name, "section_label": name, "dominant_emotion": "lift", "story_function": escalation, "lyric_beat_ids": ["LB01_01"]}
+        ],
+        "repeat_escalation_rules": ["repeats must vary"],
     }

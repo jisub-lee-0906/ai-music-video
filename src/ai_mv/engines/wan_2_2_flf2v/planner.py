@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
-from ai_mv.engines.visual_bridge.brief_views import compact_section_atoms, compact_world_atoms
+from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 from ai_mv.utils.text_utils import parse_target
 
 _BASE_NEGATIVE = (
@@ -18,12 +18,12 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
     if not clips:
         raise RuntimeError("WAN clips empty")
     _enforce_clip_cap(config, clips, fps)
-    rendered = [_apply_prompt(clip, payload["visual_brief"]) for clip in clips]
+    rendered = [_apply_prompt(clip, payload["visual_story_bible"]) for clip in clips]
     return {"clips": rendered}
 
 
 def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
-    world = compact_world_atoms(payload["visual_brief"])
+    world = compact_world_atoms(payload["visual_story_bible"])
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
     carry_clause = f"carry={carry}; " if carry else ""
@@ -133,7 +133,7 @@ def _clip_summary_row(clip: dict) -> str:
 
 
 def _apply_prompt(clip: dict, brief: dict) -> dict:
-    section = compact_section_atoms(brief, str(clip.get("section_name", "")))
+    section = _beat_atoms(brief, clip)
     subject_motion = _subject_motion(clip, section)
     camera_relation = _camera_relation(clip, section)
     environment_detail = _environment_detail(clip, section, brief)
@@ -183,7 +183,11 @@ def _camera_relation(clip: dict, section: dict) -> str:
 def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     palette = str(section.get("palette_hint", "")).strip()
     lighting = str(section.get("lighting_hint", "")).strip()
-    location = str(section.get("location_anchor", "")).strip() or str(clip.get("scene_detail", "")).strip()
+    location = (
+        str(section.get("location_family", "")).strip()
+        or str(section.get("location_anchor", "")).strip()
+        or str(clip.get("scene_detail", "")).strip()
+    )
     world = compact_world_atoms(brief)
     world_rules = str(world.get("world_rules", "")).strip()
     text = ", ".join(part for part in (location, palette, lighting or world_rules) if part)
@@ -459,3 +463,14 @@ def _clip_series_key(shot_id: str) -> str:
 def _trim_words(text: str, max_words: int) -> str:
     words = [word for word in str(text).replace(",", " ,").split() if word]
     return " ".join(words[: max_words]).replace(" ,", ",").strip(" ,")
+
+
+def _beat_atoms(brief: dict, clip: dict) -> dict:
+    beat_id = str(clip.get("lyric_beat_id", "")).strip()
+    if beat_id:
+        for beat in brief.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            if str(beat.get("beat_id", "")).strip() == beat_id:
+                return dict(beat)
+    return compact_section_atoms(brief, str(clip.get("section_name", "")))

@@ -9,15 +9,25 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
     payload = {
         "selected_profile": "jpop_citypop",
         "audio_map": {"profile_summary": "city-pop", "language": "ja"},
-        "visual_brief": {
-            "recurring_location_families": ["station glass"],
-            "allowed_visual_variation": ["framing changes"],
-            "section_briefs": [
-                {"section_name": "intro", "story_beat": "checks the reflection", "location_anchor": "station glass", "emotional_arc": "searching", "escalation_level": "steady", "motion_axis": "gaze shift"}
+        "lyrics_timeline": {
+            "sections": [
+                {"section_name": "intro", "section_label": "Intro", "lines": [{"line_index": 1, "text": "glass"}], "hook_lines": [], "lyric_beats": [{"beat_id": "LB01_01", "line_refs": [1], "visible_action": "checks the reflection", "payoff_role": "entry"}]}
             ]
         },
+        "visual_story_bible": {
+            "hero_identity_lock": "hero",
+            "world_rules": "world",
+            "recurring_location_families": ["station glass"],
+            "forbidden_drift": ["drift"],
+            "lyric_beats": [
+                {"beat_id": "LB01_01", "section_name": "intro", "section_label": "Intro", "line_refs": [1], "literal_image": "glass", "visible_action": "checks the reflection", "emotional_turn": "searching", "continuity_anchor": "gaze shift", "payoff_role": "entry", "repeat_variant_of": "", "location_family": "station glass", "palette_hint": "blue", "lighting_hint": "soft", "camera_commitment": "still"}
+            ],
+            "section_progression": [{"section_name": "intro", "section_label": "Intro", "dominant_emotion": "searching", "story_function": "entry", "lyric_beat_ids": ["LB01_01"]}],
+            "repeat_escalation_rules": ["repeats vary"],
+        },
+        "shot_timeline": {"shots": [{"lyric_beat_id": "LB01_01"}]},
         "workflow_inputs_preview": {
-            "tti_anchor": {"master_anchor": {"prompt_text": "night city heroine"}},
+            "shot_timeline": {"master_anchor": {"prompt_text": "night city heroine"}},
             "shot_router": {"decisions": [{"shot_id": "S001", "use_ref": True, "reason": "hero shot type", "mv_function": "payoff", "clip_phase": "establish", "shot_priority": "hero"}]},
             "flux2_ref_chain": {"items": [{"shot_id": "S001", "clip_phase": "establish", "space_relation": "glass camera-right", "start_text": "a", "end_text": "b"}]},
             "wan_interpolation": {"clips": [{"shot_id": "S001", "energy": "normal", "space_relation": "glass camera-right", "positive_prompt": "walks through"}]},

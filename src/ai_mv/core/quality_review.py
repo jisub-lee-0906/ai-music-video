@@ -3,9 +3,17 @@ from __future__ import annotations
 
 def build_quality_review(config: dict, payload: dict) -> dict:
     review: dict = {}
-    coverage = _review_visual_plan(payload)
-    if coverage:
-        review["visual"] = coverage
+    story = _review_story_alignment(payload)
+    if story:
+        review["lyric_alignment"] = story["lyric_alignment"]
+        review["repeat_variation"] = story["repeat_variation"]
+        review["story_progression"] = story["story_progression"]
+        review["render_prompt_repetition"] = story["render_prompt_repetition"]
+        review["visual"] = {
+            "reasoning": "Deterministic review inspected lyric alignment, repeat variation, story progression, and render prompt reuse.",
+            "strengths": _collect_strengths(story),
+            "risks": _collect_risks(story),
+        }
     return review
 
 
@@ -15,6 +23,7 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
     labels = [str(x.get("label", x.get("name", ""))).strip() for x in sections if isinstance(x, dict)]
     songform = [str(x.get("name", "")).strip() for x in sections if isinstance(x, dict)]
     route_stats = _route_stats(payload.get("clip_routes", []))
+    lyric_metrics = _lyric_metrics(payload)
     return {
         "run_id": state["run_id"],
         "profile_name": str(payload.get("selected_profile", "")).strip(),
@@ -24,90 +33,132 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
         "tti_only_count": int(route_stats["tti_only_count"]),
         "ref_assisted_count": int(route_stats["ref_assisted_count"]),
         "ref_ratio_by_section": dict(route_stats["ref_ratio_by_section"]),
+        "lyric_beat_count": int(lyric_metrics["lyric_beat_count"]),
+        "shot_to_lyric_coverage": float(lyric_metrics["shot_to_lyric_coverage"]),
+        "repeated_hook_variation": float(lyric_metrics["repeated_hook_variation"]),
+        "unmapped_lyric_lines": int(lyric_metrics["unmapped_lyric_lines"]),
         "failure_reason": str(state.get("failure_reason", "")).strip(),
         "completed_stages": list(state.get("completed_stages", [])),
         "current_stage": str(state.get("current_stage", "")).strip(),
     }
 
 
-def _review_visual_plan(payload: dict) -> dict:
-    visual = payload.get("visual_brief")
+def _review_story_alignment(payload: dict) -> dict:
+    timeline = payload.get("lyrics_timeline", {})
+    story_bible = payload.get("visual_story_bible", {})
+    shot_timeline = payload.get("shot_timeline", {})
     workflow_inputs = payload.get("workflow_inputs_preview", {})
-    if not isinstance(visual, dict) or not isinstance(workflow_inputs, dict):
+    if not isinstance(timeline, dict) or not isinstance(story_bible, dict) or not isinstance(shot_timeline, dict):
         return {}
-    section_briefs = [row for row in visual.get("section_briefs", []) if isinstance(row, dict)]
-    if not section_briefs:
-        return {}
-    strengths: list[str] = []
-    risks: list[str] = []
-    reasoning: list[str] = []
-
-    _check_location_recurrence(section_briefs, strengths, risks)
-    _check_escalation(section_briefs, strengths, risks)
-    _check_routes(payload.get("clip_routes", []), strengths, risks)
-    _check_wan_output(workflow_inputs.get("wan_interpolation", {}), strengths, risks)
-
-    if not strengths:
-        strengths.append("visual contract is structurally complete enough for downstream render stages")
-    if not risks:
-        risks.append("no major structural repetition signal detected in deterministic review")
-    reasoning.append("Deterministic review inspected section beats, escalation, routing balance, and render-facing prompt reuse.")
+    lyric_metrics = _lyric_metrics(payload)
+    repetition = _render_prompt_repetition(workflow_inputs)
+    progression = _story_progression(payload)
     return {
-        "reasoning": " ".join(reasoning),
-        "strengths": strengths[:8],
-        "risks": risks[:8],
+        "lyric_alignment": {
+            "reasoning": "Lyric lines were checked against lyric beats and shot assignments.",
+            "strengths": [f"shot coverage maps {lyric_metrics['covered_beat_count']} lyric beats"],
+            "risks": [f"{lyric_metrics['unmapped_lyric_lines']} lyric lines are unmapped"] if lyric_metrics["unmapped_lyric_lines"] else [],
+        },
+        "repeat_variation": {
+            "reasoning": "Repeated hook and chorus line reuse was checked for changed visual treatment.",
+            "strengths": ["repeated hooks have some visual variation"] if lyric_metrics["repeated_hook_variation"] >= 0.5 else [],
+            "risks": ["repeated hooks collapse into near-identical visual beats"] if lyric_metrics["repeated_hook_variation"] < 0.5 else [],
+        },
+        "story_progression": progression,
+        "render_prompt_repetition": repetition,
     }
 
 
-def _check_location_recurrence(section_briefs: list[dict], strengths: list[str], risks: list[str]) -> None:
-    locations = [str(row.get("location_anchor", "")).strip() for row in section_briefs if str(row.get("location_anchor", "")).strip()]
-    unique = list(dict.fromkeys(locations))
-    if 1 <= len(unique) <= 3:
-        strengths.append("location families stay compact enough to preserve a single visual world")
-    if len(unique) > max(3, len(section_briefs) // 2):
-        risks.append("section locations diversify too aggressively and may fracture world continuity")
+def _story_progression(payload: dict) -> dict:
+    progression = payload.get("visual_story_bible", {}).get("section_progression", [])
+    if not progression:
+        return {"reasoning": "No section progression found.", "strengths": [], "risks": ["section progression is missing"]}
+    functions = [str(row.get("story_function", "")).strip().lower() for row in progression if isinstance(row, dict)]
+    strengths = []
+    risks = []
+    if len(set(functions)) >= max(2, len(functions) // 2):
+        strengths.append("section progression differentiates story functions across the song")
+    else:
+        risks.append("section progression functions are too repetitive")
+    return {"reasoning": "Section progression was checked for distinct narrative roles.", "strengths": strengths, "risks": risks}
 
 
-def _check_escalation(section_briefs: list[dict], strengths: list[str], risks: list[str]) -> None:
-    beats = [str(row.get("story_beat", "")).strip().lower() for row in section_briefs]
-    if len(set(beats)) < len([beat for beat in beats if beat]) * 0.75:
-        risks.append("section story beats repeat too closely and may flatten progression")
-    chorus_rows = [row for row in section_briefs if str(row.get("section_name", "")).strip().lower() == "chorus"]
-    chorus_levels = [str(row.get("escalation_level", "")).strip().lower() for row in chorus_rows]
-    chorus_axes = [str(row.get("motion_axis", "")).strip().lower() for row in chorus_rows]
-    if chorus_rows and len(set(chorus_levels + chorus_axes)) > 1:
-        strengths.append("repeated chorus sections preserve escalation signals instead of collapsing into one beat")
-    elif len(chorus_rows) > 1:
-        risks.append("repeated chorus sections lack distinct escalation markers")
-    for row in section_briefs:
-        sec = str(row.get("section_name", "")).strip().lower()
-        escalation = str(row.get("escalation_level", "")).strip().lower()
-        if sec == "bridge" and escalation != "interrupt":
-            risks.append("bridge does not declare an interruptive role")
-            break
-    for row in section_briefs:
-        sec = str(row.get("section_name", "")).strip().lower()
-        escalation = str(row.get("escalation_level", "")).strip().lower()
-        if sec == "outro" and escalation != "residue":
-            risks.append("outro does not preserve a residue role")
-            break
-
-
-def _check_routes(routes: list[dict], strengths: list[str], risks: list[str]) -> None:
-    stats = _route_stats(routes)
-    if stats["ref_assisted_count"] and stats["tti_only_count"]:
-        strengths.append("routing balances reference-heavy identity shots against cheaper tti-only coverage")
-    if stats["total_count"] and stats["ref_assisted_count"] == stats["total_count"]:
-        risks.append("all clips are ref-assisted, which reduces the benefit of the simplified routing policy")
-
-
-def _check_wan_output(wan: dict, strengths: list[str], risks: list[str]) -> None:
+def _render_prompt_repetition(workflow_inputs: dict) -> dict:
+    wan = workflow_inputs.get("wan_interpolation", {}) if isinstance(workflow_inputs, dict) else {}
     clips = wan.get("clips", []) if isinstance(wan, dict) else []
     prompts = [str(row.get("positive_prompt", "")).strip().lower() for row in clips if isinstance(row, dict)]
-    if prompts and len(set(prompts)) == len(prompts):
-        strengths.append("render-facing wan prompts remain distinct clip to clip")
-    elif len(prompts) > 1:
-        risks.append("render-facing wan prompts repeat verbatim across clips")
+    unique = len(set(prompts))
+    ratio = (unique / len(prompts)) if prompts else 1.0
+    strengths = ["render-facing prompts preserve clip-to-clip differences"] if ratio >= 0.7 else []
+    risks = ["render-facing wan prompts repeat too aggressively across clips"] if prompts and ratio < 0.7 else []
+    return {
+        "reasoning": "WAN positive prompts were compared for repeated text.",
+        "strengths": strengths,
+        "risks": risks,
+        "distinct_ratio": round(ratio, 3),
+    }
+
+
+def _collect_strengths(story: dict) -> list[str]:
+    out: list[str] = []
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "render_prompt_repetition"):
+        node = story.get(key, {})
+        out.extend(str(x) for x in node.get("strengths", []) if str(x).strip())
+    return out[:8] or ["lyric-first contracts are structurally present"]
+
+
+def _collect_risks(story: dict) -> list[str]:
+    out: list[str] = []
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "render_prompt_repetition"):
+        node = story.get(key, {})
+        out.extend(str(x) for x in node.get("risks", []) if str(x).strip())
+    return out[:8] or ["no major lyric-story structural risk detected"]
+
+
+def _lyric_metrics(payload: dict) -> dict:
+    timeline = payload.get("lyrics_timeline", {})
+    shot_timeline = payload.get("shot_timeline", {})
+    sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
+    shot_rows = [row for row in shot_timeline.get("shots", []) if isinstance(row, dict)]
+    shot_beat_ids = {str(row.get("lyric_beat_id", "")).strip() for row in shot_rows if str(row.get("lyric_beat_id", "")).strip()}
+    all_beat_ids: set[str] = set()
+    total_lines = 0
+    mapped_lines: set[tuple[str, int]] = set()
+    repeated_groups: dict[tuple[int, ...], list[dict]] = {}
+    for section in sections:
+        lines = [row for row in section.get("lines", []) if isinstance(row, dict)]
+        total_lines += len(lines)
+        for beat in section.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            beat_id = str(beat.get("beat_id", "")).strip()
+            if beat_id:
+                all_beat_ids.add(beat_id)
+            refs = tuple(int(x) for x in beat.get("line_refs", []) if int(x) > 0)
+            repeated_groups.setdefault(refs, []).append(beat)
+            if beat_id in shot_beat_ids:
+                for ref in refs:
+                    mapped_lines.add((str(section.get("section_label", section.get("section_name", ""))), ref))
+    variation_scores = []
+    for refs, beats in repeated_groups.items():
+        if len(refs) == 0 or len(beats) <= 1:
+            continue
+        signatures = {
+            (
+                str(beat.get("visible_action", "")).strip().lower(),
+                str(beat.get("payoff_role", "")).strip().lower(),
+            )
+            for beat in beats
+        }
+        variation_scores.append(len(signatures) / float(len(beats)))
+    repeated_variation = sum(variation_scores) / len(variation_scores) if variation_scores else 1.0
+    return {
+        "lyric_beat_count": len(all_beat_ids),
+        "covered_beat_count": len(all_beat_ids & shot_beat_ids),
+        "shot_to_lyric_coverage": round((len(all_beat_ids & shot_beat_ids) / len(all_beat_ids)) if all_beat_ids else 1.0, 3),
+        "repeated_hook_variation": round(repeated_variation, 3),
+        "unmapped_lyric_lines": max(0, total_lines - len(mapped_lines)),
+    }
 
 
 def _route_stats(routes: list[dict]) -> dict:

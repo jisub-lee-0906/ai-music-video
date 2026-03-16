@@ -1,4 +1,4 @@
-import ai_mv.engines.flux2_reference.runner as flux2_ref_runner
+import ai_mv.engines.flux_2_dev_ref.runner as flux2_ref_runner
 from ai_mv.core.output_paths import ANCHOR_DIR, flux2_ref_frame_prefix
 
 

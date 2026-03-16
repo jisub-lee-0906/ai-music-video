@@ -1,7 +1,7 @@
-from ai_mv.engines.acestep_1_5_split.runner import _sections
-from ai_mv.engines.flux_1_dev_tti.planner import _assign_one_shot_per_section
-from ai_mv.engines.flux_1_dev_tti.runner import _pack_anchor
-from ai_mv.engines.flux2_reference.runner import _pack_item
+from ai_mv.engines.acestep_1_5_aio.runner import _sections
+from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
+from ai_mv.engines.flux_2_dev_tti.runner import _pack_anchor
+from ai_mv.engines.flux_2_dev_ref.runner import _pack_item
 
 
 def test_audio_sections_preserve_labels_for_downstream():
@@ -14,21 +14,33 @@ def test_audio_sections_preserve_labels_for_downstream():
 
 
 def test_tti_shots_keep_section_label():
-    shots = [
+    spec = {
+        "master_anchor": {"prompt_text": "hero", "seed": 1},
+        "shots": [
+            {
+                "lyric_beat_id": "LB01_01",
+                "shot_type": "PERF_WIDE",
+                "camera_language": "clean frame",
+                "pose_delta": "small turn",
+                "emotion": "lift",
+                "scene_detail": "city glow",
+                "motion_hint": "slow push",
+                "space_relation": "lane depth behind",
+                "edit_role": "release",
+                "continuity_lock": "same heroine",
+                "clip_count": 1,
+            }
+        ],
+    }
+    lyric_beats = [
         {
-            "shot_id": "temp_1",
-            "shot_type": "PERF_WIDE",
-            "is_chorus": False,
-            "camera_language": "clean frame",
-            "pose_delta": "small turn",
-            "emotion": "lift",
-            "scene_detail": "city glow",
-            "motion_hint": "slow push",
+            "beat_id": "LB01_01",
+            "section_name": "chorus",
+            "section_label": "Final Chorus",
         }
     ]
-    sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
-    out = _assign_one_shot_per_section(shots, sections)
-    assert out[0]["section_label"] == "Final Chorus"
+    out = normalize_shot_timeline(spec, lyric_beats)
+    assert out["shots"][0]["section_label"] == "Final Chorus"
 
 
 def test_runner_chain_preserves_section_label():
