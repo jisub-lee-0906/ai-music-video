@@ -11,8 +11,8 @@ def test_parser_has_commands():
 
 def test_start_accepts_profile():
     parser = build_parser()
-    args = parser.parse_args(["start", "--profile", "jpop_citypop"])
-    assert args.profile == "jpop_citypop"
+    args = parser.parse_args(["start", "--profile", "citypop_glimmer"])
+    assert args.profile == "citypop_glimmer"
 
 
 def test_default_config_available():

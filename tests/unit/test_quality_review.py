@@ -7,7 +7,7 @@ from ai_mv.engines.wan_2_2_flf2v.planner import _compose_positive_prompt
 
 def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
     payload = {
-        "selected_profile": "jpop_citypop",
+        "selected_profile": "citypop_glimmer",
         "audio_map": {"profile_summary": "city-pop", "language": "ja"},
         "lyrics_timeline": {
             "sections": [
@@ -43,7 +43,7 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     monkeypatch.setattr("ai_mv.core.artifacts.paths.PROJECT_ROOT", tmp_path)
     state = {"run_id": "r1", "status": "done", "completed_stages": ["acestep_music"], "current_stage": "done", "failure_reason": ""}
     payload = {
-        "selected_profile": "jpop_citypop",
+        "selected_profile": "citypop_glimmer",
         "audio_map": {
             "language": "ja",
             "sections": [{"name": "intro", "label": "Intro"}, {"name": "chorus", "label": "Final Chorus"}],
@@ -64,7 +64,7 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
 def test_run_summary_includes_route_counts():
     state = {"run_id": "r3", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
     payload = {
-        "selected_profile": "jpop_citypop",
+        "selected_profile": "citypop_glimmer",
         "audio_map": {
             "language": "ja",
             "sections": [{"name": "chorus", "label": "Final Chorus"}],

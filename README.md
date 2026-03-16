@@ -9,7 +9,7 @@ python -m venv .venv
 python -m pip install -U pip
 python -m pip install -e .[dev]
 python -m ai_mv.cli.app doctor
-python -m ai_mv.cli.app start --profile jpop_citypop
+python -m ai_mv.cli.app start --profile citypop_glimmer
 ```
 
 `profile` is the main creative input surface.
@@ -30,8 +30,8 @@ The planners are now strictly `brief-first`.
 
 Codex CLI expands those inputs into:
 - AceStep audio plan
-- visual bridge brief
-- Lyric timeline and story bible planning
+- Lyric timeline planning
+- visual story bible planning
 - Shot timeline and Flux 2 reference progression
 - WAN motion prompts
 
