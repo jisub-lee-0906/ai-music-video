@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TypedDict
+
 from ai_mv.core.contracts.errors import StageFailure
 
 
@@ -14,6 +16,18 @@ REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
 }
 
 
+class ClipOutput(TypedDict):
+    shot_id: str
+    video: str
+
+
+class ClipRoute(TypedDict, total=False):
+    shot_id: str
+    anchor: str
+    duration_sec: float
+    use_ref: bool
+
+
 def validate_stage_input(stage: str, payload: dict) -> None:
     required = REQUIRED_INPUTS.get(stage, ())
     missing = [key for key in required if key not in payload]
@@ -24,6 +38,71 @@ def validate_stage_input(stage: str, payload: dict) -> None:
     if empty:
         names = ", ".join(empty)
         raise StageFailure(f"{stage} empty required inputs: {names}")
+    _validate_stage_shape(stage, payload)
+
+
+def _validate_stage_shape(stage: str, payload: dict) -> None:
+    if stage == "shot_router":
+        _validate_anchors(payload.get("anchors"))
+        return
+    if stage in {"flux2_ref_chain", "wan_interpolation"}:
+        _validate_clip_routes(payload.get("clip_routes"), stage)
+        return
+    if stage == "merge_mux":
+        _validate_merge_inputs(payload)
+
+
+def _validate_anchors(value: object) -> None:
+    rows = _require_list(value, "shot_router anchors")
+    for idx, row in enumerate(rows, start=1):
+        item = _require_dict(row, f"shot_router anchors[{idx}]")
+        _require_non_empty_str(item.get("shot_id"), f"shot_router anchors[{idx}].shot_id")
+        _require_non_empty_str(item.get("anchor"), f"shot_router anchors[{idx}].anchor")
+        _require_positive_number(item.get("duration_sec"), f"shot_router anchors[{idx}].duration_sec")
+
+
+def _validate_clip_routes(value: object, stage: str) -> None:
+    rows = _require_list(value, f"{stage} clip_routes")
+    for idx, row in enumerate(rows, start=1):
+        item: ClipRoute = _require_dict(row, f"{stage} clip_routes[{idx}]")
+        _require_non_empty_str(item.get("shot_id"), f"{stage} clip_routes[{idx}].shot_id")
+        _require_non_empty_str(item.get("anchor"), f"{stage} clip_routes[{idx}].anchor")
+        _require_positive_number(item.get("duration_sec"), f"{stage} clip_routes[{idx}].duration_sec")
+        if "use_ref" in item and not isinstance(item.get("use_ref"), bool):
+            raise StageFailure(f"{stage} clip_routes[{idx}].use_ref must be bool")
+
+
+def _validate_merge_inputs(payload: dict) -> None:
+    clips = _require_list(payload.get("clips"), "merge_mux clips")
+    for idx, row in enumerate(clips, start=1):
+        item: ClipOutput = _require_dict(row, f"merge_mux clips[{idx}]")
+        _require_non_empty_str(item.get("shot_id"), f"merge_mux clips[{idx}].shot_id")
+        _require_non_empty_str(item.get("video"), f"merge_mux clips[{idx}].video")
+    _require_non_empty_str(payload.get("music_file"), "merge_mux music_file")
+
+
+def _require_list(value: object, label: str) -> list:
+    if not isinstance(value, list) or not value:
+        raise StageFailure(f"{label} must be a non-empty list")
+    return value
+
+
+def _require_dict(value: object, label: str) -> dict:
+    if not isinstance(value, dict):
+        raise StageFailure(f"{label} must be an object")
+    return value
+
+
+def _require_non_empty_str(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise StageFailure(f"{label} must be a non-empty string")
+    return value.strip()
+
+
+def _require_positive_number(value: object, label: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or float(value) <= 0:
+        raise StageFailure(f"{label} must be a positive number")
+    return float(value)
 
 
 def _is_empty(value: object) -> bool:

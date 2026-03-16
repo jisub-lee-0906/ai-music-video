@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 from jsonschema import ValidationError, validate
@@ -17,8 +18,26 @@ def ping_codex() -> bool:
         return False
 
 
-def generate_structured(config: dict, prompt: str, schema: dict) -> dict:
-    return _generate_once(config, prompt, schema)
+def generate_structured(config: dict, prompt: str, schema: dict, attempts: int = 3) -> dict:
+    current_prompt = prompt
+    last_exc: Exception | None = None
+    repair = (
+        "Previous output failed schema validation or execution. "
+        "Return JSON only, strictly matching the schema."
+    )
+    total_attempts = max(1, int(attempts))
+    for attempt in range(1, total_attempts + 1):
+        try:
+            return _generate_once(config, current_prompt, schema)
+        except CodexCliRequestError as exc:
+            last_exc = exc
+            if attempt >= total_attempts:
+                break
+            current_prompt = f"{prompt}\n\n{repair}"
+            time.sleep(min(2 ** attempt, 8))
+    if last_exc is not None:
+        raise last_exc
+    raise CodexCliRequestError("Codex CLI structured generation failed without an exception")
 
 
 def assert_codex_ready(config: dict) -> None:

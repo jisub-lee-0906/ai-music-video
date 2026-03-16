@@ -9,6 +9,10 @@ import requests
 from ai_mv.core.contracts.errors import ComfyRequestError
 
 
+class RecoverableComfyError(ComfyRequestError):
+    pass
+
+
 def ping_comfy(base_url: str) -> bool:
     try:
         res = requests.get(f"{base_url.rstrip('/')}/history", timeout=3)
@@ -22,23 +26,46 @@ def ping_comfy(base_url: str) -> bool:
 def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> dict:
     queued = _queue_prompt(base_url, workflow, timeout)
     prompt_id = _prompt_id_from_queue(queued)
-    history = wait_history(base_url, prompt_id, timeout)
-    _raise_if_execution_error(history, prompt_id)
-    files = extract_files(history)
+    try:
+        history = wait_history(base_url, prompt_id, timeout)
+        _raise_if_execution_error(history, prompt_id)
+        files = extract_files(history)
+    except ComfyRequestError as exc:
+        raise type(exc)(f"prompt_id={prompt_id}: {exc}") from exc
+    except TimeoutError as exc:
+        raise TimeoutError(f"Comfy workflow timed out: prompt_id={prompt_id}: {exc}") from exc
     return {"prompt_id": prompt_id, "history": history, "files": files}
 
 
-def wait_history(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
+def wait_history(
+    base_url: str,
+    prompt_id: str,
+    timeout: int,
+    max_transient_errors: int = 8,
+) -> dict[str, Any]:
     start = time.time()
     url = f"{base_url.rstrip('/')}/history/{prompt_id}"
     sleep_sec = 0.4
     max_sleep_sec = 2.0
+    transient_errors = 0
     while True:
         elapsed = time.time() - start
         if elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
         remaining = max(0.0, timeout - elapsed)
-        data = _safe_history_get(url, remaining, prompt_id)
+        try:
+            data = _safe_history_get(url, min(remaining, 10.0), prompt_id)
+            transient_errors = 0
+        except RecoverableComfyError as exc:
+            transient_errors += 1
+            if transient_errors > max_transient_errors:
+                raise RecoverableComfyError(
+                    f"Comfy history polling unstable after {max_transient_errors} retries: "
+                    f"prompt_id={prompt_id}: {exc}"
+                ) from exc
+            backoff = min(2 ** transient_errors, 15)
+            time.sleep(min(backoff, max(0.0, timeout - (time.time() - start))))
+            continue
         record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
@@ -101,6 +128,8 @@ def _prompt_id_from_queue(queued: dict[str, Any]) -> str:
 def _safe_history_get(url: str, timeout: float, prompt_id: str) -> dict[str, Any]:
     try:
         return _get_json(url, timeout)
+    except (requests.RequestException, TimeoutError) as exc:
+        raise RecoverableComfyError(f"Comfy history transient failure: prompt_id={prompt_id}: {exc}") from exc
     except Exception as exc:
         raise ComfyRequestError(f"Comfy history request failed: {prompt_id}: {exc}") from exc
 
