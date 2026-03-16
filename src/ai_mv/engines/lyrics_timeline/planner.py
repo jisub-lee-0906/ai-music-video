@@ -14,6 +14,10 @@ def build_lyrics_timeline(config: dict, payload: dict) -> dict:
     return timeline
 
 
+def build_lyrics_timeline_preview_prompt(audio_plan: dict, sections: list[dict]) -> str:
+    return _planner_prompt(audio_plan, sections)
+
+
 def _planner_prompt(audio_plan: dict, sections: list[dict]) -> str:
     return (
         "You are a lyric-to-scene timeline planner for a music video. "

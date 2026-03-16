@@ -46,7 +46,7 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     run_dir.mkdir(parents=True)
     out = bootstrap_config(cfg, run_dir)
     assert out["video"]["target"] == "1920x1080@24"
-    assert out["render"]["wan_size"] == "640x640"
+    assert out["render"]["wan_size"] == "896x512"
     assert int(out["limits"]["timeout_seconds"]) == 900
     assert "audio" in out and "quality" in out["audio"]
     assert out["audio"]["language"] == "en"

@@ -25,6 +25,10 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     return _plan_once(config, plan)
 
 
+def build_audio_preview_prompt(plan: dict) -> str:
+    return _audio_prompt(plan)
+
+
 def _plan_with_llm(config: dict, plan: dict) -> dict:
     prompt = _audio_prompt(plan)
     return generate_structured(config, prompt, audio_schema())

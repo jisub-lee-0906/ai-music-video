@@ -204,11 +204,11 @@ def _subject_motion(clip: dict, section: dict) -> str:
     axis = str(section.get("motion_axis", "")).strip() or _kinetic_axis(clip)
     action = _action_fragment(beat, axis, clip)
     if phase == "establish":
-        return _sentence_clause(f"She attacks the {axis} with {action}")
+        return _sentence_clause(f"She sets the {axis} with {action}")
     if phase == "resolve":
-        return _sentence_clause(f"She slams the {axis} into place with {action}")
+        return _sentence_clause(f"She lands the {axis} with {action}")
     if phase == "advance":
-        return _sentence_clause(f"She drives the {axis} forward with {action}")
+        return _sentence_clause(f"She carries the {axis} with {action}")
     return _sentence_clause(f"She hits through {action}")
 
 
@@ -456,7 +456,7 @@ def _camera_relation_is_weak(text: str) -> bool:
     )
     if low.startswith(technical_subjects):
         return True
-    dynamic = ("whip", "snap", "crash", "slam", "smash", "jump", "track", "tracks", "push", "pushes", "pull", "pulls")
+    dynamic = ("whip", "snap", "crash", "slam", "smash", "jump", "track", "tracks", "push", "pushes", "pull", "pulls", "glide", "glides")
     if not any(word in low for word in dynamic):
         return True
     weak_starts = ("a gentle retreat", "a steady retreat", "the glide", "the backward tracking", "the arc")

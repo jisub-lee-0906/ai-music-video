@@ -58,3 +58,13 @@ def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
     out = dict(payload.get("workflow_inputs_preview", {}))
     out[key] = value
     return out
+
+
+def build_shot_router_preview_payload(config: dict, payload: dict) -> dict:
+    routes = build_shot_routes(config, payload)
+    return {
+        "clip_routes": routes,
+        "render_inputs": dict(payload.get("render_inputs", {}), clip_routes=routes),
+        "planner_prompts": _merge_prompt_preview(payload, "shot_router", {"prompt": _route_policy_summary(config)}),
+        "workflow_inputs_preview": _merge_workflow_preview(payload, "shot_router", {"decisions": _route_preview(routes)}),
+    }

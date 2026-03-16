@@ -60,7 +60,13 @@ def _run_shot_flux2_ref(config: dict, item: dict) -> dict:
     )
 
 
-def _pack_item(item: dict, start: str, end: str, start_source: str, prev_item: dict | None) -> dict:
+def _pack_item(
+    item: dict,
+    start: str,
+    end: str,
+    start_source: str = "rendered_start",
+    prev_item: dict | None = None,
+) -> dict:
     return {
         "shot_id": item["shot_id"],
         "chain_key": str(item.get("chain_key", "")),
@@ -91,6 +97,8 @@ def _should_reuse_previous_end(prev_item: dict | None, item: dict, prev_end: str
     if not prev_end or not isinstance(prev_item, dict):
         return False
     if not Path(prev_end).suffix:
+        return False
+    if int(item.get("clip_count", 1)) <= 1:
         return False
     if _chain_break(item, prev_item):
         return False

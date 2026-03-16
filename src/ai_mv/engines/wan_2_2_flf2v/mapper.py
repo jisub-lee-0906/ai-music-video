@@ -55,7 +55,11 @@ def _wan_size(config: dict, clip: dict) -> tuple[int, int]:
     size = str(clip["wan_size"])
     w, h = parse_size(size)
     ensure_positive_size(w, h)
-    vw, vh, _ = parse_target(str(config["video"]["target"]))
+    video = config.get("video", {}) if isinstance(config, dict) else {}
+    target = str(video.get("target", "")).strip() if isinstance(video, dict) else ""
+    if not target:
+        return w, h
+    vw, vh, _ = parse_target(target)
     ratio = float(w) / float(max(1, h))
     target_ratio = float(vw) / float(max(1, vh))
     if abs(ratio - target_ratio) > 0.05:

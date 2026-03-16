@@ -61,7 +61,11 @@ def _flux2_ref_size(config: dict) -> tuple[int, int]:
     render = config.get("render", {}) if isinstance(config, dict) else {}
     size = str(render.get("ref_size", render.get("tti_size", "")))
     w, h = parse_size(size)
-    vw, vh, _ = parse_target(str(config["video"]["target"]))
+    video = config.get("video", {}) if isinstance(config, dict) else {}
+    target = str(video.get("target", "")).strip() if isinstance(video, dict) else ""
+    if not target:
+        return w, h
+    vw, vh, _ = parse_target(target)
     ratio = float(w) / float(max(1, h))
     target_ratio = float(vw) / float(max(1, vh))
     if abs(ratio - target_ratio) > 0.05:

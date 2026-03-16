@@ -18,7 +18,7 @@ def test_gate_wan_requires_new_story_payload_but_not_flux2_ref_images():
     validate_stage_input(
         "wan_interpolation",
         {
-            "clip_routes": [{"shot_id": "x"}],
+            "clip_routes": [{"shot_id": "x", "anchor": "a.png", "duration_sec": 4.0}],
             "audio_map": {"sections": [{"name": "verse"}]},
             "visual_story_bible": {"lyric_beats": [{"beat_id": "b1"}]},
             "shot_timeline": {"shots": [{"lyric_beat_id": "b1"}]},

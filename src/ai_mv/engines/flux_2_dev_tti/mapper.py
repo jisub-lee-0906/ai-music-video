@@ -60,7 +60,11 @@ def _tti_seed(shot: dict) -> int:
 
 
 def _validate_aspect_ratio(config: dict, width: int, height: int, label: str) -> None:
-    vw, vh, _ = parse_target(str(config["video"]["target"]))
+    video = config.get("video", {}) if isinstance(config, dict) else {}
+    target = str(video.get("target", "")).strip() if isinstance(video, dict) else ""
+    if not target:
+        return
+    vw, vh, _ = parse_target(target)
     ratio = float(width) / float(max(1, height))
     target_ratio = float(vw) / float(max(1, vh))
     if abs(ratio - target_ratio) > 0.05:

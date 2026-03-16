@@ -12,13 +12,17 @@ def build_visual_story_bible(config: dict, payload: dict) -> dict:
     return normalize_visual_story_bible(raw, list(_timeline_sections(timeline)))
 
 
+def build_visual_story_bible_preview_prompt(config: dict, payload: dict) -> str:
+    return _planner_prompt(config, payload)
+
+
 def _planner_prompt(config: dict, payload: dict) -> str:
     intent = payload.get("profile_intent", {})
     world = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
     negative = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
     timeline = payload["lyrics_timeline"]
     return (
-        "You are a lyric-first kinetic live-action music video story planner. "
+        "You are a lyric-first music video story planner for kinetic live-action imagery. "
         "Return strict JSON only. No prose outside JSON. "
         "Required fields: hero_identity_lock,world_rules,recurring_location_families,forbidden_drift,lyric_beats,section_progression,repeat_escalation_rules. "
         "lyric_beats must preserve beat_id, section_name, section_label, and line_refs from the lyric timeline while translating the lyrics into visible screen action. "

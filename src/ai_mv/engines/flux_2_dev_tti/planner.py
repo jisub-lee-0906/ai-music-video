@@ -15,11 +15,15 @@ def build_tti_plan(config: dict, payload: dict) -> dict:
     return {"master_anchor": plan["master_anchor"], "shots": shots}
 
 
+def build_tti_preview_prompt(config: dict, payload: dict) -> str:
+    return _planner_prompt(config, payload)
+
+
 def _planner_prompt(config: dict, payload: dict) -> str:
     story_bible = payload["visual_story_bible"]
     timeline = payload["lyrics_timeline"]
     return (
-        "You are a kinetic live-action shot planner building a shot timeline for downstream renderers. "
+        "You are a lyric-first shot planner building a shot timeline for downstream renderers. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
         "Create exactly one shot item for every lyric beat in order. "
         "master_anchor prompt_text must contain only stable identity and world facts. "

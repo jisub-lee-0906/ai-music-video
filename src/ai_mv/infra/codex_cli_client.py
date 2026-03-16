@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -10,9 +11,15 @@ from pathlib import Path
 from jsonschema import ValidationError, validate
 
 from ai_mv.core.contracts.errors import CodexCliRequestError
+
+
+class CodexCliSchemaValidationError(CodexCliRequestError):
+    pass
+
+
 def ping_codex() -> bool:
     try:
-        _login_status(_codex_command({}))
+        _login_status(_codex_command_parts({}))
         return True
     except Exception:
         return False
@@ -29,6 +36,9 @@ def generate_structured(config: dict, prompt: str, schema: dict, attempts: int =
     for attempt in range(1, total_attempts + 1):
         try:
             return _generate_once(config, current_prompt, schema)
+        except CodexCliSchemaValidationError as exc:
+            last_exc = exc
+            break
         except CodexCliRequestError as exc:
             last_exc = exc
             if attempt >= total_attempts:
@@ -41,14 +51,13 @@ def generate_structured(config: dict, prompt: str, schema: dict, attempts: int =
 
 
 def assert_codex_ready(config: dict) -> None:
-    cmd = _codex_command(config)
-    status = _login_status(cmd)
+    status = _login_status(_codex_command_parts(config))
     if "Logged in" not in status:
         raise CodexCliRequestError("Codex CLI is not logged in")
 
 
 def _generate_once(config: dict, prompt: str, schema: dict) -> dict:
-    cmd = _codex_command(config)
+    cmd = _codex_command_parts(config)
     model = _codex_model(config)
     timeout = _codex_timeout(config)
     strict_schema = _strict_schema(schema)
@@ -63,11 +72,8 @@ def _generate_once(config: dict, prompt: str, schema: dict) -> dict:
         return data
 
 
-def _exec_args(cmd: str, model: str, schema_path: Path, output_path: Path, prompt: str) -> list[str]:
-    return [
-        "cmd",
-        "/c",
-        cmd,
+def _exec_args(cmd: list[str], model: str, schema_path: Path, output_path: Path, prompt: str) -> list[str]:
+    return cmd + [
         "exec",
         "--skip-git-repo-check",
         "--sandbox",
@@ -103,7 +109,7 @@ def _validate_schema(data: dict, schema: dict) -> None:
     except ValidationError as exc:
         path = ".".join(str(x) for x in exc.absolute_path)
         loc = f" at {path}" if path else ""
-        raise CodexCliRequestError(f"Codex CLI schema validation failed{loc}: {exc.message}") from exc
+        raise CodexCliSchemaValidationError(f"Codex CLI schema validation failed{loc}: {exc.message}") from exc
 
 
 def _strict_schema(schema: dict):
@@ -117,9 +123,9 @@ def _strict_schema(schema: dict):
     return schema
 
 
-def _login_status(cmd: str) -> str:
+def _login_status(cmd: list[str]) -> str:
     res = subprocess.run(
-        ["cmd", "/c", cmd, "login", "status"],
+        cmd + ["login", "status"],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -147,18 +153,32 @@ def _run(args: list[str], prompt: str, timeout: int) -> None:
     if res.returncode != 0:
         detail = res.stderr.strip() or res.stdout.strip()
         raise CodexCliRequestError(f"Codex CLI exec failed: {detail}")
-def _codex_command(config: dict) -> str:
+
+
+def _codex_command_parts(config: dict) -> list[str]:
     integ = config.get("integrations", {}) if isinstance(config, dict) else {}
     raw = integ.get("codex_cli_path", "") if isinstance(integ, dict) else ""
     direct = str(raw).strip()
     if direct:
-        return direct
+        return _validated_command_parts(Path(direct).expanduser())
     appdata = os.getenv("APPDATA", "").strip()
     if appdata:
         npm_cmd = Path(appdata) / "npm" / "codex.cmd"
         if npm_cmd.exists():
-            return str(npm_cmd)
-    return "codex"
+            return _validated_command_parts(npm_cmd)
+    resolved = shutil.which("codex") or shutil.which("codex.cmd")
+    if resolved:
+        return _validated_command_parts(Path(resolved))
+    raise CodexCliRequestError("Codex CLI executable not found")
+
+
+def _validated_command_parts(path: Path) -> list[str]:
+    resolved = path.resolve()
+    if not resolved.exists() or not resolved.is_file():
+        raise CodexCliRequestError(f"invalid codex_cli_path: {resolved}")
+    if resolved.suffix.lower() in {".cmd", ".bat"}:
+        return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(resolved)]
+    return [str(resolved)]
 
 
 def _codex_model(config: dict) -> str:

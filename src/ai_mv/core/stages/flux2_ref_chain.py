@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.engines.flux_2_dev_ref.mapper import FLUX2_REF_TEXT_POS, map_flux2_ref_workflow
-from ai_mv.engines.flux_2_dev_ref.planner import (
-    _planner_prompt,
-    _flux2_ref_planner_batch_size,
-    build_flux2_ref_plan,
-)
+from ai_mv.engines.flux_2_dev_ref.planner import _planner_prompt, _flux2_ref_planner_batch_size, build_flux2_ref_plan
 from ai_mv.engines.flux_2_dev_ref.runner import run_flux2_ref
 
 
@@ -105,5 +101,23 @@ def _flux2_ref_atom_view(item: dict) -> dict:
         "action_clause": str(item.get("action_clause", "")),
         "environment_clause": str(item.get("environment_clause", "")),
         "continuity_clause": str(item.get("continuity_clause", "")),
+    }
+
+
+def build_flux2_ref_preview_payload(config: dict, payload: dict) -> dict:
+    plan = build_flux2_ref_plan(config, payload)
+    flux2_ref_images = []
+    for item in plan["items"]:
+        row = dict(item)
+        sid = str(item["shot_id"])
+        row["start"] = f"preflight://flux2_ref/{sid}_start.png"
+        row["end"] = f"preflight://flux2_ref/{sid}_end.png"
+        flux2_ref_images.append(row)
+    stage_input = StageInput(run_id="preflight", config=config, payload=payload)
+    return {
+        "flux2_ref_images": flux2_ref_images,
+        "render_inputs": dict(payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
+        "planner_prompts": _merge_prompt_preview(payload, "flux2_ref_chain", {"batches": _flux2_ref_prompt_batches(stage_input, plan)}),
+        "workflow_inputs_preview": _merge_workflow_preview(payload, "flux2_ref_chain", {"items": _flux2_ref_workflow_inputs(config, plan["items"])}),
     }
 

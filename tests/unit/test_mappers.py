@@ -50,7 +50,7 @@ def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
 
 
 def test_tti_mapper():
-    cfg = {"render": {"tti_size": "1024x1024"}}
+    cfg = {"render": {"tti_size": "1024x1024"}, "video": {"target": "1920x1080@24"}}
     shot = {
         "prompt_text": "cinematic portrait, silver hair, magical butterflies, glass roses, soft rim light, dream garden",
         "seed": 3,
@@ -60,12 +60,13 @@ def test_tti_mapper():
     nodes = out["node.inputs"]
     assert nodes["98:47"]["width"] == 1024
     assert nodes["98:47"]["height"] == 1024
-    assert nodes["98:6"]["text"] == shot["prompt_text"]
-    assert nodes["98:25"]["noise_seed"] == 3
+    assert nodes["98:6"]["text"].startswith(shot["prompt_text"])
+    assert "no text" in nodes["98:6"]["text"]
+    assert nodes["98:25"]["noise_seed"] >= 1000
 
 
 def test_flux2_ref_mapper():
-    cfg = {"render": {"tti_size": "1024x576"}}
+    cfg = {"render": {"tti_size": "1024x576"}, "video": {"target": "1920x1080@24"}}
     item = {
         "shot_id": "s_001",
         "frame_idx": 0,
@@ -81,12 +82,13 @@ def test_flux2_ref_mapper():
     nodes = out["node.inputs"]
     assert nodes["46"]["image"] == "a.png"
     assert nodes["68:47"]["width"] == 1024
-    assert nodes["68:6"]["text"] == item["prompt_text"]
+    assert nodes["68:6"]["text"].startswith(item["prompt_text"])
+    assert "no text" in nodes["68:6"]["text"]
     assert nodes["68:25"]["noise_seed"] > 2000
 
 
 def test_wan_mapper():
-    cfg = {"render": {"wan_size": "640x640"}}
+    cfg = {"render": {"wan_size": "640x640"}, "video": {"target": "1920x1080@24"}}
     clip = {
         "shot_id": "s_001",
         "start": "a.png",

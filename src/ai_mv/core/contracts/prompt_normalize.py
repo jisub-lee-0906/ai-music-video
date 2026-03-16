@@ -230,10 +230,10 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
         shot_type = str(row.get("shot_type", "")).strip().upper()
         if shot_type not in SHOT_TYPES:
             raise RuntimeError(f"invalid shot type: {shot_type}")
-        kinetic_transition = str(row.get("kinetic_transition", "")).strip()
-        if kinetic_transition not in KINETIC_TRANSITIONS:
+        kinetic_transition = str(row.get("kinetic_transition", "")).strip().lower()
+        if kinetic_transition and kinetic_transition not in KINETIC_TRANSITIONS:
             raise RuntimeError(f"invalid kinetic transition: {kinetic_transition}")
-        kinetic_intensity = str(row.get("kinetic_intensity", "")).strip().lower()
+        kinetic_intensity = str(row.get("kinetic_intensity", "medium")).strip().lower() or "medium"
         if kinetic_intensity not in KINETIC_INTENSITIES:
             raise RuntimeError(f"invalid kinetic intensity: {kinetic_intensity}")
         out.append(
@@ -250,13 +250,13 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "scene_detail": _require_text(row, "scene_detail"),
                 "motion_hint": _require_text(row, "motion_hint"),
                 "space_relation": _require_text(row, "space_relation"),
-                "edit_role": _require_text(row, "edit_role"),
-                "continuity_lock": _require_text(row, "continuity_lock"),
+                "edit_role": _optional_text(row, "edit_role", "support"),
+                "continuity_lock": _optional_text(row, "continuity_lock", "same heroine and world"),
                 "clip_count": max(1, int(row.get("clip_count", 1))),
                 "start_frame": _normalize_frame_anchor(row.get("start_frame", {}), "start_frame"),
                 "end_frame": _normalize_frame_anchor(row.get("end_frame", {}), "end_frame"),
                 "kinetic_transition": kinetic_transition,
-                "lighting_fx": _require_text(row, "lighting_fx"),
+                "lighting_fx": _optional_text(row, "lighting_fx", "natural practical glow"),
                 "kinetic_intensity": kinetic_intensity,
             }
         )
@@ -264,13 +264,18 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
 
 
 def _normalize_frame_anchor(raw: object, label: str) -> dict:
-    if not isinstance(raw, dict):
-        raise RuntimeError(f"{label} missing")
+    if not isinstance(raw, dict) or not raw:
+        return {
+            "composition": "centered medium framing",
+            "subject_scale": "medium",
+            "camera_axis": "eye level",
+            "lighting_state": "natural practical glow",
+        }
     return {
-        "composition": _require_text(raw, "composition"),
-        "subject_scale": _require_text(raw, "subject_scale"),
-        "camera_axis": _require_text(raw, "camera_axis"),
-        "lighting_state": _require_text(raw, "lighting_state"),
+        "composition": _optional_text(raw, "composition", "centered medium framing"),
+        "subject_scale": _optional_text(raw, "subject_scale", "medium"),
+        "camera_axis": _optional_text(raw, "camera_axis", "eye level"),
+        "lighting_state": _optional_text(raw, "lighting_state", "natural practical glow"),
     }
 
 
@@ -303,6 +308,11 @@ def _require_text(raw: dict, field: str) -> str:
     if not text:
         raise RuntimeError(f"{field} missing")
     return text
+
+
+def _optional_text(raw: dict, field: str, default: str) -> str:
+    text = str(raw.get(field, "")).strip() if isinstance(raw, dict) else ""
+    return text or default
 
 
 def _validate_repeated_hook_variation(section_rows: list[dict]) -> None:

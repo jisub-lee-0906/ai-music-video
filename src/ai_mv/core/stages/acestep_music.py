@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
 from ai_mv.engines.acestep_1_5_aio.mapper import AUDIO_TEXT, map_audio_workflow
-from ai_mv.engines.acestep_1_5_aio.planner import _audio_prompt, build_audio_plan
+from ai_mv.engines.acestep_1_5_aio.planner import build_audio_plan, build_audio_preview_prompt
 from ai_mv.engines.acestep_1_5_aio.runner import run_audio_split
 
 
@@ -26,7 +26,7 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "audio",
-                {"prompt": _audio_prompt(plan)},
+                {"prompt": build_audio_preview_prompt(plan)},
             ),
             "workflow_inputs_preview": _merge_workflow_preview(
                 stage_input.payload,
@@ -71,3 +71,35 @@ def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
 def _audio_text_inputs(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
     return dict(wf["node.inputs"][AUDIO_TEXT])
+
+
+def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dict:
+    plan = build_audio_plan(config, dict(payload, run_id=run_id))
+    audio_map = build_audio_preview_map(plan)
+    audio_map.update(_audio_context(config, audio_map, plan))
+    return {
+        "profile_intent": dict(plan.get("profile_intent", {})),
+        "audio_plan": dict(plan),
+        "audio_map": audio_map,
+        "music_file": "",
+        "planner_prompts": _merge_prompt_preview(payload, "audio", {"prompt": build_audio_preview_prompt(plan)}),
+        "workflow_inputs_preview": _merge_workflow_preview(payload, "audio", {"text_inputs": _audio_text_inputs(config, plan)}),
+    }
+
+
+def build_audio_preview_map(plan: dict) -> dict:
+    from ai_mv.engines.acestep_1_5_aio.runner import _sections
+
+    duration = float(plan["duration"])
+    return {
+        "duration_sec": duration,
+        "bpm_estimate": int(plan["bpm"]),
+        "sections": _sections(
+            duration,
+            plan.get("lyrics_blocks", []),
+            int(plan.get("bpm", 0)),
+            int(plan.get("beats_per_bar", 4)),
+            plan.get("section_bars", {}),
+        ),
+        "music_file": "",
+    }

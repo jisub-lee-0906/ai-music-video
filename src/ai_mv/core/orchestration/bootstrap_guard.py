@@ -15,7 +15,10 @@ def apply_profile(config: dict) -> None:
     if not name:
         return
     fname = name if name.endswith(".yaml") else f"{name}.yaml"
-    path = resolve_project_path(f"profiles/{fname}")
+    profiles_root = resolve_project_path("profiles")
+    path = (profiles_root / fname).resolve()
+    if profiles_root not in path.parents:
+        raise PipelineError("profile path escapes profiles directory")
     if not path.exists():
         raise PipelineError(f"missing profile config: {path.as_posix()}")
     import yaml
