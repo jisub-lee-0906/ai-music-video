@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import zlib
 
 from ai_mv.utils.text_utils import parse_size, parse_target
@@ -57,6 +58,15 @@ def _flux2_ref_size(config: dict) -> tuple[int, int]:
     size = str(config["render"]["tti_size"])
     w, h = parse_size(size)
     vw, vh, _ = parse_target(str(config["video"]["target"]))
-    if w * vh != h * vw:
-        raise RuntimeError(f"tti_size aspect ratio must match video.target: {w}x{h} vs {vw}x{vh}")
+    ratio = float(w) / float(max(1, h))
+    target_ratio = float(vw) / float(max(1, vh))
+    if abs(ratio - target_ratio) > 0.05:
+        logging.warning(
+            "Aspect ratio mismatch: ffmpeg will stretch/crop the output (%s=%sx%s vs video.target=%sx%s)",
+            "tti_size",
+            w,
+            h,
+            vw,
+            vh,
+        )
     return w, h

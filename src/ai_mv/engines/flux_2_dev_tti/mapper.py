@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import zlib
 
 from ai_mv.utils.text_utils import parse_size, parse_target
@@ -57,5 +58,14 @@ def _tti_seed(shot: dict) -> int:
 
 def _validate_aspect_ratio(config: dict, width: int, height: int, label: str) -> None:
     vw, vh, _ = parse_target(str(config["video"]["target"]))
-    if width * vh != height * vw:
-        raise RuntimeError(f"{label} aspect ratio must match video.target: {width}x{height} vs {vw}x{vh}")
+    ratio = float(width) / float(max(1, height))
+    target_ratio = float(vw) / float(max(1, vh))
+    if abs(ratio - target_ratio) > 0.05:
+        logging.warning(
+            "Aspect ratio mismatch: ffmpeg will stretch/crop the output (%s=%sx%s vs video.target=%sx%s)",
+            label,
+            width,
+            height,
+            vw,
+            vh,
+        )

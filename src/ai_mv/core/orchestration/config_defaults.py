@@ -10,8 +10,8 @@ DEFAULT_CONFIG: dict = {
     "profile": "",
     "video": {"target": "1920x1080@24"},
     "render": {
-        "tti_size": "1024x1024",
-        "wan_size": "640x640",
+        "tti_size": "1280x720",
+        "wan_size": "832x480",
         "wan_max_clip_sec": 5.0,
         "wan_planner_batch_size": 20,
         "flux2_ref_planner_batch_size": 4,
