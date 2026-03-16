@@ -18,6 +18,7 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "clips": clips,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clips=clips),
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "wan_interpolation",

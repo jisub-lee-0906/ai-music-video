@@ -107,11 +107,21 @@ def wan_schema() -> dict:
 def visual_brief_schema() -> dict:
     return {
         "type": "object",
-        "required": ["hero_identity", "world_rules", "visual_motifs", "negative_constraints", "section_briefs"],
+        "required": [
+            "hero_identity",
+            "world_rules",
+            "recurring_location_families",
+            "allowed_visual_variation",
+            "visual_motifs",
+            "negative_constraints",
+            "section_briefs",
+        ],
         "properties": {
             "hero_identity": {"type": "string"},
             "world_rules": {"type": "string"},
-            "visual_motifs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+            "recurring_location_families": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 6},
+            "allowed_visual_variation": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+            "visual_motifs": {"type": "array", "items": {"type": "string"}, "minItems": 0, "maxItems": 8},
             "negative_constraints": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 10},
             "section_briefs": {"type": "array", "items": _visual_section_schema()},
         },
@@ -121,7 +131,17 @@ def visual_brief_schema() -> dict:
 def _visual_section_schema() -> dict:
     return {
         "type": "object",
-        "required": ["section_name", "emotional_arc", "palette_hint", "lighting_hint", "staging_hint", "story_beat", "location_anchor"],
+        "required": [
+            "section_name",
+            "emotional_arc",
+            "palette_hint",
+            "lighting_hint",
+            "staging_hint",
+            "story_beat",
+            "location_anchor",
+            "escalation_level",
+            "motion_axis",
+        ],
         "properties": {
             "section_name": {"type": "string"},
             "emotional_arc": {"type": "string"},
@@ -130,6 +150,8 @@ def _visual_section_schema() -> dict:
             "staging_hint": {"type": "string"},
             "story_beat": {"type": "string"},
             "location_anchor": {"type": "string"},
+            "escalation_level": {"type": "string"},
+            "motion_axis": {"type": "string"},
         },
     }
 

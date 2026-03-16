@@ -5,6 +5,8 @@ def build_world_bible(brief: dict) -> dict:
     return {
         "hero_identity": str(brief.get("hero_identity", "")).strip(),
         "world_rules": str(brief.get("world_rules", "")).strip(),
+        "recurring_location_families": [str(x).strip() for x in brief.get("recurring_location_families", []) if str(x).strip()],
+        "allowed_visual_variation": [str(x).strip() for x in brief.get("allowed_visual_variation", []) if str(x).strip()],
         "visual_motifs": [str(x).strip() for x in brief.get("visual_motifs", []) if str(x).strip()],
         "negative_constraints": [str(x).strip() for x in brief.get("negative_constraints", []) if str(x).strip()],
     }
@@ -22,6 +24,8 @@ def build_section_dramaturgy(brief: dict) -> list[dict]:
                 "palette_hint": str(row.get("palette_hint", "")).strip(),
                 "lighting_hint": str(row.get("lighting_hint", "")).strip(),
                 "staging_hint": str(row.get("staging_hint", "")).strip(),
+                "escalation_level": str(row.get("escalation_level", "")).strip(),
+                "motion_axis": str(row.get("motion_axis", "")).strip(),
             }
         )
     return out
@@ -56,12 +60,14 @@ def compact_section_atoms(brief: dict, section_name: str) -> dict:
             return {
                 "section_name": target,
                 "story_beat": str(row.get("story_beat", "")).strip(),
-                "location_anchor": str(row.get("location_anchor", "")).strip(),
-                "staging_hint": str(row.get("staging_hint", "")).strip(),
-                "lighting_hint": str(row.get("lighting_hint", "")).strip(),
-                "palette_hint": str(row.get("palette_hint", "")).strip(),
-                "emotional_arc": str(row.get("emotional_arc", "")).strip(),
-            }
+            "location_anchor": str(row.get("location_anchor", "")).strip(),
+            "staging_hint": str(row.get("staging_hint", "")).strip(),
+            "lighting_hint": str(row.get("lighting_hint", "")).strip(),
+            "palette_hint": str(row.get("palette_hint", "")).strip(),
+            "emotional_arc": str(row.get("emotional_arc", "")).strip(),
+            "escalation_level": str(row.get("escalation_level", "")).strip(),
+            "motion_axis": str(row.get("motion_axis", "")).strip(),
+        }
     return {
         "section_name": target,
         "story_beat": "",
@@ -70,4 +76,6 @@ def compact_section_atoms(brief: dict, section_name: str) -> dict:
         "lighting_hint": "",
         "palette_hint": "",
         "emotional_arc": "",
+        "escalation_level": "",
+        "motion_axis": "",
     }

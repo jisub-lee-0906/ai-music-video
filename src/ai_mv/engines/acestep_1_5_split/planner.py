@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.output_paths import audio_prefix
-from ai_mv.core.prompt_digests import audio_digest, negative_digest, profile_digest
-from ai_mv.core.profile_brief import build_profile_brief, resolve_style_guidance
+from ai_mv.core.profile_brief import build_profile_brief, build_profile_intent, resolve_style_guidance
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
 )
@@ -14,11 +13,12 @@ from ai_mv.infra.codex_cli_client import generate_structured
 def build_audio_plan(config: dict, payload: dict) -> dict:
     audio = _audio_config(config)
     tags = _audio_tags(audio)
-    guidance = _style_guidance(config)
+    intent = build_profile_intent(config)
     profile = build_profile_brief(config)
     plan = {
         "tags": tags,
-        "style_guidance": guidance,
+        "profile_intent": intent,
+        "style_guidance": resolve_style_guidance(config),
         "language": _audio_language(audio),
         "filename_prefix": audio_prefix(payload["run_id"]),
     }
@@ -37,14 +37,14 @@ def _audio_prompt(plan: dict) -> str:
     tags = str(plan["tags"]).strip()
     tags_clause = f"Input tags={tags}. " if tags else ""
     language_clause = _language_clause(plan)
-    profile_clause = _profile_clause(plan)
     hook_shape_clause = _hook_shape_clause(plan)
     bar_lane_clause = _bar_lane_clause(plan)
     bpm_clause = _target_bpm_clause(plan)
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
+    intent_clause = _intent_clause(plan)
     return _audio_prompt_rules(plan) + (
         f"Target duration={int(plan['duration'])} sec. "
-        f"{bpm_clause}{bar_lane_clause}{seed_clause}{tags_clause}{language_clause}{profile_clause}{hook_shape_clause}"
+        f"{bpm_clause}{bar_lane_clause}{seed_clause}{tags_clause}{language_clause}{intent_clause}{hook_shape_clause}"
     )
 
 
@@ -105,7 +105,7 @@ def _audio_description_rules() -> str:
         "Avoid generic filler, empty slogans, placeholder romance language, and hooks that could belong to any song. "
         "Prefer concrete nouns, directional motion, physical sensation, or scene detail over vague abstraction. "
         "Make the chorus easy to sing back after one listen, and make the later returns feel more released, more specific, or more committed. "
-        "Treat profile_summary, audio_direction, and hook_direction as the source of truth for the world, attitude, and recurring imagery. "
+        "Treat the provided audio intent, hook intent, world intent, and negative intent as the source of truth. "
         "Do not invent extra sections or fields. "
     )
 
@@ -144,10 +144,6 @@ def _audio_config(config: dict) -> dict:
     return audio if isinstance(audio, dict) else {}
 
 
-def _style_guidance(config: dict) -> str:
-    return resolve_style_guidance(config)
-
-
 def _audio_language(audio: dict) -> str:
     raw = str(audio.get("language", "en")).strip().lower() if isinstance(audio, dict) else "en"
     return raw if raw in {"en", "ja", "ko"} else "en"
@@ -165,13 +161,25 @@ def _language_clause(plan: dict) -> str:
     return f"Lyrics language={lang}. "
 
 
-def _profile_clause(plan: dict) -> str:
+def _intent_clause(plan: dict) -> str:
+    intent = plan.get("profile_intent", {}) if isinstance(plan.get("profile_intent", {}), dict) else {}
+    audio = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
+    world = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
+    negative = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
     parts = [
-        _profile_line("Audio direction", audio_digest(plan, 1)),
-        _profile_line("World lane", profile_digest(plan)),
-        _profile_line("Hook direction", plan.get("hook_direction", "")),
-        _profile_line("Avoid", negative_digest(plan)),
+        _profile_line("Audio intent", audio.get("brief", "")),
+        _profile_line("Hook intent", audio.get("hook_brief", "")),
+        _profile_line("World intent", world.get("visual_brief", "")),
+        _profile_line("Story world", world.get("story_world", "")),
+        _profile_line("Avoid", " ".join([str(negative.get("visual_negative", "")).strip(), str(negative.get("mv_avoid", "")).strip()]).strip()),
     ]
+    if not any(str(part).strip() for part in parts):
+        parts = [
+            _profile_line("Audio direction", plan.get("audio_direction", "")),
+            _profile_line("World lane", plan.get("profile_summary", "")),
+            _profile_line("Hook direction", plan.get("hook_direction", "")),
+            _profile_line("Avoid", plan.get("negative_direction", "")),
+        ]
     return "".join(parts)
 
 
@@ -200,7 +208,8 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized = normalize_audio_fields(planned)
     normalized["duration"] = _resolved_duration(plan, normalized)
     normalized["tags"] = plan["tags"]
-    normalized["style_guidance"] = plan["style_guidance"]
+    normalized["profile_intent"] = dict(plan.get("profile_intent", {}))
+    normalized["style_guidance"] = str(plan.get("style_guidance", "")).strip()
     normalized["language"] = plan["language"]
     normalized["profile_summary"] = plan["profile_summary"]
     normalized["audio_direction"] = plan["audio_direction"]

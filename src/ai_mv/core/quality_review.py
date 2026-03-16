@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.prompt_schema import coverage_review_schema
-from ai_mv.infra.codex_cli_client import generate_structured
-
 
 def build_quality_review(config: dict, payload: dict) -> dict:
     review: dict = {}
-    coverage = _maybe_review_coverage(config, payload)
+    coverage = _review_visual_plan(payload)
     if coverage:
         review["visual"] = coverage
     return review
@@ -33,86 +30,84 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
     }
 
 
-def _maybe_review_coverage(config: dict, payload: dict) -> dict:
+def _review_visual_plan(payload: dict) -> dict:
     visual = payload.get("visual_brief")
     workflow_inputs = payload.get("workflow_inputs_preview", {})
     if not isinstance(visual, dict) or not isinstance(workflow_inputs, dict):
         return {}
-    tti = workflow_inputs.get("tti_anchor", {})
-    shot_router = workflow_inputs.get("shot_router", {})
-    flux2_ref = workflow_inputs.get("flux2_ref_chain", {})
-    wan = workflow_inputs.get("wan_interpolation", {})
-    if not tti or not wan:
+    section_briefs = [row for row in visual.get("section_briefs", []) if isinstance(row, dict)]
+    if not section_briefs:
         return {}
-    prompt = _coverage_prompt(payload, visual, tti, shot_router, flux2_ref, wan)
-    raw = generate_structured(config, prompt, coverage_review_schema())
+    strengths: list[str] = []
+    risks: list[str] = []
+    reasoning: list[str] = []
+
+    _check_location_recurrence(section_briefs, strengths, risks)
+    _check_escalation(section_briefs, strengths, risks)
+    _check_routes(payload.get("clip_routes", []), strengths, risks)
+    _check_wan_output(workflow_inputs.get("wan_interpolation", {}), strengths, risks)
+
+    if not strengths:
+        strengths.append("visual contract is structurally complete enough for downstream render stages")
+    if not risks:
+        risks.append("no major structural repetition signal detected in deterministic review")
+    reasoning.append("Deterministic review inspected section beats, escalation, routing balance, and render-facing prompt reuse.")
     return {
-        "reasoning": str(raw["reasoning"]).strip(),
-        "strengths": [str(x).strip() for x in raw["strengths"] if str(x).strip()],
-        "risks": [str(x).strip() for x in raw["risks"] if str(x).strip()],
-        "prompt": prompt,
+        "reasoning": " ".join(reasoning),
+        "strengths": strengths[:8],
+        "risks": risks[:8],
     }
 
 
-def _coverage_prompt(payload: dict, visual: dict, tti: dict, shot_router: dict, flux2_ref: dict, wan: dict) -> str:
-    profile = str(payload.get("audio_map", {}).get("profile_summary", "")).strip()
-    sections = _section_summary(visual)
-    tti_text = str(tti.get("master_anchor", {}).get("text", tti.get("master_anchor", {}).get("prompt_text", ""))).strip()
-    route_text = _route_summary(shot_router)
-    route_stats = _route_stats_text(payload.get("clip_routes", []))
-    flux2_ref_text = _flux2_ref_summary(flux2_ref)
-    wan_text = _wan_summary(wan)
-    return (
-        "You are a music-video coverage reviewer checking whether the planned visual payload would edit into a compelling MV. "
-        "Return JSON only. "
-        "Review the single provided plan; do not rank or compare alternatives. "
-        "Evaluate same-world continuity, section progression, repeated-return escalation, editability, character consistency, and routing discipline. "
-        "Penalize portrait repetition, weak visual payoff in Chorus 2 or Final Chorus, overuse of ref-assisted routing in coverage sections, weak bridge interruption, and outro residue that does not leave a final image. "
-        f"Profile={profile}. "
-        f"Section dramaturgy={sections}. "
-        f"TTI master anchor={tti_text}. "
-        f"Shot routing={route_text}. "
-        f"Routing stats={route_stats}. "
-        f"Flux2 reference workflow inputs={flux2_ref_text}. "
-        f"WAN workflow inputs={wan_text}."
-    )
+def _check_location_recurrence(section_briefs: list[dict], strengths: list[str], risks: list[str]) -> None:
+    locations = [str(row.get("location_anchor", "")).strip() for row in section_briefs if str(row.get("location_anchor", "")).strip()]
+    unique = list(dict.fromkeys(locations))
+    if 1 <= len(unique) <= 3:
+        strengths.append("location families stay compact enough to preserve a single visual world")
+    if len(unique) > max(3, len(section_briefs) // 2):
+        risks.append("section locations diversify too aggressively and may fracture world continuity")
 
 
-def _section_summary(visual: dict) -> str:
-    rows = []
-    for row in visual.get("section_briefs", []):
-        if not isinstance(row, dict):
-            continue
-        rows.append(
-            f"{row.get('section_name','')}: beat={row.get('story_beat','')}; location={row.get('location_anchor','')}; arc={row.get('emotional_arc','')}"
-        )
-    return " | ".join(rows)
+def _check_escalation(section_briefs: list[dict], strengths: list[str], risks: list[str]) -> None:
+    beats = [str(row.get("story_beat", "")).strip().lower() for row in section_briefs]
+    if len(set(beats)) < len([beat for beat in beats if beat]) * 0.75:
+        risks.append("section story beats repeat too closely and may flatten progression")
+    chorus_rows = [row for row in section_briefs if str(row.get("section_name", "")).strip().lower() == "chorus"]
+    chorus_levels = [str(row.get("escalation_level", "")).strip().lower() for row in chorus_rows]
+    chorus_axes = [str(row.get("motion_axis", "")).strip().lower() for row in chorus_rows]
+    if chorus_rows and len(set(chorus_levels + chorus_axes)) > 1:
+        strengths.append("repeated chorus sections preserve escalation signals instead of collapsing into one beat")
+    elif len(chorus_rows) > 1:
+        risks.append("repeated chorus sections lack distinct escalation markers")
+    for row in section_briefs:
+        sec = str(row.get("section_name", "")).strip().lower()
+        escalation = str(row.get("escalation_level", "")).strip().lower()
+        if sec == "bridge" and escalation != "interrupt":
+            risks.append("bridge does not declare an interruptive role")
+            break
+    for row in section_briefs:
+        sec = str(row.get("section_name", "")).strip().lower()
+        escalation = str(row.get("escalation_level", "")).strip().lower()
+        if sec == "outro" and escalation != "residue":
+            risks.append("outro does not preserve a residue role")
+            break
 
 
-def _flux2_ref_summary(flux2_ref: dict) -> str:
-    items = flux2_ref.get("items", []) if isinstance(flux2_ref, dict) else []
-    rows = []
-    for item in items[:12]:
-        if not isinstance(item, dict):
-            continue
-        rows.append(
-            f"{item.get('shot_id','')}: phase={item.get('clip_phase','')}; relation={item.get('space_relation','')}; start={item.get('start_text','')}; end={item.get('end_text','')}"
-        )
-    return " | ".join(rows)
+def _check_routes(routes: list[dict], strengths: list[str], risks: list[str]) -> None:
+    stats = _route_stats(routes)
+    if stats["ref_assisted_count"] and stats["tti_only_count"]:
+        strengths.append("routing balances reference-heavy identity shots against cheaper tti-only coverage")
+    if stats["total_count"] and stats["ref_assisted_count"] == stats["total_count"]:
+        risks.append("all clips are ref-assisted, which reduces the benefit of the simplified routing policy")
 
 
-def _route_summary(shot_router: dict) -> str:
-    rows = shot_router.get("decisions", []) if isinstance(shot_router, dict) else []
-    out = []
-    for row in rows[:12]:
-        if not isinstance(row, dict):
-            continue
-        out.append(
-            f"{row.get('shot_id','')}: ref={row.get('use_ref', False)}; "
-            f"reason={row.get('reason','')}; mv={row.get('mv_function','')}; "
-            f"phase={row.get('clip_phase','')}; priority={row.get('shot_priority','')}"
-        )
-    return " | ".join(out)
+def _check_wan_output(wan: dict, strengths: list[str], risks: list[str]) -> None:
+    clips = wan.get("clips", []) if isinstance(wan, dict) else []
+    prompts = [str(row.get("positive_prompt", "")).strip().lower() for row in clips if isinstance(row, dict)]
+    if prompts and len(set(prompts)) == len(prompts):
+        strengths.append("render-facing wan prompts remain distinct clip to clip")
+    elif len(prompts) > 1:
+        risks.append("render-facing wan prompts repeat verbatim across clips")
 
 
 def _route_stats(routes: list[dict]) -> dict:
@@ -141,26 +136,3 @@ def _route_stats(routes: list[dict]) -> dict:
         "ref_assisted_count": ref_assisted,
         "ref_ratio_by_section": ratios,
     }
-
-
-def _route_stats_text(routes: list[dict]) -> str:
-    stats = _route_stats(routes)
-    ratios = ", ".join(f"{k}={v}" for k, v in stats["ref_ratio_by_section"].items())
-    return (
-        f"total={stats['total_count']}; "
-        f"tti_only={stats['tti_only_count']}; "
-        f"ref_assisted={stats['ref_assisted_count']}; "
-        f"section_ratios={ratios}"
-    )
-
-
-def _wan_summary(wan: dict) -> str:
-    clips = wan.get("clips", []) if isinstance(wan, dict) else []
-    rows = []
-    for clip in clips[:12]:
-        if not isinstance(clip, dict):
-            continue
-        rows.append(
-            f"{clip.get('shot_id','')}: energy={clip.get('energy','')}; relation={clip.get('space_relation','')}; pos={clip.get('positive_prompt','')}"
-        )
-    return " | ".join(rows)

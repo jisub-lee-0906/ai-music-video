@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_tti_master, normalize_tti_shot
 from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, tti_schema
-from ai_mv.core.prompt_digests import audio_digest, label_digest, section_digest, style_digest, visual_digest
+from ai_mv.core.prompt_digests import label_digest, section_digest
 from ai_mv.core.visual_pipeline import attach_tti_metadata, location_grammar_digest, section_semantics_digest, shot_type_guidance_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.engines.visual_bridge.brief_views import section_dramaturgy, world_bible
@@ -34,10 +34,14 @@ def _planner_prompt(config: dict, audio_map: dict, brief: dict, sections: list[d
 
 
 def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[dict]) -> dict[str, str]:
+    intent = audio_map.get("profile_intent", {})
+    audio_intent = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
+    world_intent = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
     return {
-        "guidance": style_digest(audio_map, 1) or _style_guidance(config, audio_map),
-        "desc": audio_digest(audio_map, 1),
-        "visual_direction": visual_digest(audio_map, 1),
+        "audio_intent": str(audio_intent.get("brief", "") or audio_map.get("genre_description", "") or audio_map.get("audio_direction", "")).strip(),
+        "hook_intent": str(audio_intent.get("hook_brief", "")).strip(),
+        "world_intent": str(world_intent.get("visual_brief", "") or audio_map.get("visual_direction", "")).strip(),
+        "story_world": str(world_intent.get("story_world", "") or audio_map.get("profile_summary", "")).strip(),
         "brief_view": _brief_summary(brief),
         "section_view": section_digest(sections),
         "section_labels": label_digest(sections),
@@ -51,58 +55,18 @@ def _planner_context(config: dict, audio_map: dict, brief: dict, sections: list[
 
 def _planner_rules() -> str:
     return (
-        "You are a senior music-video visual director and Flux 2 image prompt engineer. "
+        "You are a shot planner building the deterministic visual contract for downstream renderers. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
-        "Design one definitive character master anchor image, then design section blueprints that preserve that exact lead identity. "
-        "Never force any genre; infer visual language from style guidance and lyrics context. "
+        "Design one definitive character master anchor image, then design one shot blueprint per section. "
         "master_anchor must include: prompt_text,seed. "
-        "master_anchor prompt_text must be one compact diffusion prompt string, about 12-18 comma-separated visual phrases. "
-        "prompt_text is injected directly into the workflow text encoder, so do not use lists, labels, shot ids, markdown, or prose commentary. "
-        "Use raw visual prompt language only: subject identity, face traits, hair, wardrobe, fabric/material, pose, background set, lighting style, lens language, mood, palette, and finish. "
-        "Match the workflow example style: short comma-separated noun phrases and modifier phrases, not full sentences and not paragraph prose. "
-        "Order the phrase chain so identity lands first, then styling, then environment, then light or palette, then finish. "
-        "A strong master_anchor reads like: refined lead subject, signature hair and silhouette, reflective threshold, warm practical glow, soft teal-rose reflections, cinematic 50mm, polished film finish. "
-        "A weak master_anchor reads like: beautiful singer in a dramatic scene with emotional vibes at night. "
-        "Keep the prompt lexically dense and image-led, more like 'high fashion, vintage couture, street photography' than like a screenplay description. "
-        "Keep one consistent lead identity, face geometry, hair, outfit, accessories, and makeup across the whole song. "
-        "Derive subject identity strictly from the visual brief; do not infer ethnicity, gender, genre-specific styling, or cultural lane unless the brief explicitly says so. "
-        "Treat any signature prop as a supporting accent, not the primary subject, and do not invent a handheld prop unless the brief explicitly locks it. "
-        "Do not let the master anchor collapse into a centered fashion portrait if the world and framing cues suggest a more grounded music-video setup. "
-        "Use the visual brief as the source of truth for identity locks, world rules, and forbidden drift. "
-        "master_anchor should absorb hero/world rules, while shot items should absorb section-specific variation only. "
-        "Honor each section's story_beat and location_anchor from the visual brief; the shot should feel like progression within that environment family, not a random fresh location. "
-        "Treat story_beat as the first priority for shot design: the frame must make the visible action readable before it tries to be pretty. "
-        "Repeated sections should feel like stronger returns, not new worlds: later chorus shots can widen energy or confidence, but must preserve the same lead subject and world grammar. "
-        "Use section labels as escalation hints so repeated returns widen confidence and clarity without changing worlds. "
-        "Use the profile-driven shot grammar guidance instead of a single global hierarchy; section shots should follow the current profile's preferred framing mix. "
-        "Think like a finished music video, not a portrait generator: the shot list should create angle variety, movement variety, and staging progression while preserving the same lead subject. "
-        "Across the song, mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings where appropriate instead of defaulting to straight-on portraits. "
-        "Not every shot should face camera; reserve the most frontal hero framing for major returns and payoff moments. "
-        "If the shot blueprint implies profile, shoulder-led travel, reflection, or offset blocking, do not silently reset it to a centered beauty frame. "
-        "Verse shots should often read as travel, drift, or body-in-space coverage: side-profile walk, shoulder-led crossing, reflected pass, or oblique medium-wide staging are preferred over repeated centered beauty frames. "
-        "Bridge shots should introduce emotional distance, pause, or separation through framing: silhouette, reflected profile, negative space, isolated lateral placement, or partial obstruction. "
-        "Bridge should visually interrupt the flow established before it so the final return feels earned, not merely brighter. "
-        "Post-chorus and transition shots should reset rhythm through texture, reflection, or connective camera relation rather than another near-identical face angle. "
+        "master_anchor prompt_text must be a compact diffusion prompt string composed of stable identity and world facts only. "
+        "Use the visual brief as the source of truth for identity locks, world rules, recurring locations, and forbidden drift. "
+        "Each shot must preserve the same lead identity and world while changing only section-specific framing and motion intent. "
+        "Honor each section's story_beat, location_anchor, escalation_level, and motion_axis. "
+        "Repeated sections must escalate within the same world instead of creating a new concept. "
         "Each shot item must include: shot_id,shot_type,is_chorus,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation. "
-        "Shot items must not redefine identity; they only specify framing, pose, emotion, environmental emphasis, and motion intent. "
-        "camera_language should be a short cinematic phrase for framing or lens behavior only, and it must stay smooth and readable. "
-        "For verses and transitions, prefer oblique framings such as three-quarter portrait, side profile walk, over-shoulder drift, reflected profile, or silhouette follow rather than always using centered front view. "
-        "For Chorus and Final Chorus, hero framing can return more frontally, but it should still feel like a staged music-video payoff rather than a static passport portrait. "
-        "Use environment relation actively: foreground occlusion, passing reflections, corridor depth, storefront spill, sidewalk negative space, or shoulder-led lead-in are often better than another clean head-on pose. "
-        "pose_delta should describe exactly one readable body or gaze change that helps the story_beat land on screen. "
-        "emotion should be concise and performance-oriented, not narrative. "
-        "For Chorus 2 and Final Chorus, emotion should clearly sound more open, more assured, or more resolved than the earlier chorus rather than merely different. "
-        "scene_detail should name exactly one concrete set or prop emphasis and should preserve the same master palette with only section accent shifts. "
-        "scene_detail should usually reinforce the location_anchor instead of inventing a fresh place. "
-        "For repeated choruses, scene_detail should reveal a clearer, brighter, wider, or more resolved version of the same environment; Final Chorus should show the cleanest and most luminous environmental payoff. "
-        "Keep scene_detail focused on environment, lighting, or silhouette unless the shot truly needs a brief insert. "
-        "motion_hint should prefer smooth readable motion, not frantic action or multiple simultaneous events. "
-        "Final Chorus motion_hint should feel like the smoothest and most confident payoff move in the song, not just another generic slow move. "
-        "space_relation must describe stable left-right or front-back geometry in plain English, such as glass stays camera-right, storefront remains behind her left shoulder, open street ahead of her, or reflection runs beside her on camera-left. "
-        "space_relation should be simple, physically readable, and reusable across start and end frames so downstream image-to-image planners can preserve the same space logic. "
-        "Outro framing should leave a residue image rather than another performance beat: retreating figure, empty space after passage, or reflection that outlasts her body are strong options. "
-        "Favor prompts that are directly usable by diffusion models: concrete, visual, and physically readable instead of poetic or abstract. "
-        "Avoid empty prestige phrases like cinematic vibes, dramatic aura, stylish composition, or emotional energy without a concrete visible setup. "
+        "camera_language, pose_delta, scene_detail, motion_hint, and space_relation must be short structural decisions, not prose. "
+        "space_relation must stay physically reusable by downstream render stages. "
         "Shot count must match section count exactly. "
         "Use section semantics to decide whether a shot should establish, cover, lift, pay off, interrupt, or leave residue. "
     )
@@ -111,8 +75,8 @@ def _planner_rules() -> str:
 def _planner_inputs(context: dict[str, str]) -> str:
     return (
         f"Use shot_type only from enum: {context['types']}. "
-        f"Style lane={context['guidance']}; Audio direction={context['desc']}; "
-        f"Visual direction={context['visual_direction']}; "
+        f"Audio intent={context['audio_intent']}; Hook intent={context['hook_intent']}; "
+        f"World intent={context['world_intent']}; Visual direction={context['world_intent']}; Story world={context['story_world']}; "
         f"Visual brief={context['brief_view']}; Shot grammar={context['shot_type_guidance']}; "
         f"Location grammar={context['location_grammar']}; "
         f"Section labels in order={context['section_labels']}; Section semantics={context['section_semantics']}; "
@@ -160,13 +124,6 @@ def _sec_start(row: dict) -> float:
 
 def _sec_end(row: dict) -> float:
     return float(row.get("end_sec", row.get("end", 0.0)))
-
-def _style_guidance(config: dict, audio_map: dict) -> str:
-    guided = str(audio_map.get("style_guidance", "")).strip()
-    if guided:
-        return guided
-    style = config.get("style", {}) if isinstance(config, dict) else {}
-    return str(style.get("guidance", "")).strip() if isinstance(style, dict) else ""
 
 def _escalation_reference(sections: list[dict]) -> str:
     labels = {str(row.get("label", row.get("name", "section"))).strip().lower() for row in sections}

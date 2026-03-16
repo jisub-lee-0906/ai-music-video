@@ -11,6 +11,7 @@ def run_shot_router(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "clip_routes": routes,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clip_routes=routes),
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "shot_router",

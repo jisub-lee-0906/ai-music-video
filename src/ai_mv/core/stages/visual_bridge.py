@@ -13,6 +13,7 @@ def run_visual_bridge(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "visual_brief": brief,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), visual_brief=brief),
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "visual_bridge",

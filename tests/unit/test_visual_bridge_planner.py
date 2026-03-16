@@ -7,10 +7,11 @@ def test_visual_bridge_builds_strict_brief(monkeypatch):
     monkeypatch.setattr(bridge_planner, "generate_structured", _fake_generate)
     payload = {
         "audio_map": {
-            "tags": "city pop, female vocal",
-            "style_guidance": "neon nightlife",
-            "genre_description": "bright city-pop groove with glossy synths",
-            "lyrics": "[Verse - Pulse]\nshining through the night",
+            "profile_intent": {
+                "audio_intent": {"brief": "bright city-pop groove with glossy synths", "hook_brief": "night hook", "tags": [], "language": "ja"},
+                "world_intent": {"visual_brief": "neon nightlife", "story_world": "one city night", "action_vocabulary": "small graceful actions", "payoff_style": "clear return"},
+                "negative_intent": {"visual_negative": "no drift", "mv_avoid": "no clutter"},
+            },
             "sections": [
                 {"name": "verse", "start_sec": 0.0, "end_sec": 10.0},
                 {"name": "chorus", "start_sec": 10.0, "end_sec": 20.0},
@@ -23,15 +24,17 @@ def test_visual_bridge_builds_strict_brief(monkeypatch):
     assert out["section_briefs"][1]["section_name"] == "chorus"
     assert out["section_briefs"][0]["story_beat"]
     assert out["section_briefs"][0]["location_anchor"]
+    assert out["recurring_location_families"]
+    assert out["allowed_visual_variation"]
 
 
 def test_visual_bridge_prompt_separates_names_and_timing():
     audio_map = {
-        "tags": "city pop",
-        "style_guidance": "night drive",
-        "genre_description": "glossy retro pop",
-        "profile_summary": "retro japanese city-pop lane",
-        "visual_direction": "neon harbor nightlife with graceful poise",
+        "profile_intent": {
+            "audio_intent": {"brief": "glossy retro pop", "hook_brief": "night drive", "tags": [], "language": "ja"},
+            "world_intent": {"visual_brief": "neon harbor nightlife with graceful poise", "story_world": "retro japanese city-pop lane", "action_vocabulary": "small actions", "payoff_style": "clear hero payoff"},
+            "negative_intent": {"visual_negative": "no drift", "mv_avoid": "no clutter"},
+        },
         "section_semantics": [
             {"section_name": "intro", "section_label": "intro", "movement_bias": "travel coverage", "release_level": "low"},
             {"section_name": "chorus", "section_label": "chorus", "movement_bias": "clear hero payoff", "release_level": "high"},
@@ -45,27 +48,24 @@ def test_visual_bridge_prompt_separates_names_and_timing():
     assert "Section names only=intro, chorus" in prompt
     assert "Section labels in order=intro, chorus" in prompt
     assert "section_name must be a bare section token only" in prompt
-    assert "Chorus 2 should feel like a stronger return" in prompt
-    assert "Create a small reusable location family budget for the whole song" in prompt
-    assert "story_beat must be a short plain-English visible action beat" in prompt
-    assert "Every story_beat must contain at least one visible action verb" in prompt
-    assert "Good story_beat examples: slows by the glass and checks the reflection" in prompt
-    assert "Bad story_beat examples: searching, opening up, separation" in prompt
-    assert "Good location_anchor examples: reflective threshold, lit passage, open night lane, sheltered edge" in prompt
+    assert "single source of truth for the visual pipeline" in prompt
+    assert "recurring_location_families" in prompt
+    assert "allowed_visual_variation" in prompt
+    assert "story_beat must be a visible present-tense action" in prompt
+    assert "motion_axis" in prompt
     assert "Location grammar=budget=2-3 recurring families; examples=reflective threshold, lit passage, open night lane, sheltered edge" in prompt
-    assert "Style lane=night drive" in prompt
-    assert "Audio direction=glossy retro pop" in prompt
-    assert "Visual direction=neon harbor nightlife with graceful poise" in prompt
+    assert "Audio intent=glossy retro pop" in prompt
+    assert "World intent=neon harbor nightlife with graceful poise" in prompt
     assert "Section semantics=intro|travel coverage|low, chorus|clear hero payoff|high" in prompt
-    assert "Derive identity strictly from the profile and visual brief" in prompt
-    assert "never infer ethnicity, gender, genre-specific styling" in prompt
-    assert "Audio tags=" not in prompt
+    assert "Chorus 2 and Final Chorus must escalate without becoming a new world" in prompt
 
 
 def test_visual_bridge_rejects_non_action_story_beat():
     bad = {
         "hero_identity": "hero",
         "world_rules": "world",
+        "recurring_location_families": ["reflective threshold"],
+        "allowed_visual_variation": ["framing changes"],
         "visual_motifs": ["rain"],
         "negative_constraints": ["drift"],
         "section_briefs": [
@@ -91,6 +91,8 @@ def _fake_generate(_config, _prompt, _schema):
     return {
         "hero_identity": "silver-haired city-pop heroine with polished stage styling",
         "world_rules": "retro neon nightlife world with elegant concert geometry",
+        "recurring_location_families": ["reflective threshold", "open night lane"],
+        "allowed_visual_variation": ["framing changes", "palette accents"],
         "visual_motifs": ["neon reflections", "chrome microphone"],
         "negative_constraints": ["identity drift", "period change"],
         "section_briefs": [
@@ -102,6 +104,8 @@ def _fake_generate(_config, _prompt, _schema):
                 "staging_hint": "clean stage depth",
                 "story_beat": "passes through the threshold without looking back",
                 "location_anchor": "reflective threshold",
+                "escalation_level": "steady",
+                "motion_axis": "travel line",
             },
             {
                 "section_name": "chorus",
@@ -111,6 +115,8 @@ def _fake_generate(_config, _prompt, _schema):
                 "staging_hint": "expanded performance space",
                 "story_beat": "opens up in the same lane with clearer confidence",
                 "location_anchor": "reflective threshold",
+                "escalation_level": "payoff",
+                "motion_axis": "gaze shift",
             },
         ],
     }

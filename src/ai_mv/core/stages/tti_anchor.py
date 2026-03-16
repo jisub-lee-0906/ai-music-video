@@ -14,6 +14,8 @@ def run_tti_anchor(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "anchors": anchors,
+            "shot_plan": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), shot_plan={"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}),
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "tti_anchor",

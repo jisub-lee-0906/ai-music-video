@@ -65,6 +65,8 @@ def _add_audio(stage_input: StageInput) -> None:
     audio_map.update(_audio_context(stage_input.config, audio_map, plan))
     stage_input.payload.update(
         {
+            "profile_intent": dict(plan.get("profile_intent", {})),
+            "audio_plan": dict(plan),
             "audio_map": audio_map,
             "music_file": "",
             "planner_prompts": _merge(stage_input.payload, "audio", {"prompt": _audio_prompt(plan)}),
@@ -82,6 +84,7 @@ def _add_visual(stage_input: StageInput) -> None:
     stage_input.payload.update(
         {
             "visual_brief": brief,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), visual_brief=brief),
             "planner_prompts": _merge(
                 stage_input.payload,
                 "visual_bridge",
@@ -99,6 +102,8 @@ def _add_tti(stage_input: StageInput) -> None:
     stage_input.payload.update(
         {
             "anchors": anchors,
+            "shot_plan": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), shot_plan={"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}),
             "planner_prompts": _merge(stage_input.payload, "tti_anchor", {"prompt": _tti_prompt(stage_input, plan)}),
             "workflow_inputs_preview": _merge(
                 stage_input.payload,
@@ -116,6 +121,7 @@ def _add_shot_router(stage_input: StageInput) -> None:
     stage_input.payload.update(
         {
             "clip_routes": routes,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clip_routes=routes),
             "planner_prompts": _merge(stage_input.payload, "shot_router", {"prompt": _route_policy_summary(stage_input.config)}),
             "workflow_inputs_preview": _merge(
                 stage_input.payload,
@@ -134,6 +140,7 @@ def _add_flux2_ref(stage_input: StageInput) -> None:
     stage_input.payload.update(
         {
             "flux2_ref_images": flux2_ref_images,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
             "planner_prompts": _merge(stage_input.payload, "flux2_ref_chain", {"batches": _flux2_ref_prompt_batches(stage_input, plan)}),
             "workflow_inputs_preview": _merge(
                 stage_input.payload,
@@ -151,6 +158,7 @@ def _add_wan(stage_input: StageInput) -> None:
     stage_input.payload.update(
         {
             "clips": list(plan["clips"]),
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clips=list(plan["clips"])),
             "planner_prompts": _merge(stage_input.payload, "wan_interpolation", {"batches": _wan_prompt_batches(stage_input, plan)}),
             "workflow_inputs_preview": _merge(
                 stage_input.payload,
@@ -182,6 +190,7 @@ def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
         "genre_description": str(plan.get("genre_description", "")).strip(),
         "lyrics": str(plan.get("lyrics", "")).strip(),
         "tags": str(plan.get("tags", "")).strip(),
+        "profile_intent": dict(plan.get("profile_intent", {})),
         "style_guidance": str(plan.get("style_guidance", "")).strip(),
         "language": str(plan.get("language", "")).strip(),
         "profile_summary": str(plan.get("profile_summary", "")).strip(),

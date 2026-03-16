@@ -8,23 +8,30 @@ def test_audio_prompt_mentions_acestep_tags_field_alignment():
     prompt = audio_planner._audio_prompt(
         {
             "tags": "city pop",
-            "style_guidance": "night drive romance",
             "profile_summary": "retro city-pop lane",
             "audio_direction": "mature female vocal, glossy piano",
             "hook_direction": "rain on glass, boulevard pulse",
             "visual_direction": "warm urban nightlife",
             "negative_direction": "no futuristic sci-fi tone",
+            "profile_intent": {
+                "audio_intent": {"brief": "mature female vocal, glossy piano", "hook_brief": "rain on glass, boulevard pulse"},
+                "world_intent": {"visual_brief": "warm urban nightlife", "story_world": "retro city-pop lane"},
+                "negative_intent": {"visual_negative": "no futuristic sci-fi tone", "mv_avoid": "no clutter"},
+            },
             "duration": 200,
             "bpm": 108,
         }
     )
     assert "AceStep tags text field" in prompt
+    assert "Audio intent=" in prompt
 
 
 def test_tti_prompt_mentions_direct_text_encoder_alignment():
     brief = {
         "hero_identity": "hero",
         "world_rules": "world",
+        "recurring_location_families": ["reflective threshold"],
+        "allowed_visual_variation": ["framing changes"],
         "visual_motifs": ["rain"],
         "negative_constraints": ["drift"],
         "section_briefs": [
@@ -36,102 +43,54 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
                 "staging_hint": "front portrait",
                 "story_beat": "opens up in the same street",
                 "location_anchor": "reflective threshold",
+                "escalation_level": "payoff",
+                "motion_axis": "gaze shift",
             }
         ],
     }
     audio_map = {
-        "genre_description": "desc",
-        "tags": "city pop",
-        "style_guidance": "guide",
-        "profile_summary": "retro city-pop lane",
-        "visual_direction": "harbor neon romance",
+        "profile_intent": {
+            "audio_intent": {"brief": "desc", "hook_brief": "hook"},
+            "world_intent": {"visual_brief": "harbor neon romance", "story_world": "retro city-pop lane"},
+        },
         "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
     }
     sections = [{"name": "chorus", "label": "Final Chorus", "start_sec": 0.0, "end_sec": 8.0}]
     prompt = tti_planner._planner_prompt({}, audio_map, brief, sections)
-    assert "injected directly into the workflow text encoder" in prompt
-    assert "Order the phrase chain so identity lands first" in prompt
-    assert "A strong master_anchor reads like" in prompt
-    assert "A weak master_anchor reads like" in prompt
+    assert "deterministic visual contract" in prompt
+    assert "master_anchor prompt_text must be a compact diffusion prompt string composed of stable identity and world facts only" in prompt
     assert "Escalation guide=" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
-    assert "Think like a finished music video" in prompt
-    assert "do not invent a handheld prop unless the brief explicitly locks it" in prompt
-    assert "mix front, three-quarter, profile, over-shoulder, and silhouette-friendly framings" in prompt
-    assert "do not silently reset it to a centered beauty frame" in prompt
-    assert "Verse shots should often read as travel, drift, or body-in-space coverage" in prompt
-    assert "Bridge shots should introduce emotional distance" in prompt
-    assert "Honor each section's story_beat and location_anchor" in prompt
-    assert "space_relation must describe stable left-right or front-back geometry" in prompt
-    assert "visible action readable before it tries to be pretty" in prompt
-    assert "Bridge should visually interrupt the flow established before it" in prompt
-    assert "Outro framing should leave a residue image" in prompt
+    assert "Honor each section's story_beat, location_anchor, escalation_level, and motion_axis" in prompt
     assert "Shot grammar=" in prompt
     assert "Location grammar=" in prompt
     assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
-    assert "Lyrics excerpt=" not in prompt
-    assert "Avoid=" not in prompt
+    assert "Audio intent=desc" in prompt
+    assert "World intent=harbor neon romance" in prompt
 
 
 def test_flux2_ref_prompt_mentions_atom_generation_contract():
     payload = {
-        "audio_map": {
-            "style_guidance": "guide",
-            "profile_summary": "retro city-pop lane",
-            "visual_direction": "harbor neon romance",
-            "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
-        },
         "visual_brief": _brief(),
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
-    assert "Each item must include shot_id,subject_clause,action_clause,environment_clause,continuity_clause" in prompt
-    assert "Do not write full final prompt sentences" in prompt
-    assert "subject_clause must be a short identity clause" in prompt
-    assert "action_clause must describe one small visible change axis only" in prompt
-    assert "Good action_clause examples" in prompt
-    assert "Good environment_clause examples" in prompt
-    assert "Final Chorus should feel like the visual peak" in prompt
-    assert "Honor the section story_beat and location_anchor" in prompt
-    assert "Honor the shot space_relation exactly" in prompt
-    assert "keep the same left-right geometry" in prompt
-    assert "Do not invent a new handheld prop" in prompt
-    assert "camera-right, camera-left, left-to-right, or right-to-left" in prompt
-    assert "earlier parts should establish the body and space relation" in prompt
-    assert "Do not give identical action_clause to multiple consecutive parts" in prompt
-    assert "Bridge items should feel interrupted or isolated" in prompt
-    assert "Outro items should leave one residue image" in prompt
-    assert "Visual brief=hero=hero; world=world; sections=chorus|opens up in the same street|reflective threshold" in prompt
-    assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
-    assert "Lyrics context=" not in prompt
-    assert "Avoid=" not in prompt
+    assert "deterministic flux2 reference composer" in prompt
+    assert "hero=hero" in prompt
+    assert "world=world" in prompt
+    assert "S010(" in prompt
 
 
 def test_wan_prompt_mentions_motion_atom_contract():
     payload = {
-        "audio_map": {
-            "style_guidance": "guide",
-            "profile_summary": "retro city-pop lane",
-            "visual_direction": "harbor neon romance",
-            "section_semantics": [{"section_name": "chorus", "section_label": "Final Chorus", "movement_bias": "clear hero payoff", "release_level": "peak", "hero_frame_priority": "peak"}],
-        },
         "visual_brief": _brief(),
     }
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
-    assert "Do not write the final positive_prompt prose" in prompt
-    assert "motion payoff" in prompt
-    assert "subject_motion must combine the visible starting state and the main body motion" in prompt
-    assert "camera_relation should be one short framing phrase" in prompt
-    assert "Good environment_detail examples" in prompt
-    assert "Profile steering=" not in prompt
-    assert "motifs=" not in prompt
-    assert "Honor section story_beat and location_anchor" in prompt
-    assert "Honor space_relation from the shot blueprint" in prompt
-    assert "Later chorus returns can feel slightly clearer or more resolved" in prompt
-    assert "Section semantics=Final Chorus|clear hero payoff|peak|peak" in prompt
-    assert "Lyrics context=" not in prompt
-    assert "Avoid=" not in prompt
+    assert "deterministic wan composer" in prompt
+    assert "clip_ids=S010_C01" in prompt
+    assert "hero=hero" in prompt
+    assert "clips=S010_C01(" in prompt
 
 
 def test_wan_energy_policy_lifts_final_chorus():
@@ -165,6 +124,8 @@ def _brief() -> dict:
     return {
         "hero_identity": "hero",
         "world_rules": "world",
+        "recurring_location_families": ["reflective threshold"],
+        "allowed_visual_variation": ["framing changes"],
         "visual_motifs": ["rain"],
         "negative_constraints": ["drift"],
         "section_briefs": [
@@ -176,6 +137,8 @@ def _brief() -> dict:
                 "staging_hint": "front portrait",
                 "story_beat": "opens up in the same street",
                 "location_anchor": "reflective threshold",
+                "escalation_level": "payoff",
+                "motion_axis": "gaze shift",
             }
         ],
     }

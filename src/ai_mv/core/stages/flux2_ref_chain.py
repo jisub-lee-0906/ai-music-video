@@ -18,6 +18,7 @@ def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "flux2_ref_images": flux2_ref_images,
+            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
             "planner_prompts": _merge_prompt_preview(
                 stage_input.payload,
                 "flux2_ref_chain",

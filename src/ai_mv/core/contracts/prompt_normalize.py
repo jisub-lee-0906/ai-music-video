@@ -113,10 +113,17 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
 def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
     if not sections:
         raise RuntimeError("visual brief sections missing")
+    fallback_section_rows = [x for x in raw.get("section_briefs", []) if isinstance(x, dict)]
+    fallback_families = [str(row.get("location_anchor", "")).strip() for row in fallback_section_rows if str(row.get("location_anchor", "")).strip()]
+    recurring_families = _normalize_text_list(raw.get("recurring_location_families", fallback_families), "recurring_location_families")
+    fallback_variation = [str(row.get("staging_hint", "")).strip() for row in fallback_section_rows if str(row.get("staging_hint", "")).strip()]
+    allowed_variation = _normalize_text_list(raw.get("allowed_visual_variation", fallback_variation or ["section-level framing variation"]), "allowed_visual_variation")
     out = {
         "hero_identity": _require_text(raw, "hero_identity"),
         "world_rules": _require_text(raw, "world_rules"),
-        "visual_motifs": _normalize_text_list(raw["visual_motifs"], "visual_motifs"),
+        "recurring_location_families": recurring_families,
+        "allowed_visual_variation": allowed_variation,
+        "visual_motifs": _normalize_text_list(raw.get("visual_motifs", []), "visual_motifs") if raw.get("visual_motifs", []) else list(recurring_families),
         "negative_constraints": _normalize_text_list(raw["negative_constraints"], "negative_constraints"),
         "section_briefs": _normalize_section_briefs(raw["section_briefs"], sections),
     }
@@ -124,6 +131,8 @@ def normalize_visual_brief(raw: dict, sections: list[dict]) -> dict:
     out["world_bible"] = {
         "hero_identity": out["hero_identity"],
         "world_rules": out["world_rules"],
+        "recurring_location_families": list(out["recurring_location_families"]),
+        "allowed_visual_variation": list(out["allowed_visual_variation"]),
         "visual_motifs": list(out["visual_motifs"]),
         "negative_constraints": list(out["negative_constraints"]),
     }
@@ -186,6 +195,8 @@ def _normalize_visual_section(row: dict, expected_name: str) -> dict:
         "staging_hint": _require_text(row, "staging_hint"),
         "story_beat": story_beat,
         "location_anchor": location_anchor,
+        "escalation_level": _normalize_optional_clause(row.get("escalation_level", ""), 8) or _default_escalation_level(expected_name),
+        "motion_axis": _normalize_optional_clause(row.get("motion_axis", ""), 10) or _default_motion_axis(story_beat),
     }
 
 
@@ -233,109 +244,36 @@ def _validate_story_beat(text: str) -> None:
         raise RuntimeError("visual brief story_beat must describe a visible action, not only a mood label")
     if len(low.split()) < 2:
         raise RuntimeError("visual brief story_beat too thin")
-    verbs = (
-        "walk",
-        "walks",
-        "walking",
-        "wait",
-        "waits",
-        "waiting",
-        "move",
-        "moves",
-        "moving",
-        "pause",
-        "pauses",
-        "paused",
-        "turn",
-        "turns",
-        "turning",
-        "glance",
-        "glances",
-        "glancing",
-        "look",
-        "looks",
-        "looking",
-        "check",
-        "checks",
-        "checks",
-        "checking",
-        "step",
-        "steps",
-        "stepping",
-        "cross",
-        "crosses",
-        "crossing",
-        "clear",
-        "clears",
-        "clearing",
-        "drift",
-        "drifts",
-        "drifting",
-        "linger",
-        "lingers",
-        "lingering",
-        "face",
-        "faces",
-        "facing",
-        "pass",
-        "passes",
-        "passing",
-        "stop",
-        "stops",
-        "stopping",
-        "remain",
-        "remains",
-        "remaining",
-        "hold",
-        "holds",
-        "holding",
-        "lean",
-        "leans",
-        "leaning",
-        "enter",
-        "enters",
-        "entering",
-        "leave",
-        "leaves",
-        "leaving",
-        "circle",
-        "circles",
-        "circling",
-        "retreat",
-        "retreats",
-        "retreating",
-        "slow",
-        "slows",
-        "slowing",
-        "meet",
-        "meets",
-        "meeting",
-        "let",
-        "lets",
-        "letting",
-        "open",
-        "opens",
-        "opening",
-        "trace",
-        "traces",
-        "slip",
-        "slips",
-        "slipping",
-        "return",
-        "returns",
-        "returning",
-        "follow",
-        "follows",
-        "following",
-    )
-    if not any(word in low for word in verbs):
-        raise RuntimeError("visual brief story_beat must include a visible action verb")
 
 
 def _validate_location_anchor(text: str) -> None:
     low = str(text).strip().lower()
-    if len(low.split()) < 2:
+    if len(low.split()) < 1 or not any(ch.isalpha() for ch in low):
         raise RuntimeError("visual brief location_anchor too thin")
+
+
+def _default_escalation_level(section_name: str) -> str:
+    sec = str(section_name).strip().lower()
+    if sec == "chorus":
+        return "payoff"
+    if sec == "bridge":
+        return "interrupt"
+    if sec == "outro":
+        return "residue"
+    if sec == "pre_chorus":
+        return "lift"
+    return "steady"
+
+
+def _default_motion_axis(story_beat: str) -> str:
+    low = str(story_beat).strip().lower()
+    if "turn" in low or "glance" in low or "gaze" in low:
+        return "gaze shift"
+    if "step" in low or "walk" in low or "cross" in low or "pass" in low:
+        return "travel line"
+    if "hold" in low or "pause" in low or "stop" in low:
+        return "stillness hold"
+    return "pose shift"
 
 
 def _normalize_keyscale(text: str) -> str:

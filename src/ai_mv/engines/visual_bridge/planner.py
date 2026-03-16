@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_visual_brief
 from ai_mv.core.contracts.prompt_schema import visual_brief_schema
-from ai_mv.core.prompt_digests import audio_digest, label_digest, style_digest, visual_digest
+from ai_mv.core.prompt_digests import label_digest
 from ai_mv.core.visual_pipeline import location_grammar_digest
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -15,50 +15,39 @@ def build_visual_brief(config: dict, payload: dict) -> dict:
 
 
 def _planner_prompt(config: dict, audio_map: dict, sections: list[dict]) -> str:
-    guidance = style_digest(audio_map, 1)
-    genre = audio_digest(audio_map, 1)
-    direction = visual_digest(audio_map, 1)
+    intent = audio_map.get("profile_intent", {})
+    audio_intent = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
+    world_intent = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
+    negative_intent = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
     names = _section_names(sections)
     labels = label_digest(sections)
     semantics = _section_semantics(audio_map)
     location_grammar = location_grammar_digest(config)
     return (
-        "You are a senior music-video world-lock planner building a thin reusable visual brief for downstream planners. "
+        "You are a music-video world planner building the single source of truth for the visual pipeline. "
         "Return strict JSON only. No prose outside JSON. "
-        "Required fields: hero_identity,world_rules,visual_motifs,negative_constraints,section_briefs. "
-        "section_briefs item fields: section_name,emotional_arc,palette_hint,lighting_hint,staging_hint,story_beat,location_anchor. "
-        "Build one stable lead identity and one stable visual world that can survive TTI, Flux2 reference, and WAN without drift. "
-        "hero_identity must describe only identity locks: face, hair, age impression, styling, signature wardrobe, and only an explicitly required hero prop. "
-        "Derive identity strictly from the profile and visual brief; never infer ethnicity, gender, genre-specific styling, or cultural lane unless the input clearly says so. "
-        "If the profile implies a youthful or fresh lead, keep the age impression clearly young adult, roughly mid-20s to early-30s, and do not drift older unless the input explicitly asks for mature or older presence. "
-        "Do not invent a handheld prop, umbrella, microphone, shopping bag, phone, or instrument unless the input clearly locks it. "
-        "If no prop is necessary, anchor identity through silhouette, hair styling, and accessories rather than inventing a handheld object. "
-        "Do not put camera moves, scene actions, or section events inside hero_identity. "
-        "world_rules must be 2 short sentences covering setting, recurring spaces, and the master palette or lighting baseline only. "
-        "visual_motifs must be short reusable noun phrases, not full sentences. "
-        "negative_constraints must be short forbidden drift items, not explanations. "
-        "Each section_brief should stay short and practical while preserving the same lead identity and world. "
-        "Use section labels as escalation hints: Chorus 2 should feel like a stronger return than Chorus, and Final Chorus should feel like the peak return without changing worlds. "
-        "Create a small reusable location family budget for the whole song instead of inventing a fresh place every section. "
-        "palette_hint and lighting_hint must be short accent cues, not a full reset. "
-        "staging_hint must stay physically simple and camera-safe: one clear setup, one readable action, no frantic verbs. "
-        "story_beat must be a short plain-English visible action beat for that section, not just a mood label. "
-        "Every story_beat must contain at least one visible action verb such as slows, checks, passes, pauses, turns, steps, faces, drifts, walks, stops, holds, leaves, returns, or follows. "
-        "Write story_beat as one readable present-tense clause of about 6-14 words, grounded in what the camera can actually see. "
-        "Good story_beat pattern: verb + place/object + second readable action. "
-        "Good story_beat examples: slows by the glass and checks the reflection; passes the storefront without looking back; pauses at the curb before turning; steps into the open crosswalk and finally faces forward. "
-        "Bad story_beat examples: searching, opening up, separation, confidence, romantic release, emotional climax. "
-        "If a draft story_beat sounds abstract, replace it with the concrete body action that would make the emotion visible on screen. "
-        "location_anchor must be a short recurring environment-family phrase, not a named fixed set from one genre. "
-        "Good location_anchor examples: reflective threshold, lit passage, open night lane, sheltered edge. "
-        "Most adjacent sections should reuse the same location_anchor family or move to one closely related family, so the video feels like progression inside one world instead of random location hopping. "
-        "Keep the brief practical for downstream planners: concise, reusable, and low-ambiguity. "
+        "Required fields: hero_identity,world_rules,recurring_location_families,allowed_visual_variation,negative_constraints,section_briefs. "
+        "section_briefs item fields: section_name,emotional_arc,palette_hint,lighting_hint,staging_hint,story_beat,location_anchor,escalation_level,motion_axis. "
+        "This brief must be strong enough that downstream render stages do not need to reinvent story or continuity. "
+        "hero_identity must contain only stable identity locks. "
+        "world_rules must define one coherent world and baseline look. "
+        "recurring_location_families must be reusable environment families, not one-off sets. "
+        "allowed_visual_variation must describe what may change while preserving identity and world continuity. "
+        "negative_constraints must be short forbidden drift items. "
+        "Each section_brief must preserve identity and world while advancing a visible story beat. "
+        "story_beat must be a visible present-tense action the camera can read. "
+        "location_anchor must stay inside the recurring world families. "
+        "escalation_level must express whether the section is steady, lift, payoff, interrupt, or residue. "
+        "motion_axis must describe the main change axis, such as travel line, pose shift, gaze shift, or stillness hold. "
+        "Chorus 2 and Final Chorus must escalate without becoming a new world. "
+        "Bridge must interrupt the flow. Outro must leave residue. "
         "section_briefs must match Section names exactly in count and order. "
-        "If a section name repeats, return repeated section_briefs entries in the same repeated order; never merge duplicate section names. "
-        "section_name must be a bare section token only, never include timing, punctuation ranges, or extra annotation. "
-        "Avoid generic section_brief language like cinematic mood, emotional scene, stylish lighting, or dramatic performance unless grounded in a clear visual setup. "
-        f"Style lane={guidance}; Audio direction={genre}; "
-        f"Visual direction={direction}; Section semantics={semantics}; Location grammar={location_grammar}; "
+        "section_name must be a bare section token only. "
+        f"Audio intent={audio_intent.get('brief', '')}; Hook intent={audio_intent.get('hook_brief', '')}; "
+        f"World intent={world_intent.get('visual_brief', '')}; Story world={world_intent.get('story_world', '')}; "
+        f"Action vocabulary={world_intent.get('action_vocabulary', '')}; Payoff intent={world_intent.get('payoff_style', '')}; "
+        f"Negative intent={negative_intent.get('visual_negative', '')}; Avoid={negative_intent.get('mv_avoid', '')}; "
+        f"Section semantics={semantics}; Location grammar={location_grammar}; "
         f"Section names only={names}; Section labels in order={labels}."
     )
 

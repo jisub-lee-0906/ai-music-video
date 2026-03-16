@@ -18,6 +18,8 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
         "acestep_music",
         "done",
         {
+            "profile_intent": dict(plan.get("profile_intent", {})),
+            "audio_plan": dict(plan),
             "audio_map": audio_map,
             "music_file": music_file,
             "selected_profile": str(stage_input.config.get("profile", "")).strip(),
@@ -41,6 +43,7 @@ def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
         "genre_description": str(plan.get("genre_description", "")).strip(),
         "lyrics": str(plan.get("lyrics", "")).strip(),
         "tags": str(plan.get("tags", "")).strip(),
+        "profile_intent": dict(plan.get("profile_intent", {})),
         "style_guidance": str(plan.get("style_guidance", "")).strip(),
         "language": str(plan.get("language", "")).strip(),
         "profile_summary": str(plan.get("profile_summary", "")).strip(),

@@ -26,7 +26,7 @@ def test_tti_prompt_uses_section_labels_for_escalation():
     assert "Section labels in order=Final Chorus" in prompt
     assert "Final Chorus=peak return, luminous resolve, clearest environmental payoff" in prompt
     assert "Visual direction=harbor neon romance" in prompt
-    assert "Use the profile-driven shot grammar guidance instead of a single global hierarchy" in prompt
+    assert "deterministic visual contract" in prompt
 
 
 def test_flux2_ref_prompt_mentions_return_intensity():
@@ -43,8 +43,7 @@ def test_flux2_ref_prompt_mentions_return_intensity():
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
     assert "Final Chorus should feel like the visual peak" in prompt
     assert "Profile steering=" not in prompt
-    assert "Do not write full final prompt sentences" in prompt
-    assert "subject_clause must be a short identity clause" in prompt
+    assert "deterministic flux2 reference composer" in prompt
     assert "Lyrics context=" not in prompt
     assert "Avoid=" not in prompt
 
@@ -62,11 +61,10 @@ def test_wan_prompt_mentions_final_chorus_payoff():
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "Final Chorus should feel like the motion payoff" in prompt
-    assert "Visual direction=harbor neon romance" in prompt
+    assert "deterministic wan composer" in prompt
     assert "Profile steering=" not in prompt
     assert "motifs=" not in prompt
-    assert "subject_motion must combine the visible starting state and the main body motion" in prompt
-    assert "Do not write the final positive_prompt prose" in prompt
+    assert "clip_ids=S010_C01" in prompt
 
 
 def _brief() -> dict:

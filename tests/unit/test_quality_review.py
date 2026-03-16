@@ -6,20 +6,14 @@ from ai_mv.engines.wan_2_2_flf2v.planner import _compose_positive_prompt
 
 
 def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
-    monkeypatch.setattr(
-        "ai_mv.core.quality_review.generate_structured",
-        lambda _config, _prompt, _schema: {
-            "reasoning": "Coverage is coherent and editable.",
-            "strengths": ["same-world continuity", "clear progression"],
-            "risks": ["bridge still a bit safe"],
-        },
-    )
     payload = {
         "selected_profile": "jpop_citypop",
         "audio_map": {"profile_summary": "city-pop", "language": "ja"},
         "visual_brief": {
+            "recurring_location_families": ["station glass"],
+            "allowed_visual_variation": ["framing changes"],
             "section_briefs": [
-                {"section_name": "intro", "story_beat": "checks the reflection", "location_anchor": "station glass", "emotional_arc": "searching"}
+                {"section_name": "intro", "story_beat": "checks the reflection", "location_anchor": "station glass", "emotional_arc": "searching", "escalation_level": "steady", "motion_axis": "gaze shift"}
             ]
         },
         "workflow_inputs_preview": {
@@ -31,7 +25,8 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
         "clip_routes": [{"shot_id": "S001", "section_label": "Final Chorus", "use_ref": True}],
     }
     out = build_quality_review({}, payload)
-    assert out["visual"]["reasoning"] == "Coverage is coherent and editable."
+    assert out["visual"]["reasoning"]
+    assert out["visual"]["strengths"]
 
 
 def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
