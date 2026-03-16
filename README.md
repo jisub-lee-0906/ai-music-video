@@ -31,17 +31,17 @@ The planners are now strictly `brief-first`.
 Codex CLI expands those inputs into:
 - AceStep audio plan
 - visual bridge brief
-- TTI master anchor and shot blueprints
-- USO keyframe progression
+- Lyric timeline and story bible planning
+- Shot timeline and Flux 2 reference progression
 - WAN motion prompts
 
 Pipeline flow:
-- `acestep_music -> visual_bridge -> tti_anchor -> uso_chain -> wan_interpolation -> merge_mux`
+- `acestep_music -> lyrics_timeline -> visual_story_bible -> shot_timeline -> shot_router -> flux2_ref_chain -> wan_interpolation -> merge_mux`
 
 Language policy:
 - `audio.language` applies to lyrics generation and lyrics validation only
 - `genre_description` always stays in English for AceStep conditioning
-- visual / TTI / USO / WAN prompts stay in English workflow grammar
+- visual / TTI / Flux 2 ref / WAN prompts stay in English workflow grammar
 
 ## Commands
 - `ai-mv start [--run-id <id>] [--profile <name>]`
