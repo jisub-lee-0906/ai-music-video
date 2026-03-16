@@ -1,0 +1,58 @@
+# 90년대 빈티지한 질감과 거친 반항적 에너지가 느껴지는 얼터너티브 록 및 올드스쿨 힙합에 최적화
+# Suggested Filename: retro_grunge.yaml
+audio:
+  language: en
+  tags:
+    - retro grunge rock
+    - female solo vocal
+    - gritty alternative energy
+    - dirty guitar tone
+    - heavy snare impact
+    - old-school hip-hop edge
+    - rebellious hook
+    - analog texture
+    - raw live feel
+  brief: >
+    A raw alternative-rock and old-school hip-hop hybrid for a female solo vocal, with dirty
+    guitar tone, heavy snare hits, thick low-end attitude, and a hook that feels defiant and
+    unforgettable. Keep the arrangement rough-edged, driving, and physical, with strong impact
+    and throw instead of polished pop smoothness or overly modern trap drag.
+  hook_brief: >
+    Build the hook around one rebellious concrete image and make it immediate, repeatable, and
+    sharp in natural English. The hook should feel dangerous, stubborn, and iconic rather than
+    vague or overly polished.
+visual:
+  brief: >
+    A photorealistic cinematic retro-grunge music video with a stunningly beautiful East Asian
+    heroine, idol-like features, high-end fashion model aesthetic, 8k detail, and highly
+    detailed face. Place her against concrete walls, rusted cages, decayed corridors, 90s street
+    textures, sodium-vapor shadows, rough practical light, and film-grain atmosphere. Keep the
+    piece kinetic and brutal with Smash Reframe violence, Hard Cut punctuation, Whip Pan breaks,
+    Snap Zoom punches, dirty Strobe Lighting hits, Match Cut attitude poses, extreme close-up
+    stare pressure, high contrast lighting, aggressive framing, and dynamic shadows that feel
+    analog, urban, and confrontational.
+  negative: >
+    Avoid glossy futurism, luxury-only styling, clean sterile sets, random comedy props, weak
+    lighting, typography, text, subtitles, watermarks, logo, UI overlay, ugly face, blurry face,
+    deformed face, distorted anatomy, and low-quality image artifacts.
+mv:
+  story_world: >
+    The video should feel like one continuous rough urban world built from recurring environment
+    families: concrete thresholds, rusted passages, dim street corners, chain-link boundaries,
+    and wide asphalt lanes. The same heroine and the same rebellious force should hold through
+    the whole piece.
+  action_vocabulary: >
+    Prefer readable hard-edged actions: kicking through a threshold, turning into camera with
+    contempt, pacing a cracked lane, bracing against a rusted wall, cutting through shadow, and
+    landing a final stance that feels untouchable. Keep motion blunt, physical, and forceful
+    rather than stunt-heavy or over-choreographed.
+  payoff_style: >
+    The final return should feel like total retro-grunge impact in photorealistic cinematic
+    live-action: hardest silhouette, dirtiest light contrast, deeper dynamic shadows, Smash
+    Reframe shocks, Hard Cut attitude hits, Whip Pan interruptions, Snap Zoom impact, Strobe
+    flashes, Match Cut pose aggression, and an extreme close-up that makes the heroine feel like
+    the most beautiful and dangerous presence in the entire broken street world.
+  avoid: >
+    Avoid polished idol sweetness, disconnected locations, fake vintage gimmicks, passive body
+    language, muted endings, typography, text, subtitles, logo, UI overlay, ugly face, blurry
+    face, deformed face, and distorted facial features.

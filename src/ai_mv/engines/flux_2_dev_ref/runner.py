@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from ai_mv.core.output_paths import flux2_ref_frame_prefix
 from ai_mv.core.workflow_names import FLUX2_REF_WORKFLOW
 from ai_mv.engines.flux_2_dev_ref.mapper import map_flux2_ref_workflow, flux2_ref_required_inputs
@@ -13,10 +15,19 @@ def run_flux2_ref(config: dict, plan: dict) -> list[dict]:
     items = plan["items"]
     if not items:
         return out
+    prev_item: dict | None = None
+    prev_end: str = ""
     for item in items:
-        start = _render_start(config, item)
+        if _should_reuse_previous_end(prev_item, item, prev_end):
+            start = prev_end
+            start_source = "previous_end"
+        else:
+            start = _render_start(config, item)
+            start_source = "rendered_start"
         end = _render_end(config, item)
-        out.append(_pack_item(item, start, end))
+        out.append(_pack_item(item, start, end, start_source, prev_item))
+        prev_item = item
+        prev_end = end
     return out
 
 
@@ -49,9 +60,13 @@ def _run_shot_flux2_ref(config: dict, item: dict) -> dict:
     )
 
 
-def _pack_item(item: dict, start: str, end: str) -> dict:
+def _pack_item(item: dict, start: str, end: str, start_source: str, prev_item: dict | None) -> dict:
     return {
         "shot_id": item["shot_id"],
+        "chain_key": str(item.get("chain_key", "")),
+        "timeline_index": int(item.get("timeline_index", 0)),
+        "clip_index": int(item.get("clip_index", 1)),
+        "clip_count": int(item.get("clip_count", 1)),
         "section_name": str(item.get("section_name", "section")),
         "section_label": str(item.get("section_label", item.get("section_name", "section"))),
         "shot_type": str(item.get("shot_type", "CHAR_MASTER")),
@@ -67,4 +82,41 @@ def _pack_item(item: dict, start: str, end: str) -> dict:
         "error_body": "",
         "start": start,
         "end": end,
+        "start_source": start_source,
+        "prev_chain_key": str(prev_item.get("chain_key", "")) if isinstance(prev_item, dict) else "",
     }
+
+
+def _should_reuse_previous_end(prev_item: dict | None, item: dict, prev_end: str) -> bool:
+    if not prev_end or not isinstance(prev_item, dict):
+        return False
+    if not Path(prev_end).suffix:
+        return False
+    if _chain_break(item, prev_item):
+        return False
+    return True
+
+
+def _chain_break(item: dict, prev_item: dict) -> bool:
+    if str(item.get("kinetic_transition", "")).strip().lower() == "smash_reframe":
+        return True
+    if _starts_new_major_section(item, prev_item) and int(item.get("clip_index", 1)) <= 1:
+        return True
+    return False
+
+
+def _starts_new_major_section(item: dict, prev_item: dict) -> bool:
+    current = _section_token(item)
+    previous = _section_token(prev_item)
+    if not current or current == previous:
+        return False
+    return _is_major_reset_section(current)
+
+
+def _section_token(item: dict) -> str:
+    return str(item.get("section_name", item.get("section_label", ""))).strip().lower()
+
+
+def _is_major_reset_section(section: str) -> bool:
+    sec = str(section).strip().lower()
+    return "verse" in sec or sec == "chorus"

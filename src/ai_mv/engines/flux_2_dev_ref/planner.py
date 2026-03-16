@@ -7,7 +7,7 @@ def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
     routes = [dict(row) for row in payload.get("clip_routes", []) if isinstance(row, dict) and bool(row.get("use_ref", False))]
     if not routes:
         return {"items": []}
-    items = [_build_item(route, payload["visual_story_bible"]) for route in routes]
+    items = [_build_item(route, payload["visual_story_bible"], idx) for idx, route in enumerate(routes, start=1)]
     return {"items": items}
 
 
@@ -34,7 +34,7 @@ def _flux2_ref_planner_batch_size(config: dict) -> int:
         return 4
 
 
-def _build_item(anchor: dict, brief: dict) -> dict:
+def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     section = _beat_atoms(brief, anchor)
     subject_clause = _subject_clause(brief, anchor)
     action_clause = _action_clause(anchor, section)
@@ -57,6 +57,8 @@ def _build_item(anchor: dict, brief: dict) -> dict:
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
         "shot_id": anchor["shot_id"],
+        "chain_key": _chain_key(anchor),
+        "timeline_index": int(timeline_index),
         "anchor": anchor["anchor"],
         "ref": ref,
         "style_ref": "",
@@ -84,6 +86,10 @@ def _build_item(anchor: dict, brief: dict) -> dict:
         "kinetic_intensity": str(anchor.get("kinetic_intensity", "")),
         "route_reason": str(anchor.get("route_reason", "")),
     }
+
+
+def _chain_key(anchor: dict) -> str:
+    return f"{str(anchor.get('shot_id', '')).strip()}:{int(anchor.get('clip_index', 1))}"
 
 
 def _subject_clause(brief: dict, anchor: dict) -> str:

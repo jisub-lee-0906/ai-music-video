@@ -32,9 +32,9 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
 
 
 def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
-    ref_map = {str(row.get("shot_id", "")): row for row in ref_images if isinstance(row, dict)}
+    ref_map = {_ref_chain_key(row): row for row in ref_images if isinstance(row, dict)}
     use_ref = bool(item.get("use_ref", False))
-    ref_row = ref_map.get(str(item["shot_id"]))
+    ref_row = ref_map.get(_ref_chain_key(item))
     start = str(item["anchor"])
     end = str(item["anchor"])
     if use_ref:
@@ -68,20 +68,59 @@ def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
         "use_ref": use_ref,
         "clip_index": int(item.get("clip_index", 1)),
         "clip_count": int(item.get("clip_count", 1)),
+        "timeline_index": int(item.get("timeline_index", 0)),
+        "chain_key": _ref_chain_key(item),
     }
 
 
 def _chain_clip_starts(clips: list[dict]) -> list[dict]:
     out: list[dict] = []
-    prev_end: dict[str, str] = {}
+    prev_end_path = ""
+    prev_clip: dict | None = None
     for clip in clips:
         item = dict(clip)
-        key = _clip_series_key(str(item["shot_id"]))
-        if key in prev_end:
-            item["start"] = prev_end[key]
-        prev_end[key] = str(item["end"])
+        if prev_end_path and not _chain_break(item, prev_clip):
+            item["start"] = prev_end_path
+            item["start_source"] = "previous_end"
+            item["prev_chain_key"] = str(prev_clip.get("chain_key", "")) if isinstance(prev_clip, dict) else ""
+        else:
+            item["start_source"] = "rendered_start"
+            item["prev_chain_key"] = ""
+        prev_end_path = str(item["end"])
+        prev_clip = item
         out.append(item)
     return out
+
+
+def _chain_break(clip: dict, prev_clip: dict | None) -> bool:
+    if not isinstance(prev_clip, dict):
+        return True
+    if str(clip.get("kinetic_transition", "")).strip().lower() == "smash_reframe":
+        return True
+    if _starts_new_major_section(clip, prev_clip) and int(clip.get("clip_index", 1)) <= 1:
+        return True
+    return False
+
+
+def _starts_new_major_section(clip: dict, prev_clip: dict) -> bool:
+    current = _section_token(clip)
+    previous = _section_token(prev_clip)
+    if not current or current == previous:
+        return False
+    return _is_major_reset_section(current)
+
+
+def _section_token(clip: dict) -> str:
+    return str(clip.get("section_name", clip.get("section_label", ""))).strip().lower()
+
+
+def _is_major_reset_section(section: str) -> bool:
+    sec = str(section).strip().lower()
+    return "verse" in sec or sec == "chorus"
+
+
+def _ref_chain_key(row: dict) -> str:
+    return f"{str(row.get('shot_id', '')).strip()}:{int(row.get('clip_index', 1))}"
 
 
 def _enforce_clip_cap(config: dict, clips: list[dict], fps: int) -> None:
@@ -510,10 +549,6 @@ def _clip_phase(clip: dict) -> str:
 
 def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
-
-
-def _clip_series_key(shot_id: str) -> str:
-    return str(shot_id).split("_C", 1)[0]
 
 
 def _trim_words(text: str, max_words: int) -> str:

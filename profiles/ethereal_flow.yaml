@@ -1,0 +1,58 @@
+# 몽환적이고 환상적인 대기감과 부드러운 속도감이 공존하는 퓨처 팝 및 서정적인 일렉트로 장르에 최적화
+# Suggested Filename: ethereal_flow.yaml
+audio:
+  language: en
+  tags:
+    - ethereal future pop
+    - female solo vocal
+    - airy layered topline
+    - elegant electronic drums
+    - shimmering synth texture
+    - emotional lift
+    - cinematic electronic bloom
+    - dreamy hook
+    - lyrical electro atmosphere
+  brief: >
+    Dreamy future-pop and lyrical electronic music for a female solo vocal, with elegant drums,
+    shimmering synth layers, floating harmonic lift, and a hook that blooms with emotional
+    clarity. Keep the arrangement luminous, modern, and fluid, with real forward motion instead
+    of sleepy ambient wash or over-minimal restraint.
+  hook_brief: >
+    Build the hook around one luminous emotional image and make it immediate, singable, and
+    memorable in natural English. The hook should feel graceful, transporting, and emotionally
+    open rather than generic or shapeless.
+visual:
+  brief: >
+    A photorealistic cinematic ethereal-flow music video with a stunningly beautiful East Asian
+    heroine, idol-like features, high-end fashion model aesthetic, 8k polish, and highly
+    detailed face. Place her in surreal white-toned spaces, luminous fog, soft architectural
+    voids, reflective floors, blooming lens flare, and pearlescent atmospheric depth. Keep the
+    motion kinetic but elegant with Whip Pan transitions that feel like instantaneous relocation,
+    Snap Zoom emphasis on emotional turns, Strobe Lighting in soft radiant pulses, Match Cut body
+    echoes, selective motion blur residue, extreme close-up eye focus, high contrast lighting,
+    aggressive framing, and dynamic shadows inside the glow.
+  negative: >
+    Avoid muddy haze, flat commercial softness, random fantasy props, childish fairy styling,
+    washed-out faces, typography, text, subtitles, watermarks, logo, UI overlay, ugly face,
+    blurry face, deformed face, distorted facial features, and low-quality render artifacts.
+mv:
+  story_world: >
+    The video should feel like one continuous luminous dream-world built from recurring
+    environment families: white thresholds, radiant corridors, reflective void rooms, and open
+    glowing lanes. The same heroine and the same suspended emotional current should carry through
+    the whole piece.
+  action_vocabulary: >
+    Prefer readable graceful actions: entering a field of light, turning through drifting fog,
+    holding a serene but intense gaze, crossing a reflective plane, pausing under a flare bloom,
+    and arriving at a final still point with complete control. Keep motion elegant, physically
+    simple, and emotionally precise rather than limp or overly theatrical.
+  payoff_style: >
+    The final return should feel like ethereal impact in photorealistic cinematic live-action:
+    brighter white-on-silver contrast, deeper dynamic shadows under the glow, Whip Pan
+    relocations, Snap Zoom emotional accents, soft-pulse Strobe lighting, Match Cut continuity,
+    motion blur residue that feels intentional rather than messy, and an extreme close-up eye
+    lock that turns the heroine into the emotional center of the whole luminous space.
+  avoid: >
+    Avoid sleepy aimlessness, flat beauty coverage, random fantasy clutter, broken geography,
+    weak endings, typography, text, subtitles, logo, UI overlay, ugly face, blurry face,
+    deformed face, and distorted facial features.

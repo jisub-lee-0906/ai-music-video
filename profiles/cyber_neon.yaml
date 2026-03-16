@@ -1,0 +1,58 @@
+# 하이테크 사이버펑크 무드와 네온 조명이 강조된 일렉트로니카 및 퓨처 베이스 장르에 최적화
+# Suggested Filename: cyber_neon.yaml
+audio:
+  language: en
+  tags:
+    - cyber future bass
+    - female solo vocal
+    - sleek electro topline
+    - hard syncopated drums
+    - neon synth bass
+    - glitch accents
+    - futuristic hook design
+    - high-energy drop
+    - cinematic electronic finish
+  brief: >
+    High-energy electro-pop and future bass for a female solo vocal, with hard syncopated drums,
+    neon synth bass, sharp digital accents, and a hook that feels immediate, bright, and
+    futuristic. Keep the arrangement precise, glossy, and aggressive, with strong drop lift and
+    forward momentum instead of ambient drift or soft EDM wash.
+  hook_brief: >
+    Build the hook around one vivid high-tech image and make it instantly memorable, chantable,
+    and clean in natural English. The hook should feel sleek, addictive, and electrically alive
+    rather than vague or over-written.
+visual:
+  brief: >
+    A photorealistic cinematic cyber-neon music video with a stunningly beautiful East Asian
+    heroine, idol-like features, high-end fashion model aesthetic, 8k finish, and highly
+    detailed face. Surround her with neon green and magenta light, hologram-like reflections,
+    luminous circuit patterns, rain-slick cyber streets, mirrored tech corridors, and glowing
+    urban depth. Drive the visuals with kinetic live-action energy: Snap Zoom attacks on
+    high-tech detail, Whip Pan transitions through neon lanes, digital-noise Strobe Lighting,
+    Match Cut pose continuity, extreme close-up eye locks, high contrast lighting, aggressive
+    framing, and dynamic shadows that make every shot feel futuristic and premium.
+  negative: >
+    Avoid cheap sci-fi props, toy-like cyber gear, flat lighting, muddy color, random world
+    clutter, typography, text, subtitles, watermarks, logo, UI overlay, ugly face, blurry face,
+    deformed face, distorted anatomy, and low-quality image artifacts.
+mv:
+  story_world: >
+    The video should feel like one continuous cyberpunk night world built from recurring
+    environment families: neon alleys, reflective server corridors, holographic thresholds, and
+    luminous high-rise walkways. The same heroine and the same electric pressure should hold
+    through the whole piece.
+  action_vocabulary: >
+    Prefer readable high-tech actions: stepping through a lit threshold, locking eyes through a
+    neon haze, turning into a corridor flash, brushing a glowing wall, driving forward through a
+    circuit-lit lane, and landing a final stare like a system override. Keep motion crisp,
+    forceful, and camera-readable rather than chaotic or fight-scene heavy.
+  payoff_style: >
+    The final return should feel like total cyber-neon domination in photorealistic cinematic
+    live-action: strongest eye line, hardest silhouette, brighter green-magenta contrast, sharper
+    dynamic shadows, Snap Zoom pressure on key tech details, Whip Pan lane attacks, digital-noise
+    Strobe bursts, Match Cut pose escalation, and an extreme close-up impact that makes the
+    heroine feel like the living core of the whole city grid.
+  avoid: >
+    Avoid soft ambient drift, disconnected locations, random hacker clichés, flat commercial
+    beauty shots, diluted endings, typography, text, subtitles, logo, UI overlay, ugly face,
+    blurry face, deformed face, and distorted facial features.
