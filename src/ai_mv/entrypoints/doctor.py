@@ -11,6 +11,6 @@ def run_doctor(cfg: dict | None = None) -> int:
     assert_runtime_ready(cfg)
     assert_codex_ready(cfg)
     comfy_ok = ping_comfy(cfg["integrations"]["comfyui_base_url"])
-    codex_ok = ping_codex()
+    codex_ok = ping_codex(cfg)
     print(f"comfyui={comfy_ok} codex={codex_ok}")
     return 0 if comfy_ok and codex_ok else 1

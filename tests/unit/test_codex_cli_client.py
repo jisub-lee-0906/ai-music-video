@@ -13,6 +13,20 @@ def test_assert_codex_ready_requires_login(monkeypatch):
         codex_cli_client.assert_codex_ready({"integrations": {}})
 
 
+def test_ping_codex_uses_passed_config(monkeypatch):
+    seen = {}
+
+    def _fake_parts(config):
+        seen["config"] = config
+        return ["codex"]
+
+    monkeypatch.setattr(codex_cli_client, "_codex_command_parts", _fake_parts)
+    monkeypatch.setattr(codex_cli_client, "_login_status", lambda *_args, **_kwargs: "Logged in")
+    cfg = {"integrations": {"codex_cli_path": "C:/tools/codex.cmd"}}
+    assert codex_cli_client.ping_codex(cfg) is True
+    assert seen["config"] == cfg
+
+
 def test_generate_structured_validates_schema(monkeypatch):
     monkeypatch.setattr(codex_cli_client, "_run", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(

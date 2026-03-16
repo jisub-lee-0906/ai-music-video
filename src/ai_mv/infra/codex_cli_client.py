@@ -17,9 +17,9 @@ class CodexCliSchemaValidationError(CodexCliRequestError):
     pass
 
 
-def ping_codex() -> bool:
+def ping_codex(config: dict | None = None) -> bool:
     try:
-        _login_status(_codex_command_parts({}))
+        _login_status(_codex_command_parts(config or {}))
         return True
     except Exception:
         return False
