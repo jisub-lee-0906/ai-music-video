@@ -22,8 +22,7 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
-    assert nodes["94"]["tags"].startswith("kpop")
-    assert nodes["94"]["tags"].endswith("Bright idol-pop with punchy 808s and layered hooks")
+    assert nodes["94"]["tags"] == "K-Pop: Bright idol-pop with punchy 808s and layered hooks"
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
 
@@ -45,8 +44,37 @@ def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     nodes = out["node.inputs"]
     assert nodes["94"]["lyrics"] == plan["lyrics"]
     assert nodes["94"]["language"] == "ja"
-    assert nodes["94"]["tags"].startswith("jpop")
-    assert nodes["94"]["tags"].endswith("Elegant Japanese city-pop with warm analog keys and soft neon glide")
+    assert nodes["94"]["tags"] == "J-Pop: Elegant Japanese city-pop with warm analog keys and soft neon glide"
+
+
+def test_audio_mapper_normalizes_common_genre_aliases():
+    plan = {
+        "tags": "uk garage, shuffling drums, female vocal",
+        "genre_description": "Tight two-step swing with airy toplines and glossy late-night pads.",
+        "lyrics": "hold on",
+        "seed": 9,
+        "bpm": 132,
+        "duration": 150,
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"] == "UK Garage: Tight two-step swing with airy toplines and glossy late-night pads"
+
+
+def test_audio_mapper_prefers_genre_like_tag_over_performance_tags():
+    plan = {
+        "tags": "female solo vocal, airy adlibs, drum and bass, glossy pads",
+        "genre_description": "Fast breakbeats, sub bass pressure, and a bright melodic lift.",
+        "lyrics": "run with me",
+        "seed": 11,
+        "bpm": 174,
+        "duration": 140,
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"] == "Drum and Bass: Fast breakbeats, sub bass pressure, and a bright melodic lift"
 
 
 def test_tti_mapper():
@@ -60,13 +88,15 @@ def test_tti_mapper():
     nodes = out["node.inputs"]
     assert nodes["98:47"]["width"] == 1024
     assert nodes["98:47"]["height"] == 1024
+    assert nodes["98:48"]["width"] == 1024
+    assert nodes["98:48"]["height"] == 1024
     assert nodes["98:6"]["text"].startswith(shot["prompt_text"])
     assert "no text" in nodes["98:6"]["text"]
     assert nodes["98:25"]["noise_seed"] >= 1000
 
 
 def test_flux2_ref_mapper():
-    cfg = {"render": {"tti_size": "1024x576"}, "video": {"target": "1920x1080@24"}}
+    cfg = {"render": {"ref_size": "1024x576", "tti_size": "1280x720"}, "video": {"target": "1920x1080@24"}}
     item = {
         "shot_id": "s_001",
         "frame_idx": 0,
@@ -82,6 +112,9 @@ def test_flux2_ref_mapper():
     nodes = out["node.inputs"]
     assert nodes["46"]["image"] == "a.png"
     assert nodes["68:47"]["width"] == 1024
+    assert nodes["68:47"]["height"] == 576
+    assert nodes["68:48"]["width"] == 1024
+    assert nodes["68:48"]["height"] == 576
     assert nodes["68:6"]["text"].startswith(item["prompt_text"])
     assert "no text" in nodes["68:6"]["text"]
     assert nodes["68:25"]["noise_seed"] > 2000

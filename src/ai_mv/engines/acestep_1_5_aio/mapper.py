@@ -7,7 +7,120 @@ from ai_mv.core.prompt_digests import compact_sentences, compact_series
 AUDIO_TEXT = "94"
 AUDIO_LATENT = "98"
 AUDIO_KSAMPLER = "3"
-AUDIO_SAVE = "104"
+AUDIO_SAVE = "107"
+
+GENRE_ALIASES = {
+    "aor": "AOR",
+    "afrobeat": "Afrobeat",
+    "afrobeats": "Afrobeats",
+    "alt pop": "Alt Pop",
+    "alt rock": "Alt Rock",
+    "alternative pop": "Alternative Pop",
+    "alternative rock": "Alternative Rock",
+    "ambient": "Ambient",
+    "amapiano": "Amapiano",
+    "ballad": "Ballad",
+    "bluegrass": "Bluegrass",
+    "blues": "Blues",
+    "boom bap": "Boom Bap",
+    "bossa nova": "Bossa Nova",
+    "breakbeat": "Breakbeat",
+    "city pop": "City Pop",
+    "country": "Country",
+    "dance": "Dance",
+    "dance pop": "Dance Pop",
+    "dancehall": "Dancehall",
+    "deep house": "Deep House",
+    "disco": "Disco",
+    "dnb": "Drum and Bass",
+    "drill": "Drill",
+    "drum and bass": "Drum and Bass",
+    "dub": "Dub",
+    "dubstep": "Dubstep",
+    "edm": "EDM",
+    "electro": "Electro",
+    "electro pop": "Electro Pop",
+    "electropop": "Electro Pop",
+    "electronic": "Electronic",
+    "emo": "Emo",
+    "folk": "Folk",
+    "funk": "Funk",
+    "future bass": "Future Bass",
+    "garage": "Garage",
+    "gospel": "Gospel",
+    "grunge": "Grunge",
+    "hard rock": "Hard Rock",
+    "hardcore": "Hardcore",
+    "hip hop": "Hip-Hop",
+    "hip-hop": "Hip-Hop",
+    "house": "House",
+    "hyperpop": "Hyperpop",
+    "indie folk": "Indie Folk",
+    "indie pop": "Indie Pop",
+    "indie rock": "Indie Rock",
+    "j pop": "J-Pop",
+    "j rock": "J-Rock",
+    "jpop": "J-Pop",
+    "jrock": "J-Rock",
+    "jazz": "Jazz",
+    "jazz fusion": "Jazz Fusion",
+    "k pop": "K-Pop",
+    "k rock": "K-Rock",
+    "kpop": "K-Pop",
+    "krock": "K-Rock",
+    "latin pop": "Latin Pop",
+    "lo fi": "Lo-Fi",
+    "lofi": "Lo-Fi",
+    "metal": "Metal",
+    "neo soul": "Neo-Soul",
+    "new jack swing": "New Jack Swing",
+    "phonk": "Phonk",
+    "pop": "Pop",
+    "pop punk": "Pop Punk",
+    "pop rock": "Pop Rock",
+    "post punk": "Post-Punk",
+    "progressive house": "Progressive House",
+    "progressive rock": "Progressive Rock",
+    "punk": "Punk",
+    "punk rock": "Punk Rock",
+    "r and b": "R&B",
+    "r&b": "R&B",
+    "rap": "Rap",
+    "reggae": "Reggae",
+    "reggaeton": "Reggaeton",
+    "retro pop": "Retro Pop",
+    "rock": "Rock",
+    "shoegaze": "Shoegaze",
+    "singer songwriter": "Singer-Songwriter",
+    "soul": "Soul",
+    "synth pop": "Synth Pop",
+    "synthwave": "Synthwave",
+    "techno": "Techno",
+    "trance": "Trance",
+    "trap": "Trap",
+    "trip hop": "Trip-Hop",
+    "uk garage": "UK Garage",
+    "vaporwave": "Vaporwave",
+}
+GENRE_HINTS = tuple(
+    {
+        *GENRE_ALIASES.keys(),
+        "acoustic",
+        "adult contemporary",
+        "chill",
+        "club",
+        "fusion",
+        "house",
+        "instrumental",
+        "orchestral",
+        "orchestra",
+        "soulful",
+        "swing",
+        "wave",
+    }
+)
+GENRE_STOPWORDS = {"a", "an", "and", "for", "of", "the"}
+UPPERCASE_WORDS = {"aor", "edm", "idm", "uk", "us", "dj", "r&b"}
 
 
 def map_audio_workflow(config: dict, plan: dict) -> dict:
@@ -60,14 +173,13 @@ def _audio_seed(plan: dict) -> int:
 
 def _audio_conditioning_text(plan: dict) -> str:
     tags = _split_tags(str(plan.get("tags", "")).strip())
-    audio_direction = compact_sentences(plan.get("audio_direction", ""), 1)
-    profile_summary = compact_sentences(plan.get("profile_summary", ""), 1)
     desc = compact_sentences(plan.get("genre_description", ""), 2)
-    lead = _conditioning_lead(tags, audio_direction, profile_summary)
-    desc = _novel_desc(desc, lead)
-    if lead and desc:
-        return f"{lead}. {desc}"
-    return lead or desc
+    genre = _genre_label(tags, desc)
+    body = _trim_sentence(desc)
+    if genre and body:
+        prefix = f"{genre}:"
+        return body if body.lower().startswith(prefix.lower()) else f"{prefix} {body}"
+    return body or genre
 
 
 def _trim_sentence(text: str) -> str:
@@ -100,6 +212,73 @@ def _conditioning_lead(tags: list[str], audio_direction: str, profile_summary: s
     if audio_direction:
         return _sentenceize(audio_direction)
     return _sentenceize(profile_summary or "")
+
+
+def _genre_label(tags: list[str], desc: str) -> str:
+    candidates = _genre_candidates(tags)
+    for tag in candidates:
+        label = _normalize_genre_label(tag)
+        if label:
+            return label
+    if ":" in desc:
+        head = desc.split(":", 1)[0]
+        return _normalize_genre_label(head)
+    return ""
+
+
+def _normalize_genre_label(text: str) -> str:
+    cleaned = _sentenceize(text).strip(" ,.")
+    if not cleaned:
+        return ""
+    low = cleaned.lower().replace("_", " ").replace("/", " / ")
+    low = " ".join(low.split())
+    if low in GENRE_ALIASES:
+        return GENRE_ALIASES[low]
+    parts = [part for part in low.split(" / ") if part]
+    return "/".join(_normalize_genre_segment(part) for part in parts if part)
+
+
+def _genre_candidates(tags: list[str]) -> list[str]:
+    preferred = [tag for tag in tags if _looks_like_genre(tag)]
+    return preferred or tags
+
+
+def _looks_like_genre(text: str) -> bool:
+    normalized = " ".join(_sentenceize(text).lower().replace("_", " ").replace("-", " ").split())
+    if normalized in GENRE_ALIASES:
+        return True
+    return any(hint in normalized for hint in GENRE_HINTS)
+
+
+def _normalize_genre_segment(text: str) -> str:
+    words = [word for word in text.split() if word]
+    out: list[str] = []
+    for raw in words:
+        word = raw.strip(" ,.")
+        if not word:
+            continue
+        if word in UPPERCASE_WORDS:
+            out.append(word.upper())
+            continue
+        if word in GENRE_STOPWORDS:
+            out.append(word)
+            continue
+        if "-" in word:
+            pieces = [_normalize_genre_token(piece) for piece in word.split("-") if piece]
+            out.append("-".join(pieces))
+            continue
+        out.append(_normalize_genre_token(word))
+    return " ".join(out)
+
+
+def _normalize_genre_token(word: str) -> str:
+    if not word:
+        return ""
+    if word in UPPERCASE_WORDS:
+        return word.upper()
+    if len(word) <= 3 and word.isalpha() and word not in GENRE_STOPWORDS:
+        return word.upper()
+    return word.capitalize()
 
 
 def _pick_tags(tags: list[str], keys: tuple[str, ...], limit: int = 3) -> list[str]:

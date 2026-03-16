@@ -8,6 +8,7 @@ from ai_mv.utils.text_utils import parse_size, parse_target
 TTI_TEXT = "98:6"
 TTI_NOISE = "98:25"
 TTI_LATENT = "98:47"
+TTI_SCHEDULER = "98:48"
 TTI_SAVE = "9"
 NO_TEXT_SUFFIX = (
     ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
@@ -23,6 +24,7 @@ def map_tti_workflow(config: dict, shot: dict) -> dict:
             TTI_TEXT: {"text": _tti_prompt_text(shot)},
             TTI_NOISE: {"noise_seed": seed},
             TTI_LATENT: {"width": w, "height": h},
+            TTI_SCHEDULER: {"width": w, "height": h},
             TTI_SAVE: {"filename_prefix": shot["filename_prefix"]},
         }
     }

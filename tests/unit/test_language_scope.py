@@ -51,7 +51,7 @@ def _audio_map() -> dict:
         "tags": "japanese city pop, female solo vocal",
         "style_guidance": "retro japanese city-pop mood",
         "genre_description": "Japanese city-pop with glossy electric piano, warm bass glide, and graceful female lead phrasing.",
-        "lyrics": "[Verse 1 - Night Drive]\n雨のネオンが揺れてる\n[Chorus - Neon Rain]\nネオンの雨",
+        "lyrics": "[Verse 1]\n雨のネオンが揺れてる\n[Chorus]\nネオンの雨",
         "profile_summary": "adult city-pop romance with graceful nightlife melancholy",
         "visual_direction": "night boulevard reflections, polished chrome, rain on glass",
         "negative_direction": "avoid sci-fi drift and generic placeholder language",

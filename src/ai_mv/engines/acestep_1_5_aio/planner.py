@@ -55,6 +55,7 @@ def _audio_prompt_rules(plan: dict) -> str:
         + _audio_song_craft_brief()
         + _audio_artist_direction()
         + _audio_description_rules()
+        + _audio_field_boundary_rules()
         + _language_style_rules(plan)
     )
 
@@ -65,6 +66,7 @@ def _audio_output_contract() -> str:
         "Return JSON only. No markdown. No prose outside JSON. "
         "Required top-level keys: genre_description,bpm,keyscale,seed,duration,lyrics_blocks. "
         "Required lyrics_blocks item keys: section,label,style,lines. "
+        "lyrics_blocks.lines must contain only finished sung lyric lines, never notes or scratch text. "
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
     )
 
@@ -98,6 +100,7 @@ def _audio_description_rules() -> str:
     return (
         "genre_description must be one compact production paragraph in plain language for the AceStep tags text field. "
         "genre_description must always be written in English, even when the lyrics language is Japanese or Korean. "
+        "Open genre_description with a concise genre label followed by a colon, then the production brief, for example 'Neo-Soul: ...'. "
         "Keep it to 2-3 sentences covering groove foundation, vocal character, hook instrumentation, and pocket. "
         "Prefer a coherent producer brief over a long list of tags. "
         "For lyrics_blocks, keep lines short, concrete, and melodic. "
@@ -108,6 +111,18 @@ def _audio_description_rules() -> str:
         "Make the chorus easy to sing back after one listen, and make the later returns feel more released, more specific, or more committed. "
         "Treat the provided audio intent, hook intent, world intent, and negative intent as the source of truth. "
         "Do not invent extra sections or fields. "
+    )
+
+
+def _audio_field_boundary_rules() -> str:
+    return (
+        "Keep the fields strictly separated. "
+        "genre_description is for production language only: genre, groove, instrumentation, vocal tone, pocket, and arrangement character. "
+        "lyrics_blocks are for sung lyrics only: no production notes, no arrangement notes, no camera direction, no storyboarding, no bracketed stage direction inside lines, and no unfinished scratch phrases. "
+        "Do not leak world-building labels or visual planning vocabulary directly into lyric lines. "
+        "Never output placeholder fragments, question-marked notes, location taxonomy, or editorial reminders inside lyrics. "
+        "If a word feels like a prompt keyword, scene label, or planning note rather than a natural lyric, do not use it in lyrics_blocks.lines. "
+        "Use style only as a compact section mood label for the JSON field; do not copy style text into sung lines. "
     )
 
 

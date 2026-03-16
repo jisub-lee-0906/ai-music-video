@@ -9,6 +9,7 @@ FLUX2_REF_LOAD_IMAGE = "46"
 FLUX2_REF_TEXT_POS = "68:6"
 FLUX2_REF_NOISE = "68:25"
 FLUX2_REF_LATENT = "68:47"
+FLUX2_REF_SCHEDULER = "68:48"
 FLUX2_REF_SAVE = "9"
 NO_TEXT_SUFFIX = (
     ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
@@ -29,6 +30,7 @@ def map_flux2_ref_workflow(config: dict, item: dict) -> dict:
             FLUX2_REF_LOAD_IMAGE: {"image": item["ref"]},
             FLUX2_REF_TEXT_POS: {"text": prompt},
             FLUX2_REF_LATENT: {"width": width, "height": height},
+            FLUX2_REF_SCHEDULER: {"width": width, "height": height},
             FLUX2_REF_NOISE: {"noise_seed": 2000 + idx},
             FLUX2_REF_SAVE: {"filename_prefix": item["filename_prefix"]},
         },

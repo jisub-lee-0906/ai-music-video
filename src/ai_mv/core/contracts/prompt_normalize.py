@@ -283,11 +283,10 @@ def _render_lyrics_blocks(blocks: list[dict]) -> str:
     lines: list[str] = []
     for row in blocks:
         label = str(row["label"]).strip()
-        style = str(row["style"]).strip()
         arr = [str(x).strip() for x in row["lines"] if str(x).strip()]
-        if not label or not style or not arr:
+        if not label or not arr:
             raise RuntimeError("invalid lyrics block")
-        lines.append(f"[{label} - {style}]")
+        lines.append(f"[{label}]")
         lines.extend(arr)
         lines.append("")
     text = "\n".join(lines).strip()

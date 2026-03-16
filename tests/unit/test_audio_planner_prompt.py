@@ -35,10 +35,13 @@ def test_audio_prompt_focuses_on_prompt_engineering_not_checklist():
     prompt = audio_planner._audio_prompt(_prompt_plan())
     assert "Return JSON only" in prompt
     assert "Allowed section values only" in prompt
+    assert "lyrics_blocks.lines must contain only finished sung lyric lines" in prompt
     assert "Write like a finished record" in prompt
     assert "Front-load memorability" in prompt
     assert "emotionally inevitable" in prompt
     assert "Make the chorus easy to sing back after one listen" in prompt
+    assert "Keep the fields strictly separated" in prompt
+    assert "Do not leak world-building labels or visual planning vocabulary directly into lyric lines" in prompt
     assert "Style guidance=" not in prompt
     assert "Visual carryover=" not in prompt
     assert "Audio intent=mature female vocal, glossy piano, disco bounce." in prompt
