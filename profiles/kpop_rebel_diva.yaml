@@ -1,3 +1,4 @@
+# Suggested Filename: kinetic_kpop_rebel_diva.yaml
 audio:
   language: ko
   tags:
@@ -21,13 +22,18 @@ audio:
     soft, wistful, or overly cute.
 visual:
   brief: >
-    A rebellious diva music video with a young adult East Asian heroine, strong silhouette,
-    dark-gloss styling, industrial shine, shadowed thresholds, hard-lit passages, and dominant
-    open lanes. Keep the heroine photogenic, powerful, and controlled, with attitude-first
-    presence rather than elegant restraint.
+    A photorealistic cinematic rebellious diva music video with a young adult East Asian heroine,
+    strong silhouette, dark-gloss styling, stunningly beautiful face, idol-like features,
+    high-end fashion model aesthetic, industrial shine, shadowed thresholds, hard-lit passages,
+    and dominant open lanes. Push maximum kinetic live-action tension with whip pan lane
+    attacks, snap zoom pressure, strobe lighting hits, match cut body punctuation, extreme
+    close-up challenge stares, high contrast lighting, aggressive framing, and dynamic shadows.
+    Keep the heroine powerful, controlled, attitude-first, and fashion-editorial premium rather
+    than elegant, passive, or stylized like anime or 2D art.
   negative: >
     Avoid soft romance drift, timid posing, luxury-only prettiness, cluttered props, pastel
-    sweetness, and disconnected locations that dilute the attitude line.
+    sweetness, disconnected locations, anime rendering, 2D illustration cues, typography, text,
+    subtitles, watermarks, logo, and UI overlay.
 mv:
   story_world: >
     The video should feel like one charged after-dark world built from recurring environment
@@ -38,8 +44,12 @@ mv:
     challenge stare, driving forward through a lane, pausing in hard shadow, and landing a final
     look. Keep motion crisp, controlled, and forceful rather than chaotic or stunt-heavy.
   payoff_style: >
-    The final return should feel like full command: hardest eye line, strongest posture, sharper
-    light contrast, and a sense that the heroine has taken complete control of the frame.
+    The final return should feel like full command in photorealistic cinematic live-action:
+    hardest eye line, strongest posture, sharper high contrast lighting, heavier dynamic shadows,
+    whip pan escalations, snap zoom impact, strobe lighting bursts, match cut continuity, and an
+    extreme close-up strike that makes the heroine feel like she has taken complete control of
+    the frame and the whole lane.
   avoid: >
     Avoid polite softness, static glamour for its own sake, random narrative detours, timid
-    endings, and any drift toward cute idol sweetness.
+    endings, drift toward cute idol sweetness, anime or 2D stylization, and any typography,
+    text, subtitles, watermarks, logo, or UI overlay.

@@ -9,7 +9,10 @@ TTI_TEXT = "98:6"
 TTI_NOISE = "98:25"
 TTI_LATENT = "98:47"
 TTI_SAVE = "9"
-NO_TEXT_SUFFIX = ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
+NO_TEXT_SUFFIX = (
+    ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
+    ", ugly, deformed, distorted, low quality, blurry face"
+)
 
 
 def map_tti_workflow(config: dict, shot: dict) -> dict:

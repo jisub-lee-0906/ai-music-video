@@ -19,6 +19,7 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
     return (
         "deterministic flux2 reference composer; "
         "maintain identity while preserving kinetic frame intent; "
+        "default aesthetic baseline is stunningly beautiful photorealistic live-action heroine, idol-like features, high-end fashion model aesthetic, cinematic lighting, sharp focus on eyes, 8k polish, highly detailed face; "
         "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
         f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}.{escalation}"
     )
@@ -40,6 +41,7 @@ def _build_item(anchor: dict, brief: dict) -> dict:
     environment_clause = _environment_clause(anchor, section)
     continuity_clause = _continuity_clause(anchor)
     kinetic_clause = _kinetic_clause(anchor)
+    beauty_clause = _beauty_clause()
     lighting_clause = _lighting_clause(anchor, section)
     safety_clause = _safety_clause()
     prompt_text = _compose_flux2_ref_prompt(
@@ -48,6 +50,7 @@ def _build_item(anchor: dict, brief: dict) -> dict:
         continuity_clause,
         environment_clause,
         kinetic_clause,
+        beauty_clause,
         lighting_clause,
         safety_clause,
     )
@@ -127,6 +130,7 @@ def _compose_flux2_ref_prompt(
     continuity_clause: str,
     environment_clause: str,
     kinetic_clause: str,
+    beauty_clause: str,
     lighting_clause: str,
     safety_clause: str,
 ) -> str:
@@ -136,6 +140,7 @@ def _compose_flux2_ref_prompt(
         continuity_clause,
         environment_clause,
         kinetic_clause,
+        beauty_clause,
         lighting_clause,
         safety_clause,
     ]
@@ -197,8 +202,12 @@ def _kinetic_clause(anchor: dict) -> str:
 def _lighting_clause(anchor: dict, section: dict) -> str:
     lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
     if not lighting:
-        return ""
-    return _trim_words(f"lighting accent {lighting}", 14)
+        return "cinematic lighting, sharp focus on eyes"
+    return _trim_words(f"cinematic lighting, sharp focus on eyes, lighting accent {lighting}", 18)
+
+
+def _beauty_clause() -> str:
+    return "stunningly beautiful heroine, idol-like features, high-end fashion model aesthetic, 8k, highly detailed face"
 
 
 def _safety_clause() -> str:
