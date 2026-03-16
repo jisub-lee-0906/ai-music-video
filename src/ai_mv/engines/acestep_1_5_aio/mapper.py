@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import zlib
+
 from ai_mv.core.prompt_digests import compact_sentences, compact_series
 
 AUDIO_TEXT = "94"
@@ -9,10 +11,11 @@ AUDIO_SAVE = "104"
 
 
 def map_audio_workflow(config: dict, plan: dict) -> dict:
+    seed = _audio_seed(plan)
     text_inputs = {
         "tags": _audio_conditioning_text(plan),
         "lyrics": str(plan["lyrics"]),
-        "seed": int(plan["seed"]),
+        "seed": seed,
         "bpm": int(plan["bpm"]),
         "duration": int(plan["duration"]),
         "language": _audio_language(plan),
@@ -24,7 +27,7 @@ def map_audio_workflow(config: dict, plan: dict) -> dict:
         "node.inputs": {
             AUDIO_TEXT: text_inputs,
             AUDIO_LATENT: {"seconds": int(plan["duration"])},
-            AUDIO_KSAMPLER: {"seed": int(plan["seed"])},
+            AUDIO_KSAMPLER: {"seed": seed},
             AUDIO_SAVE: {
                 "filename_prefix": str(plan["filename_prefix"]),
                 "quality": str(plan["quality"]),
@@ -45,6 +48,14 @@ def audio_required_inputs() -> dict[str, list[str]]:
 def _audio_language(plan: dict) -> str:
     raw = str(plan.get("language", "en")).strip().lower()
     return raw if raw in {"en", "ja", "ko"} else "en"
+
+
+def _audio_seed(plan: dict) -> int:
+    base = int(plan.get("seed", 0))
+    variant = str(plan.get("filename_prefix", "")).strip()
+    retry = int(plan.get("retry", 0))
+    text = f"{base}|{variant}|{retry}".encode("utf-8")
+    return 4000 + int(zlib.crc32(text) % 1_000_000)
 
 
 def _audio_conditioning_text(plan: dict) -> str:

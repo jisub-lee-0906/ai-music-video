@@ -4,6 +4,16 @@ from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_
 from ai_mv.utils.text_utils import parse_target
 
 MV_FUNCTIONS = ("establish", "coverage", "lift", "payoff", "interrupt", "residue")
+KINETIC_REF_TRANSITIONS = {
+    "snap_zoom_in",
+    "snap_zoom_out",
+    "whip_pan_left",
+    "whip_pan_right",
+    "crash_push_in",
+    "smash_reframe",
+    "strobe_jump",
+    "match_cut_pose",
+}
 
 
 def visual_pipeline_settings(config: dict) -> dict:
@@ -158,6 +168,12 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     consistency_need = str(shot.get("consistency_need", "low")).strip().lower()
     phase = _clip_phase(shot)
     mv_function = str(shot.get("mv_function", "")).strip().lower()
+    kinetic_transition = str(shot.get("kinetic_transition", "")).strip().lower()
+    kinetic_intensity = str(shot.get("kinetic_intensity", "")).strip().lower()
+    if kinetic_transition in KINETIC_REF_TRANSITIONS:
+        return True, "kinetic transition anchor"
+    if kinetic_intensity in {"high", "max"} and phase in {"establish", "resolve"}:
+        return True, "high kinetic endpoint lock"
     if any(ref in label for ref in settings["reference_priority_sections"]):
         if hero_score >= 4:
             return True, "priority return hero"
@@ -186,6 +202,8 @@ def route_summary(routes: list[dict]) -> list[dict]:
                 "shot_priority": str(row.get("shot_priority", "")),
                 "hero_frame_score": int(row.get("hero_frame_score", 0)),
                 "consistency_need": str(row.get("consistency_need", "")),
+                "kinetic_transition": str(row.get("kinetic_transition", "")),
+                "kinetic_intensity": str(row.get("kinetic_intensity", "")),
             }
         )
     return out

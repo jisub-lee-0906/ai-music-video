@@ -18,6 +18,8 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
     escalation = " Final Chorus should feel like the visual peak." if any("final chorus" in str(anchor.get("section_label", "")).lower() for anchor in anchors) else ""
     return (
         "deterministic flux2 reference composer; "
+        "maintain identity while preserving kinetic frame intent; "
+        "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
         f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}.{escalation}"
     )
 
@@ -37,7 +39,18 @@ def _build_item(anchor: dict, brief: dict) -> dict:
     action_clause = _action_clause(anchor, section)
     environment_clause = _environment_clause(anchor, section)
     continuity_clause = _continuity_clause(anchor)
-    prompt_text = _compose_flux2_ref_prompt(subject_clause, action_clause, continuity_clause, environment_clause)
+    kinetic_clause = _kinetic_clause(anchor)
+    lighting_clause = _lighting_clause(anchor, section)
+    safety_clause = _safety_clause()
+    prompt_text = _compose_flux2_ref_prompt(
+        subject_clause,
+        action_clause,
+        continuity_clause,
+        environment_clause,
+        kinetic_clause,
+        lighting_clause,
+        safety_clause,
+    )
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
         "shot_id": anchor["shot_id"],
@@ -63,6 +76,9 @@ def _build_item(anchor: dict, brief: dict) -> dict:
         "scene_detail": str(anchor.get("scene_detail", "")),
         "motion_hint": str(anchor.get("motion_hint", "")),
         "space_relation": str(anchor.get("space_relation", "")),
+        "kinetic_transition": str(anchor.get("kinetic_transition", "")),
+        "lighting_fx": str(anchor.get("lighting_fx", "")),
+        "kinetic_intensity": str(anchor.get("kinetic_intensity", "")),
         "route_reason": str(anchor.get("route_reason", "")),
     }
 
@@ -75,7 +91,7 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
 
 def _action_clause(anchor: dict, section: dict) -> str:
     phase = _clip_phase(anchor)
-    motion_axis = str(section.get("motion_axis", "")).strip() or "pose shift"
+    motion_axis = str(section.get("motion_axis", "")).strip() or _kinetic_axis(anchor)
     pose = str(anchor.get("pose_delta", "")).strip() or str(section.get("story_beat", "")).strip()
     pose_phrase = _action_fragment(pose)
     if phase == "establish":
@@ -89,7 +105,7 @@ def _action_clause(anchor: dict, section: dict) -> str:
 
 def _environment_clause(anchor: dict, section: dict) -> str:
     palette = str(section.get("palette_hint", "")).strip()
-    lighting = str(section.get("lighting_hint", "")).strip()
+    lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
     location = (
         str(section.get("location_family", "")).strip()
         or str(section.get("location_anchor", "")).strip()
@@ -105,8 +121,24 @@ def _continuity_clause(anchor: dict) -> str:
     return _trim_words(f"{relation}, phase {phase}", 22)
 
 
-def _compose_flux2_ref_prompt(subject_clause: str, action_clause: str, continuity_clause: str, environment_clause: str) -> str:
-    parts = [subject_clause, action_clause, continuity_clause, environment_clause]
+def _compose_flux2_ref_prompt(
+    subject_clause: str,
+    action_clause: str,
+    continuity_clause: str,
+    environment_clause: str,
+    kinetic_clause: str,
+    lighting_clause: str,
+    safety_clause: str,
+) -> str:
+    parts = [
+        subject_clause,
+        action_clause,
+        continuity_clause,
+        environment_clause,
+        kinetic_clause,
+        lighting_clause,
+        safety_clause,
+    ]
     return _sentence(", ".join(part for part in parts if part))
 
 
@@ -121,7 +153,9 @@ def _anchor_summary_row(anchor: dict) -> str:
     shot_type = str(anchor.get("shot_type", "CHAR_MASTER"))
     relation = str(anchor.get("space_relation", "")).strip() or "space stays stable"
     phase = _clip_phase(anchor)
-    return f"{sid}({section}|{label}|{shot_type}|{relation}|{phase})"
+    kinetic = str(anchor.get("kinetic_transition", "")).strip() or "none"
+    intensity = str(anchor.get("kinetic_intensity", "")).strip() or "normal"
+    return f"{sid}({section}|{label}|{shot_type}|{relation}|{phase}|{kinetic}|{intensity})"
 
 
 def _sentence(text: str) -> str:
@@ -145,6 +179,45 @@ def _trim_words(text: str, max_words: int) -> str:
     words = [word for word in str(text).replace(",", " ,").split() if word]
     out = " ".join(words[: max_words]).replace(" ,", ",")
     return out.strip(" ,")
+
+
+def _kinetic_clause(anchor: dict) -> str:
+    transition = str(anchor.get("kinetic_transition", "")).strip().replace("_", " ")
+    intensity = str(anchor.get("kinetic_intensity", "")).strip().lower()
+    if not transition and not intensity:
+        return ""
+    parts = []
+    if transition:
+        parts.append(f"kinetic move {transition}")
+    if intensity:
+        parts.append(f"intensity {intensity}")
+    return _trim_words(", ".join(parts), 12)
+
+
+def _lighting_clause(anchor: dict, section: dict) -> str:
+    lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
+    if not lighting:
+        return ""
+    return _trim_words(f"lighting accent {lighting}", 14)
+
+
+def _safety_clause() -> str:
+    return "no text, no typography, no watermarks, no logos, no signage, no ui overlay"
+
+
+def _kinetic_axis(anchor: dict) -> str:
+    transition = str(anchor.get("kinetic_transition", "")).strip().lower()
+    mapping = {
+        "snap_zoom_in": "forward snap",
+        "snap_zoom_out": "recoil pullback",
+        "whip_pan_left": "left whip line",
+        "whip_pan_right": "right whip line",
+        "crash_push_in": "impact push",
+        "smash_reframe": "reframe break",
+        "strobe_jump": "strobe burst",
+        "match_cut_pose": "pose impact",
+    }
+    return mapping.get(transition, "pose shift")
 
 
 def _beat_atoms(brief: dict, anchor: dict) -> dict:

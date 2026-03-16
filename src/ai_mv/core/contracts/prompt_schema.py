@@ -1,6 +1,17 @@
 from __future__ import annotations
 
 SHOT_TYPES = ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "DETAIL_INSERT", "ENV_TRANSITION"]
+KINETIC_TRANSITIONS = [
+    "snap_zoom_in",
+    "snap_zoom_out",
+    "whip_pan_left",
+    "whip_pan_right",
+    "crash_push_in",
+    "smash_reframe",
+    "strobe_jump",
+    "match_cut_pose",
+]
+KINETIC_INTENSITIES = ["low", "medium", "high", "max"]
 
 
 def lyrics_timeline_schema() -> dict:
@@ -270,6 +281,11 @@ def _shot_timeline_item_schema() -> dict:
             "edit_role",
             "continuity_lock",
             "clip_count",
+            "start_frame",
+            "end_frame",
+            "kinetic_transition",
+            "lighting_fx",
+            "kinetic_intensity",
         ],
         "properties": {
             "lyric_beat_id": {"type": "string"},
@@ -283,6 +299,24 @@ def _shot_timeline_item_schema() -> dict:
             "edit_role": {"type": "string"},
             "continuity_lock": {"type": "string"},
             "clip_count": {"type": "integer"},
+            "start_frame": _frame_anchor_schema(),
+            "end_frame": _frame_anchor_schema(),
+            "kinetic_transition": {"type": "string", "enum": KINETIC_TRANSITIONS},
+            "lighting_fx": {"type": "string"},
+            "kinetic_intensity": {"type": "string", "enum": KINETIC_INTENSITIES},
+        },
+    }
+
+
+def _frame_anchor_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["composition", "subject_scale", "camera_axis", "lighting_state"],
+        "properties": {
+            "composition": {"type": "string"},
+            "subject_scale": {"type": "string"},
+            "camera_axis": {"type": "string"},
+            "lighting_state": {"type": "string"},
         },
     }
 

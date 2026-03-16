@@ -59,6 +59,11 @@ def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
         "scene_detail": str(item.get("scene_detail", "")),
         "motion_hint": str(item.get("motion_hint", "")),
         "space_relation": str(item.get("space_relation", "")),
+        "start_frame": dict(item.get("start_frame", {})),
+        "end_frame": dict(item.get("end_frame", {})),
+        "kinetic_transition": str(item.get("kinetic_transition", "")),
+        "lighting_fx": str(item.get("lighting_fx", "")),
+        "kinetic_intensity": str(item.get("kinetic_intensity", "")),
         "route_reason": str(item.get("route_reason", "")),
         "use_ref": use_ref,
         "clip_index": int(item.get("clip_index", 1)),
@@ -127,7 +132,7 @@ def _clip_summary(clips: list[dict]) -> str:
 def _clip_summary_row(clip: dict) -> str:
     sid = str(clip["shot_id"])
     relation = str(clip.get("space_relation", "")).strip() or "space stays stable"
-    motion = str(clip.get("motion_hint", "")).strip() or "steady motion"
+    motion = str(clip.get("kinetic_transition", "")).strip() or str(clip.get("motion_hint", "")).strip() or "impact move"
     label = str(clip.get("section_label", clip.get("section_name", "section")))
     return f"{sid}({label}|{motion}|{relation})"
 
@@ -156,28 +161,48 @@ def _apply_prompt(clip: dict, brief: dict) -> dict:
 
 def _subject_motion(clip: dict, section: dict) -> str:
     phase = _clip_phase(clip)
-    beat = str(section.get("story_beat", "")).strip() or str(clip.get("motion_hint", "")).strip() or "holds the beat"
-    axis = str(section.get("motion_axis", "")).strip() or "pose shift"
-    action = _action_fragment(beat, axis)
+    beat = str(section.get("story_beat", "")).strip() or str(clip.get("motion_hint", "")).strip() or "hits the beat"
+    axis = str(section.get("motion_axis", "")).strip() or _kinetic_axis(clip)
+    action = _action_fragment(beat, axis, clip)
     if phase == "establish":
-        return _sentence_clause(f"She sets the {axis} with {action}")
+        return _sentence_clause(f"She attacks the {axis} with {action}")
     if phase == "resolve":
-        return _sentence_clause(f"She lands the {axis} with {action}")
+        return _sentence_clause(f"She slams the {axis} into place with {action}")
     if phase == "advance":
-        return _sentence_clause(f"She carries the {axis} forward with {action}")
-    return _sentence_clause(f"She moves through {action}")
+        return _sentence_clause(f"She drives the {axis} forward with {action}")
+    return _sentence_clause(f"She hits through {action}")
 
 
 def _camera_relation(clip: dict, section: dict) -> str:
     camera = str(clip.get("camera_language", "")).strip()
+    kinetic_transition = str(clip.get("kinetic_transition", "")).strip().lower()
+    intensity = str(clip.get("kinetic_intensity", "")).strip().lower()
     escalation = str(section.get("escalation_level", "")).strip().lower()
     if camera:
         return _trim_words(camera, 12)
+    if kinetic_transition == "whip_pan_left":
+        return "whips hard left across her line"
+    if kinetic_transition == "whip_pan_right":
+        return "whips hard right across her line"
+    if kinetic_transition == "snap_zoom_in":
+        return "snap zooms straight into her face"
+    if kinetic_transition == "snap_zoom_out":
+        return "snaps back out of the frame"
+    if kinetic_transition == "crash_push_in":
+        return "crashes straight toward her on impact"
+    if kinetic_transition == "smash_reframe":
+        return "smash reframes to a new axis mid-beat"
+    if kinetic_transition == "strobe_jump":
+        return "jumps forward through strobe hits"
+    if kinetic_transition == "match_cut_pose":
+        return "cuts on pose impact without easing"
+    if intensity in {"high", "max"}:
+        return "drives fast with no soft drift"
     if escalation == "interrupt":
-        return "holds a restrained lateral relation"
+        return "cuts sideways and locks on impact"
     if escalation == "residue":
-        return "glides back and leaves space behind her"
-    return "glides without breaking alignment"
+        return "jerks back and leaves a hard after-image"
+    return "stays aggressive and close to impact"
 
 
 def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
@@ -190,7 +215,8 @@ def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     )
     world = compact_world_atoms(brief)
     world_rules = str(world.get("world_rules", "")).strip()
-    text = ", ".join(part for part in (location, palette, lighting or world_rules) if part)
+    lighting_fx = str(clip.get("lighting_fx", "")).strip()
+    text = ", ".join(part for part in (location, palette, lighting_fx or lighting or world_rules) if part)
     return _trim_words(text, 16)
 
 
@@ -246,18 +272,33 @@ def _sentence_clause(text: str) -> str:
     return cleaned
 
 
-def _action_fragment(beat: str, axis: str) -> str:
+def _action_fragment(beat: str, axis: str, clip: dict) -> str:
     cleaned = _beat_fragment(beat)
     if cleaned:
         return cleaned
+    kinetic_transition = str(clip.get("kinetic_transition", "")).strip().lower()
+    if kinetic_transition == "snap_zoom_in":
+        return "a sudden forward snap"
+    if kinetic_transition == "snap_zoom_out":
+        return "a violent pullback hit"
+    if kinetic_transition in {"whip_pan_left", "whip_pan_right"}:
+        return "a whip-fast directional break"
+    if kinetic_transition == "crash_push_in":
+        return "a full-speed impact push"
+    if kinetic_transition == "smash_reframe":
+        return "a hard reframing strike"
+    if kinetic_transition == "strobe_jump":
+        return "a strobe-synced jump cut burst"
+    if kinetic_transition == "match_cut_pose":
+        return "a pose-locked impact match cut"
     axis_low = str(axis).strip().lower()
     if axis_low == "travel line":
-        return "a measured forward drift"
+        return "a hard forward charge"
     if axis_low == "gaze shift":
-        return "a direct lift of her gaze"
+        return "a fast eye-line snap"
     if axis_low == "stillness hold":
-        return "a controlled held pause"
-    return "a clear body adjustment"
+        return "a locked impact hold"
+    return "a sharp body strike"
 
 
 def _beat_fragment(beat: str) -> str:
@@ -376,11 +417,26 @@ def _camera_relation_is_weak(text: str) -> bool:
     )
     if low.startswith(technical_subjects):
         return True
-    dynamic = ("glide", "glides", "follow", "follows", "track", "tracks", "push", "pushes", "pull", "pulls", "drift", "drifts")
+    dynamic = ("whip", "snap", "crash", "slam", "smash", "jump", "track", "tracks", "push", "pushes", "pull", "pulls")
     if not any(word in low for word in dynamic):
         return True
     weak_starts = ("a gentle retreat", "a steady retreat", "the glide", "the backward tracking", "the arc")
     return low.startswith(weak_starts)
+
+
+def _kinetic_axis(clip: dict) -> str:
+    transition = str(clip.get("kinetic_transition", "")).strip().lower()
+    mapping = {
+        "snap_zoom_in": "forward snap",
+        "snap_zoom_out": "recoil pullback",
+        "whip_pan_left": "left whip line",
+        "whip_pan_right": "right whip line",
+        "crash_push_in": "impact push",
+        "smash_reframe": "reframe break",
+        "strobe_jump": "strobe burst",
+        "match_cut_pose": "pose impact",
+    }
+    return mapping.get(transition, "impact move")
 
 
 def _naturalize_relation(text: str) -> str:

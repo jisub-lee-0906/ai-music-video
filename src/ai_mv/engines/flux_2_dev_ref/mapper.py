@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import zlib
 
+from ai_mv.utils.text_utils import parse_size, parse_target
+
 FLUX2_REF_LOAD_IMAGE = "46"
 FLUX2_REF_TEXT_POS = "68:6"
 FLUX2_REF_NOISE = "68:25"
 FLUX2_REF_LATENT = "68:47"
 FLUX2_REF_SAVE = "9"
+NO_TEXT_SUFFIX = ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
 
 
 def map_flux2_ref_workflow(config: dict, item: dict) -> dict:
-    idx = _shot_seed(str(item["shot_id"])) + int(item["frame_idx"])
+    idx = _shot_seed(
+        str(item["shot_id"]),
+        variant=str(item.get("kinetic_transition", "")),
+        retry=int(item.get("retry", 0)),
+    ) + int(item["frame_idx"])
     width, height = _flux2_ref_size(config)
     prompt = _flux2_ref_prompt(item)
     return {
@@ -34,8 +41,8 @@ def flux2_ref_required_inputs() -> dict[str, list[str]]:
     }
 
 
-def _shot_seed(shot_id: str) -> int:
-    text = str(shot_id).strip().encode("utf-8")
+def _shot_seed(shot_id: str, variant: str = "", retry: int = 0) -> int:
+    text = f"{str(shot_id).strip()}|{str(variant).strip()}|{int(retry)}".encode("utf-8")
     return int(zlib.crc32(text) % 1_000_000)
 
 
@@ -43,10 +50,13 @@ def _flux2_ref_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty Flux2 reference prompt_text: {item['shot_id']}")
-    return text
+    return f"{text}{NO_TEXT_SUFFIX}"
 
 
 def _flux2_ref_size(config: dict) -> tuple[int, int]:
     size = str(config["render"]["tti_size"])
-    w, h = size.split("x", 1)
-    return int(w), int(h)
+    w, h = parse_size(size)
+    vw, vh, _ = parse_target(str(config["video"]["target"]))
+    if w * vh != h * vw:
+        raise RuntimeError(f"tti_size aspect ratio must match video.target: {w}x{h} vs {vw}x{vh}")
+    return w, h

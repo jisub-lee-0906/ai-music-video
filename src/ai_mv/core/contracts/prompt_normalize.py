@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import string
 
-from ai_mv.core.contracts.prompt_schema import SHOT_TYPES
+from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES
 
 
 def normalize_tti_shot(raw: dict, idx: int) -> dict:
@@ -230,6 +230,12 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
         shot_type = str(row.get("shot_type", "")).strip().upper()
         if shot_type not in SHOT_TYPES:
             raise RuntimeError(f"invalid shot type: {shot_type}")
+        kinetic_transition = str(row.get("kinetic_transition", "")).strip()
+        if kinetic_transition not in KINETIC_TRANSITIONS:
+            raise RuntimeError(f"invalid kinetic transition: {kinetic_transition}")
+        kinetic_intensity = str(row.get("kinetic_intensity", "")).strip().lower()
+        if kinetic_intensity not in KINETIC_INTENSITIES:
+            raise RuntimeError(f"invalid kinetic intensity: {kinetic_intensity}")
         out.append(
             {
                 "shot_id": f"S{idx:03d}",
@@ -247,9 +253,25 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "edit_role": _require_text(row, "edit_role"),
                 "continuity_lock": _require_text(row, "continuity_lock"),
                 "clip_count": max(1, int(row.get("clip_count", 1))),
+                "start_frame": _normalize_frame_anchor(row.get("start_frame", {}), "start_frame"),
+                "end_frame": _normalize_frame_anchor(row.get("end_frame", {}), "end_frame"),
+                "kinetic_transition": kinetic_transition,
+                "lighting_fx": _require_text(row, "lighting_fx"),
+                "kinetic_intensity": kinetic_intensity,
             }
         )
     return {"master_anchor": master, "shots": out}
+
+
+def _normalize_frame_anchor(raw: object, label: str) -> dict:
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"{label} missing")
+    return {
+        "composition": _require_text(raw, "composition"),
+        "subject_scale": _require_text(raw, "subject_scale"),
+        "camera_axis": _require_text(raw, "camera_axis"),
+        "lighting_state": _require_text(raw, "lighting_state"),
+    }
 
 
 def _render_lyrics_blocks(blocks: list[dict]) -> str:

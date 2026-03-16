@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import zlib
 
-from ai_mv.utils.text_utils import ensure_positive_size, parse_size
+from ai_mv.utils.text_utils import ensure_positive_size, parse_size, parse_target
 
 WAN_TEXT_NEG = "78"
 WAN_LOAD_START = "80"
@@ -17,7 +17,11 @@ WAN_TEXT_POS = "90"
 
 def map_wan_workflow(config: dict, clip: dict) -> dict:
     w, h = _wan_size(config, clip)
-    idx = _shot_seed(str(clip["shot_id"]))
+    idx = _shot_seed(
+        str(clip["shot_id"]),
+        variant=str(clip.get("kinetic_transition", "")),
+        retry=int(clip.get("retry", 0)),
+    )
     seed = 3000 + idx
     steps = _steps_for_energy(str(clip["energy"]))
     neg = str(clip["negative_prompt"])
@@ -41,8 +45,8 @@ def map_wan_workflow(config: dict, clip: dict) -> dict:
     }
 
 
-def _shot_seed(shot_id: str) -> int:
-    text = str(shot_id).strip().encode("utf-8")
+def _shot_seed(shot_id: str, variant: str = "", retry: int = 0) -> int:
+    text = f"{str(shot_id).strip()}|{str(variant).strip()}|{int(retry)}".encode("utf-8")
     return int(zlib.crc32(text) % 1_000_000)
 
 
@@ -50,6 +54,9 @@ def _wan_size(config: dict, clip: dict) -> tuple[int, int]:
     size = str(clip["wan_size"])
     w, h = parse_size(size)
     ensure_positive_size(w, h)
+    vw, vh, _ = parse_target(str(config["video"]["target"]))
+    if w * vh != h * vw:
+        raise RuntimeError(f"wan_size aspect ratio must match video.target: {w}x{h} vs {vw}x{vh}")
     return w, h
 
 

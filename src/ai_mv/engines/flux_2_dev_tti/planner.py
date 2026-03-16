@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
-from ai_mv.core.contracts.prompt_schema import SHOT_TYPES, shot_timeline_schema
+from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.visual_pipeline import attach_tti_metadata
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -19,14 +19,26 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     story_bible = payload["visual_story_bible"]
     timeline = payload["lyrics_timeline"]
     return (
-        "You are a lyric-first shot planner building a shot timeline for downstream renderers. "
+        "You are a kinetic live-action shot planner building a shot timeline for downstream renderers. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
         "Create exactly one shot item for every lyric beat in order. "
         "master_anchor prompt_text must contain only stable identity and world facts. "
-        "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation,edit_role,continuity_lock,clip_count. "
+        "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation,edit_role,continuity_lock,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
         "Use the lyric beat as the source of truth. "
+        "Safe coverage is forbidden. Do not default to generic portrait coverage, gentle glide, or static beauty framing. "
+        "camera_language must explicitly name an aggressive camera move or frame behavior usable by downstream render stages. "
+        "For release, payoff, and high-energy beats, prioritize whip pan, snap zoom, crash push-in, smash reframe, strobe jump, match-cut pose, extreme close-up pressure, or hard lateral streaks. "
+        "lighting_fx must treat lighting as an active tension device: strobe hit, overexposed flash reset, hard neon contrast, pulsing practical flare, or blackout edge recovery. "
+        "start_frame and end_frame must differ clearly in framing, subject scale, camera axis, or lighting state. "
+        "If a beat is high or max kinetic intensity, do not return a static start/end pair. "
+        "NO TEXT, NO TYPOGRAPHY, NO WATERMARKS, NO LOGOS, NO SIGNAGE, NO UI OVERLAY. "
+        "All frames must read as clean live-action imagery with zero rendered text elements. "
         "camera_language and space_relation must be compact structural phrases usable by downstream render stages. "
         "edit_role should fit the lyric beat function: entry, develop, release, hold, interrupt, or residue. "
+        f"Allowed kinetic transitions={', '.join(KINETIC_TRANSITIONS)}. "
+        f"Allowed kinetic intensities={', '.join(KINETIC_INTENSITIES)}. "
+        "Examples: payoff beat -> camera_language='whip pan into extreme close-up', kinetic_transition='strobe_jump', lighting_fx='white flash to hard neon lock'. "
+        "Examples: interrupt beat -> camera_language='crash push then hold', kinetic_transition='smash_reframe', lighting_fx='single strobe hit then shadow recovery'. "
         f"Allowed shot types={', '.join(SHOT_TYPES)}. "
         f"Story bible={_story_bible_digest(story_bible)}. "
         f"Lyric timeline={_timeline_digest(timeline)}."
@@ -119,4 +131,3 @@ def _transition_role(edit_role: str) -> str:
     if role == "hold":
         return "build"
     return "carry"
-
