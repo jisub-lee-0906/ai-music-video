@@ -360,8 +360,6 @@ def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int
     has_alpha = any(ch.isalpha() for ch in text)
     if len(words) < 2 or not has_alpha:
         raise RuntimeError(f"invalid {field}: {shot_id}")
-    if len(words) > max_words:
-        raise RuntimeError(f"{field} too long: {shot_id}")
     return text.rstrip(". ")
 
 
@@ -369,9 +367,6 @@ def _normalize_optional_clause(raw: object, max_words: int) -> str:
     text = " ".join(str(raw).strip().split()).rstrip(". ")
     if not text:
         return ""
-    words = [x for x in text.replace(",", " ").split() if x]
-    if len(words) > max_words:
-        raise RuntimeError("optional clause too long")
     return text
 
 

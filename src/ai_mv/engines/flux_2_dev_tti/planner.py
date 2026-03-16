@@ -23,30 +23,16 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     story_bible = payload["visual_story_bible"]
     timeline = payload["lyrics_timeline"]
     return (
-        "You are a lyric-first shot planner building a shot timeline for downstream renderers. "
+        "Write a shot timeline for downstream Flux and video workflows. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
         "Create exactly one shot item for every lyric beat in order. "
-        "master_anchor prompt_text must contain only stable identity and world facts. "
-        "Default aesthetic baseline is stunningly beautiful photorealistic live-action imagery with idol-like features, "
-        "high-end fashion model aesthetic, cinematic lighting, sharp focus on eyes, 8k polish, and highly detailed face rendering. "
+        "master_anchor prompt_text must contain only stable identity and world facts for image prompting. "
         "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation,edit_role,continuity_lock,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
-        "Use the lyric beat as the source of truth. "
-        "Safe coverage is forbidden. Do not default to generic portrait coverage, gentle glide, or static beauty framing. "
-        "camera_language must explicitly name an aggressive camera move or frame behavior usable by downstream render stages. "
-        "For release, payoff, and high-energy beats, prioritize whip pan, snap zoom, crash push-in, smash reframe, strobe jump, match-cut pose, extreme close-up pressure, or hard lateral streaks. "
-        "lighting_fx must treat lighting as an active tension device: strobe hit, overexposed flash reset, hard neon contrast, pulsing practical flare, or blackout edge recovery. "
-        "Even at maximum motion, the heroine must remain stunningly beautiful and editorial-grade: preserve flattering facial structure, clean skin, strong eye detail, premium hair styling, and luxury fashion image quality. "
-        "start_frame and end_frame must differ clearly in framing, subject scale, camera axis, or lighting state. "
-        "If a beat is high or max kinetic intensity, do not return a static start/end pair. "
+        "Use the story bible and lyric beat as the source of truth. "
         "NO TEXT, NO TYPOGRAPHY, NO WATERMARKS, NO LOGOS, NO SIGNAGE, NO UI OVERLAY. "
-        "All frames must read as clean live-action imagery with zero rendered text elements. "
-        "camera_language and space_relation must be compact structural phrases usable by downstream render stages. "
-        "edit_role should fit the lyric beat function: entry, develop, release, hold, interrupt, or residue. "
+        f"Allowed shot types={', '.join(SHOT_TYPES)}. "
         f"Allowed kinetic transitions={', '.join(KINETIC_TRANSITIONS)}. "
         f"Allowed kinetic intensities={', '.join(KINETIC_INTENSITIES)}. "
-        "Examples: payoff beat -> camera_language='whip pan into extreme close-up', kinetic_transition='strobe_jump', lighting_fx='white flash to hard neon lock'. "
-        "Examples: interrupt beat -> camera_language='crash push then hold', kinetic_transition='smash_reframe', lighting_fx='single strobe hit then shadow recovery'. "
-        f"Allowed shot types={', '.join(SHOT_TYPES)}. "
         f"Story bible={_story_bible_digest(story_bible)}. "
         f"Lyric timeline={_timeline_digest(timeline)}."
     )
@@ -96,8 +82,7 @@ def _story_bible_digest(story_bible: dict) -> str:
         + "beats="
         + ", ".join(
             f"{beat.get('beat_id', '')}|{beat.get('section_label', beat.get('section_name', ''))}|"
-            f"{beat.get('literal_image', '')}|{beat.get('visible_action', '')}|"
-            f"{beat.get('payoff_role', '')}|{beat.get('camera_commitment', '')}"
+            f"{beat.get('literal_image', '')}|{beat.get('visible_action', '')}|{beat.get('payoff_role', '')}"
             for beat in beats
             if isinstance(beat, dict)
         )

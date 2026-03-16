@@ -23,19 +23,16 @@ audio:
     vague or overly polished.
 visual:
   brief: >
-    A photorealistic cinematic retro-grunge music video with a stunningly beautiful East Asian
-    heroine, idol-like features, high-end fashion model aesthetic, 8k detail, and highly
-    detailed face. Place her against concrete walls, rusted cages, decayed corridors, 90s street
-    textures, sodium-vapor shadows, rough practical light, and film-grain atmosphere. Keep the
-    piece kinetic and brutal with Smash Reframe violence, Hard Cut punctuation, Whip Pan breaks,
-    Snap Zoom punches, dirty Strobe Lighting hits, Match Cut attitude poses, extreme close-up
-    stare pressure, high contrast lighting, aggressive framing, and dynamic shadows that feel
-    analog, urban, confrontational, and still fashion-editorial in the heroine's face and
-    silhouette rather than merely rough.
+    A photorealistic cinematic retro-grunge music video with an East Asian heroine, concrete
+    walls, rusted cages, decayed corridors, 90s street textures, sodium-vapor shadows, rough
+    practical light, a dangerous magnetic camera presence, and film-grain atmosphere. Keep the piece kinetic and brutal with smash
+    reframe violence, hard-cut punctuation, whip pan breaks, snap zoom punches, dirty strobe
+    hits, match-cut attitude poses, extreme close-up stare pressure, high-contrast lighting, and
+    dynamic shadows that feel analog, urban, and confrontational.
   negative: >
     Avoid glossy futurism, luxury-only styling, clean sterile sets, random comedy props, weak
-    lighting, typography, text, subtitles, watermarks, logo, UI overlay, ugly face, blurry face,
-    deformed face, distorted anatomy, and low-quality image artifacts.
+    lighting, typography, text, subtitles, watermarks, logo, UI overlay, and low-quality image
+    artifacts.
 mv:
   story_world: >
     The video should feel like one continuous rough urban world built from recurring environment
@@ -48,12 +45,10 @@ mv:
     shifting weight into a hard pose, and landing a final stance that feels untouchable. Keep
     motion blunt, physical, and forceful rather than stunt-heavy, sloppy, or over-choreographed.
   payoff_style: >
-    The final return should feel like total retro-grunge impact in photorealistic cinematic
-    live-action: hardest silhouette, dirtiest light contrast, deeper dynamic shadows, Smash
-    Reframe shocks, Hard Cut attitude hits, Whip Pan interruptions, Snap Zoom impact, Strobe
-    flashes, Match Cut pose aggression, and an extreme close-up that makes the heroine feel like
-    the most beautiful and dangerous presence in the entire broken street world.
+    The final return should feel like total retro-grunge impact: hardest silhouette, dirtiest
+    light contrast, deeper shadows, smash reframe shocks, hard-cut attitude hits, whip pan
+    interruptions, snap zoom impact, strobe flashes, match-cut pose aggression, and one extreme
+    close-up.
   avoid: >
     Avoid polished idol sweetness, disconnected locations, fake vintage gimmicks, passive body
-    language, muted endings, typography, text, subtitles, logo, UI overlay, ugly face, blurry
-    face, deformed face, and distorted facial features.
+    language, and muted endings.

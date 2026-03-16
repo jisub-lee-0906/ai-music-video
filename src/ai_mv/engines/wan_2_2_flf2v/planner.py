@@ -1,15 +1,9 @@
 from __future__ import annotations
 
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, workflow_negative_prompt
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 from ai_mv.utils.text_utils import parse_target
-
-_BASE_NEGATIVE = (
-    "overexposed, static frame, unclear details, subtitle, watermark, logo, "
-    "low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, "
-    "poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background"
-)
-
 
 def build_wan_plan(config: dict, payload: dict) -> dict:
     fps = parse_target(config["video"]["target"])[2]
@@ -27,8 +21,11 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
     carry_clause = f"carry={carry}; " if carry else ""
-    payoff = " Final Chorus should feel like the motion payoff." if any("final chorus" in str(clip.get("section_label", "")).lower() for clip in clips) else ""
-    return f"deterministic wan composer; {carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; clip_ids={clip_ids}; clips={summary}.{payoff}"
+    return (
+        "deterministic wan composer; "
+        "compose short motion-first prompts for the workflow positive and negative text fields; "
+        f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; clip_ids={clip_ids}; clips={summary}."
+    )
 
 
 def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
@@ -201,14 +198,14 @@ def _apply_prompt(clip: dict, brief: dict) -> dict:
 def _subject_motion(clip: dict, section: dict) -> str:
     phase = _clip_phase(clip)
     beat = str(section.get("story_beat", "")).strip() or str(clip.get("motion_hint", "")).strip() or "hits the beat"
-    axis = str(section.get("motion_axis", "")).strip() or _kinetic_axis(clip)
+    axis = _workflow_axis(section, clip)
     action = _action_fragment(beat, axis, clip)
     if phase == "establish":
-        return _sentence_clause(f"She sets the {axis} with {action}")
+        return _sentence_clause(_join_motion("She sets the move", action))
     if phase == "resolve":
-        return _sentence_clause(f"She lands the {axis} with {action}")
+        return _sentence_clause(_join_motion("She lands the move", action))
     if phase == "advance":
-        return _sentence_clause(f"She carries the {axis} with {action}")
+        return _sentence_clause(_join_motion("She carries the move", action))
     return _sentence_clause(f"She hits through {action}")
 
 
@@ -218,7 +215,7 @@ def _camera_relation(clip: dict, section: dict) -> str:
     intensity = str(clip.get("kinetic_intensity", "")).strip().lower()
     escalation = str(section.get("escalation_level", "")).strip().lower()
     if camera:
-        return _trim_words(camera, 12)
+        return compact_prompt_clause(camera, 12)
     if kinetic_transition == "whip_pan_left":
         return "whips hard left across her line"
     if kinetic_transition == "whip_pan_right":
@@ -256,21 +253,20 @@ def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     world_rules = str(world.get("world_rules", "")).strip()
     lighting_fx = str(clip.get("lighting_fx", "")).strip()
     text = ", ".join(part for part in (location, palette, lighting_fx or lighting or world_rules) if part)
-    return _trim_words(text, 16)
+    return compact_prompt_clause(text, 16)
 
 
 def _negative_prompt(clip: dict, brief: dict) -> str:
     world = compact_world_atoms(brief)
     relation = str(clip.get("space_relation", "")).strip().lower()
-    extra = []
+    extra: list[str] = []
     if "glass" in relation:
         extra.append("warped reflections")
     if bool(clip.get("use_ref", False)):
         extra.append("identity drift")
     if "world_rules" in world and "night" in str(world.get("world_rules", "")).lower():
         extra.append("daylight mismatch")
-    combined = ", ".join(part for part in (_BASE_NEGATIVE, ", ".join(extra)) if part).strip(", ")
-    return combined
+    return workflow_negative_prompt(extra)
 
 
 def _suggested_energy(clip: dict, section: dict) -> str:
@@ -565,3 +561,26 @@ def _beat_atoms(brief: dict, clip: dict) -> dict:
             if str(beat.get("beat_id", "")).strip() == beat_id:
                 return dict(beat)
     return compact_section_atoms(brief, str(clip.get("section_name", "")))
+
+
+def _workflow_axis(section: dict, clip: dict) -> str:
+    raw = compact_prompt_clause(section.get("motion_axis", ""), 4)
+    if raw and "," not in raw and "." not in raw:
+        return raw
+    return _kinetic_axis(clip)
+
+
+def _join_motion(prefix: str, action: str) -> str:
+    text = str(action).strip()
+    if not text:
+        return str(prefix).strip()
+    first = text.split(" ", 1)[0].lower()
+    if first.endswith("ing"):
+        linker = "by"
+    elif first in {"under", "over", "through", "into", "across", "inside", "between", "before", "after", "while", "as"}:
+        linker = "as"
+    elif first in {"a", "an", "the"}:
+        linker = "through"
+    else:
+        linker = "with"
+    return f"{str(prefix).strip()} {linker} {text}".strip()

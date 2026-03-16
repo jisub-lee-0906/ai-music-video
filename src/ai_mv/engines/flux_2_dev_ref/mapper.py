@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import zlib
 
+from ai_mv.core.workflow_prompt_contracts import workflow_no_text_suffix
 from ai_mv.utils.text_utils import parse_size, parse_target
 
 FLUX2_REF_LOAD_IMAGE = "46"
@@ -11,12 +12,6 @@ FLUX2_REF_NOISE = "68:25"
 FLUX2_REF_LATENT = "68:47"
 FLUX2_REF_SCHEDULER = "68:48"
 FLUX2_REF_SAVE = "9"
-NO_TEXT_SUFFIX = (
-    ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
-    ", ugly, deformed, distorted, low quality, blurry face"
-)
-
-
 def map_flux2_ref_workflow(config: dict, item: dict) -> dict:
     idx = _shot_seed(
         str(item["shot_id"]),
@@ -56,7 +51,7 @@ def _flux2_ref_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty Flux2 reference prompt_text: {item['shot_id']}")
-    return f"{text}{NO_TEXT_SUFFIX}"
+    return f"{text}{workflow_no_text_suffix()}"
 
 
 def _flux2_ref_size(config: dict) -> tuple[int, int]:

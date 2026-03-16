@@ -35,13 +35,12 @@ def test_audio_prompt_focuses_on_prompt_engineering_not_checklist():
     prompt = audio_planner._audio_prompt(_prompt_plan())
     assert "Return JSON only" in prompt
     assert "Allowed section values only" in prompt
-    assert "lyrics_blocks.lines must contain only finished sung lyric lines" in prompt
-    assert "Write like a finished record" in prompt
-    assert "Front-load memorability" in prompt
-    assert "emotionally inevitable" in prompt
-    assert "Make the chorus easy to sing back after one listen" in prompt
-    assert "Keep the fields strictly separated" in prompt
-    assert "Do not leak world-building labels or visual planning vocabulary directly into lyric lines" in prompt
+    assert "lyrics_blocks.lines must be finished sung lyric lines only" in prompt
+    assert "AceStep tags text field" in prompt
+    assert "Keep fields separated" in prompt
+    assert "Do not put planning notes, camera language, or placeholders inside lyrics" in prompt
+    assert "Make the chorus immediate" not in prompt
+    assert "Let later returns evolve" not in prompt
     assert "Style guidance=" not in prompt
     assert "Visual carryover=" not in prompt
     assert "Audio intent=mature female vocal, glossy piano, disco bounce." in prompt
@@ -57,18 +56,15 @@ def test_audio_prompt_keeps_language_direction_in_prompt_only():
     prompt = audio_planner._audio_prompt(_prompt_plan())
     assert "Lyrics language=ja." in prompt
     assert "Write fluent modern Japanese lyrics" in prompt
-    assert "Avoid forced transliterations" in prompt
-    assert "Keep English rare and intentional" in prompt
+    assert "Keep phrasing natural and singable" in prompt
+    assert "Use English sparingly and intentionally" in prompt
 
 
-def test_audio_prompt_includes_hook_shape_bias():
-    prompt = audio_planner._audio_prompt(_prompt_plan(hook_shape_bias="reflection cue with afterglow or remaining heat"))
-    assert "Hook contour bias=" in prompt
-
-
-def test_audio_prompt_includes_bar_lane():
-    prompt = audio_planner._audio_prompt(_prompt_plan(bar_lane="intro 4, verse 12, pre 8, chorus 12, final chorus 16, outro 4"))
-    assert "Bar lane=intro 4, verse 12, pre 8, chorus 12, final chorus 16, outro 4." in prompt
+def test_audio_prompt_does_not_force_songform_metadata_when_not_requested():
+    prompt = audio_planner._audio_prompt(_prompt_plan(duration=0, bar_lane="intro 4, verse 12"))
+    assert "Target duration=" not in prompt
+    assert "Bar lane=" not in prompt
+    assert "Hook contour bias=" not in prompt
 
 
 def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
@@ -93,7 +89,7 @@ def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
     assert normalized["keyscale"] == "F# minor"
 
 
-def test_normalize_and_validate_recomputes_duration_from_generated_songform(monkeypatch):
+def test_normalize_and_validate_keeps_llm_duration_when_not_overridden(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
         "_plan_with_llm",
@@ -112,7 +108,7 @@ def test_normalize_and_validate_recomputes_duration_from_generated_songform(monk
         },
     )
     normalized = audio_planner._normalize_and_validate({}, _prompt_plan(duration=200))
-    assert normalized["duration"] == 72
+    assert normalized["duration"] == 999
 
 
 def test_plan_once_returns_single_pass_plan_without_quality_review(monkeypatch):

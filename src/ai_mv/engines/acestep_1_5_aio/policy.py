@@ -38,11 +38,7 @@ def audio_policy(config: dict) -> dict:
     section_bars = resolve_section_bars(audio)
     override_duration = _explicit_target_duration(audio)
     preferred_rows = preferred_songform_rows()
-    duration = (
-        int(override_duration)
-        if override_duration is not None
-        else compute_duration_from_rows(preferred_rows, bpm, beats_per_bar, section_bars)
-    )
+    duration = int(override_duration) if override_duration is not None else 0
     return {
         "duration": int(duration),
         "duration_override": override_duration is not None,

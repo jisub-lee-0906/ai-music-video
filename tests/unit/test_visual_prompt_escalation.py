@@ -6,7 +6,7 @@ import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 def test_tti_prompt_uses_section_labels_for_escalation():
     payload = {"visual_story_bible": _story_bible(), "lyrics_timeline": _timeline()}
     prompt = tti_planner._planner_prompt({}, payload)
-    assert "lyric-first shot planner building a shot timeline" in prompt
+    assert "Write a shot timeline for downstream Flux and video workflows" in prompt
     assert "Story bible=" in prompt
     assert "Lyric timeline=" in prompt
 
@@ -17,7 +17,7 @@ def test_flux2_ref_prompt_mentions_return_intensity():
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
-    assert "Final Chorus should feel like the visual peak" in prompt
+    assert "Final Chorus should feel like the visual peak" not in prompt
     assert "Profile steering=" not in prompt
     assert "deterministic flux2 reference composer" in prompt
     assert "Lyrics context=" not in prompt
@@ -30,7 +30,7 @@ def test_wan_prompt_mentions_final_chorus_payoff():
     }
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
-    assert "Final Chorus should feel like the motion payoff" in prompt
+    assert "Final Chorus should feel like the motion payoff" not in prompt
     assert "deterministic wan composer" in prompt
     assert "Profile steering=" not in prompt
     assert "motifs=" not in prompt

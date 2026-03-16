@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_image_prompt
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 
 
@@ -15,13 +16,12 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
     world = compact_world_atoms(payload["visual_story_bible"])
     summary = _anchor_summary(anchors)
     carry_clause = f"carry={carry}; " if carry else ""
-    escalation = " Final Chorus should feel like the visual peak." if any("final chorus" in str(anchor.get("section_label", "")).lower() for anchor in anchors) else ""
     return (
         "deterministic flux2 reference composer; "
-        "maintain identity while preserving kinetic frame intent; "
-        "default aesthetic baseline is stunningly beautiful photorealistic live-action heroine, idol-like features, high-end fashion model aesthetic, cinematic lighting, sharp focus on eyes, 8k polish, highly detailed face; "
+        "maintain identity and continuity while preserving the anchor frame intent; "
+        "compose compact prompts for the workflow positive text field; "
         "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
-        f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}.{escalation}"
+        f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}."
     )
 
 
@@ -41,7 +41,6 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     environment_clause = _environment_clause(anchor, section)
     continuity_clause = _continuity_clause(anchor)
     kinetic_clause = _kinetic_clause(anchor)
-    beauty_clause = _beauty_clause()
     lighting_clause = _lighting_clause(anchor, section)
     safety_clause = _safety_clause()
     prompt_text = _compose_flux2_ref_prompt(
@@ -50,7 +49,6 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         continuity_clause,
         environment_clause,
         kinetic_clause,
-        beauty_clause,
         lighting_clause,
         safety_clause,
     )
@@ -95,21 +93,21 @@ def _chain_key(anchor: dict) -> str:
 def _subject_clause(brief: dict, anchor: dict) -> str:
     world = compact_world_atoms(brief)
     shot_type = str(anchor.get("shot_type", "")).strip().lower().replace("_", " ")
-    return _trim_words(f"{world['hero_identity']}, {shot_type} framing", 20)
+    return compact_prompt_clause(f"{world['hero_identity']}, {shot_type} framing", 20)
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
     phase = _clip_phase(anchor)
-    motion_axis = str(section.get("motion_axis", "")).strip() or _kinetic_axis(anchor)
+    motion_axis = _workflow_axis(section, anchor)
     pose = str(anchor.get("pose_delta", "")).strip() or str(section.get("story_beat", "")).strip()
     pose_phrase = _action_fragment(pose)
     if phase == "establish":
-        return _trim_words(f"set the {motion_axis} with {pose_phrase}", 16)
+        return compact_prompt_clause(_join_action(f"set the {motion_axis}", pose_phrase), 16)
     if phase == "resolve":
-        return _trim_words(f"land the {motion_axis} with {pose_phrase}", 16)
+        return compact_prompt_clause(_join_action(f"land the {motion_axis}", pose_phrase), 16)
     if phase == "advance":
-        return _trim_words(f"carry the {motion_axis} forward with {pose_phrase}", 16)
-    return _trim_words(pose_phrase, 16)
+        return compact_prompt_clause(_join_action(f"carry the {motion_axis} forward", pose_phrase), 16)
+    return compact_prompt_clause(pose_phrase, 16)
 
 
 def _environment_clause(anchor: dict, section: dict) -> str:
@@ -121,13 +119,13 @@ def _environment_clause(anchor: dict, section: dict) -> str:
         or str(anchor.get("scene_detail", "")).strip()
     )
     parts = [location, palette, lighting]
-    return _trim_words(", ".join(part for part in parts if part), 20)
+    return compact_prompt_clause(", ".join(part for part in parts if part), 20)
 
 
 def _continuity_clause(anchor: dict) -> str:
     relation = str(anchor.get("space_relation", "")).strip() or "keeping the same space relation"
     phase = _clip_phase(anchor)
-    return _trim_words(f"{relation}, phase {phase}", 22)
+    return compact_prompt_clause(f"{relation}, phase {phase}", 22)
 
 
 def _compose_flux2_ref_prompt(
@@ -136,7 +134,6 @@ def _compose_flux2_ref_prompt(
     continuity_clause: str,
     environment_clause: str,
     kinetic_clause: str,
-    beauty_clause: str,
     lighting_clause: str,
     safety_clause: str,
 ) -> str:
@@ -146,11 +143,10 @@ def _compose_flux2_ref_prompt(
         continuity_clause,
         environment_clause,
         kinetic_clause,
-        beauty_clause,
         lighting_clause,
         safety_clause,
     ]
-    return _sentence(", ".join(part for part in parts if part))
+    return compose_image_prompt(parts, 56)
 
 
 def _anchor_summary(anchors: list[dict]) -> str:
@@ -202,18 +198,14 @@ def _kinetic_clause(anchor: dict) -> str:
         parts.append(f"kinetic move {transition}")
     if intensity:
         parts.append(f"intensity {intensity}")
-    return _trim_words(", ".join(parts), 12)
+    return compact_prompt_clause(", ".join(parts), 12)
 
 
 def _lighting_clause(anchor: dict, section: dict) -> str:
     lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
     if not lighting:
-        return "cinematic lighting, sharp focus on eyes"
-    return _trim_words(f"cinematic lighting, sharp focus on eyes, lighting accent {lighting}", 18)
-
-
-def _beauty_clause() -> str:
-    return "stunningly beautiful heroine, idol-like features, high-end fashion model aesthetic, 8k, highly detailed face"
+        return "cinematic lighting"
+    return compact_prompt_clause(f"cinematic lighting, lighting accent {lighting}", 14)
 
 
 def _safety_clause() -> str:
@@ -246,6 +238,13 @@ def _beat_atoms(brief: dict, anchor: dict) -> dict:
     return compact_section_atoms(brief, str(anchor.get("section_name", "")))
 
 
+def _workflow_axis(section: dict, anchor: dict) -> str:
+    raw = compact_prompt_clause(section.get("motion_axis", ""), 4)
+    if raw and "," not in raw and "." not in raw:
+        return raw
+    return _kinetic_axis(anchor)
+
+
 def _action_fragment(text: str) -> str:
     cleaned = " ".join(str(text).strip().rstrip(". ").split())
     if not cleaned:
@@ -254,3 +253,19 @@ def _action_fragment(text: str) -> str:
     if low.startswith("she "):
         cleaned = cleaned[4:]
     return cleaned[:1].lower() + cleaned[1:] if cleaned else ""
+
+
+def _join_action(prefix: str, action: str) -> str:
+    text = str(action).strip()
+    if not text:
+        return str(prefix).strip()
+    first = text.split(" ", 1)[0].lower()
+    if first.endswith("ing"):
+        linker = "by"
+    elif first in {"under", "over", "through", "into", "across", "inside", "between", "before", "after", "while", "as"}:
+        linker = "as"
+    elif first in {"a", "an", "the"}:
+        linker = "through"
+    else:
+        linker = "with"
+    return f"{str(prefix).strip()} {linker} {text}".strip()

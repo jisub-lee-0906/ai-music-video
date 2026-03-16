@@ -50,6 +50,8 @@ def release_lock(lock: Path) -> None:
         handle.thread.join(timeout=1.0)
         _safe_release(lock, handle.pid, handle.run_id)
         return
+    if not lock.exists():
+        return
     meta = _read_lock(lock)
     _safe_release(lock, int(meta["pid"]), str(meta["run_id"]))
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause
+
 
 def build_story_world(brief: dict) -> dict:
     return {
@@ -33,8 +35,8 @@ def build_beat_atoms(brief: dict) -> list[dict]:
 def compact_world_atoms(brief: dict) -> dict:
     world = build_story_world(brief)
     return {
-        "hero_identity": str(world.get("hero_identity", "")).strip(),
-        "world_rules": str(world.get("world_rules", "")).strip(),
+        "hero_identity": _compact_hero_identity(world.get("hero_identity", "")),
+        "world_rules": compact_prompt_clause(world.get("world_rules", ""), 24),
     }
 
 
@@ -66,3 +68,34 @@ def compact_section_atoms(brief: dict, section_name: str) -> dict:
         "motion_axis": "",
         "lyric_beat_id": "",
     }
+
+
+def _compact_hero_identity(text: object) -> str:
+    raw = " ".join(str(text).strip().split())
+    if not raw:
+        return ""
+    clauses = [part.strip(" .") for part in raw.split(",") if part.strip(" .")]
+    stop_markers = (
+        "one consistent",
+        "no cast",
+        "no age drift",
+        "no hairstyle",
+        "no wardrobe",
+        "always the same",
+        "same high-shine",
+        "same heroine",
+        "no anime",
+        "no illustrated",
+        "no 2d",
+    )
+    kept: list[str] = []
+    for clause in clauses:
+        low = clause.lower()
+        if any(marker in low for marker in stop_markers):
+            continue
+        kept.append(clause)
+        if len(kept) >= 4:
+            break
+    if not kept:
+        kept = clauses[:3]
+    return compact_prompt_clause(", ".join(kept), 18)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from ai_mv.entrypoints.doctor import run_doctor
+from ai_mv.entrypoints.prompt_compare import run_prompt_compare_entry
+from ai_mv.entrypoints.prompt_extract import run_prompt_extract_entry
 from ai_mv.entrypoints.preflight import run_preflight_entry
 from ai_mv.entrypoints.start import run_start
 from ai_mv.entrypoints.status import show_status
@@ -13,6 +15,10 @@ def dispatch(command: str, **kwargs: str) -> int:
         return run_doctor()
     if command == "preflight":
         return run_preflight_entry(kwargs.get("run_id"), kwargs.get("profile"))
+    if command == "prompt-extract":
+        return run_prompt_extract_entry(kwargs.get("run_id"), kwargs.get("profile"))
+    if command == "prompt-compare":
+        return run_prompt_compare_entry(kwargs["before_run_id"], kwargs["after_run_id"], kwargs.get("profile"))
     if command == "status":
         return show_status(kwargs["run_id"])
     raise ValueError(f"Unsupported command: {command}")

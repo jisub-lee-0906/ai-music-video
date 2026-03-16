@@ -28,18 +28,16 @@ audio:
 visual:
   brief: >
     A photorealistic cinematic city-pop nightlife music video with a young adult East Asian
-    heroine, youthful elegance, stunningly beautiful face, idol-like features, high-end fashion
-    model aesthetic, wet pavement reflections, reflective thresholds, lit passages, and open
-    night lanes. Keep the city-pop mood polished and graceful, but drive it with
-    kinetic live-action language: whip pan reveals, snap zoom accents, match cut motion echoes,
-    selective extreme close-up glamour hits, restrained strobe lighting glints, cinematic eye
-    focus, high contrast lighting, aggressive framing, and dynamic shadows across the same
-    coherent urban night. Favor polished editorial stillness punctuated by elegant turns rather
-    than constant movement.
+    heroine, youthful elegance, and a softly glamorous camera-ready presence, wet pavement
+    reflections, reflective thresholds, lit passages, and open night lanes. Keep the mood
+    polished and graceful, with kinetic live-action craft:
+    whip pan reveals, snap zoom accents, match-cut motion echoes, selective extreme close-ups,
+    restrained strobe glints, high-contrast lighting, and dynamic shadows. Favor poised stillness
+    punctuated by elegant turns rather than constant movement.
   negative: >
     Avoid futuristic sci-fi tone, cheap club styling, noisy streetwear drift, random location
-    hopping, heavy prop emphasis, fashion-editorial posing, anime rendering, 2D illustration
-    cues, typography, text, subtitles, watermarks, logo, and UI overlay.
+    hopping, heavy prop emphasis, anime or 2D stylization, typography, text, subtitles,
+    watermarks, logo, and UI overlay.
 mv:
   story_world: >
     The video should feel like one late-night emotional passage through a small set of recurring
@@ -52,12 +50,9 @@ mv:
     shoulders softly into frame, and holding a gaze. Keep motion graceful and physically simple
     rather than plot-heavy, fidgety, or theatrical.
   payoff_style: >
-    The final return should feel like emotional arrival inside the same city night, but with
-    kinetic photorealistic live-action lift: clearer eye contact, more open posture, brighter
-    reflections, high contrast lighting, dynamic shadows, a match cut cadence through the last
-    phrases, snap zoom emphasis on the hook, a controlled whip pan release, and one elegant
-    extreme close-up that locks the heroine to the beat while preserving beauty-editorial calm.
+    The final return should feel like emotional arrival inside the same city night: clearer eye
+    contact, more open posture, brighter reflections, stronger contrast, a match-cut cadence
+    through the last phrases, a controlled whip pan release, and one elegant extreme close-up.
   avoid: >
-    Avoid random spectacle, abrupt geography changes, disconnected glam shots, endings that feel
-    fragmentary, anime or 2D stylization, and any typography, text, subtitles, watermarks, logo,
-    or UI overlay.
+    Avoid random spectacle, abrupt geography changes, disconnected glam shots, and endings that
+    feel fragmentary.

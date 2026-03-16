@@ -178,8 +178,22 @@ def _audio_conditioning_text(plan: dict) -> str:
     body = _trim_sentence(desc)
     if genre and body:
         prefix = f"{genre}:"
-        return body if body.lower().startswith(prefix.lower()) else f"{prefix} {body}"
+        if body.lower().startswith(prefix.lower()):
+            return body
+        compact = _dedupe_genre_prefix(body, genre)
+        return f"{prefix} {compact}".strip()
     return body or genre
+
+
+def _dedupe_genre_prefix(body: str, genre: str) -> str:
+    trimmed = _trim_sentence(body)
+    head = _trim_sentence(genre).lower()
+    parts = trimmed.split(":", 1)
+    if len(parts) == 2 and _normalize_genre_label(parts[0]) == genre:
+        return parts[1].strip()
+    if trimmed.lower().startswith(f"{head} "):
+        return trimmed[len(genre) :].strip(" :")
+    return trimmed
 
 
 def _trim_sentence(text: str) -> str:

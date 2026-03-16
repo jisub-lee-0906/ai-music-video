@@ -32,7 +32,7 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
         "lyrics_timeline": _timeline(),
     }
     prompt = tti_planner._planner_prompt({}, payload)
-    assert "lyric-first shot planner building a shot timeline" in prompt
+    assert "Write a shot timeline for downstream Flux and video workflows" in prompt
     assert "master_anchor prompt_text must contain only stable identity and world facts" in prompt
     assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation,edit_role,continuity_lock,clip_count" in prompt
     assert "Story bible=" in prompt

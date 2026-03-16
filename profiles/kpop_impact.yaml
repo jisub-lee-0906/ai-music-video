@@ -24,18 +24,15 @@ audio:
 visual:
   brief: >
     A photorealistic cinematic rebellious diva music video with a young adult East Asian heroine,
-    strong silhouette, dark-gloss styling, stunningly beautiful face, idol-like features,
-    high-end fashion model aesthetic, industrial shine, shadowed thresholds, hard-lit passages,
-    and dominant open lanes. Push maximum kinetic live-action tension with whip pan lane
-    attacks, snap zoom pressure, strobe lighting hits, match cut body punctuation, extreme
-    close-up challenge stares, high contrast lighting, aggressive framing, and dynamic shadows.
-    Favor commanding center holds, hard turns, stop-start pressure, and confrontational pose
-    changes over constant forward charging. Keep the heroine powerful, controlled, attitude-first,
-    and fashion-editorial premium rather than elegant, passive, or stylized like anime or 2D art.
+    strong silhouette, dark-gloss styling, a fierce star-grade camera presence, industrial shine,
+    shadowed thresholds, hard-lit passages, and dominant open lanes. Push maximum kinetic tension with whip pan lane attacks,
+    snap zoom pressure, strobe hits, match-cut body punctuation, extreme close-up challenge
+    stares, high-contrast lighting, and dynamic shadows. Favor commanding center holds, hard
+    turns, stop-start pressure, and confrontational pose changes over constant forward charging.
   negative: >
     Avoid soft romance drift, timid posing, luxury-only prettiness, cluttered props, pastel
-    sweetness, disconnected locations, anime rendering, 2D illustration cues, typography, text,
-    subtitles, watermarks, logo, and UI overlay.
+    sweetness, disconnected locations, anime or 2D stylization, typography, text, subtitles,
+    watermarks, logo, and UI overlay.
 mv:
   story_world: >
     The video should feel like one charged after-dark world built from recurring environment
@@ -47,12 +44,9 @@ mv:
     landing a final look. Keep motion crisp, controlled, and forceful rather than chaotic,
     repetitive lane-running, or stunt-heavy.
   payoff_style: >
-    The final return should feel like full command in photorealistic cinematic live-action:
-    hardest eye line, strongest posture, sharper high contrast lighting, heavier dynamic shadows,
-    whip pan escalations, snap zoom impact, strobe lighting bursts, match cut continuity, and an
-    extreme close-up strike that makes the heroine feel like she has taken complete control of
-    the frame and the whole lane.
+    The final return should feel like full command: hardest eye line, strongest posture, sharper
+    contrast, heavier shadows, whip pan escalations, snap zoom impact, strobe bursts, and an
+    extreme close-up strike.
   avoid: >
     Avoid polite softness, static glamour for its own sake, random narrative detours, timid
-    endings, drift toward cute idol sweetness, anime or 2D stylization, and any typography,
-    text, subtitles, watermarks, logo, or UI overlay.
+    endings, and drift toward cute idol sweetness.

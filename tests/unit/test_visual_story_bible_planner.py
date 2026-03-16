@@ -31,9 +31,13 @@ def test_visual_story_bible_prompt_mentions_lyric_first_contract():
         "lyrics_timeline": _timeline(),
     }
     prompt = bridge_planner._planner_prompt({}, payload)
-    assert "lyric-first music video story planner" in prompt
+    assert "Write a lyric-first visual story bible for downstream image and video workflows" in prompt
     assert "hero_identity_lock,world_rules,recurring_location_families,forbidden_drift,lyric_beats,section_progression,repeat_escalation_rules" in prompt
-    assert "The video must follow the final generated lyrics first" in prompt
+    assert "Follow the lyric timeline exactly" in prompt
+    assert "Create exactly one lyric_beats item for each lyric_timeline beat in the same order" in prompt
+    assert "Do not split, merge, invent, omit, or regroup beats" in prompt
+    assert "Reuse the provided beat_id values exactly once" in prompt
+    assert "Lyric beat manifest=" in prompt
     assert "Lyric timeline=" in prompt
     assert "World support=neon harbor nightlife with graceful poise" in prompt
     assert "Forbidden drift=no drift" in prompt

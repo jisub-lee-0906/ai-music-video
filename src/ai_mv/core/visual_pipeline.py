@@ -84,8 +84,8 @@ def build_mv_directives(config: dict) -> dict:
     return {
         "motif_seed": str(mv.get("story_world", "")).strip(),
         "chorus_payoff_hint": str(mv.get("payoff_style", "")).strip(),
-        "bridge_interrupt_hint": str(mv.get("action_vocabulary", "")).strip() or "pause, obstruction, held profile",
-        "outro_residue_hint": "leave one lingering image rather than another forward move",
+        "bridge_interrupt_hint": str(mv.get("action_vocabulary", "")).strip(),
+        "outro_residue_hint": str(mv.get("avoid", "")).strip(),
     }
 
 

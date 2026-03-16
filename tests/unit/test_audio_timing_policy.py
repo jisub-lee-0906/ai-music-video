@@ -3,9 +3,9 @@ from ai_mv.engines.acestep_1_5_aio.policy import audio_policy
 from ai_mv.engines.acestep_1_5_aio.runner import _sections
 
 
-def test_audio_policy_auto_duration_uses_bpm_and_default_songform_bars():
+def test_audio_policy_leaves_duration_open_without_explicit_target():
     out = audio_policy({"audio": {"bpm": 120}})
-    assert out["duration"] == 200
+    assert out["duration"] == 0
     assert out["beats_per_bar"] == 4
     assert out["bar_lane"].startswith("intro 4")
     assert "final chorus 16" in out["bar_lane"]
