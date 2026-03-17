@@ -252,6 +252,7 @@ def _action_fragment(text: str) -> str:
     low = cleaned.lower()
     if low.startswith("she "):
         cleaned = cleaned[4:]
+    cleaned = _naturalize_action_phrase(cleaned)
     return cleaned[:1].lower() + cleaned[1:] if cleaned else ""
 
 
@@ -260,7 +261,9 @@ def _join_action(prefix: str, action: str) -> str:
     if not text:
         return str(prefix).strip()
     first = text.split(" ", 1)[0].lower()
-    if first.endswith("ing"):
+    if first in {"staying", "holding", "remaining", "keeping"}:
+        linker = "while"
+    elif first.endswith("ing"):
         linker = "by"
     elif first in {"under", "over", "through", "into", "across", "inside", "between", "before", "after", "while", "as"}:
         linker = "as"
@@ -269,3 +272,41 @@ def _join_action(prefix: str, action: str) -> str:
     else:
         linker = "with"
     return f"{str(prefix).strip()} {linker} {text}".strip()
+
+
+def _naturalize_action_phrase(text: str) -> str:
+    cleaned = " ".join(str(text).strip().split())
+    if not cleaned:
+        return ""
+    parts = cleaned.split(" ", 1)
+    verb = parts[0]
+    rest = parts[1] if len(parts) > 1 else ""
+    low = verb.lower()
+    irregular = {
+        "takes": "taking",
+        "strikes": "striking",
+        "stays": "staying",
+        "steps": "stepping",
+        "moves": "moving",
+        "advances": "advancing",
+        "surges": "surging",
+        "repeats": "repeating",
+        "rises": "rising",
+        "lifts": "lifting",
+        "holds": "holding",
+        "keeps": "keeping",
+        "lets": "letting",
+        "turns": "turning",
+        "walks": "walking",
+        "pauses": "pausing",
+        "passes": "passing",
+        "checks": "checking",
+        "returns": "returning",
+        "glances": "glancing",
+        "lingers": "lingering",
+        "eases": "easing",
+        "hits": "hitting",
+    }
+    if low in irregular:
+        return f"{irregular[low]} {rest}".strip()
+    return cleaned

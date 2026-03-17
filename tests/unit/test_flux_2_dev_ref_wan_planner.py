@@ -1,5 +1,7 @@
 from ai_mv.engines.flux_2_dev_ref.planner import build_flux2_ref_plan
 from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
+import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
+import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 
 
 def test_flux2_ref_plan_is_deterministic():
@@ -131,6 +133,29 @@ def test_flux2_ref_action_clause_is_not_prefixed_with_duplicate_subject():
     payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
     assert "she she" not in out["items"][0]["prompt_text"].lower()
+
+
+def test_flux2_ref_action_clause_naturalizes_finite_verb_leads():
+    anchor = {**_route("S020_C01", True), "clip_index": 1, "clip_count": 3, "pose_delta": "takes a deep breath and lifts her chin"}
+    item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
+    assert "with takes" not in item["action_clause"].lower()
+    assert "by taking a deep breath" in item["action_clause"].lower()
+
+
+def test_wan_single_clip_subject_motion_avoids_hits_through_stays():
+    clip = wan_planner._apply_prompt(
+        {
+            **_route("S025", False),
+            "shot_id": "S025",
+            "clip_index": 1,
+            "clip_count": 1,
+            "use_ref": False,
+            "motion_hint": "stays centered and perfectly clear",
+        },
+        _story_bible_with_section("outro", "stays centered and perfectly clear", "reflective threshold", "residue", "stillness hold"),
+    )
+    assert "hits through stays" not in clip["positive_prompt"].lower()
+    assert "she stays centered and perfectly clear" in clip["positive_prompt"].lower()
 
 
 def _flux2_ref(shot_id: str, duration: float) -> dict:

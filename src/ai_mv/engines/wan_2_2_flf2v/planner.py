@@ -206,7 +206,7 @@ def _subject_motion(clip: dict, section: dict) -> str:
         return _sentence_clause(_join_motion("She lands the move", action))
     if phase == "advance":
         return _sentence_clause(_join_motion("She carries the move", action))
-    return _sentence_clause(f"She hits through {action}")
+    return _sentence_clause(_single_motion_sentence(action))
 
 
 def _camera_relation(clip: dict, section: dict) -> str:
@@ -355,16 +355,26 @@ def _beat_fragment(beat: str) -> str:
         return _gerund_phrase(cleaned)
     first = cleaned.split(" ", 1)[0].lower() if cleaned else ""
     if first in {
+        "takes",
+        "strikes",
+        "stays",
         "slows",
         "passes",
         "checks",
         "steps",
         "turns",
         "moves",
+        "advances",
+        "surges",
+        "repeats",
+        "rises",
+        "lifts",
         "pauses",
         "returns",
         "stands",
         "holds",
+        "keeps",
+        "remains",
         "eases",
         "glances",
         "lingers",
@@ -392,6 +402,16 @@ def _gerund_phrase(text: str) -> str:
         "returns": "returning",
         "stands": "standing",
         "holds": "holding",
+        "takes": "taking",
+        "strikes": "striking",
+        "stays": "staying",
+        "advances": "advancing",
+        "surges": "surging",
+        "repeats": "repeating",
+        "rises": "rising",
+        "lifts": "lifting",
+        "keeps": "keeping",
+        "remains": "remaining",
         "eases": "easing",
         "glances": "glancing",
         "lingers": "lingering",
@@ -575,7 +595,9 @@ def _join_motion(prefix: str, action: str) -> str:
     if not text:
         return str(prefix).strip()
     first = text.split(" ", 1)[0].lower()
-    if first.endswith("ing"):
+    if first in {"staying", "holding", "remaining", "keeping"}:
+        linker = "while"
+    elif first.endswith("ing"):
         linker = "by"
     elif first in {"under", "over", "through", "into", "across", "inside", "between", "before", "after", "while", "as"}:
         linker = "as"
@@ -584,3 +606,24 @@ def _join_motion(prefix: str, action: str) -> str:
     else:
         linker = "with"
     return f"{str(prefix).strip()} {linker} {text}".strip()
+
+
+def _single_motion_sentence(action: str) -> str:
+    text = str(action).strip()
+    if not text:
+        return "She holds the beat"
+    first = text.split(" ", 1)[0].lower()
+    if first in {"staying", "holding", "remaining", "keeping"}:
+        lead_map = {
+            "staying": "stays",
+            "holding": "holds",
+            "remaining": "remains",
+            "keeping": "keeps",
+        }
+        rest = text.split(" ", 1)[1] if " " in text else ""
+        return f"She {lead_map.get(first, first)} {rest}".strip()
+    if first.endswith("ing"):
+        return f"She follows through by {text}"
+    if first in {"a", "an", "the"}:
+        return f"She hits through {text}"
+    return f"She {text}"
