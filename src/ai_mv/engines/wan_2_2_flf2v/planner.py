@@ -55,6 +55,7 @@ def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
         "emotion": str(item.get("emotion", "")),
         "scene_detail": str(item.get("scene_detail", "")),
         "motion_hint": str(item.get("motion_hint", "")),
+        "workflow_motion_clause": str(item.get("workflow_motion_clause", "")),
         "space_relation": str(item.get("space_relation", "")),
         "start_frame": dict(item.get("start_frame", {})),
         "end_frame": dict(item.get("end_frame", {})),
@@ -197,9 +198,7 @@ def _apply_prompt(clip: dict, brief: dict) -> dict:
 
 def _subject_motion(clip: dict, section: dict) -> str:
     phase = _clip_phase(clip)
-    beat = str(section.get("story_beat", "")).strip() or str(clip.get("motion_hint", "")).strip() or "hits the beat"
-    axis = _workflow_axis(section, clip)
-    action = _action_fragment(beat, axis, clip)
+    action = _planned_motion_clause(clip)
     if phase == "establish":
         return _sentence_clause(_join_motion("She sets the move", action))
     if phase == "resolve":
@@ -307,121 +306,6 @@ def _sentence_clause(text: str) -> str:
     return cleaned
 
 
-def _action_fragment(beat: str, axis: str, clip: dict) -> str:
-    cleaned = _beat_fragment(beat)
-    if cleaned:
-        return cleaned
-    kinetic_transition = str(clip.get("kinetic_transition", "")).strip().lower()
-    if kinetic_transition == "snap_zoom_in":
-        return "a sudden forward snap"
-    if kinetic_transition == "snap_zoom_out":
-        return "a violent pullback hit"
-    if kinetic_transition in {"whip_pan_left", "whip_pan_right"}:
-        return "a whip-fast directional break"
-    if kinetic_transition == "crash_push_in":
-        return "a full-speed impact push"
-    if kinetic_transition == "smash_reframe":
-        return "a hard reframing strike"
-    if kinetic_transition == "strobe_jump":
-        return "a strobe-synced jump cut burst"
-    if kinetic_transition == "match_cut_pose":
-        return "a pose-locked impact match cut"
-    axis_low = str(axis).strip().lower()
-    if axis_low == "travel line":
-        return "a hard forward charge"
-    if axis_low == "gaze shift":
-        return "a fast eye-line snap"
-    if axis_low == "stillness hold":
-        return "a locked impact hold"
-    return "a sharp body strike"
-
-
-def _beat_fragment(beat: str) -> str:
-    cleaned = " ".join(str(beat).strip().rstrip(". ").split())
-    if not cleaned:
-        return ""
-    low = cleaned.lower()
-    prefixes = (
-        "she ",
-        "the heroine ",
-        "our heroine ",
-    )
-    for prefix in prefixes:
-        if low.startswith(prefix):
-            cleaned = cleaned[len(prefix):]
-            low = cleaned.lower()
-            break
-    if low.startswith("lets "):
-        return _gerund_phrase(cleaned)
-    first = cleaned.split(" ", 1)[0].lower() if cleaned else ""
-    if first in {
-        "takes",
-        "strikes",
-        "stays",
-        "slows",
-        "passes",
-        "checks",
-        "steps",
-        "turns",
-        "moves",
-        "advances",
-        "surges",
-        "repeats",
-        "rises",
-        "lifts",
-        "pauses",
-        "returns",
-        "stands",
-        "holds",
-        "keeps",
-        "remains",
-        "eases",
-        "glances",
-        "lingers",
-        "walks",
-    }:
-        return _gerund_phrase(cleaned)
-    return cleaned[:1].lower() + cleaned[1:]
-
-
-def _gerund_phrase(text: str) -> str:
-    cleaned = " ".join(str(text).strip().split())
-    if not cleaned:
-        return ""
-    parts = cleaned.split(" ", 1)
-    verb = parts[0]
-    rest = parts[1] if len(parts) > 1 else ""
-    irregular = {
-        "slows": "slowing",
-        "passes": "passing",
-        "checks": "checking",
-        "steps": "stepping",
-        "turns": "turning",
-        "moves": "moving",
-        "pauses": "pausing",
-        "returns": "returning",
-        "stands": "standing",
-        "holds": "holding",
-        "takes": "taking",
-        "strikes": "striking",
-        "stays": "staying",
-        "advances": "advancing",
-        "surges": "surging",
-        "repeats": "repeating",
-        "rises": "rising",
-        "lifts": "lifting",
-        "keeps": "keeping",
-        "remains": "remaining",
-        "eases": "easing",
-        "glances": "glancing",
-        "lingers": "lingering",
-        "walks": "walking",
-        "lets": "letting",
-    }
-    lead = irregular.get(verb.lower(), verb.lower())
-    return f"{lead} {rest}".strip()
-
-
 def _compose_second_sentence(camera_relation: str, environment_detail: str) -> str:
     if environment_detail and _camera_relation_is_weak(camera_relation):
         return _sentence(environment_detail)
@@ -477,21 +361,6 @@ def _camera_relation_is_weak(text: str) -> bool:
         return True
     weak_starts = ("a gentle retreat", "a steady retreat", "the glide", "the backward tracking", "the arc")
     return low.startswith(weak_starts)
-
-
-def _kinetic_axis(clip: dict) -> str:
-    transition = str(clip.get("kinetic_transition", "")).strip().lower()
-    mapping = {
-        "snap_zoom_in": "forward snap",
-        "snap_zoom_out": "recoil pullback",
-        "whip_pan_left": "left whip line",
-        "whip_pan_right": "right whip line",
-        "crash_push_in": "impact push",
-        "smash_reframe": "reframe break",
-        "strobe_jump": "strobe burst",
-        "match_cut_pose": "pose impact",
-    }
-    return mapping.get(transition, "impact move")
 
 
 def _naturalize_relation(text: str) -> str:
@@ -627,3 +496,12 @@ def _single_motion_sentence(action: str) -> str:
     if first in {"a", "an", "the"}:
         return f"She hits through {text}"
     return f"She {text}"
+
+
+def _planned_motion_clause(clip: dict) -> str:
+    text = " ".join(str(clip.get("workflow_motion_clause", "")).strip().rstrip(". ").split())
+    if not text:
+        raise RuntimeError(f"workflow_motion_clause missing for wan shot: {clip.get('shot_id', '')}")
+    if text.lower().startswith("she "):
+        text = text[4:].strip()
+    return text

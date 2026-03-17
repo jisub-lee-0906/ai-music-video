@@ -55,6 +55,7 @@ def _pack_anchor(shot: dict, anchor: str) -> dict:
         "emotion": str(shot.get("emotion", "")),
         "scene_detail": str(shot.get("scene_detail", "")),
         "motion_hint": str(shot.get("motion_hint", "")),
+        "workflow_motion_clause": str(shot.get("workflow_motion_clause", "")),
         "space_relation": str(shot.get("space_relation", "")),
         "start_frame": dict(shot.get("start_frame", {})),
         "end_frame": dict(shot.get("end_frame", {})),

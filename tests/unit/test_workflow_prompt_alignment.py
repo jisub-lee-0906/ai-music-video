@@ -34,7 +34,8 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     prompt = tti_planner._planner_prompt({}, payload)
     assert "Write a shot timeline for downstream Flux and video workflows" in prompt
     assert "master_anchor prompt_text must contain only stable identity and world facts" in prompt
-    assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,space_relation,edit_role,continuity_lock,clip_count" in prompt
+    assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,clip_count" in prompt
+    assert "workflow_motion_clause must be a compact natural motion clause" in prompt
     assert "Story bible=" in prompt
     assert "Lyric timeline=" in prompt
 
@@ -145,6 +146,7 @@ def _anchor(shot_id: str, section_name: str, section_label: str) -> dict:
         "pose_delta": "small turn",
         "scene_detail": "rain glow",
         "motion_hint": "slow move",
+        "workflow_motion_clause": "turning into center light and holding the line",
         "space_relation": "glass stays camera-right",
     }
 
@@ -158,5 +160,6 @@ def _clip(shot_id: str, section_name: str, section_label: str) -> dict:
         "emotion": "lift",
         "scene_detail": "rain glow",
         "motion_hint": "slow move",
+        "workflow_motion_clause": "moving through the lane and holding the look",
         "space_relation": "glass stays camera-right",
     }

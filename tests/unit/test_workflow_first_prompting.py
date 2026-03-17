@@ -32,6 +32,7 @@ def test_flux2_ref_prompt_does_not_inject_house_style_without_profile_support():
     assert "stunningly beautiful" not in item["prompt_text"]
     assert "idol-like" not in item["prompt_text"]
     assert "high-end fashion model aesthetic" not in item["prompt_text"]
+    assert "turning into center light and holding the line" in item["action_clause"]
 
 
 def test_wan_prompt_does_not_inject_house_style_without_profile_support():
@@ -39,6 +40,7 @@ def test_wan_prompt_does_not_inject_house_style_without_profile_support():
     assert "stunningly beautiful" not in clip["positive_prompt"]
     assert "idol-like" not in clip["positive_prompt"]
     assert "high-end fashion model aesthetic" not in clip["positive_prompt"]
+    assert "moving through the lane and holding the look" in clip["positive_prompt"].lower()
 
 
 def test_compact_world_atoms_trims_policy_like_identity_tail():
@@ -176,6 +178,7 @@ def _anchor(shot_id: str) -> dict:
         "section_name": "chorus",
         "section_label": "Chorus",
         "pose_delta": "turns into center light",
+        "workflow_motion_clause": "turning into center light and holding the line",
         "scene_detail": "reflective threshold",
         "space_relation": "center lane",
         "kinetic_transition": "snap_zoom_in",
@@ -192,6 +195,7 @@ def _clip(shot_id: str) -> dict:
         "section_label": "Chorus",
         "shot_type": "PERF_WIDE",
         "motion_hint": "steps into the lit center and holds",
+        "workflow_motion_clause": "moving through the lane and holding the look",
         "camera_language": "snap zoom into center lock",
         "scene_detail": "reflective threshold",
         "space_relation": "center lane",

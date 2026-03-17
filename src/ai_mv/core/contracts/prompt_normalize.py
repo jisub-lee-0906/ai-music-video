@@ -249,6 +249,7 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "emotion": _require_text(row, "emotion"),
                 "scene_detail": _require_text(row, "scene_detail"),
                 "motion_hint": _require_text(row, "motion_hint"),
+                "workflow_motion_clause": _require_text(row, "workflow_motion_clause"),
                 "space_relation": _require_text(row, "space_relation"),
                 "edit_role": _optional_text(row, "edit_role", "support"),
                 "continuity_lock": _optional_text(row, "continuity_lock", "same heroine and world"),

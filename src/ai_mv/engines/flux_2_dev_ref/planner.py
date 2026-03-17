@@ -99,8 +99,7 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
 def _action_clause(anchor: dict, section: dict) -> str:
     phase = _clip_phase(anchor)
     motion_axis = _workflow_axis(section, anchor)
-    pose = str(anchor.get("pose_delta", "")).strip() or str(section.get("story_beat", "")).strip()
-    pose_phrase = _action_fragment(pose)
+    pose_phrase = _planned_motion_clause(anchor)
     if phase == "establish":
         return compact_prompt_clause(_join_action(f"set the {motion_axis}", pose_phrase), 16)
     if phase == "resolve":
@@ -245,17 +244,13 @@ def _workflow_axis(section: dict, anchor: dict) -> str:
     return _kinetic_axis(anchor)
 
 
-def _action_fragment(text: str) -> str:
-    cleaned = " ".join(str(text).strip().rstrip(". ").split())
-    if not cleaned:
-        return ""
-    low = cleaned.lower()
-    if low.startswith("she "):
-        cleaned = cleaned[4:]
-    cleaned = _naturalize_action_phrase(cleaned)
-    return cleaned[:1].lower() + cleaned[1:] if cleaned else ""
-
-
+def _planned_motion_clause(anchor: dict) -> str:
+    text = " ".join(str(anchor.get("workflow_motion_clause", "")).strip().rstrip(". ").split())
+    if not text:
+        raise RuntimeError(f"workflow_motion_clause missing for flux2_ref shot: {anchor.get('shot_id', '')}")
+    if text.lower().startswith("she "):
+        text = text[4:].strip()
+    return text
 def _join_action(prefix: str, action: str) -> str:
     text = str(action).strip()
     if not text:
@@ -272,41 +267,3 @@ def _join_action(prefix: str, action: str) -> str:
     else:
         linker = "with"
     return f"{str(prefix).strip()} {linker} {text}".strip()
-
-
-def _naturalize_action_phrase(text: str) -> str:
-    cleaned = " ".join(str(text).strip().split())
-    if not cleaned:
-        return ""
-    parts = cleaned.split(" ", 1)
-    verb = parts[0]
-    rest = parts[1] if len(parts) > 1 else ""
-    low = verb.lower()
-    irregular = {
-        "takes": "taking",
-        "strikes": "striking",
-        "stays": "staying",
-        "steps": "stepping",
-        "moves": "moving",
-        "advances": "advancing",
-        "surges": "surging",
-        "repeats": "repeating",
-        "rises": "rising",
-        "lifts": "lifting",
-        "holds": "holding",
-        "keeps": "keeping",
-        "lets": "letting",
-        "turns": "turning",
-        "walks": "walking",
-        "pauses": "pausing",
-        "passes": "passing",
-        "checks": "checking",
-        "returns": "returning",
-        "glances": "glancing",
-        "lingers": "lingering",
-        "eases": "easing",
-        "hits": "hitting",
-    }
-    if low in irregular:
-        return f"{irregular[low]} {rest}".strip()
-    return cleaned

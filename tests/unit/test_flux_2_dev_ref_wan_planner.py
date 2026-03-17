@@ -135,11 +135,39 @@ def test_flux2_ref_action_clause_is_not_prefixed_with_duplicate_subject():
     assert "she she" not in out["items"][0]["prompt_text"].lower()
 
 
-def test_flux2_ref_action_clause_naturalizes_finite_verb_leads():
-    anchor = {**_route("S020_C01", True), "clip_index": 1, "clip_count": 3, "pose_delta": "takes a deep breath and lifts her chin"}
+def test_flux2_ref_action_clause_uses_workflow_motion_clause():
+    anchor = {
+        **_route("S020_C01", True),
+        "clip_index": 1,
+        "clip_count": 3,
+        "workflow_motion_clause": "taking a deep breath and lifting her chin into the height",
+        "pose_delta": "takes a deep breath and lifts her chin",
+    }
     item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
     assert "with takes" not in item["action_clause"].lower()
     assert "by taking a deep breath" in item["action_clause"].lower()
+
+
+def test_flux2_ref_action_clause_uses_workflow_motion_clause_for_hits_pattern():
+    anchor = {
+        **_route("S020_C03", True),
+        "clip_index": 3,
+        "clip_count": 3,
+        "workflow_motion_clause": "hitting the hook entry faster and holding a colder direct stare",
+        "pose_delta": "hits the hook entry faster and holds a colder direct stare",
+    }
+    item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
+    assert "with hits" not in item["action_clause"].lower()
+    assert "by hitting the hook entry faster" in item["action_clause"].lower()
+
+
+def test_flux2_ref_requires_workflow_motion_clause():
+    anchor = dict(_route("S020_C03", True), workflow_motion_clause="")
+    try:
+        flux2_ref_planner._build_item(anchor, _story_bible(), 1)
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "workflow_motion_clause missing" in str(exc)
 
 
 def test_wan_single_clip_subject_motion_avoids_hits_through_stays():
@@ -150,12 +178,22 @@ def test_wan_single_clip_subject_motion_avoids_hits_through_stays():
             "clip_index": 1,
             "clip_count": 1,
             "use_ref": False,
+            "workflow_motion_clause": "staying centered and perfectly clear",
             "motion_hint": "stays centered and perfectly clear",
         },
         _story_bible_with_section("outro", "stays centered and perfectly clear", "reflective threshold", "residue", "stillness hold"),
     )
     assert "hits through stays" not in clip["positive_prompt"].lower()
     assert "she stays centered and perfectly clear" in clip["positive_prompt"].lower()
+
+
+def test_wan_requires_workflow_motion_clause():
+    clip = dict(_route("S025", False), workflow_motion_clause="")
+    try:
+        wan_planner._apply_prompt(clip, _story_bible())
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "workflow_motion_clause missing" in str(exc)
 
 
 def _flux2_ref(shot_id: str, duration: float) -> dict:
@@ -172,6 +210,7 @@ def _flux2_ref(shot_id: str, duration: float) -> dict:
         "emotion": "steady confidence",
         "scene_detail": "concert light wall",
         "motion_hint": "smooth motion",
+        "workflow_motion_clause": "moving through the lane and holding a steady line",
     }
 
 
@@ -191,6 +230,7 @@ def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
         "emotion": "steady confidence",
         "scene_detail": "concert light wall",
         "motion_hint": "smooth motion",
+        "workflow_motion_clause": "moving through the lane and holding a steady line",
         "space_relation": "glass stays camera-right and holds the same left-to-right walk line",
         "clip_index": 1,
         "clip_count": 1,

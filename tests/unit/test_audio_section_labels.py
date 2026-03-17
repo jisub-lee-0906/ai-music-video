@@ -25,6 +25,7 @@ def test_tti_shots_keep_section_label():
                 "emotion": "lift",
                 "scene_detail": "city glow",
                 "motion_hint": "slow push",
+                "workflow_motion_clause": "stepping forward and holding the center line",
                 "space_relation": "lane depth behind",
                 "edit_role": "release",
                 "continuity_lock": "same heroine",
