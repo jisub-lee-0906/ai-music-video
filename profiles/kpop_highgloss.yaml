@@ -44,7 +44,8 @@ mv:
     Prefer readable pop actions: stepping into center, turning shoulders into light, holding a
     direct stare, pivoting through a lane, brushing past reflective walls, hitting a pose on the
     beat, and landing a strong stop. Keep motion sharp, clean, and legible rather than theatrical,
-    overbusy, or too dance-rehearsal literal.
+    overbusy, or too dance-rehearsal literal. Favor one clean motion idea per beat that can drop
+    directly into downstream workflow prompts.
   payoff_style: >
     The final return should feel like total pop command: strongest center framing, cleaner
     lines, brighter reflections, stronger contrast, whip pan releases into snap zoom hook

@@ -28,7 +28,7 @@ visual:
     blooming lens flare, and pearlescent depth. Keep the motion kinetic but elegant with whip
     pan transitions, snap zoom emphasis on emotional turns, soft-pulse strobe, match-cut body
     echoes, selective motion-blur residue, extreme close-up eye focus, high-contrast lighting,
-    and dynamic shadows inside the glow. Keep the heroine readable even when the space feels
+    and dynamic shadows inside the glow. Keep the heroine readable, centered, and physically clear even when the space feels
     dreamlike.
   negative: >
     Avoid muddy haze, flat commercial softness, random fantasy props, childish fairy styling,
@@ -44,7 +44,8 @@ mv:
     Prefer readable graceful actions: entering a field of light, turning through drifting fog,
     holding a serene but intense gaze, crossing a reflective plane, pausing under a flare bloom,
     and arriving at a final still point with complete control. Keep motion elegant, physically
-    simple, and emotionally precise rather than limp, over-floated, or overly theatrical.
+    simple, and emotionally precise rather than limp, over-floated, or overly theatrical. Favor
+    one lucid movement per beat so the dreamlike world still resolves into clean render prompts.
   payoff_style: >
     The final return should feel like ethereal impact: brighter white-on-silver contrast, deeper
     shadows under the glow, whip pan relocations, snap zoom emotional accents, soft-pulse
