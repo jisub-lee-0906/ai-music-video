@@ -54,7 +54,7 @@ DEFAULT_CONFIG: dict = {
         "comfyui_input_dir": r"C:\Users\Desktop\Documents\ComfyUI\input",
         "comfyui_output_dir": r"C:\Users\Desktop\Documents\ComfyUI\output",
         "codex_cli_path": "",
-        "codex_model": "gpt-5.1-codex-mini",
+        "codex_model": "gpt-5.3-codex-spark",
         "codex_timeout_structured_sec": 600,
         "workflows_dir": "workflows",
     },
