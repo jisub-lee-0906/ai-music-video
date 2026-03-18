@@ -21,11 +21,6 @@ def build_parser() -> argparse.ArgumentParser:
     prompt_extract.add_argument("--run-id", default=None)
     prompt_extract.add_argument("--profile", default=None)
 
-    prompt_compare = sub.add_parser("prompt-compare")
-    prompt_compare.add_argument("--before-run-id", required=True)
-    prompt_compare.add_argument("--after-run-id", required=True)
-    prompt_compare.add_argument("--profile", default=None)
-
     status = sub.add_parser("status")
     status.add_argument("--run-id", required=True)
     return parser
