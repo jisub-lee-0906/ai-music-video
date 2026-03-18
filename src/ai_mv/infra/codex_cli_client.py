@@ -183,9 +183,9 @@ def _validated_command_parts(path: Path) -> list[str]:
 
 def _codex_model(config: dict) -> str:
     integ = config.get("integrations", {}) if isinstance(config, dict) else {}
-    raw = integ.get("codex_model", "gpt-5.3-codex-spark") if isinstance(integ, dict) else "gpt-5.3-codex-spark"
+    raw = integ.get("codex_model", "gpt-5.1-codex-mini") if isinstance(integ, dict) else "gpt-5.1-codex-mini"
     val = str(raw).strip()
-    return val or "gpt-5.3-codex-spark"
+    return val or "gpt-5.1-codex-mini"
 
 
 def _codex_timeout(config: dict) -> int:
