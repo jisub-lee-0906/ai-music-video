@@ -357,6 +357,7 @@ def _normalize_keyscale(text: str) -> str:
 
 def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int) -> str:
     text = " ".join(str(raw).strip().split())
+    text = _trim_words(text, max_words)
     words = [x for x in text.replace(",", " ").split() if x]
     has_alpha = any(ch.isalpha() for ch in text)
     if len(words) < 2 or not has_alpha:
@@ -366,9 +367,15 @@ def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int
 
 def _normalize_optional_clause(raw: object, max_words: int) -> str:
     text = " ".join(str(raw).strip().split()).rstrip(". ")
+    text = _trim_words(text, max_words)
     if not text:
         return ""
     return text
+
+
+def _trim_words(text: str, max_words: int) -> str:
+    words = [word for word in str(text).replace(",", " ").split() if word]
+    return " ".join(words[:max_words]).replace(" ,", ",").rstrip(",")
 
 
 def _normalize_subject_motion(raw: object, shot_id: str) -> str:

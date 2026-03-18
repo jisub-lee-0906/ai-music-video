@@ -80,6 +80,39 @@ def test_run_summary_includes_route_counts():
     assert summary["ref_ratio_by_section"]["Final Chorus"] == 0.5
 
 
+def test_run_summary_ignores_non_numeric_line_refs():
+    state = {"run_id": "r4", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
+    payload = {
+        "selected_profile": "citypop_glimmer",
+        "audio_map": {"language": "ja", "sections": [{"name": "intro", "label": "Intro"}]},
+        "lyrics_timeline": {
+            "sections": [
+                {
+                    "section_name": "intro",
+                    "section_label": "Intro",
+                    "lines": [
+                        {"line_index": 1, "text": "line 1"},
+                        {"line_index": 2, "text": "line 2"},
+                    ],
+                    "lyric_beats": [
+                        {
+                            "beat_id": "LB01",
+                            "line_refs": ["1", "bad", None, -1, "2"],
+                            "visible_action": "walks",
+                            "payoff_role": "entry",
+                        }
+                    ],
+                }
+            ]
+        },
+        "shot_timeline": {"shots": [{"lyric_beat_id": "LB01"}]},
+    }
+    summary = build_run_summary(state, payload, {})
+
+    assert summary["lyric_beat_count"] == 1
+    assert summary["unmapped_lyric_lines"] == 0
+
+
 def test_run_summary_failure_does_not_overwrite_latest_success(tmp_path, monkeypatch):
     monkeypatch.setattr("ai_mv.core.artifacts.paths.PROJECT_ROOT", tmp_path)
     success_state = {"run_id": "r1", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}

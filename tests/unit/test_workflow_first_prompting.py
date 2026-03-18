@@ -133,6 +133,24 @@ def test_prompt_compare_report_marks_alignment_and_retained_profile_backing():
     assert shot_stage["alignment"] == "aligned"
 
 
+def test_prompt_compare_report_handles_missing_preview_inputs_without_crashing():
+    report = write_prompt_compare_report(
+        "nonexistent-before-run",
+        "nonexistent-after-run",
+        "kpop_highgloss",
+        {
+            "audio": {"brief": ""},
+            "visual": {"brief": "premium glossy k-pop heroine", "negative": ""},
+            "mv": {"story_world": "", "action_vocabulary": "", "payoff_style": "", "avoid": ""},
+            "profile": "kpop_highgloss",
+        },
+    )
+    assert report["overall_alignment"] == "aligned"
+    assert len(report["stages"]) == 3
+    assert all(set(stage.keys()) == {"stage", "alignment", "removed_house_style_leaks", "introduced_house_style_leaks", "retained_profile_backing"} for stage in report["stages"])
+    assert all(stage["alignment"] == "needs_review" for stage in report["stages"])
+
+
 def _plain_story_bible() -> dict:
     return {
         "hero_identity_lock": "one performer with a clean direct gaze",

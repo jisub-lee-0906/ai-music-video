@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+import re
 from typing import Any
 
 from ai_mv.utils.json_utils import read_json
+from ai_mv.utils.project_root import project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = project_root(__file__)
 
 
 def _scope_name(scope: str) -> str:
@@ -22,6 +24,7 @@ def runs_root(scope: str = "run") -> Path:
 
 def ensure_run_dir(run_id: str | None, allow_existing: bool = False, scope: str = "run") -> Path:
     if str(run_id or "").strip():
+        _validate_run_id(str(run_id))
         return _explicit_run_dir(str(run_id).strip(), allow_existing, scope)
     return _generated_run_dir(scope)
 
@@ -39,6 +42,7 @@ def init_run_state(config: dict[str, Any], run_id: str | None, allow_existing: b
 
 
 def read_snapshot(run_id: str, scope: str = "auto") -> dict[str, Any]:
+    _validate_run_id(str(run_id))
     scopes = ("run", "preflight") if str(scope).strip().lower() == "auto" else (_scope_name(scope),)
     for item in scopes:
         snap = runs_root(item) / run_id / "snapshot.json"
@@ -55,6 +59,7 @@ def read_snapshot(run_id: str, scope: str = "auto") -> dict[str, Any]:
 
 
 def _explicit_run_dir(run_id: str, allow_existing: bool, scope: str) -> Path:
+    _validate_run_id(run_id)
     out = runs_root(scope) / run_id
     if out.exists():
         if allow_existing and out.is_dir():
@@ -62,6 +67,11 @@ def _explicit_run_dir(run_id: str, allow_existing: bool, scope: str) -> Path:
         raise RuntimeError(f"run_id already exists: {run_id}")
     out.mkdir(parents=True, exist_ok=False)
     return out
+
+
+def _validate_run_id(run_id: str) -> None:
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", run_id.strip()):
+        raise RuntimeError(f"invalid run_id: {run_id}")
 
 
 def _generated_run_dir(scope: str) -> Path:

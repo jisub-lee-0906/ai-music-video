@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from ai_mv.utils.project_root import project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = project_root(__file__)
 
 
 def _scope_name(scope: str) -> str:

@@ -134,7 +134,7 @@ def _lyric_metrics(payload: dict) -> dict:
             beat_id = str(beat.get("beat_id", "")).strip()
             if beat_id:
                 all_beat_ids.add(beat_id)
-            refs = tuple(int(x) for x in beat.get("line_refs", []) if int(x) > 0)
+            refs = tuple(_positive_int_refs(beat.get("line_refs", [])))
             repeated_groups.setdefault(refs, []).append(beat)
             if beat_id in shot_beat_ids:
                 for ref in refs:
@@ -159,6 +159,20 @@ def _lyric_metrics(payload: dict) -> dict:
         "repeated_hook_variation": round(repeated_variation, 3),
         "unmapped_lyric_lines": max(0, total_lines - len(mapped_lines)),
     }
+
+
+def _positive_int_refs(raw_values: object) -> list[int]:
+    if not isinstance(raw_values, list):
+        return []
+    out: list[int] = []
+    for item in raw_values:
+        try:
+            value = int(item)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            out.append(value)
+    return out
 
 
 def _route_stats(routes: list[dict]) -> dict:

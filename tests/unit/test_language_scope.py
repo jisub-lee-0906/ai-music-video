@@ -25,7 +25,6 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
     assert "Keep phrasing natural and singable" in audio_prompt
     assert "Use English sparingly and intentionally" in audio_prompt
 
-    sections = [_section("intro", "Intro"), _section("chorus", "Final Chorus")]
     brief = _story_bible()
     payload = {
         "audio_map": _audio_map(),

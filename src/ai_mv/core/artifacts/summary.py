@@ -63,13 +63,15 @@ def _lyric_metrics(payload: dict) -> dict:
         for section in timeline.get("sections", [])
         if isinstance(section, dict)
     )
-    mapped_lines = sum(
-        len([ref for ref in beat.get("line_refs", []) if int(ref) > 0])
-        for section in timeline.get("sections", [])
-        if isinstance(section, dict)
-        for beat in section.get("lyric_beats", [])
-        if isinstance(beat, dict) and str(beat.get("beat_id", "")).strip() in shot_beat_ids
-    )
+    mapped_lines = 0
+    for section in timeline.get("sections", []):
+        if not isinstance(section, dict):
+            continue
+        for beat in section.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            if str(beat.get("beat_id", "")).strip() in shot_beat_ids:
+                mapped_lines += len(_positive_int_refs(beat.get("line_refs", [])))
     repeat_scores = []
     groups: dict[tuple[int, ...], list[dict]] = {}
     for section in timeline.get("sections", []):
@@ -78,7 +80,7 @@ def _lyric_metrics(payload: dict) -> dict:
         for beat in section.get("lyric_beats", []):
             if not isinstance(beat, dict):
                 continue
-            refs = tuple(int(x) for x in beat.get("line_refs", []) if int(x) > 0)
+            refs = tuple(_positive_int_refs(beat.get("line_refs", [])))
             if refs:
                 groups.setdefault(refs, []).append(beat)
     for beats in groups.values():
@@ -95,3 +97,17 @@ def _lyric_metrics(payload: dict) -> dict:
         "repeated_hook_variation": round((sum(repeat_scores) / len(repeat_scores)) if repeat_scores else 1.0, 3),
         "unmapped_lyric_lines": max(0, total_lines - mapped_lines),
     }
+
+
+def _positive_int_refs(raw_values: object) -> list[int]:
+    if not isinstance(raw_values, list):
+        return []
+    out: list[int] = []
+    for item in raw_values:
+        try:
+            value = int(item)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            out.append(value)
+    return out

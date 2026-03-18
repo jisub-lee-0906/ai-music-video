@@ -5,7 +5,7 @@ from pathlib import Path
 from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.core.orchestration.prompt_extract import run_prompt_extract
 from ai_mv.core.orchestration.transitions import bootstrap_config
-from ai_mv.core.state.state_store import ensure_run_dir
+from ai_mv.core.state.state_store import ensure_run_dir, read_snapshot
 from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 
 
@@ -15,10 +15,17 @@ def run_prompt_extract_entry(run_id: str | None = None, profile: str | None = No
     try:
         cfg = _load_prepared_config(profile)
         rid = _prepare_run_profile(cfg, rid)
-        run_prompt_extract(cfg, rid, allow_existing_run=True)
-        print(f"run_id={rid}")
-        print("status=done")
-        return 0
+        try:
+            run_prompt_extract(cfg, rid, allow_existing_run=True)
+            print(f"run_id={rid}")
+            print("status=done")
+            return 0
+        except Exception:
+            snap = read_snapshot(rid, scope="preflight")
+            print(f"run_id={rid}")
+            print(f"status={snap['status']}")
+            print(f"failure_reason={snap['failure_reason']}")
+            return 1
     finally:
         release_lock(lock)
 

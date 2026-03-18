@@ -459,6 +459,19 @@ def _workflow_axis(section: dict, clip: dict) -> str:
     return _kinetic_axis(clip)
 
 
+def _kinetic_axis(clip: dict) -> str:
+    raw = compact_prompt_clause(str(clip.get("motion_hint", "")), 4)
+    if raw and "," not in raw and "." not in raw:
+        return raw
+    raw = compact_prompt_clause(str(clip.get("scene_detail", "")), 4)
+    if raw and "," not in raw and "." not in raw:
+        return raw
+    raw = compact_prompt_clause(str(clip.get("space_relation", "")), 6)
+    if raw:
+        return raw
+    return "impact move"
+
+
 def _join_motion(prefix: str, action: str) -> str:
     text = str(action).strip()
     if not text:

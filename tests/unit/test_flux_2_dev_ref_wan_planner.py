@@ -129,6 +129,13 @@ def test_wan_plan_varies_subject_motion_by_clip_phase():
     assert "lands the" in motions[2]
 
 
+def test_wan_workflow_axis_falls_back_when_section_axis_is_noisy():
+    section = {"motion_axis": "left/right, split"}
+    clip = {"motion_hint": "push forward hard"}
+    axis = wan_planner._workflow_axis(section, clip)
+    assert axis == "push forward hard"
+
+
 def test_flux2_ref_action_clause_is_not_prefixed_with_duplicate_subject():
     payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)

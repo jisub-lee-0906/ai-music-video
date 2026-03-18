@@ -5,8 +5,9 @@ from pathlib import Path
 
 from ai_mv.core.contracts.errors import MediaValidationError
 from ai_mv.infra.comfy_local import comfy_input_dir, comfy_output_dir
+from ai_mv.utils.project_root import project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = project_root(__file__)
 
 
 def abs_path(path: str) -> str:
