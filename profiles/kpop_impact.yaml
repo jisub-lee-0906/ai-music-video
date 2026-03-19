@@ -33,17 +33,17 @@ audio_ending_policy:
     - slammed-shut ending
 visual:
   brief: >
-    A photorealistic cinematic rebellious diva music video with a young adult East Asian heroine,
-    strong silhouette, dark-gloss styling, a fierce star-grade camera presence, industrial shine,
-    shadowed thresholds, hard-lit passages, and dominant open lanes. Push maximum kinetic tension with whip pan lane attacks,
-    snap zoom pressure, strobe hits, match-cut body punctuation, extreme close-up challenge
-    stares, high-contrast lighting, and dynamic shadows. Favor commanding center holds, hard
-    turns, stop-start pressure, and confrontational pose changes over constant forward charging.
-    Keep the frame readable and center-dominant before adding aggression.
+    A stylized 2D rebellious diva visual MV with a young adult East Asian heroine, strong
+    silhouette, dark-gloss styling, industrial shine, shadowed thresholds, hard-lit passages,
+    and dominant open lanes. Push maximum kinetic tension with whip pan lane attacks, snap zoom
+    pressure, strobe hits, match-cut body punctuation, challenge close-up stares, high-contrast
+    lighting, and graphic shadows. Favor commanding center holds, hard turns, stop-start
+    pressure, and confrontational pose changes over constant forward charging. Keep the frame
+    readable and center-dominant before adding aggression.
   negative: >
     Avoid soft romance drift, timid posing, luxury-only prettiness, cluttered props, pastel
-    sweetness, disconnected locations, anime or 2D stylization, typography, text, subtitles,
-    watermarks, logo, and UI overlay.
+    sweetness, disconnected locations, typography, text, subtitles, watermarks, logo, and UI
+    overlay, photorealistic skin texture, and live-action portrait realism.
 mv:
   story_world: >
     The video should feel like one charged after-dark world built from recurring environment

@@ -12,8 +12,9 @@ def build_quality_review(config: dict, payload: dict) -> dict:
         review["render_prompt_repetition"] = story["render_prompt_repetition"]
         review["profile_continuity"] = story["profile_continuity"]
         review["same_heroine_protection"] = story["same_heroine_protection"]
+        review["style_alignment"] = story["style_alignment"]
         review["visual"] = {
-            "reasoning": "Deterministic review inspected lyric alignment, repeat variation, section progression, section separation, render prompt reuse, and same-heroine continuity coverage.",
+            "reasoning": "Deterministic review inspected lyric alignment, repeat variation, section progression, section separation, render prompt reuse, same-heroine continuity coverage, and target-style alignment.",
             "strengths": _collect_strengths(story),
             "risks": _collect_risks(story),
         }
@@ -72,6 +73,7 @@ def _review_story_alignment(config: dict, payload: dict) -> dict:
         "render_prompt_repetition": repetition,
         "profile_continuity": _profile_continuity(payload),
         "same_heroine_protection": _same_heroine_protection(config, payload),
+        "style_alignment": _style_alignment(payload),
     }
 
 
@@ -213,9 +215,55 @@ def _same_heroine_protection(config: dict, payload: dict) -> dict:
     }
 
 
+def _style_alignment(payload: dict) -> dict:
+    shots = [row for row in payload.get("shot_timeline", {}).get("shots", []) if isinstance(row, dict)]
+    routes = [row for row in payload.get("clip_routes", []) if isinstance(row, dict)]
+    total_shots = len(shots) or 1
+    graphic_types = {"GRAPHIC_EVENT", "SYMBOLIC_INSERT", "WORLD_EVENT", "TRANSITIONAL_ABSTRACT", "RHYTHM_DETAIL"}
+    graphic_count = sum(1 for row in shots if str(row.get("shot_type", "")).strip().upper() in graphic_types)
+    alt_focus_count = sum(1 for row in shots if str(row.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"})
+    payoff_rows = [row for row in shots if str(row.get("section_label", "")).strip().lower() == "final chorus"]
+    payoff_graphic = sum(1 for row in payoff_rows if str(row.get("shot_type", "")).strip().upper() in graphic_types)
+    route_focus_ratio = (
+        sum(1 for row in routes if str(row.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"}) / float(len(routes))
+        if routes
+        else 0.0
+    )
+    graphic_ratio = graphic_count / float(total_shots)
+    alt_focus_ratio = alt_focus_count / float(total_shots)
+    payoff_ratio = (payoff_graphic / float(len(payoff_rows))) if payoff_rows else 0.0
+    strengths = []
+    risks = []
+    if graphic_ratio >= 0.45:
+        strengths.append("shot mix favors graphic and symbolic event types over generic heroine coverage")
+    else:
+        risks.append("shot mix still leans too far toward conventional heroine coverage")
+    if alt_focus_ratio >= 0.5:
+        strengths.append("object-, space-, and graphic-led beats are common enough to support BGA-like visual flow")
+    else:
+        risks.append("object-, space-, and graphic-led beats are still underrepresented")
+    if payoff_ratio >= 0.5:
+        strengths.append("final payoff uses graphic or world-system shots instead of relying only on face payoff")
+    elif payoff_rows:
+        risks.append("final payoff still depends too heavily on heroine-centric shots")
+    if route_focus_ratio >= 0.5:
+        strengths.append("route payload preserves non-heroine focus deep into render planning")
+    else:
+        risks.append("route payload collapses back toward heroine-first planning too often")
+    return {
+        "reasoning": "Shot types, prompt focus, and payoff composition were checked against the target 2D graphic MV style.",
+        "strengths": strengths,
+        "risks": risks,
+        "graphic_event_ratio": round(graphic_ratio, 3),
+        "non_heroine_focus_ratio": round(alt_focus_ratio, 3),
+        "payoff_graphic_ratio": round(payoff_ratio, 3),
+        "route_non_heroine_focus_ratio": round(route_focus_ratio, 3),
+    }
+
+
 def _collect_strengths(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection"):
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment"):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("strengths", []) if str(x).strip())
     return out[:8] or ["lyric-first contracts are structurally present"]
@@ -223,7 +271,7 @@ def _collect_strengths(story: dict) -> list[str]:
 
 def _collect_risks(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection"):
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment"):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("risks", []) if str(x).strip())
     return out[:8] or ["no major lyric-story structural risk detected"]

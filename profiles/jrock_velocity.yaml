@@ -33,18 +33,16 @@ audio_ending_policy:
     - driving outro
 visual:
   brief: >
-    A photorealistic cinematic J-rock heroine music video with a young adult East Asian lead,
-    sharp styling, a striking fashion-forward live-action presence, a beautiful high-impact
-    camera read, wind-cut motion, reflective thresholds, elevated passages, and forward
-    performance corridors. Keep the geography hard, readable, and lane-driven before extra
-    aggression. Push kinetic camera energy
-    with whip pans, snap zoom pressure, extreme close-up punctuation, match-cut body accents,
-    strobe hits, high-contrast lighting, and dynamic shadows. Favor fast pivots, rail turns,
-    hard stops, shoulder snaps, and impact stares over literal running.
+    A stylized 2D J-rock visual MV with a young adult East Asian lead, sharp styling, bold clean
+    outlines, wind-cut motion, reflective thresholds, elevated passages, and forward performance
+    corridors. Keep the geography hard, readable, and lane-driven before extra aggression. Push
+    kinetic camera energy with whip pans, snap zoom pressure, close-up punctuation, match-cut
+    body accents, strobe hits, high-contrast lighting, and hard graphic shadows. Favor fast
+    pivots, rail turns, hard stops, shoulder snaps, and impact stares over literal running.
   negative: >
     Avoid heavy nightclub glamour, sluggish posing, random prop clutter, soft passive staging,
-    disconnected environments, anime or 2D stylization, typography, text, subtitles,
-    watermarks, logo, and UI overlay.
+    disconnected environments, typography, text, subtitles, watermarks, logo, and UI overlay,
+    photorealistic skin texture, and live-action portrait realism.
 mv:
   story_world: >
     The video should feel like one continuous emotional charge through recurring urban-night

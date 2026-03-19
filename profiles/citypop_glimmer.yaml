@@ -37,18 +37,18 @@ audio_ending_policy:
     - gentle fade out
 visual:
   brief: >
-    A photorealistic cinematic city-pop nightlife music video with a young adult East Asian
-    heroine, youthful elegance, and a softly glamorous camera-ready presence, wet pavement
-    reflections, reflective thresholds, lit passages, and open night lanes. Keep the mood
-    polished, graceful, and spatially readable, with clean lane depth and controlled center
-    framing before extra motion. Drive it with:
-    whip pan reveals, snap zoom accents, match-cut motion echoes, selective extreme close-ups,
-    restrained strobe glints, high-contrast lighting, and dynamic shadows. Favor poised stillness
-    punctuated by elegant turns rather than constant movement.
+    A stylized 2D city-pop nightlife visual MV with a young adult East Asian heroine, youthful
+    elegance, bold clean outlines, flat cel shading, wet pavement reflections, reflective
+    thresholds, lit passages, and open night lanes. Keep the mood polished, graceful, and
+    spatially readable, with clean lane depth, clear shape design, and controlled center framing
+    before extra motion. Drive it with whip pan reveals, snap zoom accents, match-cut motion
+    echoes, selective close-up impact, restrained strobe glints, high-contrast lighting, and
+    elegant shadow shapes. Favor poised stillness punctuated by elegant turns rather than
+    constant movement.
   negative: >
     Avoid futuristic sci-fi tone, cheap club styling, noisy streetwear drift, random location
-    hopping, heavy prop emphasis, anime or 2D stylization, typography, text, subtitles,
-    watermarks, logo, and UI overlay.
+    hopping, heavy prop emphasis, typography, text, subtitles, watermarks, logo, and UI overlay,
+    photorealistic skin texture, live-action portrait realism, and muddy low-contrast color.
 mv:
   story_world: >
     The video should feel like one late-night emotional passage through a small set of recurring

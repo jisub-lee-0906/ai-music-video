@@ -9,6 +9,9 @@ _REF_POLICIES = {"broad", "endpoints", "identity_sensitive_only", "minimal"}
 _DENSITIES = {"low", "medium", "high"}
 _GEOGRAPHY_MODES = {"recurring_families", "free_drift_forbidden"}
 _ANCHOR_MODES = {"master_only", "shot_anchor_required"}
+_VISUAL_MV_MODES = {"character_narrative", "symbolic_edit", "bga_event"}
+_SUBJECT_EXPOSURES = {"high", "selective", "low"}
+_PAYOFF_MODES = {"face_peak", "motif_peak", "system_peak"}
 
 
 def resolve_profile_policy(config: dict) -> dict:
@@ -31,10 +34,21 @@ def resolve_profile_policy(config: dict) -> dict:
     motion_density = _enum(raw.get("motion_density"), _DENSITIES, _derive_motion_density(visual_text))
     geography_mode = _enum(raw.get("geography_mode"), _GEOGRAPHY_MODES, "recurring_families")
     anchor_mode = _enum(raw.get("anchor_mode"), _ANCHOR_MODES, "shot_anchor_required")
+    visual_mv_mode = _enum(raw.get("visual_mv_mode"), _VISUAL_MV_MODES, _derive_visual_mv_mode(visual_text, shot_bias))
+    subject_exposure = _enum(raw.get("subject_exposure"), _SUBJECT_EXPOSURES, _derive_subject_exposure(face_policy, visual_mode))
+    motif_density = _enum(raw.get("motif_density"), _DENSITIES, _derive_motif_density(visual_text, shot_bias))
+    graphic_event_density = _enum(raw.get("graphic_event_density"), _DENSITIES, _derive_graphic_event_density(visual_text))
+    environment_event_density = _enum(raw.get("environment_event_density"), _DENSITIES, _derive_environment_event_density(visual_mode, shot_bias))
+    visual_payoff_mode = _enum(raw.get("visual_payoff_mode"), _PAYOFF_MODES, _derive_visual_payoff_mode(face_policy, visual_mode, visual_text))
     direct_face_sections = _str_list(raw.get("direct_face_sections", [])) or _default_direct_face_sections(face_policy)
     priority_sections = _str_list(raw.get("priority_sections", [])) or ["Final Chorus", "Chorus 2", "Chorus 1"]
     hero_shot_types = _str_list(raw.get("hero_shot_types", []), upper=True) or _default_hero_shot_types(face_policy, visual_mode)
     max_direct_face_ratio = _float(raw.get("max_direct_face_ratio"), _default_max_direct_face_ratio(face_policy))
+    reflection_usage = _derive_reflection_usage(visual_mv_mode, shot_bias, visual_text)
+    palette_bias = _derive_palette_bias(visual_text, world_text)
+    motif_families = _derive_motif_families(visual_text, world_text)
+    preferred_composition_families = _preferred_composition_families(visual_mv_mode)
+    disfavored_composition_families = _disfavored_composition_families()
 
     return {
         "visual_mode": visual_mode,
@@ -46,11 +60,22 @@ def resolve_profile_policy(config: dict) -> dict:
         "motion_density": motion_density,
         "geography_mode": geography_mode,
         "anchor_mode": anchor_mode,
+        "visual_mv_mode": visual_mv_mode,
+        "subject_exposure": subject_exposure,
+        "motif_density": motif_density,
+        "graphic_event_density": graphic_event_density,
+        "environment_event_density": environment_event_density,
+        "visual_payoff_mode": visual_payoff_mode,
         "direct_face_sections": direct_face_sections,
         "priority_sections": priority_sections,
         "hero_shot_types": hero_shot_types,
         "max_direct_face_ratio": max(0.0, min(1.0, max_direct_face_ratio)),
-        "shot_distribution": _shot_distribution(visual_mode, shot_bias, face_policy),
+        "reflection_usage": reflection_usage,
+        "palette_bias": palette_bias,
+        "motif_families": motif_families,
+        "preferred_composition_families": preferred_composition_families,
+        "disfavored_composition_families": disfavored_composition_families,
+        "shot_distribution": _shot_distribution(visual_mode, shot_bias, face_policy, visual_mv_mode),
         "face_exposure_defaults": _face_exposure_defaults(face_policy),
         "ref_triggers": _ref_triggers(ref_policy),
     }
@@ -125,6 +150,122 @@ def _derive_motion_density(visual_text: str) -> str:
     return "medium"
 
 
+def _derive_visual_mv_mode(visual_text: str, shot_bias: str) -> str:
+    text = str(visual_text).lower()
+    if any(token in text for token in ("match-cut", "strobe", "graphic", "silhouette", "symbolic", "surreal")):
+        return "bga_event"
+    if shot_bias in {"environment", "object_symbol"}:
+        return "symbolic_edit"
+    return "character_narrative"
+
+
+def _derive_subject_exposure(face_policy: str, visual_mode: str) -> str:
+    if face_policy == "frequent":
+        return "high"
+    if face_policy == "avoid" or visual_mode == "environment_first":
+        return "low"
+    return "selective"
+
+
+def _derive_motif_density(visual_text: str, shot_bias: str) -> str:
+    text = str(visual_text).lower()
+    if shot_bias == "object_symbol" or any(token in text for token in ("motif", "symbol", "reflection", "threshold", "ritual", "silhouette")):
+        return "high"
+    if shot_bias == "environment":
+        return "medium"
+    return "low"
+
+
+def _derive_graphic_event_density(visual_text: str) -> str:
+    text = str(visual_text).lower()
+    if any(token in text for token in ("strobe", "match-cut", "snap zoom", "graphic", "silhouette", "glitch", "motion-blur residue")):
+        return "high"
+    if any(token in text for token in ("whip pan", "dynamic shadows", "high-contrast")):
+        return "medium"
+    return "low"
+
+
+def _derive_environment_event_density(visual_mode: str, shot_bias: str) -> str:
+    if visual_mode == "environment_first" or shot_bias == "environment":
+        return "high"
+    if shot_bias == "mixed":
+        return "medium"
+    return "low"
+
+
+def _derive_visual_payoff_mode(face_policy: str, visual_mode: str, visual_text: str) -> str:
+    text = str(visual_text).lower()
+    if any(token in text for token in ("system", "world", "threshold", "reflection", "lane", "space")):
+        return "system_peak"
+    if face_policy in {"frequent", "selective"} and visual_mode == "character_heavy":
+        return "face_peak"
+    return "motif_peak"
+
+
+def _derive_reflection_usage(visual_mv_mode: str, shot_bias: str, visual_text: str) -> str:
+    text = str(visual_text).lower()
+    if "reflection" in text or "mirror" in text:
+        return "selected_only" if visual_mv_mode in {"symbolic_edit", "bga_event"} else "allowed"
+    if shot_bias == "object_symbol":
+        return "selected_only"
+    return "minimal"
+
+
+def _derive_palette_bias(visual_text: str, world_text: str) -> str:
+    text = f"{visual_text} {world_text}".lower()
+    if any(token in text for token in ("city pop", "city-pop", "retro", "late-night city")):
+        return "retro_pop_neon"
+    if any(token in text for token in ("cyber", "neon", "glitch")):
+        return "cyber_pop_high_contrast"
+    return "graphic_pop"
+
+
+def _derive_motif_families(visual_text: str, world_text: str) -> list[str]:
+    text = f"{visual_text} {world_text}".lower()
+    if any(token in text for token in ("city pop", "city-pop", "late-night city", "lane", "threshold", "passage")):
+        return [
+            "train window",
+            "curb edge",
+            "puddle ring",
+            "umbrella tip",
+            "ticket gate",
+            "vending glow",
+            "phone light",
+            "rail shadow",
+        ]
+    return [
+        "threshold edge",
+        "reflection surface",
+        "light smear",
+        "street token",
+        "small object insert",
+    ]
+
+
+def _preferred_composition_families(visual_mv_mode: str) -> list[str]:
+    if visual_mv_mode == "bga_event":
+        return [
+            "asymmetrical poster crop",
+            "low horizon silhouette",
+            "floating object field",
+            "isolated small figure",
+            "offset silhouette crop",
+            "sticker-cluster layout",
+        ]
+    if visual_mv_mode == "symbolic_edit":
+        return [
+            "asymmetrical poster crop",
+            "isolated small figure",
+            "floating object field",
+            "offset silhouette crop",
+        ]
+    return ["poster close crop", "low horizon silhouette", "offset silhouette crop"]
+
+
+def _disfavored_composition_families() -> list[str]:
+    return ["split reflection diptych", "centered two-body", "bilateral symmetry", "mirrored-face split"]
+
+
 def _default_direct_face_sections(face_policy: str) -> list[str]:
     if face_policy == "frequent":
         return ["Chorus 1", "Chorus 2", "Final Chorus"]
@@ -148,7 +289,7 @@ def _default_max_direct_face_ratio(face_policy: str) -> float:
     }.get(face_policy, 0.2)
 
 
-def _shot_distribution(visual_mode: str, shot_bias: str, face_policy: str) -> dict[str, float]:
+def _shot_distribution(visual_mode: str, shot_bias: str, face_policy: str, visual_mv_mode: str) -> dict[str, float]:
     base = {
         "CHAR_MASTER": 0.18,
         "EMOTION_CLOSE": 0.18,
@@ -156,18 +297,59 @@ def _shot_distribution(visual_mode: str, shot_bias: str, face_policy: str) -> di
         "ENV_TRANSITION": 0.22,
         "DETAIL_INSERT": 0.14,
     }
+    if visual_mv_mode == "symbolic_edit":
+        base = {
+            "CHAR_MASTER": 0.08,
+            "EMOTION_CLOSE": 0.08,
+            "PERF_WIDE": 0.18,
+            "ENV_TRANSITION": 0.18,
+            "DETAIL_INSERT": 0.12,
+            "SYMBOLIC_INSERT": 0.14,
+            "GRAPHIC_EVENT": 0.10,
+            "WORLD_EVENT": 0.08,
+            "TRANSITIONAL_ABSTRACT": 0.02,
+            "RHYTHM_DETAIL": 0.02,
+        }
+    elif visual_mv_mode == "bga_event":
+        base = {
+            "CHAR_MASTER": 0.04,
+            "EMOTION_CLOSE": 0.04,
+            "PERF_WIDE": 0.12,
+            "ENV_TRANSITION": 0.14,
+            "DETAIL_INSERT": 0.10,
+            "SYMBOLIC_INSERT": 0.18,
+            "GRAPHIC_EVENT": 0.16,
+            "WORLD_EVENT": 0.12,
+            "TRANSITIONAL_ABSTRACT": 0.06,
+            "RHYTHM_DETAIL": 0.04,
+        }
     if visual_mode == "environment_first":
         base = {"CHAR_MASTER": 0.08, "EMOTION_CLOSE": 0.08, "PERF_WIDE": 0.24, "ENV_TRANSITION": 0.36, "DETAIL_INSERT": 0.24}
     elif visual_mode == "character_heavy":
         base = {"CHAR_MASTER": 0.22, "EMOTION_CLOSE": 0.26, "PERF_WIDE": 0.26, "ENV_TRANSITION": 0.16, "DETAIL_INSERT": 0.10}
+        if visual_mv_mode in {"symbolic_edit", "bga_event"}:
+            base["SYMBOLIC_INSERT"] = 0.08
+            base["GRAPHIC_EVENT"] = 0.08
+            base["WORLD_EVENT"] = 0.06
+            base["DETAIL_INSERT"] = max(0.06, base["DETAIL_INSERT"] - 0.04)
+            base["CHAR_MASTER"] = max(0.14, base["CHAR_MASTER"] - 0.06)
+            base["EMOTION_CLOSE"] = max(0.18, base["EMOTION_CLOSE"] - 0.06)
     if shot_bias == "environment":
         base["ENV_TRANSITION"] += 0.08
         base["EMOTION_CLOSE"] -= 0.05
         base["CHAR_MASTER"] -= 0.03
     elif shot_bias == "object_symbol":
-        base["DETAIL_INSERT"] += 0.10
-        base["EMOTION_CLOSE"] -= 0.05
-        base["CHAR_MASTER"] -= 0.05
+        if visual_mv_mode in {"symbolic_edit", "bga_event"}:
+            base["SYMBOLIC_INSERT"] = base.get("SYMBOLIC_INSERT", 0.0) + 0.08
+            base["GRAPHIC_EVENT"] = base.get("GRAPHIC_EVENT", 0.0) + 0.05
+            base["WORLD_EVENT"] = base.get("WORLD_EVENT", 0.0) + 0.03
+            base["DETAIL_INSERT"] = max(0.06, base.get("DETAIL_INSERT", 0.0) - 0.03)
+            base["EMOTION_CLOSE"] = max(0.03, base.get("EMOTION_CLOSE", 0.0) - 0.07)
+            base["CHAR_MASTER"] = max(0.03, base.get("CHAR_MASTER", 0.0) - 0.06)
+        else:
+            base["DETAIL_INSERT"] += 0.10
+            base["EMOTION_CLOSE"] -= 0.05
+            base["CHAR_MASTER"] -= 0.05
     elif shot_bias == "performance":
         base["PERF_WIDE"] += 0.06
         base["CHAR_MASTER"] += 0.03
@@ -177,6 +359,9 @@ def _shot_distribution(visual_mode: str, shot_bias: str, face_policy: str) -> di
         base["EMOTION_CLOSE"] = max(0.04, base["EMOTION_CLOSE"] - 0.08)
         base["ENV_TRANSITION"] += 0.04
         base["DETAIL_INSERT"] += 0.04
+        if visual_mv_mode in {"symbolic_edit", "bga_event"}:
+            base["SYMBOLIC_INSERT"] = base.get("SYMBOLIC_INSERT", 0.0) + 0.04
+            base["WORLD_EVENT"] = base.get("WORLD_EVENT", 0.0) + 0.02
     elif face_policy == "frequent":
         base["EMOTION_CLOSE"] += 0.06
         base["DETAIL_INSERT"] = max(0.06, base["DETAIL_INSERT"] - 0.03)

@@ -33,17 +33,17 @@ audio_ending_policy:
     - lingering fade
 visual:
   brief: >
-    A photorealistic cinematic ethereal-flow music video with an East Asian heroine, a luminous
-    fashion-forward presence, a beautiful serene-on-camera face, surreal white-toned spaces, luminous fog, reflective floors,
-    blooming lens flare, and pearlescent depth. Keep the motion kinetic but elegant with whip
-    pan transitions, snap zoom emphasis on emotional turns, soft-pulse strobe, match-cut body
-    echoes, selective motion-blur residue, extreme close-up eye focus, high-contrast lighting,
-    and dynamic shadows inside the glow. Keep the heroine readable, centered, and physically clear even when the space feels
-    dreamlike.
+    A stylized 2D ethereal-flow visual MV with an East Asian heroine, a luminous dream-pop
+    presence, soft cel shading, surreal white-toned spaces, luminous fog shapes, reflective
+    floors, blooming light fields, and pearlescent depth. Keep the motion kinetic but elegant
+    with whip pan transitions, snap zoom emphasis on emotional turns, soft-pulse strobe,
+    match-cut body echoes, selective motion-blur residue, soft close-up eye focus, high-contrast
+    lighting, and graphic shadows inside the glow. Keep the heroine readable, centered, and
+    physically clear even when the space feels dreamlike.
   negative: >
     Avoid muddy haze, flat commercial softness, random fantasy props, childish fairy styling,
-    washed-out faces, typography, text, subtitles, watermarks, logo, UI overlay, and low-quality
-    render artifacts.
+    washed-out faces, typography, text, subtitles, watermarks, logo, UI overlay, photorealistic
+    skin texture, live-action portrait realism, and low-quality render artifacts.
 mv:
   story_world: >
     The video should feel like one continuous luminous dream-world built from recurring

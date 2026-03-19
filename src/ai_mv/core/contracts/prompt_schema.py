@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-SHOT_TYPES = ["CHAR_MASTER", "PERF_WIDE", "EMOTION_CLOSE", "DETAIL_INSERT", "ENV_TRANSITION"]
+SHOT_TYPES = [
+    "CHAR_MASTER",
+    "PERF_WIDE",
+    "EMOTION_CLOSE",
+    "DETAIL_INSERT",
+    "ENV_TRANSITION",
+    "SYMBOLIC_INSERT",
+    "GRAPHIC_EVENT",
+    "WORLD_EVENT",
+    "TRANSITIONAL_ABSTRACT",
+    "RHYTHM_DETAIL",
+]
 KINETIC_TRANSITIONS = [
     "snap_zoom_in",
     "snap_zoom_out",
@@ -232,6 +243,14 @@ def _story_bible_beat_schema() -> dict:
             "palette_hint",
             "lighting_hint",
             "camera_commitment",
+            "symbolic_image",
+            "motif_object",
+            "edit_device",
+            "prompt_focus",
+            "space_event",
+            "composition_shape",
+            "palette_mode",
+            "character_render_mode",
         ],
         "properties": {
             "beat_id": {"type": "string"},
@@ -248,6 +267,14 @@ def _story_bible_beat_schema() -> dict:
             "palette_hint": {"type": "string"},
             "lighting_hint": {"type": "string"},
             "camera_commitment": {"type": "string"},
+            "symbolic_image": {"type": "string"},
+            "motif_object": {"type": "string"},
+            "edit_device": {"type": "string"},
+            "prompt_focus": {"type": "string", "enum": ["heroine", "object", "space", "graphic"]},
+            "space_event": {"type": "string"},
+            "composition_shape": {"type": "string"},
+            "palette_mode": {"type": "string"},
+            "character_render_mode": {"type": "string"},
         },
     }
 

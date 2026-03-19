@@ -33,17 +33,16 @@ audio_ending_policy:
     - polished ending
 visual:
   brief: >
-    A photorealistic cinematic glossy K-pop music video with a young adult East Asian heroine,
-    premium styling, a glamorous idol-grade camera presence, mirror-clean surfaces, luminous
-    thresholds, sleek passages, and open performance lanes. Push the luxury pop finish through
-    whip pan transitions, snap zoom hook
-    punches, strobe accents, match-cut pose continuity, extreme close-up glam impact,
-    high-contrast lighting, and dynamic shadows. Prioritize pristine center framing, clean set
-    geometry, and premium wardrobe read before adding extra motion.
+    A stylized 2D glossy K-pop visual MV with a young adult East Asian heroine, premium styling,
+    bold clean outlines, mirror-clean surfaces, luminous thresholds, sleek passages, and open
+    performance lanes. Push the luxury pop finish through whip pan transitions, snap zoom hook
+    punches, strobe accents, match-cut pose continuity, glam close-up impact, high-contrast
+    lighting, and crisp shadow design. Prioritize pristine center framing, clean set geometry,
+    and premium wardrobe read before adding extra motion.
   negative: >
     Avoid grungy decay, sleepy wandering, random props, messy streetwear drift, muddy lighting,
-    disconnected spaces, anime or 2D stylization, typography, text, subtitles, watermarks,
-    logo, and UI overlay.
+    disconnected spaces, typography, text, subtitles, watermarks, logo, and UI overlay,
+    photorealistic skin texture, and live-action portrait realism.
 mv:
   story_world: >
     The video should feel like one controlled high-shine night world built from recurring

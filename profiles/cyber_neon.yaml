@@ -33,18 +33,17 @@ audio_ending_policy:
     - clean final hit
 visual:
   brief: >
-    A photorealistic cinematic cyber-neon music video with an East Asian heroine, a sleek
-    fashion-forward live-action presence, a striking camera-ready face, neon green and magenta
-    light, hologram-like reflections, rain-slick cyber streets, mirrored tech corridors, and
-    glowing urban depth. Keep the frame premium and readable rather than overloaded with props or
-    interfaces, and keep the heroine legible before adding effects. Drive
-    the visuals with snap zoom attacks on high-tech detail, whip pan transitions through neon
-    lanes, digital-noise strobe bursts, match-cut pose continuity, extreme close-up eye locks,
-    high-contrast lighting, and dynamic shadows.
+    A stylized 2D cyber-neon visual MV with an East Asian heroine, bold clean outlines, flat cel
+    shading, sharp eye design, neon green and magenta light, hologram-like reflections,
+    rain-slick cyber streets, mirrored tech corridors, and glowing urban depth. Keep the frame
+    premium and readable rather than overloaded with props or interfaces, and keep the heroine
+    legible before adding effects. Drive the visuals with snap zoom attacks on high-tech detail,
+    whip pan transitions through neon lanes, digital-noise strobe bursts, match-cut pose
+    continuity, close-up eye locks, high-contrast lighting, and graphic shadow shapes.
   negative: >
     Avoid cheap sci-fi props, toy-like cyber gear, flat lighting, muddy color, random world
-    clutter, typography, text, subtitles, watermarks, logo, UI overlay, and low-quality image
-    artifacts.
+    clutter, typography, text, subtitles, watermarks, logo, UI overlay, photorealistic skin
+    texture, live-action portrait realism, and low-quality image artifacts.
 mv:
   story_world: >
     The video should feel like one continuous cyberpunk night world built from recurring

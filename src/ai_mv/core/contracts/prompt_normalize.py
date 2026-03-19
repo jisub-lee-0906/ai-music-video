@@ -192,6 +192,14 @@ def normalize_visual_story_bible(raw: dict, sections: list[dict]) -> dict:
                 "palette_hint": _require_text(row, "palette_hint"),
                 "lighting_hint": _require_text(row, "lighting_hint"),
                 "camera_commitment": _require_text(row, "camera_commitment"),
+                "symbolic_image": _require_text(row, "symbolic_image"),
+                "motif_object": _require_text(row, "motif_object"),
+                "edit_device": _require_text(row, "edit_device"),
+                "prompt_focus": _require_text(row, "prompt_focus"),
+                "space_event": _require_text(row, "space_event"),
+                "composition_shape": _require_text(row, "composition_shape"),
+                "palette_mode": _require_text(row, "palette_mode"),
+                "character_render_mode": _require_text(row, "character_render_mode"),
             }
         )
     out = {

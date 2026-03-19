@@ -23,8 +23,8 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
     carry_clause = f"carry={carry}; " if carry else ""
     return (
         "deterministic wan composer; "
-        "compose short motion-first prompts for the workflow positive and negative text fields; "
-        f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; clip_ids={clip_ids}; clips={summary}."
+        "compose short style-consistent prompts for the workflow positive and negative text fields; "
+        f"{carry_clause}style={world.get('visual_style_contract', '')}; hero={world['hero_identity']}; world={world['world_rules']}; clip_ids={clip_ids}; clips={summary}."
     )
 
 
@@ -63,6 +63,14 @@ def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
         "lighting_fx": str(item.get("lighting_fx", "")),
         "kinetic_intensity": str(item.get("kinetic_intensity", "")),
         "location_family": str(item.get("location_family", "")),
+        "symbolic_image": str(item.get("symbolic_image", "")),
+        "motif_object": str(item.get("motif_object", "")),
+        "edit_device": str(item.get("edit_device", "")),
+        "prompt_focus": str(item.get("prompt_focus", "")),
+        "space_event": str(item.get("space_event", "")),
+        "composition_shape": str(item.get("composition_shape", "")),
+        "palette_mode": str(item.get("palette_mode", "")),
+        "character_render_mode": str(item.get("character_render_mode", "")),
         "face_exposure_level": str(item.get("face_exposure_level", "")),
         "heroine_visibility": str(item.get("heroine_visibility", "")),
         "continuity_priority": str(item.get("continuity_priority", "")),
@@ -205,6 +213,31 @@ def _apply_prompt(clip: dict, brief: dict) -> dict:
 def _subject_motion(clip: dict, section: dict) -> str:
     phase = _clip_phase(clip)
     action = _planned_motion_clause(clip)
+    focus = str(clip.get("prompt_focus", "")).strip().lower()
+    motif = str(clip.get("motif_object", "")).strip()
+    space_event = str(clip.get("space_event", "")).strip()
+    device = str(clip.get("edit_device", "")).strip()
+    if focus == "object":
+        prefix = {
+            "establish": f"The {motif or 'motif object'} sets the beat",
+            "resolve": f"The {motif or 'motif object'} resolves the beat",
+            "advance": f"The {motif or 'motif object'} carries the beat",
+        }.get(phase, f"The {motif or 'motif object'} holds the beat")
+        return _sentence_clause(_join_motion(prefix, action))
+    if focus == "space":
+        prefix = {
+            "establish": "The space opens the beat",
+            "resolve": "The space resolves the beat",
+            "advance": "The space carries the beat",
+        }.get(phase, "The space holds the beat")
+        return _sentence_clause(_join_motion(prefix, action))
+    if focus == "graphic":
+        prefix = {
+            "establish": f"The {device or 'graphic hit'} sets the beat",
+            "resolve": f"The {device or 'graphic hit'} resolves the beat",
+            "advance": f"The {device or 'graphic hit'} carries the beat",
+        }.get(phase, f"The {device or 'graphic hit'} holds the beat")
+        return _sentence_clause(_join_motion(prefix, action))
     if phase == "establish":
         return _sentence_clause(_join_motion("She sets the move", action))
     if phase == "resolve":
@@ -216,11 +249,12 @@ def _subject_motion(clip: dict, section: dict) -> str:
 
 def _camera_relation(clip: dict, section: dict) -> str:
     camera = str(clip.get("camera_language", "")).strip()
+    composition = str(clip.get("composition_shape", "")).strip()
     kinetic_transition = str(clip.get("kinetic_transition", "")).strip().lower()
     intensity = str(clip.get("kinetic_intensity", "")).strip().lower()
     escalation = str(section.get("escalation_level", "")).strip().lower()
     if camera:
-        return compact_prompt_clause(camera, 12)
+        return compact_prompt_clause(", ".join(part for part in (composition, camera) if part), 12)
     if kinetic_transition == "whip_pan_left":
         return "whips hard left across her line"
     if kinetic_transition == "whip_pan_right":
@@ -247,7 +281,7 @@ def _camera_relation(clip: dict, section: dict) -> str:
 
 
 def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
-    palette = str(section.get("palette_hint", "")).strip()
+    palette = str(clip.get("palette_mode", "")).strip() or str(section.get("palette_hint", "")).strip()
     lighting = str(section.get("lighting_hint", "")).strip()
     location = (
         str(clip.get("location_family", "")).strip()
@@ -258,7 +292,9 @@ def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     world = compact_world_atoms(brief)
     world_rules = str(world.get("world_rules", "")).strip()
     lighting_fx = str(clip.get("lighting_fx", "")).strip()
-    text = ", ".join(part for part in (location, palette, lighting_fx or lighting or world_rules) if part)
+    composition = str(clip.get("composition_shape", "")).strip()
+    render_mode = str(clip.get("character_render_mode", "")).strip()
+    text = ", ".join(part for part in (location, composition, palette, render_mode, lighting_fx or lighting or world_rules) if part)
     return compact_prompt_clause(text, 16)
 
 
@@ -270,6 +306,8 @@ def _negative_prompt(clip: dict, brief: dict) -> str:
         extra.append("warped reflections")
     if bool(clip.get("use_ref", False)):
         extra.append("identity drift")
+    if str(clip.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"}:
+        extra.extend(["generic live-action portrait", "photorealistic skin texture"])
     if str(clip.get("face_exposure_level", "")).strip().lower() in {"direct", "soft"}:
         extra.extend(["different person", "age drift", "hairstyle drift", "wardrobe swap", "duplicate subject"])
     if "world_rules" in world and "night" in str(world.get("world_rules", "")).lower():

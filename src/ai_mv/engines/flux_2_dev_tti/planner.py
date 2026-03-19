@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
 from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.profile_policy import resolve_profile_policy
-from ai_mv.core.workflow_prompt_contracts import compose_image_prompt
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_slot_prompt
 from ai_mv.core.visual_pipeline import attach_tti_metadata
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -11,8 +11,9 @@ from ai_mv.infra.codex_cli_client import generate_structured
 def build_tti_plan(config: dict, payload: dict) -> dict:
     story_bible = payload["visual_story_bible"]
     lyrics_timeline = payload["lyrics_timeline"]
-    spec = generate_structured(config, _planner_prompt(config, payload), shot_timeline_schema())
+    spec = _generate_tti_spec(config, payload, story_bible)
     plan = normalize_shot_timeline(spec, story_bible.get("lyric_beats", []))
+    plan["master_anchor"] = _style_master_anchor(plan["master_anchor"], story_bible)
     plan["shots"] = _apply_profile_shot_policy(plan["shots"], story_bible)
     shots = _assign_story_metadata(plan["shots"], lyrics_timeline, story_bible)
     return {"master_anchor": plan["master_anchor"], "shots": shots}
@@ -26,10 +27,15 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     story_bible = payload["visual_story_bible"]
     timeline = payload["lyrics_timeline"]
     policy = story_bible.get("resolved_profile_policy", resolve_profile_policy(config)) if isinstance(story_bible, dict) else resolve_profile_policy(config)
+    beat_manifest = _tti_beat_manifest(story_bible)
+    beat_count = len(beat_manifest)
     return (
         "Write a shot timeline for downstream Flux and video workflows. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
         "Create exactly one shot item for every lyric beat in order. "
+        f"Exact shot count contract: return exactly {beat_count} shots. "
+        "The shots array length must equal the lyric beat count exactly; do not add extra shots, do not omit shots. "
+        "Use each lyric_beat_id exactly once and preserve the exact manifest order. "
         "master_anchor prompt_text must contain only stable identity and world facts for image prompting. "
         "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
         "workflow_motion_clause must be a compact natural motion clause for downstream Flux Ref and WAN prompts. "
@@ -38,17 +44,97 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "Use the story bible and lyric beat as the source of truth. "
         "NO TEXT, NO TYPOGRAPHY, NO WATERMARKS, NO LOGOS, NO SIGNAGE, NO UI OVERLAY. "
         "Make the shot plan genuinely varied: if two nearby beats share a shot_type, they must still differ materially in camera_language, pose_delta, scene_detail, or framing scale. "
+        "Honor story-bible prompt_focus, edit_device, symbolic_image, motif_object, space_event, and composition_shape when deciding shot_type. "
+        "If prompt_focus is object, space, or graphic, do not default back to a heroine-facing close-up unless the policy explicitly demands it. "
         "Use shot_type as a storytelling choice, not a default. Verses should usually favor observation and traversal, pre-chorus should tighten intention, chorus should simplify into the hook image, bridge should interrupt or isolate, and outro should resolve. "
         "Do not repeat the same lane/crosswalk/reflection composition across adjacent beats unless the lyric explicitly repeats and the camera intent escalates. "
+        "Do not solve most graphic beats with split-screen, diptych, mirrored-face, doubled-subject, or centered two-body layouts; prefer asymmetrical poster crops, isolated small figures, floating object fields, offset silhouette holds, sticker-like clusters, and off-center compositions as the default graphic language. "
         "scene_detail should name the concrete visual state of the beat, not just restate the location family. "
         f"Allowed shot types={', '.join(SHOT_TYPES)}. "
         f"Allowed kinetic transitions={', '.join(KINETIC_TRANSITIONS)}. "
         f"Allowed kinetic intensities={', '.join(KINETIC_INTENSITIES)}. "
         "Honor the profile policy when choosing shot types and face exposure. "
         f"Profile policy={_policy_digest(policy)}. "
+        f"Shot count manifest={'; '.join(beat_manifest)}. "
         f"Story bible={_story_bible_digest(story_bible)}. "
         f"Lyric timeline={_timeline_digest(timeline)}."
     )
+
+
+def _generate_tti_spec(config: dict, payload: dict, story_bible: dict, attempts: int = 3) -> dict:
+    prompt = _planner_prompt(config, payload)
+    expected_ids = _expected_lyric_beat_ids(story_bible)
+    current_prompt = prompt
+    last_exc: Exception | None = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        spec = generate_structured(config, current_prompt, shot_timeline_schema(), attempts=1)
+        try:
+            _validate_tti_spec_contract(spec, expected_ids)
+            return spec
+        except RuntimeError as exc:
+            last_exc = exc
+            if attempt >= attempts:
+                raise
+            current_prompt = _tti_repair_prompt(prompt, spec, expected_ids, str(exc))
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("tti planner failed without a validation error")
+
+
+def _validate_tti_spec_contract(spec: dict, expected_ids: list[str]) -> None:
+    shots = [row for row in spec.get("shots", []) if isinstance(row, dict)]
+    actual_ids = [str(row.get("lyric_beat_id", "")).strip() for row in shots]
+    if len(shots) != len(expected_ids):
+        raise RuntimeError(f"shot count mismatch: expected={len(expected_ids)} actual={len(shots)}")
+    if any(not beat_id for beat_id in actual_ids):
+        raise RuntimeError("shot contract mismatch: blank lyric_beat_id present")
+    if actual_ids != expected_ids:
+        missing = [beat_id for beat_id in expected_ids if beat_id not in actual_ids]
+        extra = [beat_id for beat_id in actual_ids if beat_id not in set(expected_ids)]
+        detail = []
+        if missing:
+            detail.append(f"missing={','.join(missing[:6])}")
+        if extra:
+            detail.append(f"extra={','.join(extra[:6])}")
+        if not detail:
+            detail.append("order mismatch")
+        raise RuntimeError("shot contract mismatch: " + "; ".join(detail))
+
+
+def _tti_repair_prompt(base_prompt: str, spec: dict, expected_ids: list[str], error: str) -> str:
+    shots = [row for row in spec.get("shots", []) if isinstance(row, dict)]
+    actual_ids = [str(row.get("lyric_beat_id", "")).strip() for row in shots if str(row.get("lyric_beat_id", "")).strip()]
+    return (
+        f"{base_prompt}\n\n"
+        "Previous output failed the exact shot contract. "
+        f"Failure={error}. "
+        f"Expected lyric_beat_id order={', '.join(expected_ids)}. "
+        f"Previous lyric_beat_id order={', '.join(actual_ids)}. "
+        "Repair the JSON only. "
+        "Keep master_anchor, but rewrite shots so that shots.length matches the expected count exactly and each expected lyric_beat_id appears once in the same order."
+    )
+
+
+def _expected_lyric_beat_ids(story_bible: dict) -> list[str]:
+    return [
+        str(beat.get("beat_id", "")).strip()
+        for beat in story_bible.get("lyric_beats", [])
+        if isinstance(beat, dict) and str(beat.get("beat_id", "")).strip()
+    ]
+
+
+def _tti_beat_manifest(story_bible: dict) -> list[str]:
+    out: list[str] = []
+    for beat in story_bible.get("lyric_beats", []):
+        if not isinstance(beat, dict):
+            continue
+        beat_id = str(beat.get("beat_id", "")).strip()
+        if not beat_id:
+            continue
+        section = str(beat.get("section_label", beat.get("section_name", ""))).strip()
+        payoff = str(beat.get("payoff_role", "")).strip()
+        out.append(f"{beat_id}|{section}|{payoff}")
+    return out
 
 
 def _apply_profile_shot_policy(shots: list[dict], story_bible: dict) -> list[dict]:
@@ -100,6 +186,14 @@ def _assign_story_metadata(shots: list[dict], timeline: dict, story_bible: dict)
         item["transition_role"] = _transition_role(item["edit_role"])
         item["line_refs"] = list(beat.get("line_refs", []))
         item["literal_image"] = str(beat.get("literal_image", "")).strip()
+        item["symbolic_image"] = str(beat.get("symbolic_image", "")).strip()
+        item["motif_object"] = str(beat.get("motif_object", "")).strip()
+        item["edit_device"] = str(beat.get("edit_device", "")).strip()
+        item["prompt_focus"] = str(beat.get("prompt_focus", "")).strip()
+        item["space_event"] = str(beat.get("space_event", "")).strip()
+        item["composition_shape"] = str(beat.get("composition_shape", "")).strip()
+        item["palette_mode"] = str(beat.get("palette_mode", "")).strip()
+        item["character_render_mode"] = str(beat.get("character_render_mode", "")).strip()
         item = attach_tti_metadata(item, item["section_name"], item["section_label"])
         item["location_family"] = str(beat.get("location_family", "")).strip()
         item["face_exposure_level"] = _face_exposure_level(item, face_defaults, policy)
@@ -113,27 +207,110 @@ def _assign_story_metadata(shots: list[dict], timeline: dict, story_bible: dict)
 
 
 def _shot_prompt_text(shot: dict, story_bible: dict) -> str:
-    return compose_image_prompt(
-        [
-            str(story_bible.get("heroine_invariants", story_bible.get("hero_identity_lock", ""))).strip(),
-            str(story_bible.get("world_invariants", story_bible.get("world_rules", ""))).strip(),
-            str(shot.get("location_family", "")).strip(),
+    focus = str(shot.get("prompt_focus", "")).strip().lower()
+    shot_type = str(shot.get("shot_type", "")).strip().upper()
+    style = str(story_bible.get("visual_style_contract", "")).strip()
+    heroine = str(story_bible.get("heroine_invariants", story_bible.get("hero_identity_lock", ""))).strip()
+    world = str(story_bible.get("world_invariants", story_bible.get("world_rules", ""))).strip()
+    location = str(shot.get("location_family", "")).strip()
+    scene = _normalize_scene_for_prompt(str(shot.get("scene_detail", "")).strip(), shot_type, focus)
+    space_event = str(shot.get("space_event", "")).strip()
+    emotion = str(shot.get("emotion", "")).strip()
+    camera = str(shot.get("camera_language", "")).strip()
+    device = str(shot.get("edit_device", "")).strip()
+    motif = str(shot.get("motif_object", "")).strip()
+    composition = _normalize_composition_for_prompt(str(shot.get("composition_shape", "")).strip(), shot_type, focus)
+    palette_mode = str(shot.get("palette_mode", "")).strip()
+    render_mode = str(shot.get("character_render_mode", "")).strip()
+    shot_type_text = shot_type.lower().replace("_", " ")
+    face = str(shot.get("face_exposure_level", "")).strip()
+    continuity = str(shot.get("continuity_lock", "")).strip()
+    if focus == "object":
+        slots = [
+            "object-led frame",
+            motif,
+            device,
+            composition,
+            palette_mode,
+            location,
+            scene,
+            camera,
+            emotion,
+            "heroine implied only",
+            world,
+            continuity,
+        ]
+    elif focus == "space":
+        slots = [
+            "space-led frame",
+            location,
+            space_event,
+            composition,
+            palette_mode,
+            scene,
+            camera,
+            emotion,
+            "heroine small in frame",
+            world,
+            continuity,
+        ]
+    elif focus == "graphic":
+        slots = [
+            "graphic-led frame",
+            device,
+            motif,
+            composition,
+            palette_mode,
+            location,
+            scene,
+            camera,
+            "bold shape contrast",
+            "flat color blocking",
+            "limited poster palette",
+            "heroine secondary as icon shape",
+            "street-pop graphic attitude",
+            world,
+            continuity,
+        ]
+    else:
+        slots = [
+            "heroine-led frame",
+            heroine,
             str(shot.get("literal_image", "")).strip(),
-            str(shot.get("scene_detail", "")).strip(),
-            str(shot.get("emotion", "")).strip(),
-            str(shot.get("camera_language", "")).strip(),
             str(shot.get("pose_delta", "")).strip(),
-            str(shot.get("continuity_lock", "")).strip(),
-            f"face exposure {str(shot.get('face_exposure_level', '')).strip()}",
-        ],
-        56,
-    )
+            motif,
+            composition,
+            palette_mode,
+            render_mode,
+            location,
+            scene,
+            camera,
+            emotion,
+            f"{shot_type_text} framing",
+            f"{face} face exposure",
+            "graphic character design",
+            "angular fashion silhouette",
+            "toy-like deformed proportions",
+            world,
+            continuity,
+        ]
+    return compose_flux2_slot_prompt(style, slots)
+
+
+def _style_master_anchor(master: dict, story_bible: dict) -> dict:
+    style = str(story_bible.get("visual_style_contract", "")).strip()
+    heroine = str(story_bible.get("heroine_invariants", story_bible.get("hero_identity_lock", ""))).strip()
+    world = str(story_bible.get("world_invariants", story_bible.get("world_rules", ""))).strip()
+    out = dict(master)
+    out["prompt_text"] = compose_flux2_prompt(style, [heroine, world], 42)
+    return out
 
 
 def _face_exposure_level(shot: dict, defaults: dict[str, str], policy: dict) -> str:
     shot_type = str(shot.get("shot_type", "")).strip().upper()
     mv_function = str(shot.get("mv_function", "")).strip().lower()
     label = str(shot.get("section_label", shot.get("section_name", ""))).strip()
+    focus = str(shot.get("prompt_focus", "")).strip().lower()
     direct_face_sections = {str(x).strip() for x in policy.get("direct_face_sections", [])} if isinstance(policy, dict) else set()
     if shot_type in defaults:
         base = str(defaults.get(shot_type, "")).strip().lower()
@@ -141,9 +318,11 @@ def _face_exposure_level(shot: dict, defaults: dict[str, str], policy: dict) -> 
             return "direct"
         if base:
             return base
-    if shot_type == "DETAIL_INSERT":
+    if shot_type in {"DETAIL_INSERT", "SYMBOLIC_INSERT", "RHYTHM_DETAIL"} or focus == "object":
         return "hidden"
-    if shot_type == "ENV_TRANSITION":
+    if shot_type in {"ENV_TRANSITION", "WORLD_EVENT", "TRANSITIONAL_ABSTRACT"} or focus == "space":
+        return "partial"
+    if shot_type == "GRAPHIC_EVENT" or focus == "graphic":
         return "partial"
     if shot_type == "EMOTION_CLOSE":
         return "direct" if mv_function == "payoff" else "soft"
@@ -154,9 +333,10 @@ def _face_exposure_level(shot: dict, defaults: dict[str, str], policy: dict) -> 
 
 def _heroine_visibility(shot: dict) -> str:
     shot_type = str(shot.get("shot_type", "")).strip().upper()
-    if shot_type == "DETAIL_INSERT":
+    focus = str(shot.get("prompt_focus", "")).strip().lower()
+    if shot_type in {"DETAIL_INSERT", "SYMBOLIC_INSERT", "RHYTHM_DETAIL"} or focus == "object":
         return "implied"
-    if shot_type == "ENV_TRANSITION":
+    if shot_type in {"ENV_TRANSITION", "WORLD_EVENT", "TRANSITIONAL_ABSTRACT", "GRAPHIC_EVENT"} or focus in {"space", "graphic"}:
         return "partial"
     return "clear"
 
@@ -176,8 +356,11 @@ def _continuity_priority(shot: dict, policy: dict) -> str:
 
 def _wardrobe_read(shot: dict, policy: dict) -> str:
     shot_type = str(shot.get("shot_type", "")).strip().upper()
+    focus = str(shot.get("prompt_focus", "")).strip().lower()
     visual_mode = str(policy.get("visual_mode", "")).strip().lower() if isinstance(policy, dict) else ""
     if visual_mode == "environment_first" and shot_type != "CHAR_MASTER":
+        return "low"
+    if focus in {"object", "space", "graphic"}:
         return "low"
     if shot_type in {"CHAR_MASTER", "PERF_WIDE"}:
         return "high"
@@ -204,7 +387,7 @@ def _story_bible_digest(story_bible: dict) -> str:
         + "beats="
         + ", ".join(
             f"{beat.get('beat_id', '')}|{beat.get('section_label', beat.get('section_name', ''))}|"
-            f"{beat.get('literal_image', '')}|{beat.get('visible_action', '')}|{beat.get('payoff_role', '')}"
+            f"{beat.get('literal_image', '')}|{beat.get('symbolic_image', '')}|{beat.get('prompt_focus', '')}|{beat.get('edit_device', '')}|{beat.get('composition_shape', '')}|{beat.get('palette_mode', '')}|{beat.get('payoff_role', '')}"
             for beat in beats
             if isinstance(beat, dict)
         )
@@ -255,9 +438,15 @@ def _policy_digest(policy: dict) -> str:
     direct_sections = ",".join(str(x).strip() for x in policy.get("direct_face_sections", []) if str(x).strip())
     return (
         f"visual_mode={policy.get('visual_mode', '')}; "
+        f"visual_mv_mode={policy.get('visual_mv_mode', '')}; "
         f"continuity_mode={policy.get('continuity_mode', '')}; "
         f"face_policy={policy.get('face_policy', '')}; "
         f"shot_bias={policy.get('shot_bias', '')}; "
+        f"subject_exposure={policy.get('subject_exposure', '')}; "
+        f"motif_density={policy.get('motif_density', '')}; "
+        f"graphic_event_density={policy.get('graphic_event_density', '')}; "
+        f"environment_event_density={policy.get('environment_event_density', '')}; "
+        f"visual_payoff_mode={policy.get('visual_payoff_mode', '')}; "
         f"ref_policy={policy.get('ref_policy', '')}; "
         f"shot_mix={mix}; "
         f"direct_face_sections={direct_sections}"
@@ -285,9 +474,16 @@ def _rank_shot_types(shot: dict, beat: dict, policy: dict, idx: int, total: int)
     section_label = str(beat.get("section_label", shot.get("section_label", ""))).strip()
     payoff_role = str(beat.get("payoff_role", shot.get("edit_role", ""))).strip().lower()
     visual_mode = str(policy.get("visual_mode", "")).strip().lower()
+    visual_mv_mode = str(policy.get("visual_mv_mode", "")).strip().lower()
     continuity_mode = str(policy.get("continuity_mode", "")).strip().lower()
     face_policy = str(policy.get("face_policy", "")).strip().lower()
     shot_bias = str(policy.get("shot_bias", "")).strip().lower()
+    prompt_focus = str(beat.get("prompt_focus", shot.get("prompt_focus", ""))).strip().lower()
+    edit_device = str(beat.get("edit_device", "")).strip().lower()
+    symbolic_image = str(beat.get("symbolic_image", "")).strip().lower()
+    motif_object = str(beat.get("motif_object", "")).strip().lower()
+    composition_shape = str(beat.get("composition_shape", "")).strip().lower()
+    visual_payoff_mode = str(policy.get("visual_payoff_mode", "")).strip().lower()
     direct_face_sections = {str(x).strip() for x in policy.get("direct_face_sections", []) if str(x).strip()}
     detail_friendly = _detail_friendly_text(
         str(beat.get("literal_image", shot.get("scene_detail", ""))).strip(),
@@ -306,6 +502,7 @@ def _rank_shot_types(shot: dict, beat: dict, policy: dict, idx: int, total: int)
     elif visual_mode == "environment_first":
         scores["ENV_TRANSITION"] += 2.5
         scores["DETAIL_INSERT"] += 1.5
+        scores["WORLD_EVENT"] += 1.5
         scores["PERF_WIDE"] += 0.5
         scores["EMOTION_CLOSE"] -= 3.0
         scores["CHAR_MASTER"] -= 1.0
@@ -313,18 +510,47 @@ def _rank_shot_types(shot: dict, beat: dict, policy: dict, idx: int, total: int)
         scores["PERF_WIDE"] += 1.0
         scores["ENV_TRANSITION"] += 0.5
 
+    if visual_mv_mode == "bga_event":
+        scores["GRAPHIC_EVENT"] += 2.0
+        scores["TRANSITIONAL_ABSTRACT"] += 1.5
+        scores["RHYTHM_DETAIL"] += 1.0
+    elif visual_mv_mode == "symbolic_edit":
+        scores["SYMBOLIC_INSERT"] += 2.0
+        scores["WORLD_EVENT"] += 1.5
+        scores["GRAPHIC_EVENT"] += 0.5
+
     if shot_bias == "performance":
         scores["PERF_WIDE"] += 2.0
         scores["CHAR_MASTER"] += 1.0
     elif shot_bias == "environment":
         scores["ENV_TRANSITION"] += 2.0
+        scores["WORLD_EVENT"] += 1.5
         scores["DETAIL_INSERT"] += 1.0
         scores["EMOTION_CLOSE"] -= 1.0
     elif shot_bias == "object_symbol":
         scores["DETAIL_INSERT"] += 2.5
+        scores["SYMBOLIC_INSERT"] += 2.0
+        scores["RHYTHM_DETAIL"] += 0.5
         scores["ENV_TRANSITION"] += 0.5
         scores["EMOTION_CLOSE"] -= 1.0
         scores["CHAR_MASTER"] -= 1.0
+
+    if prompt_focus == "object":
+        scores["SYMBOLIC_INSERT"] += 3.0
+        scores["DETAIL_INSERT"] += 2.0
+        scores["RHYTHM_DETAIL"] += 1.0
+        scores["EMOTION_CLOSE"] -= 3.0
+        scores["CHAR_MASTER"] -= 2.0
+    elif prompt_focus == "space":
+        scores["WORLD_EVENT"] += 3.0
+        scores["ENV_TRANSITION"] += 2.0
+        scores["TRANSITIONAL_ABSTRACT"] += 1.0
+        scores["EMOTION_CLOSE"] -= 2.0
+    elif prompt_focus == "graphic":
+        scores["GRAPHIC_EVENT"] += 3.0
+        scores["TRANSITIONAL_ABSTRACT"] += 2.0
+        scores["RHYTHM_DETAIL"] += 1.0
+        scores["EMOTION_CLOSE"] -= 2.0
 
     if face_policy == "avoid":
         scores["EMOTION_CLOSE"] -= 6.0
@@ -352,13 +578,42 @@ def _rank_shot_types(shot: dict, beat: dict, policy: dict, idx: int, total: int)
         scores["CHAR_MASTER"] += 1.5
         if allow_direct_face:
             scores["EMOTION_CLOSE"] += 2.0
+        if visual_payoff_mode == "motif_peak":
+            scores["SYMBOLIC_INSERT"] += 1.5
+            scores["RHYTHM_DETAIL"] += 0.5
+        elif visual_payoff_mode == "system_peak":
+            scores["WORLD_EVENT"] += 1.5
+            scores["GRAPHIC_EVENT"] += 1.5
+            scores["TRANSITIONAL_ABSTRACT"] += 1.0
     if section_name in {"intro", "bridge", "outro"} or payoff_role in {"entry", "interrupt", "residue"}:
         scores["ENV_TRANSITION"] += 1.5
+        scores["WORLD_EVENT"] += 1.0
     if continuity_mode == "same_heroine":
         scores["CHAR_MASTER"] += 1.5
         scores["PERF_WIDE"] += 1.0
     if detail_friendly:
         scores["DETAIL_INSERT"] += 2.5
+    if any(token in edit_device for token in ("graphic", "smear", "flash", "silhouette", "rhythm cut")):
+        scores["GRAPHIC_EVENT"] += 1.5
+        scores["TRANSITIONAL_ABSTRACT"] += 0.5
+    if any(token in edit_device for token in ("object reveal", "token", "insert")) or motif_object:
+        scores["SYMBOLIC_INSERT"] += 1.0
+        scores["RHYTHM_DETAIL"] += 0.5
+    if any(token in edit_device for token in ("space", "drop-out", "open", "compress")) or "space" in symbolic_image:
+        scores["WORLD_EVENT"] += 1.0
+        scores["ENV_TRANSITION"] += 0.5
+    if any(token in composition_shape for token in ("poster", "asymmetrical", "offset", "isolated", "floating object", "low horizon", "sticker")):
+        scores["GRAPHIC_EVENT"] += 1.0
+        scores["SYMBOLIC_INSERT"] += 0.5
+    if any(token in composition_shape for token in ("centered icon", "centered two-body", "bilateral", "symmetrical")):
+        scores["GRAPHIC_EVENT"] -= 0.75
+        scores["TRANSITIONAL_ABSTRACT"] -= 0.25
+    if any(token in composition_shape for token in ("split", "diptych", "mirrored", "doubled")) or any(
+        token in edit_device for token in ("mirror", "split", "reflection split")
+    ):
+        scores["GRAPHIC_EVENT"] += 0.5
+        scores["WORLD_EVENT"] -= 0.75
+        scores["TRANSITIONAL_ABSTRACT"] -= 0.25
     if idx == 0 or idx == total - 1:
         scores["ENV_TRANSITION"] += 0.5
         scores["CHAR_MASTER"] += 0.5
@@ -391,15 +646,61 @@ def _detail_friendly_text(literal_image: str, visible_action: str) -> bool:
     )
 
 
+def _normalize_composition_for_prompt(composition: str, shot_type: str, focus: str) -> str:
+    text = str(composition).strip()
+    if not text:
+        return text
+    graphic_like = str(shot_type).strip().upper() == "GRAPHIC_EVENT" or focus in {"graphic", "space"}
+    if not graphic_like:
+        return text
+    lowered = text.lower()
+    if "split reflection diptych" in lowered:
+        return "asymmetrical reflection crop"
+    if "centered icon frame" in lowered:
+        return "off-center icon crop"
+    if "centered two-body" in lowered or "bilateral" in lowered or "symmetrical" in lowered:
+        return "offset silhouette crop"
+    return text
+
+
+def _normalize_scene_for_prompt(scene: str, shot_type: str, focus: str) -> str:
+    text = str(scene).strip()
+    if not text:
+        return text
+    graphic_like = str(shot_type).strip().upper() == "GRAPHIC_EVENT" or focus in {"graphic", "space"}
+    if not graphic_like:
+        return text
+    replacements = (
+        ("two silhouettes separated by a narrow gap", "a single silhouette held against an offset pane"),
+        ("two-body silhouette balance", "offset silhouette tension"),
+        ("two silhouettes", "a single silhouette"),
+        ("narrow gap", "offset pane tension"),
+        ("balanced", "offset"),
+    )
+    out = text
+    lowered = out.lower()
+    for old, new in replacements:
+        if old in lowered:
+            out = out.replace(old, new).replace(old.title(), new)
+            lowered = out.lower()
+    return out
+
+
 def _forced_shot_type(shot: dict, beat: dict, policy: dict) -> str | None:
     if not isinstance(policy, dict):
         return None
     face_policy = str(policy.get("face_policy", "")).strip().lower()
+    visual_payoff_mode = str(policy.get("visual_payoff_mode", "")).strip().lower()
     section_label = str(beat.get("section_label", shot.get("section_label", ""))).strip()
     payoff_role = str(beat.get("payoff_role", shot.get("edit_role", ""))).strip().lower()
+    prompt_focus = str(beat.get("prompt_focus", shot.get("prompt_focus", ""))).strip().lower()
     direct_face_sections = {str(x).strip() for x in policy.get("direct_face_sections", []) if str(x).strip()}
     if face_policy == "payoff_only" and section_label in direct_face_sections and payoff_role in {"release", "arrival", "payoff"}:
         return "EMOTION_CLOSE"
+    if visual_payoff_mode == "system_peak" and payoff_role in {"release", "arrival", "payoff"} and prompt_focus == "space":
+        return "WORLD_EVENT"
+    if visual_payoff_mode == "motif_peak" and payoff_role in {"release", "arrival", "payoff"} and prompt_focus == "object":
+        return "SYMBOLIC_INSERT"
     return None
 
 

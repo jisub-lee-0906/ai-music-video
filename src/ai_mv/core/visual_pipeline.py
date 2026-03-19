@@ -252,9 +252,9 @@ def _kinetic_ref_decision(
 def _default_face_exposure(shot_type: str, mv_function: str) -> str:
     shot = str(shot_type).strip().upper()
     fn = str(mv_function).strip().lower()
-    if shot == "DETAIL_INSERT":
+    if shot in {"DETAIL_INSERT", "SYMBOLIC_INSERT", "RHYTHM_DETAIL"}:
         return "hidden"
-    if shot == "ENV_TRANSITION":
+    if shot in {"ENV_TRANSITION", "WORLD_EVENT", "TRANSITIONAL_ABSTRACT", "GRAPHIC_EVENT"}:
         return "partial"
     if shot == "EMOTION_CLOSE":
         return "direct" if fn == "payoff" else "soft"
@@ -401,6 +401,8 @@ def _hero_frame_score(section_name: str, section_label: str, shot_type: str) -> 
         score += 2
     elif shot == "CHAR_MASTER":
         score += 1
+    elif shot in {"SYMBOLIC_INSERT", "GRAPHIC_EVENT", "WORLD_EVENT", "TRANSITIONAL_ABSTRACT", "RHYTHM_DETAIL"}:
+        score -= 1
     if sec == "pre_chorus":
         score += 1
     if sec == "chorus":

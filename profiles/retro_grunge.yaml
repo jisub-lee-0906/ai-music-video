@@ -33,17 +33,16 @@ audio_ending_policy:
     - hard stop
 visual:
   brief: >
-    A photorealistic cinematic retro-grunge music video with an East Asian heroine, concrete
-    walls, rusted cages, decayed corridors, 90s street textures, sodium-vapor shadows, rough
-    practical light, a dangerous magnetic camera presence, and film-grain atmosphere. Keep the piece kinetic and brutal with smash
-    reframe violence, hard-cut punctuation, whip pan breaks, snap zoom punches, dirty strobe
-    hits, match-cut attitude poses, extreme close-up stare pressure, high-contrast lighting, and
-    dynamic shadows that feel analog, urban, and confrontational. Keep the geography blunt and
-    readable before layering grit.
+    A stylized 2D retro-grunge visual MV with an East Asian heroine, concrete walls, rusted
+    cages, decayed corridors, 90s street textures, sodium-vapor shadows, rough practical light,
+    and film-grain-like graphic texture. Keep the piece kinetic and brutal with smash reframe
+    violence, hard-cut punctuation, whip pan breaks, snap zoom punches, dirty strobe hits,
+    match-cut attitude poses, stare pressure, high-contrast lighting, and analog-feeling shadow
+    design. Keep the geography blunt and readable before layering grit.
   negative: >
     Avoid glossy futurism, luxury-only styling, clean sterile sets, random comedy props, weak
-    lighting, typography, text, subtitles, watermarks, logo, UI overlay, and low-quality image
-    artifacts.
+    lighting, typography, text, subtitles, watermarks, logo, UI overlay, photorealistic skin
+    texture, live-action portrait realism, and low-quality image artifacts.
 mv:
   story_world: >
     The video should feel like one continuous rough urban world built from recurring environment

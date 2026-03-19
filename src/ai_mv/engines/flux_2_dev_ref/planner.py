@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_image_prompt
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_slot_prompt
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 
 
@@ -21,7 +21,7 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
         "maintain identity and continuity while preserving the anchor frame intent; "
         "compose compact prompts for the workflow positive text field; "
         "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
-        f"{carry_clause}hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}."
+        f"{carry_clause}style={world.get('visual_style_contract', '')}; hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}."
     )
 
 
@@ -36,6 +36,7 @@ def _flux2_ref_planner_batch_size(config: dict) -> int:
 
 def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     section = _beat_atoms(brief, anchor)
+    style_clause = compact_prompt_clause(str(brief.get("visual_style_contract", "")).strip(), 24)
     subject_clause = _subject_clause(brief, anchor)
     action_clause = _action_clause(anchor, section)
     environment_clause = _environment_clause(anchor, section)
@@ -51,6 +52,7 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         kinetic_clause,
         lighting_clause,
         safety_clause,
+        style_clause,
     )
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
@@ -61,6 +63,7 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         "ref": ref,
         "style_ref": "",
         "prompt_text": prompt_text,
+        "style_clause": style_clause,
         "subject_clause": subject_clause,
         "action_clause": action_clause,
         "environment_clause": environment_clause,
@@ -94,7 +97,15 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
     world = compact_world_atoms(brief)
     shot_type = str(anchor.get("shot_type", "")).strip().lower().replace("_", " ")
     face = str(anchor.get("face_exposure_level", "")).strip()
-    return compact_prompt_clause(f"{world['heroine_invariants'] or world['hero_identity']}, {shot_type} framing, {face} face exposure", 24)
+    focus = str(anchor.get("prompt_focus", "")).strip().lower()
+    render_mode = str(anchor.get("character_render_mode", "")).strip()
+    if focus == "object":
+        return compact_prompt_clause(f"object-led frame, heroine implied as icon shape, street-pop graphic attitude, limited poster palette, {shot_type} framing, {render_mode}", 18)
+    if focus == "space":
+        return compact_prompt_clause(f"space-led frame, heroine small as icon figure, angular fashion silhouette, limited poster palette, {shot_type} framing, {render_mode}", 18)
+    if focus == "graphic":
+        return compact_prompt_clause(f"graphic-led frame, heroine secondary as icon shape, street-pop graphic attitude, limited poster palette, {shot_type} framing, {render_mode}", 18)
+    return compact_prompt_clause(f"{world['heroine_invariants'] or world['hero_identity']}, graphic character design, angular fashion silhouette, toy-like deformed proportions, {shot_type} framing, {face} face exposure, {render_mode}", 24)
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
@@ -111,15 +122,17 @@ def _action_clause(anchor: dict, section: dict) -> str:
 
 
 def _environment_clause(anchor: dict, section: dict) -> str:
-    palette = str(section.get("palette_hint", "")).strip()
+    palette = str(anchor.get("palette_mode", "")).strip() or str(section.get("palette_hint", "")).strip()
     lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
     location = (
         str(section.get("location_family", "")).strip()
         or str(section.get("location_anchor", "")).strip()
         or str(anchor.get("scene_detail", "")).strip()
     )
-    parts = [location, palette, lighting]
-    return compact_prompt_clause(", ".join(part for part in parts if part), 20)
+    space_event = str(anchor.get("space_event", "")).strip()
+    composition = str(anchor.get("composition_shape", "")).strip()
+    parts = [location, space_event, composition, palette, lighting]
+    return compact_prompt_clause(", ".join(part for part in parts if part), 18)
 
 
 def _continuity_clause(anchor: dict) -> str:
@@ -137,17 +150,20 @@ def _compose_flux2_ref_prompt(
     kinetic_clause: str,
     lighting_clause: str,
     safety_clause: str,
+    style_clause: str,
 ) -> str:
-    parts = [
-        subject_clause,
-        action_clause,
-        continuity_clause,
-        environment_clause,
-        kinetic_clause,
-        lighting_clause,
-        safety_clause,
-    ]
-    return compose_image_prompt(parts, 56)
+    return compose_flux2_slot_prompt(
+        style_clause,
+        [
+            subject_clause,
+            environment_clause,
+            action_clause,
+            continuity_clause,
+            kinetic_clause,
+            lighting_clause,
+            safety_clause,
+        ],
+    )
 
 
 def _anchor_summary(anchors: list[dict]) -> str:

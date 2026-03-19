@@ -1,0 +1,124 @@
+# Experimental profile for symbolic/BGA-style city-pop MV generation.
+audio:
+  language: ja
+  tags:
+    - japanese city pop
+    - young adult female solo vocal
+    - fresh elegant lead vocal
+    - glossy electric piano
+    - tasteful chorus guitar
+    - warm analog synth pad
+    - fretless bass groove
+    - subtle disco bounce
+    - soft backing harmonies
+    - light string accents
+    - smooth melodic hook
+    - elegant city-pop groove
+  brief: >
+    Retro Japanese city-pop for a young adult female solo singer, with glossy electric piano,
+    tasteful chorus guitar, warm analog synth pad, fretless bass groove, soft backing harmonies,
+    and a subtle disco bounce. Keep the arrangement fresh, elegant, and polished, with a
+    smooth melodic lift and clear mainstream appeal instead of modern trap aggression or generic
+    alt-pop drift.
+  hook_brief: >
+    Build the hook from one concrete late-night city image and make it title-worthy, memorable
+    after one listen, and singable in natural Japanese. The hook should feel adult, graceful,
+    and emotionally inevitable rather than slogan-like or generic.
+audio_ending_policy:
+  ending_mode: glow_fade
+  final_chorus_required: true
+  outro_required: true
+  ending_energy_drop: medium
+  ending_vocal_density: low
+  ending_tags:
+    - soft outro
+    - warm final resolve
+    - gentle fade out
+visual:
+  brief: >
+    A stylized 2D city-pop night visual MV with a young adult East Asian heroine, bold clean
+    outlines, flat cel shading, high-chroma pop color, angular fashion silhouettes, and graphic poster-like framing. Use wet
+    pavement reflections, reflective thresholds, lit passages, open night lanes, mirrored glass,
+    isolated objects, silhouette holds, rhythm-cut inserts, and graphic-feeling light events.
+    Keep the mood polished but sharp, street-pop, and spatially readable, with clear shape design,
+    bold negative space, toy-like deformed proportions, and off-center graphic framing before extra motion. Favor match-cut echoes, snap zoom accents,
+    whip pan reveals, restrained strobe glints, light-smear transitions, and recurring motifs
+    over constant face-led coverage.
+  negative: >
+    Avoid futuristic sci-fi tone, cheap club styling, noisy streetwear drift, random location
+    hopping, heavy prop clutter without motif intent, typography, text, subtitles, watermarks,
+    logo, UI overlay, generic performance-only coverage, photorealistic skin texture, and
+    live-action portrait realism.
+mv:
+  story_world: >
+    The video should feel like one late-night emotional passage through a small set of recurring
+    city-night environment families: reflective thresholds, lit passages, sheltered edges, open
+    lanes, mirrored glass, and quiet public surfaces. The same night, the same heroine, and the
+    same emotional weather should carry through the whole piece, but not every beat needs to be
+    heroine-first.
+  action_vocabulary: >
+    Prefer readable small actions and visual events: slowing at a threshold, passing through a
+    lit passage, checking a reflection, stepping forward into clear light, turning the shoulders
+    sharply into frame, a silhouette pause, an object reveal, a reflection split, or a light
+    smear that lands on the beat. Favor one clean visual event per beat rather than long
+    narrative behavior.
+  payoff_style: >
+    The final return should feel like emotional arrival inside the same city night through a full
+    visual-system payoff: clearer eye contact where needed, brighter reflections, stronger
+    contrast, repeated motifs resolving into one image system, controlled whip pan release, and
+    one elegant close-up only if it serves the larger visual peak.
+  outro_feel: >
+    End on a final held after-image where the city, the heroine, and the recurring reflective
+    motifs resolve together, leaving a polished residue that lingers rather than collapsing into
+    generic fade-out coverage.
+  avoid: >
+    Avoid random spectacle, abrupt geography changes, disconnected glam shots, generic idol-only
+    coverage, and endings that feel fragmentary.
+visual_policy:
+  visual_mode: balanced
+  continuity_mode: same_heroine
+  face_policy: payoff_only
+  shot_bias: object_symbol
+  ref_policy: endpoints
+  closeup_density: low
+  motion_density: medium
+  geography_mode: recurring_families
+  anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: retro_pop_neon
+  motif_families:
+    - train window
+    - curb edge
+    - puddle ring
+    - umbrella tip
+    - ticket gate
+    - vending glow
+    - phone light
+    - rail shadow
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - low horizon silhouette
+    - floating object field
+    - isolated small figure
+    - offset silhouette crop
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
+  direct_face_sections:
+    - Final Chorus
+  priority_sections:
+    - Final Chorus
+    - Chorus 2
+  hero_shot_types:
+    - CHAR_MASTER
+    - EMOTION_CLOSE
+  max_direct_face_ratio: 0.1

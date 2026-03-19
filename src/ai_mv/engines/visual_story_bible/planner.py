@@ -13,6 +13,7 @@ def build_visual_story_bible(config: dict, payload: dict) -> dict:
     world = payload.get("profile_intent", {}).get("world_intent", {}) if isinstance(payload.get("profile_intent", {}), dict) else {}
     story["heroine_invariants"] = str(world.get("heroine_invariants", story.get("hero_identity_lock", ""))).strip()
     story["world_invariants"] = str(world.get("world_invariants", story.get("world_rules", ""))).strip()
+    story["visual_style_contract"] = str(world.get("visual_style_contract", "")).strip()
     story["location_family_rules"] = list(world.get("location_families", story.get("recurring_location_families", [])))
     story["resolved_profile_policy"] = dict(payload.get("profile_intent", {}).get("resolved_profile_policy", {})) if isinstance(payload.get("profile_intent", {}), dict) else {}
     closeup = [
@@ -32,6 +33,7 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     world = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
     negative = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
     timeline = payload["lyrics_timeline"]
+    policy = payload.get("profile_intent", {}).get("resolved_profile_policy", {}) if isinstance(payload.get("profile_intent", {}), dict) else {}
     return (
         "Write a lyric-first visual story bible for downstream image and video workflows. "
         "Return strict JSON only. No prose outside JSON. "
@@ -42,16 +44,34 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "Reuse the provided beat_id values exactly once. "
         "NO TEXT, NO TYPOGRAPHY, NO WATERMARKS, NO LOGOS, NO SIGNAGE, NO UI OVERLAY. "
         "section_progression must cover every section in order. "
+        "Every lyric_beats item must also include symbolic_image,motif_object,edit_device,prompt_focus,space_event,composition_shape,palette_mode,character_render_mode. "
         "Differentiate sections clearly: verses should not read like choruses, bridges should interrupt or thin the flow, and the final chorus must feel like the visual peak. "
         "Differentiate adjacent lyric beats with a new image focus, action emphasis, framing commitment, palette shift, lighting shift, or location-family angle. "
+        "Do not reduce every beat to the heroine performing in front of camera. Some beats should be object-led, space-led, or graphic-led when the profile supports it. "
+        "symbolic_image should be a higher-level metaphor or visual symbol derived from the lyric, not just a restatement of literal_image. "
+        "motif_object should name one repeatable object, texture, symbol, or visual token that can recur across sections. "
+        "edit_device should describe the visual event or editorial device that gives the beat MV energy, such as silhouette hold, match flash, rhythm cut, graphic smear, space drop-out, object reveal, offset crop jolt, icon hold, or reflection split. "
+        "prompt_focus must choose the visual subject priority for the beat: heroine, object, space, or graphic. "
+        "space_event should describe how the environment changes, opens, compresses, repeats, fragments, mirrors, or resolves through the beat. "
+        "composition_shape should define the graphic layout in short renderable terms such as asymmetrical poster crop, poster close crop, low horizon silhouette, diagonal lane cut, floating object field, isolated small figure, sticker-cluster layout, offset silhouette crop, or split reflection diptych. "
+        "palette_mode should define the beat color system in short direct terms such as neon magenta-cyan, sodium amber-violet, acid green-black, cherry red-ink black, pastel mint-black, or crimson-violet ritual contrast. Prefer limited poster palettes over soft bloom washes. "
+        "character_render_mode should define how the heroine is drawn in the beat, such as simplified icon face, sharp eye close-up, silhouette-first body, flat fashion figure, toy-like deformed figure, or secondary tiny figure. "
         "Do not let all beats collapse into the same lane, crosswalk, or reflection treatment if the lyrics turn. "
+        "Do not overuse split-screen, diptych, mirrored-face, doubled-subject, centered two-body, or bilateral balance layouts across adjacent beats; reserve them for isolated impact beats rather than the default graphic solution. "
         "Preserve recurring environment families, but rotate how they are used: threshold, passage, lane, reflection surface, curb edge, sheltered edge, or open crossing should not all be treated the same way. "
+        "If reflection usage is selected_only, mirror, double, or reflection imagery may recur as a motif but should appear as isolated impact beats rather than dominating the default composition language. "
+        "If motif families are provided, recur them across the timeline as small city-object anchors instead of inventing unrelated props every section. "
         "When sections repeat, keep continuity but escalate the treatment through clearer geography, stronger palette contrast, cleaner action intent, or a more decisive camera commitment. "
-        "Use location_family, palette_hint, lighting_hint, and camera_commitment as real differentiators, not decorative synonyms. "
+        "Use location_family, palette_hint, lighting_hint, camera_commitment, composition_shape, and palette_mode as real differentiators, not decorative synonyms. "
+        "Favor concrete drawable phrases over poetic abstraction. symbolic_image may stay metaphorical, but composition_shape, motif_object, palette_mode, and character_render_mode must be visually direct and renderable. "
+        "If the visual MV mode is symbolic_edit or bga_event, favor image-events that feel editable and rhythm-sensitive: silhouette changes, object recurrence, graphic overlays implied in composition, decisive spatial transformations, and repeatable visual hits timed to musical turns. "
+        "Final chorus payoff should follow the profile visual payoff mode: not always a face close-up, sometimes a motif-system peak or world-system peak. "
+        f"Style contract={world.get('visual_style_contract', '')}; "
         f"World support={world.get('visual_intent', '')}; Story world={world.get('story_world', '')}; "
         f"Action vocabulary={world.get('action_vocabulary', '')}; Payoff support={world.get('payoff_style', '')}; "
         f"Heroine invariants={world.get('heroine_invariants', '')}; World invariants={world.get('world_invariants', '')}; "
         f"Close-up policy={world.get('closeup_policy', '')}; Motion policy={world.get('motion_policy', '')}; "
+        f"Visual MV policy={_visual_mv_policy_digest(policy)}; "
         f"Forbidden drift={negative.get('visual_negative', '')}; Avoid={negative.get('mv_avoid', '')}; "
         f"Location grammar={location_grammar_digest(config)}; "
         f"Lyric beat manifest={_timeline_beat_digest(timeline)}; "
@@ -103,3 +123,21 @@ def _timeline_beat_digest(timeline: dict) -> str:
             + ",".join(part for part in beats if part)
         )
     return " ; ".join(row for row in rows if row)
+
+
+def _visual_mv_policy_digest(policy: dict) -> str:
+    if not isinstance(policy, dict):
+        return ""
+    return (
+        f"visual_mv_mode={policy.get('visual_mv_mode', '')}; "
+        f"subject_exposure={policy.get('subject_exposure', '')}; "
+        f"motif_density={policy.get('motif_density', '')}; "
+        f"graphic_event_density={policy.get('graphic_event_density', '')}; "
+        f"environment_event_density={policy.get('environment_event_density', '')}; "
+        f"visual_payoff_mode={policy.get('visual_payoff_mode', '')}; "
+        f"reflection_usage={policy.get('reflection_usage', '')}; "
+        f"palette_bias={policy.get('palette_bias', '')}; "
+        f"motif_families={','.join(str(x).strip() for x in policy.get('motif_families', []) if str(x).strip())}; "
+        f"preferred_compositions={','.join(str(x).strip() for x in policy.get('preferred_composition_families', []) if str(x).strip())}; "
+        f"disfavored_compositions={','.join(str(x).strip() for x in policy.get('disfavored_composition_families', []) if str(x).strip())}"
+    )

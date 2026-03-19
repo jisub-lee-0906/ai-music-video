@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.intent_models import ProfileIntent
 from ai_mv.core.profile_policy import resolve_profile_policy
+from ai_mv.core.workflow_prompt_contracts import flux2_visual_style_contract, sanitize_flux2_negative_text, sanitize_flux2_positive_text
 
 
 _REQUIRED_FIELDS = (
@@ -39,12 +40,13 @@ def build_profile_intent(config: dict) -> dict:
             "ending_policy": dict(ending_policy),
         },
         world_intent={
-            "visual_intent": _text(visual, "brief"),
+            "visual_intent": _visual_intent(config, visual, mv, policy),
             "story_world": _text(mv, "story_world"),
             "action_vocabulary": _text(mv, "action_vocabulary"),
             "payoff_style": _text(mv, "payoff_style"),
             "heroine_invariants": _heroine_invariants(visual, mv),
             "world_invariants": _world_invariants(visual, mv),
+            "visual_style_contract": _visual_style_contract(config, visual, mv, policy),
             "location_families": _location_families(mv),
             "closeup_policy": _closeup_policy(visual, mv),
             "motion_policy": _motion_policy(visual, mv),
@@ -52,7 +54,7 @@ def build_profile_intent(config: dict) -> dict:
             "resolved_profile_policy": dict(policy),
         },
         negative_intent={
-            "visual_negative": _text(visual, "negative"),
+            "visual_negative": _visual_negative(visual),
             "mv_avoid": _text(mv, "avoid"),
         },
         escalation_intent={
@@ -84,6 +86,7 @@ def _heroine_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
             "same heroine throughout the video",
+            "stylized East Asian heroine with a sticker-like silhouette, simplified icon face, sharp heavy-lid eye shape, minimal facial detail, angular fashion shape, and toy-like deformed proportions",
             _extract_fragment(_text(visual, "brief"), ("East Asian heroine", "young adult East Asian heroine", "female solo vocal", "lead")),
             _extract_fragment(_text(mv, "story_world"), ("same heroine",)),
         ]
@@ -94,10 +97,27 @@ def _world_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
             "one continuous world",
+            "stylized 2d graphic music-video space with flat poster depth and strong negative space",
             _extract_fragment(_text(mv, "story_world"), ("same night", "one continuous", "continuous", "same emotional weather", "same luxurious pulse", "same momentum", "same rebellious force", "same electric pressure", "same suspended emotional current", "same sense of supernatural authority")),
             _extract_fragment(_text(visual, "brief"), ("readable", "center framing", "center-dominant", "heroine legible", "heroine readable")),
         ]
     )
+
+
+def _visual_intent(config: dict, visual: dict, mv: dict, policy: dict) -> str:
+    source = " ".join([_text(visual, "brief"), _text(mv, "story_world"), _text(mv, "payoff_style")]).strip()
+    cleaned = sanitize_flux2_positive_text(source)
+    style = _visual_style_contract(config, visual, mv, policy)
+    return _join_parts([style, cleaned])
+
+
+def _visual_style_contract(config: dict, visual: dict, mv: dict, policy: dict) -> str:
+    source = " ".join([_text(visual, "brief"), _text(mv, "story_world"), _text(mv, "payoff_style"), _text(mv, "action_vocabulary")])
+    return flux2_visual_style_contract(source, policy)
+
+
+def _visual_negative(visual: dict) -> str:
+    return sanitize_flux2_negative_text(_text(visual, "negative"))
 
 
 def _location_families(mv: dict) -> list[str]:
