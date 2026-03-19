@@ -63,3 +63,14 @@ def test_submit_workflow_raises_execution_error(monkeypatch):
     )
     with pytest.raises(ct.ComfyRequestError, match="execution_error"):
         ct.submit_workflow("http://127.0.0.1:8188", {"wf": True}, timeout=3)
+
+
+def test_collect_file_entries_ignores_none_subfolder():
+    files = ct.extract_files(
+        {
+            "outputs": {
+                "9": {"images": [{"filename": "x.png", "subfolder": None}]},
+            }
+        }
+    )
+    assert files == ["x.png"]

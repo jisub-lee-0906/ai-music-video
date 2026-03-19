@@ -113,7 +113,8 @@ def _collect_file_entries(items: list[dict[str, Any]]) -> list[str]:
         if not isinstance(item, dict) or "filename" not in item:
             raise ComfyRequestError("Comfy output item missing filename")
         name = str(item["filename"])
-        folder = str(item["subfolder"]).strip("/\\") if "subfolder" in item else ""
+        subfolder = item.get("subfolder")
+        folder = str(subfolder).strip("/\\") if isinstance(subfolder, str) else ""
         out.append(f"{folder}/{name}" if folder else name)
     return out
 

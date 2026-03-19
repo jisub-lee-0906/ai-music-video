@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==8.3.5"]
+dev = ["build", "pytest==8.3.5"]
 
 [project.scripts]
 ai-mv = "ai_mv.cli.app:main"
