@@ -19,6 +19,9 @@ def test_visual_story_bible_builds_strict_contract(monkeypatch):
     assert out["lyric_beats"][0]["visible_action"]
     assert out["lyric_beats"][0]["location_family"]
     assert out["recurring_location_families"]
+    assert out["heroine_invariants"]
+    assert out["world_invariants"]
+    assert out["closeup_rules"]
     assert out["repeat_escalation_rules"]
 
 

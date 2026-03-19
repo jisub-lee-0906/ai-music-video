@@ -28,6 +28,10 @@ class LyricsTimelineContract:
 class VisualStoryBible:
     hero_identity_lock: str = ""
     world_rules: str = ""
+    heroine_invariants: str = ""
+    world_invariants: str = ""
+    location_family_rules: list[str] = field(default_factory=list)
+    closeup_rules: str = ""
     recurring_location_families: list[str] = field(default_factory=list)
     forbidden_drift: list[str] = field(default_factory=list)
     lyric_beats: list[dict] = field(default_factory=list)

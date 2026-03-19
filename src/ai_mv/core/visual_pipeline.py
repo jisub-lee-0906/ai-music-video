@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.engines.common.clip_timing import expand_anchor_clips, read_max_clip_sec
+from ai_mv.core.profile_policy import resolve_profile_policy
 from ai_mv.utils.text_utils import parse_target
 
 MV_FUNCTIONS = ("establish", "coverage", "lift", "payoff", "interrupt", "residue")
@@ -19,14 +20,18 @@ KINETIC_REF_TRANSITIONS = {
 def visual_pipeline_settings(config: dict) -> dict:
     node = config.get("visual_pipeline", {}) if isinstance(config, dict) else {}
     node = node if isinstance(node, dict) else {}
+    policy = resolve_profile_policy(config)
     mode = str(node.get("visual_pipeline_mode", "tti_selective_ref")).strip().lower()
     if mode not in {"tti_only", "tti_selective_ref", "tti_ref_all"}:
         mode = "tti_selective_ref"
     consistency = str(node.get("consistency_mode", "")).strip().lower()
     if consistency not in {"off", "selective", "always"}:
         consistency = "selective"
-    hero_types = node.get("hero_shot_types", ["EMOTION_CLOSE"])
-    sections = node.get("reference_priority_sections", ["Final Chorus", "Chorus 2", "Chorus 1"])
+    kinetic_ref_mode = str(node.get("kinetic_ref_mode", "endpoints")).strip().lower()
+    if kinetic_ref_mode not in {"all", "endpoints", "hero_only", "off"}:
+        kinetic_ref_mode = "endpoints"
+    hero_types = node.get("hero_shot_types", policy.get("hero_shot_types", ["EMOTION_CLOSE"]))
+    sections = node.get("reference_priority_sections", policy.get("priority_sections", ["Final Chorus", "Chorus 2", "Chorus 1"]))
     location_budget = node.get("location_budget", {}) if isinstance(node.get("location_budget", {}), dict) else {}
     location_examples = node.get("location_family_examples", ["reflective threshold", "lit passage", "open night lane", "sheltered edge"])
     shot_guidance = node.get("shot_type_guidance", {}) if isinstance(node.get("shot_type_guidance", {}), dict) else {}
@@ -34,6 +39,8 @@ def visual_pipeline_settings(config: dict) -> dict:
     return {
         "visual_pipeline_mode": mode,
         "consistency_mode": consistency,
+        "kinetic_ref_mode": kinetic_ref_mode,
+        "resolved_profile_policy": dict(policy),
         "hero_shot_types": [str(x).strip().upper() for x in hero_types if str(x).strip()],
         "reference_priority_sections": [str(x).strip().lower() for x in sections if str(x).strip()],
         "allow_face_drift_in_nonhero": bool(node.get("allow_face_drift_in_nonhero", True)),
@@ -158,6 +165,7 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     settings = visual_pipeline_settings(config)
     mode = settings["visual_pipeline_mode"]
     consistency = settings["consistency_mode"]
+    policy = settings.get("resolved_profile_policy", {})
     if mode == "tti_only" or consistency == "off":
         return False, "tti_only coverage-first mode"
     if mode == "tti_ref_all" or consistency == "always":
@@ -170,11 +178,37 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     mv_function = str(shot.get("mv_function", "")).strip().lower()
     kinetic_transition = str(shot.get("kinetic_transition", "")).strip().lower()
     kinetic_intensity = str(shot.get("kinetic_intensity", "")).strip().lower()
+    face_exposure = str(shot.get("face_exposure_level", "")).strip().lower() or _default_face_exposure(shot_type, mv_function)
+    continuity_priority = str(shot.get("continuity_priority", "")).strip().lower()
+    wardrobe_read = str(shot.get("wardrobe_read", "")).strip().lower()
+    ref_triggers = policy.get("ref_triggers", {}) if isinstance(policy, dict) else {}
+    direct_face_sections = {str(x).strip().lower() for x in policy.get("direct_face_sections", [])} if isinstance(policy, dict) else set()
+    is_priority_section = any(ref in label for ref in settings["reference_priority_sections"])
+    if bool(ref_triggers.get("face_sensitive", True)) and face_exposure in {"direct", "soft"} and phase != "advance":
+        return True, "identity-sensitive face shot"
+    if continuity_priority == "high" and phase in {"single", "establish", "resolve"}:
+        return True, "high continuity anchor"
+    if bool(ref_triggers.get("wardrobe_read_high", False)) and wardrobe_read == "high" and phase in {"single", "establish"} and hero_score >= 2:
+        return True, "wardrobe continuity anchor"
+    if direct_face_sections and label in direct_face_sections and face_exposure in {"direct", "soft"}:
+        return True, "policy direct-face section"
     if kinetic_transition in KINETIC_REF_TRANSITIONS:
-        return True, "kinetic transition anchor"
+        kinetic_ref = _kinetic_ref_decision(
+            settings["kinetic_ref_mode"],
+            shot_type,
+            hero_score,
+            consistency_need,
+            phase,
+            mv_function,
+            kinetic_intensity,
+            is_priority_section,
+            settings["hero_shot_types"],
+        )
+        if kinetic_ref is not None:
+            return kinetic_ref
     if kinetic_intensity in {"high", "max"} and phase in {"establish", "resolve"}:
         return True, "high kinetic endpoint lock"
-    if any(ref in label for ref in settings["reference_priority_sections"]):
+    if is_priority_section and bool(ref_triggers.get("payoff_sections", True)):
         if hero_score >= 4:
             return True, "priority return hero"
         if hero_score >= 3 and phase in {"establish", "resolve"}:
@@ -186,6 +220,47 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     if consistency_need == "high" and not settings["allow_face_drift_in_nonhero"]:
         return True, "high identity lock"
     return False, "tti-only coverage shot"
+
+
+def _kinetic_ref_decision(
+    kinetic_ref_mode: str,
+    shot_type: str,
+    hero_score: int,
+    consistency_need: str,
+    phase: str,
+    mv_function: str,
+    kinetic_intensity: str,
+    is_priority_section: bool,
+    hero_shot_types: list[str],
+) -> tuple[bool, str] | None:
+    is_hero_type = shot_type in set(hero_shot_types)
+    if kinetic_ref_mode == "off":
+        return None
+    if kinetic_ref_mode == "all":
+        return True, "kinetic transition anchor"
+    if is_hero_type or consistency_need == "high" or hero_score >= 4:
+        return True, "kinetic hero anchor"
+    if kinetic_ref_mode == "hero_only":
+        return None
+    if phase in {"establish", "resolve"} and (
+        is_priority_section or mv_function in {"payoff", "interrupt"} or kinetic_intensity in {"high", "max"} or hero_score >= 3
+    ):
+        return True, "kinetic endpoint lock"
+    return None
+
+
+def _default_face_exposure(shot_type: str, mv_function: str) -> str:
+    shot = str(shot_type).strip().upper()
+    fn = str(mv_function).strip().lower()
+    if shot == "DETAIL_INSERT":
+        return "hidden"
+    if shot == "ENV_TRANSITION":
+        return "partial"
+    if shot == "EMOTION_CLOSE":
+        return "direct" if fn == "payoff" else "soft"
+    if shot == "CHAR_MASTER":
+        return "soft"
+    return "partial"
 
 
 def route_summary(routes: list[dict]) -> list[dict]:

@@ -61,3 +61,24 @@ mv:
   avoid: >
     Avoid soft historical romance drift, campy supernatural clichés, random monster imagery,
     disconnected locations, passive body language, and diluted endings.
+visual_policy:
+  visual_mode: character_heavy
+  continuity_mode: same_heroine
+  face_policy: selective
+  shot_bias: mixed
+  ref_policy: identity_sensitive_only
+  closeup_density: medium
+  motion_density: high
+  geography_mode: recurring_families
+  anchor_mode: shot_anchor_required
+  direct_face_sections:
+    - Chorus 1
+    - Final Chorus
+  priority_sections:
+    - Final Chorus
+    - Chorus 2
+    - Bridge
+  hero_shot_types:
+    - EMOTION_CLOSE
+    - CHAR_MASTER
+  max_direct_face_ratio: 0.18

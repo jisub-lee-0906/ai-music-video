@@ -42,6 +42,10 @@ def _shot_preview(shots: list[dict]) -> list[dict]:
                 "edit_role": str(shot.get("edit_role", "")),
                 "continuity_lock": str(shot.get("continuity_lock", "")),
                 "clip_count": int(shot.get("clip_count", 1)),
+                "face_exposure_level": str(shot.get("face_exposure_level", "")),
+                "continuity_priority": str(shot.get("continuity_priority", "")),
+                "location_family": str(shot.get("location_family", "")),
+                "heroine_visibility": str(shot.get("heroine_visibility", "")),
             }
         )
     return out
@@ -58,7 +62,14 @@ def build_shot_timeline_preview_payload(config: dict, payload: dict) -> dict:
     from ai_mv.engines.flux_2_dev_tti.runner import _pack_anchor
 
     plan = build_tti_plan(config, payload)
-    anchors = [_pack_anchor(shot, "preflight://anchor/master.png") for shot in plan["shots"]]
+    anchors = [
+        _pack_anchor(
+            shot,
+            "preflight://anchor/master.png",
+            f"preflight://anchor/{str(shot.get('shot_id', '')).lower()}.png",
+        )
+        for shot in plan["shots"]
+    ]
     return {
         "anchors": anchors,
         "shot_timeline": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},

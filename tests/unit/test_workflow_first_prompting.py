@@ -43,7 +43,7 @@ def test_wan_prompt_does_not_inject_house_style_without_profile_support():
     assert "moving through the lane and holding the look" in clip["positive_prompt"].lower()
 
 
-def test_compact_world_atoms_trims_policy_like_identity_tail():
+def test_compact_world_atoms_keeps_identity_constraints_without_house_style_drift():
     world = compact_world_atoms(
         {
             "hero_identity_lock": (
@@ -55,10 +55,9 @@ def test_compact_world_atoms_trims_policy_like_identity_tail():
             "world_rules": "same world",
         }
     )
+    assert "One consistent young adult East Asian heroine only" in world["hero_identity"]
     assert "glossy K-pop idol presence" in world["hero_identity"]
-    assert "controlled direct gaze" in world["hero_identity"]
-    assert "no cast swaps" not in world["hero_identity"]
-    assert "no wardrobe downgrade" not in world["hero_identity"]
+    assert "stunningly beautiful" not in world["hero_identity"]
 
 
 def test_prompt_compare_report_marks_alignment_and_retained_profile_backing():

@@ -35,6 +35,12 @@ def test_build_profile_intent_uses_only_explicit_fields():
     assert intent["audio_intent"]["brief"] == "Explicit audio brief."
     assert intent["audio_intent"]["hook_brief"] == "Explicit hook brief."
     assert intent["world_intent"]["visual_intent"] == "Explicit visual brief."
+    assert intent["world_intent"]["heroine_invariants"]
+    assert intent["world_intent"]["world_invariants"]
+    assert isinstance(intent["world_intent"]["location_families"], list)
+    assert intent["world_intent"]["closeup_policy"]
+    assert intent["world_intent"]["motion_policy"]
+    assert intent["resolved_profile_policy"]["face_policy"]
     assert intent["negative_intent"]["visual_negative"] == "Explicit visual negative."
     assert intent["negative_intent"]["mv_avoid"] == "Explicit avoid."
     assert intent["escalation_intent"]["outro_residue"] == "Explicit outro feel."

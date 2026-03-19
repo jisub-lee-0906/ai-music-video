@@ -28,7 +28,24 @@ def test_audio_prompt_mentions_acestep_tags_field_alignment():
 
 def test_tti_prompt_mentions_direct_text_encoder_alignment():
     payload = {
-        "visual_story_bible": _story_bible(),
+        "visual_story_bible": {
+            **_story_bible(),
+            "resolved_profile_policy": {
+                "visual_mode": "balanced",
+                "continuity_mode": "same_heroine",
+                "face_policy": "payoff_only",
+                "shot_bias": "environment",
+                "ref_policy": "identity_sensitive_only",
+                "shot_distribution": {
+                    "CHAR_MASTER": 0.15,
+                    "EMOTION_CLOSE": 0.10,
+                    "PERF_WIDE": 0.25,
+                    "ENV_TRANSITION": 0.30,
+                    "DETAIL_INSERT": 0.20,
+                },
+                "direct_face_sections": ["Final Chorus"],
+            },
+        },
         "lyrics_timeline": _timeline(),
     }
     prompt = tti_planner._planner_prompt({}, payload)
@@ -36,6 +53,8 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "master_anchor prompt_text must contain only stable identity and world facts" in prompt
     assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,clip_count" in prompt
     assert "workflow_motion_clause must be a compact natural motion clause" in prompt
+    assert "Profile policy=" in prompt
+    assert "face_policy=payoff_only" in prompt
     assert "Story bible=" in prompt
     assert "Lyric timeline=" in prompt
 

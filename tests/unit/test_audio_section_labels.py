@@ -58,7 +58,7 @@ def test_runner_chain_preserves_section_label():
         "scene_detail": "city glow",
         "motion_hint": "slow push",
     }
-    anchor = _pack_anchor(shot, "anchor.png")
+    anchor = _pack_anchor(shot, "identity.png", "anchor.png")
     item = _pack_item({**anchor, "duration_sec": 4.0}, "start.png", "end.png")
     assert anchor["section_label"] == "Final Chorus"
     assert item["section_label"] == "Final Chorus"

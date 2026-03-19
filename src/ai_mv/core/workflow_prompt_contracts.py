@@ -27,7 +27,13 @@ HOUSE_STYLE_PHRASES = (
 
 
 def compact_prompt_clause(text: object, max_words: int) -> str:
-    return _clean(text).strip(" ,")
+    cleaned = _clean(text).strip(" ,")
+    if not cleaned:
+        return ""
+    words = [word for word in cleaned.replace(",", " ,").split() if word]
+    if max_words > 0:
+        words = words[:max_words]
+    return " ".join(words).replace(" ,", ",").strip(" ,")
 
 
 def compact_prompt_sentence(parts: Iterable[object], max_words: int) -> str:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.output_paths import master_anchor_prefix
+from ai_mv.core.output_paths import master_anchor_prefix, shot_anchor_prefix
 from ai_mv.core.workflow_names import TTI_WORKFLOW
 from ai_mv.infra.comfy_outputs import pick_image_file
 from ai_mv.engines.flux_2_dev_tti.mapper import map_tti_workflow, tti_required_inputs
@@ -13,9 +13,10 @@ def run_tti(config: dict, plan: dict) -> list[dict]:
     shots = plan["shots"]
     if not shots:
         raise RuntimeError("TTI plan is empty")
-    anchor = _run_master(config, master)
+    identity_anchor = _run_master(config, master)
     for shot in shots:
-        out.append(_pack_anchor(shot, anchor))
+        shot_anchor = _run_shot_anchor(config, shot)
+        out.append(_pack_anchor(shot, identity_anchor, shot_anchor))
     return out
 
 
@@ -35,11 +36,19 @@ def _run_shot_tti(config: dict, shot: dict, shot_id: str) -> dict:
     )
 
 
-def _pack_anchor(shot: dict, anchor: str) -> dict:
+def _run_shot_anchor(config: dict, shot: dict) -> str:
+    payload = dict(shot)
+    payload["filename_prefix"] = shot_anchor_prefix(str(shot.get("shot_id", "")))
+    result = _run_shot_tti(config, payload, str(shot.get("shot_id", "")))
+    return pick_image_file(result["files"], f"TTI {shot.get('shot_id', '')}")
+
+
+def _pack_anchor(shot: dict, identity_anchor: str, shot_anchor: str) -> dict:
     return {
         "shot_id": shot["shot_id"],
-        "anchor": anchor,
-        "identity_anchor": anchor,
+        "anchor": shot_anchor,
+        "shot_anchor": shot_anchor,
+        "identity_anchor": identity_anchor,
         "shot_type": shot["shot_type"],
         "section_name": str(shot.get("section_name", "section")),
         "section_label": str(shot.get("section_label", shot.get("section_name", "section"))),
@@ -62,6 +71,11 @@ def _pack_anchor(shot: dict, anchor: str) -> dict:
         "kinetic_transition": str(shot.get("kinetic_transition", "")),
         "lighting_fx": str(shot.get("lighting_fx", "")),
         "kinetic_intensity": str(shot.get("kinetic_intensity", "")),
+        "location_family": str(shot.get("location_family", "")),
+        "face_exposure_level": str(shot.get("face_exposure_level", "partial")),
+        "heroine_visibility": str(shot.get("heroine_visibility", "clear")),
+        "continuity_priority": str(shot.get("continuity_priority", "low")),
+        "wardrobe_read": str(shot.get("wardrobe_read", "low")),
         "hero_frame_score": int(shot.get("hero_frame_score", 1)),
         "consistency_need": str(shot.get("consistency_need", "low")),
         "mv_function": str(shot.get("mv_function", "coverage")),

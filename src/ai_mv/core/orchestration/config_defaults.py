@@ -20,6 +20,7 @@ DEFAULT_CONFIG: dict = {
     "visual_pipeline": {
         "visual_pipeline_mode": "tti_selective_ref",
         "consistency_mode": "selective",
+        "kinetic_ref_mode": "endpoints",
         "hero_shot_types": ["EMOTION_CLOSE"],
         "reference_priority_sections": ["Final Chorus", "Chorus 2", "Chorus 1"],
         "allow_face_drift_in_nonhero": True,
@@ -54,7 +55,7 @@ DEFAULT_CONFIG: dict = {
         "comfyui_input_dir": r"C:\Users\Desktop\Documents\ComfyUI\input",
         "comfyui_output_dir": r"C:\Users\Desktop\Documents\ComfyUI\output",
         "codex_cli_path": "",
-        "codex_model": "gpt-5.1-codex-mini",
+        "codex_model": "gpt-5.4-mini",
         "codex_timeout_structured_sec": 600,
         "workflows_dir": "workflows",
     },

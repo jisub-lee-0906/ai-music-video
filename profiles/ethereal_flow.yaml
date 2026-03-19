@@ -56,3 +56,22 @@ mv:
   avoid: >
     Avoid sleepy aimlessness, flat beauty coverage, random fantasy clutter, broken geography,
     and weak endings.
+visual_policy:
+  visual_mode: balanced
+  continuity_mode: same_heroine
+  face_policy: payoff_only
+  shot_bias: environment
+  ref_policy: endpoints
+  closeup_density: low
+  motion_density: medium
+  geography_mode: recurring_families
+  anchor_mode: shot_anchor_required
+  direct_face_sections:
+    - Final Chorus
+  priority_sections:
+    - Final Chorus
+    - Chorus 2
+  hero_shot_types:
+    - EMOTION_CLOSE
+    - CHAR_MASTER
+  max_direct_face_ratio: 0.12

@@ -14,6 +14,10 @@ def master_anchor_prefix() -> str:
     return f"{ANCHOR_DIR}/character_master"
 
 
+def shot_anchor_prefix(shot_id: str) -> str:
+    return f"{ANCHOR_DIR}/{str(shot_id).strip()}"
+
+
 def flux2_ref_frame_prefix(shot_id: str, frame_name: str) -> str:
     return f"{KEYFRAME_DIR}/{str(shot_id).strip()}_{str(frame_name).strip()}"
 

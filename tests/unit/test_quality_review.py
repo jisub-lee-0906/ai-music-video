@@ -37,6 +37,7 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
     out = build_quality_review({}, payload)
     assert out["visual"]["reasoning"]
     assert out["visual"]["strengths"]
+    assert out["profile_continuity"]["strengths"]
 
 
 def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):

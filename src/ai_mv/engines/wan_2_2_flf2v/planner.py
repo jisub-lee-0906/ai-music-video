@@ -62,6 +62,12 @@ def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
         "kinetic_transition": str(item.get("kinetic_transition", "")),
         "lighting_fx": str(item.get("lighting_fx", "")),
         "kinetic_intensity": str(item.get("kinetic_intensity", "")),
+        "location_family": str(item.get("location_family", "")),
+        "face_exposure_level": str(item.get("face_exposure_level", "")),
+        "heroine_visibility": str(item.get("heroine_visibility", "")),
+        "continuity_priority": str(item.get("continuity_priority", "")),
+        "wardrobe_read": str(item.get("wardrobe_read", "")),
+        "continuity_lock": str(item.get("continuity_lock", "")),
         "route_reason": str(item.get("route_reason", "")),
         "use_ref": use_ref,
         "clip_index": int(item.get("clip_index", 1)),
@@ -244,7 +250,8 @@ def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     palette = str(section.get("palette_hint", "")).strip()
     lighting = str(section.get("lighting_hint", "")).strip()
     location = (
-        str(section.get("location_family", "")).strip()
+        str(clip.get("location_family", "")).strip()
+        or str(section.get("location_family", "")).strip()
         or str(section.get("location_anchor", "")).strip()
         or str(clip.get("scene_detail", "")).strip()
     )
@@ -263,6 +270,8 @@ def _negative_prompt(clip: dict, brief: dict) -> str:
         extra.append("warped reflections")
     if bool(clip.get("use_ref", False)):
         extra.append("identity drift")
+    if str(clip.get("face_exposure_level", "")).strip().lower() in {"direct", "soft"}:
+        extra.extend(["different person", "age drift", "hairstyle drift", "wardrobe swap", "duplicate subject"])
     if "world_rules" in world and "night" in str(world.get("world_rules", "")).lower():
         extra.append("daylight mismatch")
     return workflow_negative_prompt(extra)
@@ -449,7 +458,7 @@ def _beat_atoms(brief: dict, clip: dict) -> dict:
                 continue
             if str(beat.get("beat_id", "")).strip() == beat_id:
                 return dict(beat)
-    return compact_section_atoms(brief, str(clip.get("section_name", "")))
+    return compact_section_atoms(brief, str(clip.get("section_name", "")), beat_id)
 
 
 def _workflow_axis(section: dict, clip: dict) -> str:

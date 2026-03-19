@@ -22,7 +22,10 @@ def run_visual_story_bible(stage_input: StageInput) -> StageOutput:
 def _preview(story_bible: dict) -> dict:
     return {
         "hero_identity_lock": str(story_bible.get("hero_identity_lock", "")),
+        "heroine_invariants": str(story_bible.get("heroine_invariants", "")),
         "world_rules": str(story_bible.get("world_rules", "")),
+        "world_invariants": str(story_bible.get("world_invariants", "")),
+        "closeup_rules": str(story_bible.get("closeup_rules", "")),
         "recurring_location_families": list(story_bible.get("recurring_location_families", [])),
         "lyric_beats": [
             {

@@ -3,14 +3,16 @@ from __future__ import annotations
 
 def build_quality_review(config: dict, payload: dict) -> dict:
     review: dict = {}
-    story = _review_story_alignment(payload)
+    story = _review_story_alignment(config, payload)
     if story:
         review["lyric_alignment"] = story["lyric_alignment"]
         review["repeat_variation"] = story["repeat_variation"]
         review["story_progression"] = story["story_progression"]
         review["render_prompt_repetition"] = story["render_prompt_repetition"]
+        review["profile_continuity"] = story["profile_continuity"]
+        review["same_heroine_protection"] = story["same_heroine_protection"]
         review["visual"] = {
-            "reasoning": "Deterministic review inspected lyric alignment, repeat variation, story progression, and render prompt reuse.",
+            "reasoning": "Deterministic review inspected lyric alignment, repeat variation, story progression, render prompt reuse, and same-heroine continuity coverage.",
             "strengths": _collect_strengths(story),
             "risks": _collect_risks(story),
         }
@@ -43,7 +45,7 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
     }
 
 
-def _review_story_alignment(payload: dict) -> dict:
+def _review_story_alignment(config: dict, payload: dict) -> dict:
     timeline = payload.get("lyrics_timeline", {})
     story_bible = payload.get("visual_story_bible", {})
     shot_timeline = payload.get("shot_timeline", {})
@@ -66,6 +68,8 @@ def _review_story_alignment(payload: dict) -> dict:
         },
         "story_progression": progression,
         "render_prompt_repetition": repetition,
+        "profile_continuity": _profile_continuity(payload),
+        "same_heroine_protection": _same_heroine_protection(config, payload),
     }
 
 
@@ -99,9 +103,70 @@ def _render_prompt_repetition(workflow_inputs: dict) -> dict:
     }
 
 
+def _profile_continuity(payload: dict) -> dict:
+    story = payload.get("visual_story_bible", {}) if isinstance(payload, dict) else {}
+    heroine = str(story.get("heroine_invariants", story.get("hero_identity_lock", ""))).strip()
+    world = str(story.get("world_invariants", story.get("world_rules", ""))).strip()
+    locations = [str(x).strip() for x in story.get("location_family_rules", story.get("recurring_location_families", [])) if str(x).strip()]
+    strengths = []
+    risks = []
+    if heroine:
+        strengths.append("same-heroine invariants are present in the story bible")
+    else:
+        risks.append("same-heroine invariants are missing")
+    if world:
+        strengths.append("continuous world invariants are present")
+    else:
+        risks.append("continuous world invariants are missing")
+    if locations:
+        strengths.append("recurring location families are defined")
+    else:
+        risks.append("recurring location families are missing")
+    return {"reasoning": "Profile continuity fields were checked for heroine, world, and recurring location constraints.", "strengths": strengths, "risks": risks}
+
+
+def _same_heroine_protection(config: dict, payload: dict) -> dict:
+    routes = [row for row in payload.get("clip_routes", []) if isinstance(row, dict)]
+    policy = {}
+    profile_intent = payload.get("profile_intent", {})
+    if isinstance(profile_intent, dict):
+        policy = profile_intent.get("resolved_profile_policy", {})
+    max_direct_face_ratio = 0.2
+    if isinstance(policy, dict):
+        try:
+            max_direct_face_ratio = float(policy.get("max_direct_face_ratio", 0.2))
+        except Exception:
+            max_direct_face_ratio = 0.2
+    sensitive = [
+        row
+        for row in routes
+        if str(row.get("face_exposure_level", "")).strip().lower() in {"direct", "soft"}
+        or str(row.get("continuity_priority", "")).strip().lower() == "high"
+    ]
+    protected = [row for row in sensitive if bool(row.get("use_ref", False))]
+    ratio = (len(protected) / float(len(sensitive))) if sensitive else 1.0
+    direct_face = [
+        row for row in routes if str(row.get("face_exposure_level", "")).strip().lower() == "direct"
+    ]
+    direct_face_ratio = (len(direct_face) / float(len(routes))) if routes else 0.0
+    strengths = ["identity-sensitive shots are mostly ref-protected"] if ratio >= 0.75 else []
+    risks = ["identity-sensitive shots are under-protected by ref routing"] if ratio < 0.75 else []
+    if direct_face_ratio <= max_direct_face_ratio:
+        strengths.append("direct-face shot ratio stays within profile policy")
+    else:
+        risks.append("direct-face shot ratio exceeds profile policy")
+    return {
+        "reasoning": "Face-sensitive and high-continuity shots were checked for ref protection.",
+        "strengths": strengths,
+        "risks": risks,
+        "protected_ratio": round(ratio, 3),
+        "direct_face_ratio": round(direct_face_ratio, 3),
+    }
+
+
 def _collect_strengths(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "render_prompt_repetition"):
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "render_prompt_repetition", "profile_continuity", "same_heroine_protection"):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("strengths", []) if str(x).strip())
     return out[:8] or ["lyric-first contracts are structurally present"]
@@ -109,7 +174,7 @@ def _collect_strengths(story: dict) -> list[str]:
 
 def _collect_risks(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "render_prompt_repetition"):
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "render_prompt_repetition", "profile_continuity", "same_heroine_protection"):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("risks", []) if str(x).strip())
     return out[:8] or ["no major lyric-story structural risk detected"]

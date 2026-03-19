@@ -135,8 +135,8 @@ def test_tti_plan_allows_missing_creative_seed_fields(monkeypatch):
     assert len(out["shots"]) == 2
 
 
-def test_tti_preserves_planner_shot_types_instead_of_forcing_section_defaults(monkeypatch):
-    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_five)
+def test_tti_rebalances_shot_types_for_environment_first_profiles(monkeypatch):
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_five_emotion_close)
     payload = {
         "audio_map": {
             "duration_sec": 20.0,
@@ -152,12 +152,76 @@ def test_tti_preserves_planner_shot_types_instead_of_forcing_section_defaults(mo
                 {"name": "outro", "start_sec": 16.0, "end_sec": 20.0},
             ],
         },
-        "visual_story_bible": _story_bible(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+        "visual_story_bible": {
+            **_story_bible(["intro", "verse", "pre_chorus", "chorus", "outro"]),
+            "resolved_profile_policy": {
+                "visual_mode": "environment_first",
+                "continuity_mode": "same_heroine",
+                "face_policy": "avoid",
+                "shot_bias": "environment",
+                "ref_policy": "minimal",
+                "direct_face_sections": [],
+                "shot_distribution": {
+                    "CHAR_MASTER": 0.08,
+                    "EMOTION_CLOSE": 0.04,
+                    "PERF_WIDE": 0.22,
+                    "ENV_TRANSITION": 0.38,
+                    "DETAIL_INSERT": 0.28,
+                },
+                "face_exposure_defaults": {},
+                "ref_triggers": {},
+            },
+        },
         "lyrics_timeline": _timeline(["intro", "verse", "pre_chorus", "chorus", "outro"], [4.0, 4.0, 4.0, 4.0, 4.0]),
     }
     out = build_tti_plan({}, payload)
     types = [shot["shot_type"] for shot in out["shots"]]
-    assert types == ["DETAIL_INSERT"] * 5
+    assert "EMOTION_CLOSE" not in types
+    assert sum(1 for shot_type in types if shot_type in {"ENV_TRANSITION", "DETAIL_INSERT"}) >= 3
+
+
+def test_tti_keeps_payoff_closeup_only_in_direct_face_sections(monkeypatch):
+    monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_two_emotion_close)
+    story_bible = _story_bible(["verse", "chorus"])
+    story_bible["lyric_beats"][1]["payoff_role"] = "release"
+    story_bible["section_progression"][1]["story_function"] = "payoff"
+    payload = {
+        "audio_map": {
+            "duration_sec": 10.0,
+            "genre_description": "bright city-pop production",
+            "lyrics": "[v] line",
+            "style_guidance": "g",
+            "tags": "city pop, female vocal",
+            "sections": [
+                {"name": "verse", "start_sec": 0.0, "end_sec": 5.0},
+                {"name": "chorus", "start_sec": 5.0, "end_sec": 10.0},
+            ],
+        },
+        "visual_story_bible": {
+            **story_bible,
+            "resolved_profile_policy": {
+                "visual_mode": "balanced",
+                "continuity_mode": "same_heroine",
+                "face_policy": "payoff_only",
+                "shot_bias": "mixed",
+                "ref_policy": "identity_sensitive_only",
+                "direct_face_sections": ["chorus"],
+                "shot_distribution": {
+                    "CHAR_MASTER": 0.20,
+                    "EMOTION_CLOSE": 0.20,
+                    "PERF_WIDE": 0.30,
+                    "ENV_TRANSITION": 0.20,
+                    "DETAIL_INSERT": 0.10,
+                },
+                "face_exposure_defaults": {},
+                "ref_triggers": {},
+            },
+        },
+        "lyrics_timeline": _timeline(["verse", "chorus"], [5.0, 5.0]),
+    }
+    out = build_tti_plan({}, payload)
+    assert out["shots"][0]["shot_type"] != "EMOTION_CLOSE"
+    assert out["shots"][1]["shot_type"] == "EMOTION_CLOSE"
 
 
 def _story_bible(names: list[str]) -> dict:
@@ -229,6 +293,20 @@ def _fake_tti_generate_five(_config, _prompt, _schema):
     return {
         "master_anchor": _master(401),
         "shots": [_shot(i, detail=f"detail {i}", shot_type="DETAIL_INSERT") for i in range(5)],
+    }
+
+
+def _fake_tti_generate_five_emotion_close(_config, _prompt, _schema):
+    return {
+        "master_anchor": _master(402),
+        "shots": [_shot(i, detail=f"detail {i}", shot_type="EMOTION_CLOSE") for i in range(5)],
+    }
+
+
+def _fake_tti_generate_two_emotion_close(_config, _prompt, _schema):
+    return {
+        "master_anchor": _master(403),
+        "shots": [_shot(i, shot_type="EMOTION_CLOSE") for i in range(2)],
     }
 
 

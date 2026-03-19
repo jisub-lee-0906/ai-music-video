@@ -93,7 +93,8 @@ def _chain_key(anchor: dict) -> str:
 def _subject_clause(brief: dict, anchor: dict) -> str:
     world = compact_world_atoms(brief)
     shot_type = str(anchor.get("shot_type", "")).strip().lower().replace("_", " ")
-    return compact_prompt_clause(f"{world['hero_identity']}, {shot_type} framing", 20)
+    face = str(anchor.get("face_exposure_level", "")).strip()
+    return compact_prompt_clause(f"{world['heroine_invariants'] or world['hero_identity']}, {shot_type} framing, {face} face exposure", 24)
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
@@ -124,7 +125,8 @@ def _environment_clause(anchor: dict, section: dict) -> str:
 def _continuity_clause(anchor: dict) -> str:
     relation = str(anchor.get("space_relation", "")).strip() or "keeping the same space relation"
     phase = _clip_phase(anchor)
-    return compact_prompt_clause(f"{relation}, phase {phase}", 22)
+    continuity = str(anchor.get("continuity_lock", "")).strip() or "same heroine in one world"
+    return compact_prompt_clause(f"{continuity}, {relation}, phase {phase}", 28)
 
 
 def _compose_flux2_ref_prompt(
@@ -234,7 +236,7 @@ def _beat_atoms(brief: dict, anchor: dict) -> dict:
                 continue
             if str(beat.get("beat_id", "")).strip() == beat_id:
                 return dict(beat)
-    return compact_section_atoms(brief, str(anchor.get("section_name", "")))
+    return compact_section_atoms(brief, str(anchor.get("section_name", "")), beat_id)
 
 
 def _workflow_axis(section: dict, anchor: dict) -> str:
