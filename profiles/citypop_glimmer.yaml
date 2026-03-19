@@ -25,6 +25,16 @@ audio:
     Build the hook from one concrete late-night city image and make it title-worthy, memorable
     after one listen, and singable in natural Japanese. The hook should feel adult, graceful,
     and emotionally inevitable rather than slogan-like or generic.
+audio_ending_policy:
+  ending_mode: glow_fade
+  final_chorus_required: true
+  outro_required: true
+  ending_energy_drop: medium
+  ending_vocal_density: low
+  ending_tags:
+    - soft outro
+    - warm final resolve
+    - gentle fade out
 visual:
   brief: >
     A photorealistic cinematic city-pop nightlife music video with a young adult East Asian

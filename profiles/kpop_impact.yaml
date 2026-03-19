@@ -21,6 +21,16 @@ audio:
     Build the hook around one commanding phrase and make it punchy, replayable, and natural in
     Korean. The hook should feel rebellious, charismatic, and instantly performable rather than
     soft, wistful, or overly cute.
+audio_ending_policy:
+  ending_mode: hard_stop
+  final_chorus_required: true
+  outro_required: false
+  ending_energy_drop: low
+  ending_vocal_density: full
+  ending_tags:
+    - big final chorus
+    - final strike
+    - slammed-shut ending
 visual:
   brief: >
     A photorealistic cinematic rebellious diva music video with a young adult East Asian heroine,

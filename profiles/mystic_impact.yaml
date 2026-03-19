@@ -23,6 +23,16 @@ audio:
     Build the hook around one unforgettable fatalistic image and make it immediate, sharp, and
     singable in natural Korean. The hook should feel mythic, dangerous, and emotionally
     overwhelming rather than vague, cute, or melodically sleepy.
+audio_ending_policy:
+  ending_mode: hard_stop
+  final_chorus_required: true
+  outro_required: false
+  ending_energy_drop: low
+  ending_vocal_density: medium
+  ending_tags:
+    - ritual resolve
+    - sealed ending
+    - final strike
 visual:
   brief: >
     A photorealistic cinematic mystical East Asian dark-impact music video with an East Asian

@@ -21,6 +21,16 @@ audio:
     Build the hook around one vivid emotional image and make it immediate, singable, and
     title-worthy in natural Japanese. The hook should feel bold, youthful, and cathartic rather
     than vague, sleepy, or overly delicate.
+audio_ending_policy:
+  ending_mode: anthem_lift
+  final_chorus_required: true
+  outro_required: true
+  ending_energy_drop: medium
+  ending_vocal_density: medium
+  ending_tags:
+    - anthemic final chorus
+    - clean resolve
+    - driving outro
 visual:
   brief: >
     A photorealistic cinematic J-rock heroine music video with a young adult East Asian lead,

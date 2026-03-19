@@ -49,9 +49,9 @@ def _audio_prompt(plan: dict) -> str:
 def _audio_prompt_rules(plan: dict) -> str:
     return (
         _audio_output_contract()
-        + _audio_song_craft_brief()
-        + _audio_artist_direction()
-        + _audio_description_rules()
+        + _audio_song_craft_brief(plan)
+        + _audio_artist_direction(plan)
+        + _audio_description_rules(plan)
         + _audio_field_boundary_rules()
         + _language_style_rules(plan)
     )
@@ -68,21 +68,38 @@ def _audio_output_contract() -> str:
     )
 
 
-def _audio_song_craft_brief() -> str:
-    return (
-        "Write a full song, not a fragment. "
-        "If there is a final chorus, keep section='chorus' and label it 'Final Chorus'. "
-    )
+def _audio_song_craft_brief(plan: dict) -> str:
+    ending = _ending_policy(plan)
+    rules = ["Write a full song, not a fragment. "]
+    if bool(ending.get("final_chorus_required", True)):
+        rules.append("Use a distinct final return. Keep that block section='chorus' and label it 'Final Chorus'. ")
+    else:
+        rules.append("You may end without a labeled final chorus if the form resolves more cleanly that way. ")
+    if bool(ending.get("outro_required", False)):
+        rules.append("After the last chorus, include a final section='outro' block that clearly closes the song. ")
+    else:
+        rules.append("Do not force an outro if a decisive last chorus ending fits better. ")
+    rules.append(_ending_mode_rule(str(ending.get("ending_mode", ""))))
+    rules.append(_ending_density_rule(str(ending.get("ending_vocal_density", ""))))
+    return "".join(rules)
 
 
-def _audio_artist_direction() -> str:
-    return ""
+def _audio_artist_direction(plan: dict) -> str:
+    ending = _ending_policy(plan)
+    tags = ", ".join(str(x).strip() for x in ending.get("ending_tags", []) if str(x).strip())
+    if not tags:
+        return ""
+    return f"Ending production intent={tags}. "
 
 
-def _audio_description_rules() -> str:
+def _audio_description_rules(plan: dict) -> str:
+    ending = _ending_policy(plan)
+    ending_tags = ", ".join(str(x).strip() for x in ending.get("ending_tags", []) if str(x).strip())
+    ending_clause = f"Encode the ending behavior in genre_description using short production phrases such as {ending_tags}. " if ending_tags else ""
     return (
         "genre_description is the AceStep tags text field. Write it in English as a short production brief starting with a genre label and colon. "
         "Treat the provided audio intent and hook intent as the source of truth. "
+        + ending_clause
     )
 
 
@@ -150,11 +167,15 @@ def _intent_clause(plan: dict) -> str:
     audio = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
     world = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
     negative = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
+    escalation = intent.get("escalation_intent", {}) if isinstance(intent, dict) else {}
     parts = [
         _profile_line("Audio intent", audio.get("brief", "")),
         _profile_line("Hook intent", audio.get("hook_brief", "")),
         _profile_line("World intent", world.get("visual_intent", "")),
         _profile_line("Story world", world.get("story_world", "")),
+        _profile_line("Payoff style", world.get("payoff_style", "")),
+        _profile_line("Outro feel", escalation.get("outro_residue", "")),
+        _profile_line("Audio ending policy", _ending_policy_digest(audio.get("ending_policy", {}))),
         _profile_line("Avoid", " ".join([str(negative.get("visual_negative", "")).strip(), str(negative.get("mv_avoid", "")).strip()]).strip()),
     ]
     return "".join(parts)
@@ -173,6 +194,7 @@ def _plan_once(config: dict, plan: dict) -> dict:
 def _normalize_and_validate(config: dict, plan: dict) -> dict:
     planned = _plan_with_llm(config, plan)
     normalized = normalize_audio_fields(planned)
+    _validate_ending_contract(plan, normalized)
     normalized["lyrics_blocks"] = _attach_line_indexes(normalized.get("lyrics_blocks", []))
     normalized["duration"] = _resolved_duration(plan, normalized)
     normalized["tags"] = plan["tags"]
@@ -212,3 +234,69 @@ def _resolved_duration(plan: dict, normalized: dict) -> int:
         int(plan.get("beats_per_bar", 4)),
         resolve_section_bars({"section_bars": plan.get("section_bars", {})}),
     )
+
+
+def _ending_policy(plan: dict) -> dict:
+    intent = plan.get("profile_intent", {}) if isinstance(plan.get("profile_intent", {}), dict) else {}
+    audio = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
+    policy = audio.get("ending_policy", {}) if isinstance(audio, dict) else {}
+    return policy if isinstance(policy, dict) else {}
+
+
+def _ending_mode_rule(mode: str) -> str:
+    return {
+        "hard_stop": "The ending should feel slammed shut, decisive, and non-fading. ",
+        "clean_resolve": "The ending should resolve clearly and confidently without drifting. ",
+        "glow_fade": "The ending should resolve with a graceful lingering glow and controlled fade. ",
+        "bittersweet_tail": "The ending should leave a small emotional residue with a brief tail, not an abrupt cut. ",
+        "anthem_lift": "The ending should feel uplifted and earned, with one final forward-moving release. ",
+    }.get(mode, "")
+
+
+def _ending_density_rule(density: str) -> str:
+    return {
+        "full": "The final section may keep a full vocal phrase count if it still lands decisively. ",
+        "medium": "Keep the final section concise, usually shorter than a verse or chorus. ",
+        "low": "Keep the final section sparse, usually one or two short sung lines. ",
+        "tail_only": "Keep the final section extremely brief, ideally a single short line or tail phrase. ",
+    }.get(density, "")
+
+
+def _ending_policy_digest(policy: dict) -> str:
+    if not isinstance(policy, dict):
+        return ""
+    parts = [
+        f"mode={str(policy.get('ending_mode', '')).strip()}",
+        f"final_chorus_required={bool(policy.get('final_chorus_required', False))}",
+        f"outro_required={bool(policy.get('outro_required', False))}",
+        f"energy_drop={str(policy.get('ending_energy_drop', '')).strip()}",
+        f"vocal_density={str(policy.get('ending_vocal_density', '')).strip()}",
+    ]
+    tags = [str(x).strip() for x in policy.get("ending_tags", []) if str(x).strip()] if isinstance(policy.get("ending_tags", []), list) else []
+    if tags:
+        parts.append(f"ending_tags={', '.join(tags)}")
+    return "; ".join(part for part in parts if not part.endswith("="))
+
+
+def _validate_ending_contract(plan: dict, normalized: dict) -> None:
+    ending = _ending_policy(plan)
+    blocks = [row for row in normalized.get("lyrics_blocks", []) if isinstance(row, dict)]
+    if not blocks:
+        return
+    if bool(ending.get("outro_required", False)):
+        last_section = str(blocks[-1].get("section", "")).strip().lower()
+        if last_section != "outro":
+            raise RuntimeError("audio ending contract failed: outro_required but final block is not outro")
+    if bool(ending.get("final_chorus_required", False)):
+        choruses = [row for row in blocks if str(row.get("section", "")).strip().lower() == "chorus"]
+        if not choruses:
+            raise RuntimeError("audio ending contract failed: final_chorus_required but chorus is missing")
+        last_chorus_label = str(choruses[-1].get("label", "")).strip().lower()
+        if "final chorus" not in last_chorus_label:
+            raise RuntimeError("audio ending contract failed: last chorus is not labeled Final Chorus")
+    density = str(ending.get("ending_vocal_density", "")).strip().lower()
+    if str(blocks[-1].get("section", "")).strip().lower() == "outro":
+        line_count = len([str(x).strip() for x in blocks[-1].get("lines", []) if str(x).strip()])
+        max_lines = {"tail_only": 1, "low": 2, "medium": 4}.get(density)
+        if max_lines is not None and line_count > max_lines:
+            raise RuntimeError(f"audio ending contract failed: outro too long for ending_vocal_density={density}")

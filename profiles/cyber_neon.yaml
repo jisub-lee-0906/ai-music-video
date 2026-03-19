@@ -21,6 +21,16 @@ audio:
     Build the hook around one vivid high-tech image and make it instantly memorable, chantable,
     and clean in natural English. The hook should feel sleek, addictive, and electrically alive
     rather than vague or over-written.
+audio_ending_policy:
+  ending_mode: clean_resolve
+  final_chorus_required: true
+  outro_required: false
+  ending_energy_drop: low
+  ending_vocal_density: medium
+  ending_tags:
+    - final impact
+    - system-locked ending
+    - clean final hit
 visual:
   brief: >
     A photorealistic cinematic cyber-neon music video with an East Asian heroine, a sleek

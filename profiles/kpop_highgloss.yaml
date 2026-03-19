@@ -21,6 +21,16 @@ audio:
     Build the hook around one instantly memorable phrase and make it clean, repeatable, and
     performance-ready in natural Korean. The hook should feel confident, addictive, and sharply
     visual rather than abstract or meandering.
+audio_ending_policy:
+  ending_mode: clean_resolve
+  final_chorus_required: true
+  outro_required: false
+  ending_energy_drop: low
+  ending_vocal_density: full
+  ending_tags:
+    - big final chorus
+    - clean final hit
+    - polished ending
 visual:
   brief: >
     A photorealistic cinematic glossy K-pop music video with a young adult East Asian heroine,

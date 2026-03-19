@@ -21,6 +21,16 @@ audio:
     Build the hook around one luminous emotional image and make it immediate, singable, and
     memorable in natural English. The hook should feel graceful, transporting, and emotionally
     open rather than generic or shapeless.
+audio_ending_policy:
+  ending_mode: glow_fade
+  final_chorus_required: true
+  outro_required: true
+  ending_energy_drop: high
+  ending_vocal_density: low
+  ending_tags:
+    - luminous outro
+    - final resolve
+    - lingering fade
 visual:
   brief: >
     A photorealistic cinematic ethereal-flow music video with an East Asian heroine, a luminous

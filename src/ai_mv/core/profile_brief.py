@@ -29,12 +29,14 @@ def build_profile_intent(config: dict) -> dict:
     visual = _section(config, "visual")
     mv = _section(config, "mv")
     policy = resolve_profile_policy(config)
+    ending_policy = _audio_ending_policy(config)
     intent = ProfileIntent(
         audio_intent={
             "language": _text(audio, "language") or "en",
             "brief": _text(audio, "brief"),
             "hook_brief": _text(audio, "hook_brief"),
             "tags": [str(x).strip() for x in audio.get("tags", []) if str(x).strip()] if isinstance(audio.get("tags", []), list) else [],
+            "ending_policy": dict(ending_policy),
         },
         world_intent={
             "visual_intent": _text(visual, "brief"),
@@ -57,6 +59,7 @@ def build_profile_intent(config: dict) -> dict:
             "chorus_payoff": _text(mv, "payoff_style"),
             "bridge_interrupt": _text(mv, "action_vocabulary"),
             "outro_residue": _text(mv, "outro_feel"),
+            "audio_ending_policy": dict(ending_policy),
         },
     )
     return {
@@ -138,6 +141,27 @@ def _payoff_closeup_policy(mv: dict) -> str:
     return "prefer posture and eye-line escalation over repeated close-up use"
 
 
+def _audio_ending_policy(config: dict) -> dict:
+    audio = _section(config, "audio")
+    mv = _section(config, "mv")
+    raw = config.get("audio_ending_policy", {}) if isinstance(config, dict) else {}
+    raw = raw if isinstance(raw, dict) else {}
+    mode = _enum(raw.get("ending_mode"), {"hard_stop", "clean_resolve", "glow_fade", "bittersweet_tail", "anthem_lift"}, _derive_ending_mode(audio, mv))
+    final_chorus_required = _bool(raw.get("final_chorus_required"), True)
+    outro_required = _bool(raw.get("outro_required"), mode in {"glow_fade", "bittersweet_tail", "anthem_lift"})
+    energy_drop = _enum(raw.get("ending_energy_drop"), {"low", "medium", "high"}, _default_energy_drop(mode))
+    vocal_density = _enum(raw.get("ending_vocal_density"), {"full", "medium", "low", "tail_only"}, _default_vocal_density(mode))
+    ending_tags = _ending_tags(raw.get("ending_tags", []), mode, audio, mv)
+    return {
+        "ending_mode": mode,
+        "final_chorus_required": final_chorus_required,
+        "outro_required": outro_required,
+        "ending_energy_drop": energy_drop,
+        "ending_vocal_density": vocal_density,
+        "ending_tags": ending_tags,
+    }
+
+
 def _extract_fragment(text: str, markers: tuple[str, ...]) -> str:
     raw = str(text).strip()
     low = raw.lower()
@@ -150,3 +174,82 @@ def _extract_fragment(text: str, markers: tuple[str, ...]) -> str:
 
 def _join_parts(parts: list[str]) -> str:
     return ", ".join(part.strip(" ,.") for part in parts if str(part).strip(" ,."))
+
+
+def _derive_ending_mode(audio: dict, mv: dict) -> str:
+    text = " ".join([_text(audio, "brief"), _text(mv, "outro_feel"), _text(mv, "avoid")]).lower()
+    if any(token in text for token in ("fade", "linger", "glow", "luminous", "after-image")):
+        return "glow_fade"
+    if any(token in text for token in ("bittersweet", "decay", "burned", "residue")):
+        return "bittersweet_tail"
+    if any(token in text for token in ("anthem", "breakthrough", "forward-looking")):
+        return "anthem_lift"
+    if any(token in text for token in ("slammed shut", "nailed down", "impossible to shrink", "not allowed to dissolve", "sealed", "hard after-image")):
+        return "hard_stop"
+    return "clean_resolve"
+
+
+def _default_energy_drop(mode: str) -> str:
+    return {
+        "hard_stop": "low",
+        "clean_resolve": "medium",
+        "glow_fade": "high",
+        "bittersweet_tail": "high",
+        "anthem_lift": "medium",
+    }.get(mode, "medium")
+
+
+def _default_vocal_density(mode: str) -> str:
+    return {
+        "hard_stop": "full",
+        "clean_resolve": "medium",
+        "glow_fade": "low",
+        "bittersweet_tail": "tail_only",
+        "anthem_lift": "medium",
+    }.get(mode, "medium")
+
+
+def _ending_tags(raw: object, mode: str, audio: dict, mv: dict) -> list[str]:
+    vals = [str(x).strip() for x in raw if str(x).strip()] if isinstance(raw, list) else []
+    if vals:
+        return vals[:6]
+    source = " ".join([_text(audio, "brief"), _text(mv, "outro_feel")]).lower()
+    if "city pop" in source:
+        return ["soft outro", "warm final resolve", "gentle fade out"]
+    if "k-pop" in source or "k pop" in source:
+        return ["big final chorus", "clean final hit", "polished ending"]
+    if "j-rock" in source or "j rock" in source or "anime rock" in source:
+        return ["anthemic final chorus", "clean resolve", "driving outro"]
+    if "grunge" in source or "alternative rock" in source:
+        return ["raw ending", "dirty after-image", "hard stop"]
+    if "ethereal" in source or "future-pop" in source or "future pop" in source:
+        return ["luminous outro", "final resolve", "lingering fade"]
+    if "cyber" in source or "future bass" in source or "electro-pop" in source:
+        return ["final impact", "system-locked ending", "clean final hit"]
+    if "mystical" in source or "ritual" in source:
+        return ["ritual resolve", "sealed ending", "final strike"]
+    return {
+        "hard_stop": ["hard stop", "clean final hit", "decisive ending"],
+        "clean_resolve": ["final resolve", "clean ending", "controlled finish"],
+        "glow_fade": ["soft outro", "final resolve", "gentle fade out"],
+        "bittersweet_tail": ["decaying tail", "final residue", "soft ending"],
+        "anthem_lift": ["anthemic final chorus", "uplifted outro", "clean resolve"],
+    }.get(mode, ["final resolve", "clean ending"])
+
+
+def _enum(value: object, allowed: set[str], default: str) -> str:
+    text = str(value).strip().lower()
+    return text if text in allowed else default
+
+
+def _bool(value: object, default: bool) -> bool:
+    if value in ("", None):
+        return default
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "on"}:
+        return True
+    if text in {"false", "0", "no", "off"}:
+        return False
+    return default

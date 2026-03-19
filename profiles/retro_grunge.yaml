@@ -21,6 +21,16 @@ audio:
     Build the hook around one rebellious concrete image and make it immediate, repeatable, and
     sharp in natural English. The hook should feel dangerous, stubborn, and iconic rather than
     vague or overly polished.
+audio_ending_policy:
+  ending_mode: hard_stop
+  final_chorus_required: true
+  outro_required: false
+  ending_energy_drop: low
+  ending_vocal_density: full
+  ending_tags:
+    - raw ending
+    - dirty after-image
+    - hard stop
 visual:
   brief: >
     A photorealistic cinematic retro-grunge music video with an East Asian heroine, concrete
