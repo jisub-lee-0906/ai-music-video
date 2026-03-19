@@ -222,6 +222,9 @@ def test_tti_keeps_payoff_closeup_only_in_direct_face_sections(monkeypatch):
     out = build_tti_plan({}, payload)
     assert out["shots"][0]["shot_type"] != "EMOTION_CLOSE"
     assert out["shots"][1]["shot_type"] == "EMOTION_CLOSE"
+    assert out["shots"][1]["edit_role"] == "release"
+    assert out["shots"][1]["mv_function"] == "payoff"
+    assert out["shots"][1]["face_exposure_level"] == "direct"
 
 
 def _story_bible(names: list[str]) -> dict:

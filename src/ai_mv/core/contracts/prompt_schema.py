@@ -172,7 +172,7 @@ def _lyrics_section_schema() -> dict:
             "section_label": {"type": "string"},
             "lines": {"type": "array", "items": _lyric_line_schema(), "minItems": 1, "maxItems": 12},
             "hook_lines": {"type": "array", "items": {"type": "integer"}, "minItems": 0, "maxItems": 8},
-            "lyric_beats": {"type": "array", "items": _lyric_beat_schema(), "minItems": 1, "maxItems": 4},
+            "lyric_beats": {"type": "array", "items": _lyric_beat_schema(), "minItems": 1, "maxItems": 5},
         },
     }
 

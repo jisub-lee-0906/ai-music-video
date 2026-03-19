@@ -37,6 +37,10 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "Do not write workflow_motion_clause as a full sentence or finite-verb sentence starting with she/he. "
         "Use the story bible and lyric beat as the source of truth. "
         "NO TEXT, NO TYPOGRAPHY, NO WATERMARKS, NO LOGOS, NO SIGNAGE, NO UI OVERLAY. "
+        "Make the shot plan genuinely varied: if two nearby beats share a shot_type, they must still differ materially in camera_language, pose_delta, scene_detail, or framing scale. "
+        "Use shot_type as a storytelling choice, not a default. Verses should usually favor observation and traversal, pre-chorus should tighten intention, chorus should simplify into the hook image, bridge should interrupt or isolate, and outro should resolve. "
+        "Do not repeat the same lane/crosswalk/reflection composition across adjacent beats unless the lyric explicitly repeats and the camera intent escalates. "
+        "scene_detail should name the concrete visual state of the beat, not just restate the location family. "
         f"Allowed shot types={', '.join(SHOT_TYPES)}. "
         f"Allowed kinetic transitions={', '.join(KINETIC_TRANSITIONS)}. "
         f"Allowed kinetic intensities={', '.join(KINETIC_INTENSITIES)}. "
@@ -90,7 +94,8 @@ def _assign_story_metadata(shots: list[dict], timeline: dict, story_bible: dict)
         item["motion_hint"] = str(item.get("motion_hint", "")).strip() or str(beat.get("visible_action", "")).strip()
         item["emotion"] = str(item.get("emotion", "")).strip() or str(beat.get("emotional_turn", "")).strip()
         item["continuity_anchor"] = str(beat.get("continuity_anchor", "")).strip()
-        item["edit_role"] = str(item.get("edit_role", "")).strip().lower()
+        item["planner_edit_role"] = str(item.get("edit_role", "")).strip()
+        item["edit_role"] = _canonical_edit_role(item.get("edit_role", ""), beat.get("payoff_role", ""))
         item["mv_function"] = _mv_function(item["edit_role"])
         item["transition_role"] = _transition_role(item["edit_role"])
         item["line_refs"] = list(beat.get("line_refs", []))
@@ -396,3 +401,23 @@ def _forced_shot_type(shot: dict, beat: dict, policy: dict) -> str | None:
     if face_policy == "payoff_only" and section_label in direct_face_sections and payoff_role in {"release", "arrival", "payoff"}:
         return "EMOTION_CLOSE"
     return None
+
+
+def _canonical_edit_role(raw_edit_role: object, payoff_role: object) -> str:
+    payoff = str(payoff_role).strip().lower()
+    if payoff in {"entry", "interrupt", "residue", "develop", "hold", "release"}:
+        return payoff
+    text = str(raw_edit_role).strip().lower()
+    if not text:
+        return "develop"
+    if any(token in text for token in ("climax", "release", "payoff", "arrives", "arrival")):
+        return "release"
+    if any(token in text for token in ("entry", "opening", "introduce", "sets the atmosphere", "introduce the emotional premise")):
+        return "entry"
+    if any(token in text for token in ("interrupt", "break", "rupture")):
+        return "interrupt"
+    if any(token in text for token in ("residue", "outro", "after-image", "linger", "resolve out")):
+        return "residue"
+    if any(token in text for token in ("hold", "lift", "build", "sustain")):
+        return "hold"
+    return "develop"

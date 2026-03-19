@@ -19,16 +19,24 @@ def build_lyrics_timeline_preview_prompt(audio_plan: dict, sections: list[dict])
 
 
 def _planner_prompt(audio_plan: dict, sections: list[dict]) -> str:
+    max_beats = _recommended_max_beats(audio_plan, sections)
     return (
         "You are a lyric-to-scene timeline planner for a music video. "
         "Return strict JSON only. No prose outside JSON. "
         "Required field: sections. Each section must include section_name,section_label,lines,hook_lines,lyric_beats. "
         "Every lyric_beat must include beat_id,line_refs,literal_image,visible_action,emotional_turn,continuity_anchor,payoff_role,repeat_variant_of. "
         "Use the final generated lyrics as the source of truth. "
-        "Break each section into 1-3 visual beats. "
+        f"Break each section into 1-{max_beats} visual beats depending on line count and section length. "
+        "Use more beats when a section has many lines, clear image turns, or a hook/release split. "
+        "Favor 2 beats for compact sections, 3-4 beats for dense verses or choruses, and 4-5 only when the lyrics genuinely present multiple distinct visual turns. "
+        "Cover every lyric line at least once across the section's beat line_refs; do not leave lyric lines unmapped. "
+        "Treat line_refs as a complete coverage map for the section. Prefer contiguous or musically coherent line groupings instead of arbitrary scattering. "
         "line_refs must point only to line_index values from that section. "
         "literal_image must stay close to the lyric image. "
         "visible_action must be screen-readable. "
+        "Within a section, avoid flattening all beats into the same image or action. "
+        "If a chorus repeats, keep the core motif but change at least the emotional_turn or payoff_role and shift the image/action emphasis. "
+        "Intro should establish the world cleanly, verses should progress through distinct observations, pre-chorus should tighten and aim, chorus should present the hook image and release, bridge should interrupt or thin the motion, and outro should resolve with a final after-image. "
         "Repeated choruses must not collapse into the same emotional_turn and payoff_role. "
         f"Sections={_section_digest(sections)}. Lyrics={_lyrics_digest(audio_plan)}."
     )
@@ -74,3 +82,26 @@ def _attach_time_ranges(timeline: dict, sections: list[dict]) -> None:
         for idx, beat in enumerate(beats):
             beat["start_sec"] = round(start + beat_span * idx, 3)
             beat["end_sec"] = round(start + beat_span * (idx + 1), 3)
+
+
+def _recommended_max_beats(audio_plan: dict, sections: list[dict]) -> int:
+    max_lines = 0
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        lines = [row for row in section.get("lines", []) if isinstance(row, dict)]
+        max_lines = max(max_lines, len(lines))
+    for block in audio_plan.get("lyrics_blocks", []):
+        if not isinstance(block, dict):
+            continue
+        indexed = [row for row in block.get("indexed_lines", []) if isinstance(row, dict)]
+        if indexed:
+            max_lines = max(max_lines, len(indexed))
+            continue
+        lines = [str(x).strip() for x in block.get("lines", []) if str(x).strip()]
+        max_lines = max(max_lines, len(lines))
+    if max_lines >= 8:
+        return 5
+    if max_lines >= 6:
+        return 4
+    return 3

@@ -1,7 +1,9 @@
 import ai_mv.engines.acestep_1_5_aio.planner as audio_planner
 import ai_mv.engines.flux_2_dev_tti.planner as tti_planner
 import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
+import ai_mv.engines.lyrics_timeline.planner as lyrics_timeline_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
+from ai_mv.core.contracts.prompt_schema import lyrics_timeline_schema
 
 
 def test_audio_prompt_mentions_acestep_tags_field_alignment():
@@ -55,8 +57,30 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "workflow_motion_clause must be a compact natural motion clause" in prompt
     assert "Profile policy=" in prompt
     assert "face_policy=payoff_only" in prompt
+    assert "Make the shot plan genuinely varied" in prompt
     assert "Story bible=" in prompt
     assert "Lyric timeline=" in prompt
+
+
+def test_lyrics_timeline_prompt_mentions_full_line_coverage():
+    prompt = lyrics_timeline_planner._planner_prompt(
+        {"lyrics_blocks": [{"label": "Verse 1", "indexed_lines": [{"line_index": i, "text": f"line {i}"} for i in range(1, 7)]}]},
+        [{
+            "name": "verse_1",
+            "label": "Verse 1",
+            "start_sec": 0.0,
+            "end_sec": 20.0,
+            "lines": [{"line_index": i, "text": f"line {i}"} for i in range(1, 7)],
+        }],
+    )
+    assert "Cover every lyric line at least once" in prompt
+    assert "Treat line_refs as a complete coverage map" in prompt
+    assert "Break each section into 1-4 visual beats" in prompt
+
+
+def test_lyrics_timeline_schema_allows_five_beats_for_dense_sections():
+    schema = lyrics_timeline_schema()
+    assert schema["properties"]["sections"]["items"]["properties"]["lyric_beats"]["maxItems"] == 5
 
 
 def test_flux2_ref_prompt_mentions_atom_generation_contract():

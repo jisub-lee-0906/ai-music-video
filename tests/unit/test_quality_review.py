@@ -38,6 +38,7 @@ def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
     assert out["visual"]["reasoning"]
     assert out["visual"]["strengths"]
     assert out["profile_continuity"]["strengths"]
+    assert "section_visual_separation" in out
 
 
 def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
@@ -112,6 +113,97 @@ def test_run_summary_ignores_non_numeric_line_refs():
 
     assert summary["lyric_beat_count"] == 1
     assert summary["unmapped_lyric_lines"] == 0
+
+
+def test_run_summary_counts_repeated_section_labels_separately():
+    state = {"run_id": "r5", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
+    payload = {
+        "selected_profile": "citypop_glimmer",
+        "audio_map": {"language": "ja", "sections": [{"name": "chorus", "label": "Chorus"}, {"name": "chorus", "label": "Chorus"}]},
+        "lyrics_timeline": {
+            "sections": [
+                {
+                    "section_name": "chorus",
+                    "section_label": "Chorus",
+                    "lines": [{"line_index": 1, "text": "line 1"}],
+                    "lyric_beats": [{"beat_id": "LB01", "line_refs": [1], "visible_action": "walks", "payoff_role": "release"}],
+                },
+                {
+                    "section_name": "chorus",
+                    "section_label": "Chorus",
+                    "lines": [{"line_index": 1, "text": "line 2"}],
+                    "lyric_beats": [{"beat_id": "LB02", "line_refs": [1], "visible_action": "turns", "payoff_role": "release"}],
+                },
+            ]
+        },
+        "shot_timeline": {"shots": [{"lyric_beat_id": "LB01"}, {"lyric_beat_id": "LB02"}]},
+    }
+    summary = build_run_summary(state, payload, {})
+    assert summary["unmapped_lyric_lines"] == 0
+
+
+def test_run_summary_route_stats_use_timeline_section_labels():
+    state = {"run_id": "r6", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
+    payload = {
+        "selected_profile": "citypop_glimmer",
+        "audio_map": {"language": "ja", "sections": [{"name": "chorus", "label": "Final Chorus"}]},
+        "lyrics_timeline": {
+            "sections": [
+                {"section_name": "chorus", "section_label": "Final Chorus", "lyric_beats": [{"beat_id": "chorus3_b1"}]}
+            ]
+        },
+        "clip_routes": [
+            {"shot_id": "S020_C01", "lyric_beat_id": "chorus3_b1", "section_label": "chorus3_b1[1,2]", "use_ref": True},
+            {"shot_id": "S020_C02", "lyric_beat_id": "chorus3_b1", "section_label": "chorus3_b1[1,2]", "use_ref": False},
+        ],
+    }
+    summary = build_run_summary(state, payload, {})
+    assert summary["ref_ratio_by_section"] == {"Final Chorus": 0.5}
+
+
+def test_quality_review_flags_flat_section_visuals():
+    payload = {
+        "visual_story_bible": {
+            "lyric_beats": [
+                {"beat_id": "LB01", "section_label": "Verse 1", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
+                {"beat_id": "LB02", "section_label": "Verse 1", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
+                {"beat_id": "LB03", "section_label": "Chorus", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
+            ]
+        },
+        "lyrics_timeline": {
+            "sections": [
+                {"section_label": "Verse 1", "lyric_beats": [{"beat_id": "LB01"}, {"beat_id": "LB02"}]},
+                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "LB03"}]},
+            ]
+        },
+        "shot_timeline": {"shots": []},
+        "workflow_inputs_preview": {},
+        "clip_routes": [],
+    }
+    out = build_quality_review({}, payload)
+    assert out["section_visual_separation"]["risks"]
+
+
+def test_quality_review_accepts_distinct_adjacent_sections():
+    payload = {
+        "visual_story_bible": {
+            "lyric_beats": [
+                {"beat_id": "LB01", "section_label": "Verse 1", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
+                {"beat_id": "LB02", "section_label": "Chorus", "location_family": "crosswalk", "palette_hint": "gold", "visible_action": "turns and holds"},
+            ]
+        },
+        "lyrics_timeline": {
+            "sections": [
+                {"section_label": "Verse 1", "lyric_beats": [{"beat_id": "LB01"}]},
+                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "LB02"}]},
+            ]
+        },
+        "shot_timeline": {"shots": []},
+        "workflow_inputs_preview": {},
+        "clip_routes": [],
+    }
+    out = build_quality_review({}, payload)
+    assert out["section_visual_separation"]["strengths"]
 
 
 def test_run_summary_failure_does_not_overwrite_latest_success(tmp_path, monkeypatch):
