@@ -229,7 +229,7 @@ def test_wan_compose_prefers_environment_sentence_when_camera_relation_is_static
             "environment_detail": "Wet stripes brighten underfoot",
         }
     )
-    assert text == "She moves through the lane and lifts her eyes toward the station light. Wet stripes brighten underfoot."
+    assert text == "Holds a close side profile. She moves through the lane and lifts her eyes toward the station light. Wet stripes brighten underfoot."
 
 
 def test_wan_compose_keeps_relation_phrase_without_forcing_camera_prefix():
@@ -240,7 +240,7 @@ def test_wan_compose_keeps_relation_phrase_without_forcing_camera_prefix():
             "environment_detail": "Wet lane marks flare softly",
         }
     )
-    assert text == "She continues across the crossing with a calmer stride. Glides backward in front of her, while wet lane marks flare softly."
+    assert text == "Glides backward in front of her. She continues across the crossing with a calmer stride. Wet lane marks flare softly."
 
 
 def test_wan_compose_prefers_environment_when_relation_uses_technical_subject():
@@ -251,7 +251,7 @@ def test_wan_compose_prefers_environment_when_relation_uses_technical_subject():
             "environment_detail": "wet pavement glow slips under the glass line",
         }
     )
-    assert text == "She keeps walking and lets her gaze return forward. Wet pavement glow slips under the glass line."
+    assert text == "The track settles beside her. She keeps walking and lets her gaze return forward. Wet pavement glow slips under the glass line."
 
 
 def test_wan_compose_naturalizes_keep_centered_relation():
@@ -262,7 +262,7 @@ def test_wan_compose_naturalizes_keep_centered_relation():
             "environment_detail": "open pavement extends on camera-right",
         }
     )
-    assert text == "She eases toward stillness by the storefront and lets her eyes fall down the empty sidewalk. A quiet backward glide stays centered on her, while open pavement extends on camera-right."
+    assert text == "A quiet backward glide keeps her centered. She eases toward stillness by the storefront and lets her eyes fall down the empty sidewalk. Open pavement extends on camera-right."
 
 
 def test_wan_compose_naturalizes_gives_her_space_relation():
@@ -273,4 +273,4 @@ def test_wan_compose_naturalizes_gives_her_space_relation():
             "environment_detail": "teal and amber glow trail behind her",
         }
     )
-    assert text == "She carries forward with a measured stride and a faint shoulder release. A steady glide gives her a little space, while teal and amber glow trail behind her."
+    assert text == "A steady glide gives her space. She carries forward with a measured stride and a faint shoulder release. Teal and amber glow trail behind her."

@@ -11,7 +11,7 @@ def test_flux2_ref_plan_is_deterministic():
     assert shot_ids == ["a", "b"]
     assert out["items"][0]["prompt_text"]
     assert out["items"][0]["subject_clause"]
-    assert "left-to-right" in out["items"][0]["continuity_clause"]
+    assert out["items"][0]["continuity_clause"] == "maintaining the exact flat cel-shaded design and bold outlines"
 
 
 def test_flux2_ref_plan_empty_when_no_ref_routes():
@@ -19,13 +19,15 @@ def test_flux2_ref_plan_empty_when_no_ref_routes():
     assert out["items"] == []
 
 
-def test_flux2_ref_prompt_text_includes_subject_action_and_environment():
+def test_flux2_ref_prompt_text_matches_short_continuity_formula():
     payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
     text = out["items"][0]["prompt_text"]
     low = text.lower()
     assert "silver-haired city-pop heroine" in low
-    assert "reflective threshold" in low
+    assert "reflective threshold" not in low
+    assert "no text" not in low
+    assert "maintaining the exact flat cel-shaded design and bold outlines" in low
     assert text.endswith(".")
 
 
@@ -42,7 +44,7 @@ def test_wan_plan_uses_start_end_only():
     assert out["clips"][0]["positive_prompt"]
     assert out["clips"][0]["subject_motion"]
     assert out["clips"][0]["camera_relation"]
-    assert "reflective threshold" in out["clips"][0]["positive_prompt"].lower()
+    assert out["clips"][0]["positive_prompt"].startswith("Camera ")
     assert "she she" not in out["clips"][0]["positive_prompt"].lower()
 
 
@@ -123,11 +125,8 @@ def test_wan_plan_varies_subject_motion_by_clip_phase():
         },
     )["clips"]
     motions = [clip["subject_motion"].lower() for clip in clips]
-    assert motions[0] != motions[1]
-    assert motions[1] != motions[2]
-    assert "sets the" in motions[0]
-    assert "carries the" in motions[1]
-    assert "lands the" in motions[2]
+    assert motions[0] == motions[1] == motions[2]
+    assert motions[0].startswith("moves")
 
 
 def test_wan_workflow_axis_falls_back_when_section_axis_is_noisy():
@@ -153,7 +152,7 @@ def test_flux2_ref_action_clause_uses_workflow_motion_clause():
     }
     item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
     assert "with takes" not in item["action_clause"].lower()
-    assert "by taking a deep breath" in item["action_clause"].lower()
+    assert item["action_clause"].lower() == "taking a deep breath and lifting her chin into the height"
 
 
 def test_flux2_ref_action_clause_uses_workflow_motion_clause_for_hits_pattern():
@@ -166,7 +165,7 @@ def test_flux2_ref_action_clause_uses_workflow_motion_clause_for_hits_pattern():
     }
     item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
     assert "with hits" not in item["action_clause"].lower()
-    assert "by hitting the hook entry faster" in item["action_clause"].lower()
+    assert item["action_clause"].lower() == "hitting the hook entry faster and holding a colder direct stare"
 
 
 def test_flux2_ref_requires_workflow_motion_clause():
@@ -192,7 +191,7 @@ def test_wan_single_clip_subject_motion_avoids_hits_through_stays():
         _story_bible_with_section("outro", "stays centered and perfectly clear", "reflective threshold", "residue", "stillness hold"),
     )
     assert "hits through stays" not in clip["positive_prompt"].lower()
-    assert "she stays centered and perfectly clear" in clip["positive_prompt"].lower()
+    assert "staying centered and perfectly clear" in clip["positive_prompt"].lower()
 
 
 def test_wan_requires_workflow_motion_clause():
@@ -218,7 +217,7 @@ def _flux2_ref(shot_id: str, duration: float) -> dict:
         "emotion": "steady confidence",
         "scene_detail": "concert light wall",
         "motion_hint": "smooth motion",
-        "workflow_motion_clause": "moving through the lane and holding a steady line",
+        "workflow_motion_clause": "moves through the lane and holds a steady line",
     }
 
 
@@ -238,7 +237,7 @@ def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
         "emotion": "steady confidence",
         "scene_detail": "concert light wall",
         "motion_hint": "smooth motion",
-        "workflow_motion_clause": "moving through the lane and holding a steady line",
+        "workflow_motion_clause": "moves through the lane and holds a steady line",
         "space_relation": "glass stays camera-right and holds the same left-to-right walk line",
         "clip_index": 1,
         "clip_count": 1,
@@ -273,6 +272,7 @@ def _story_bible() -> dict:
                 "palette_hint": "teal-magenta glow",
                 "lighting_hint": "soft rim light",
                 "camera_commitment": "clean stage depth",
+                "space_event": "The threshold light ripples across the glass",
             },
             {
                 "beat_id": "LB02_01",
@@ -289,6 +289,7 @@ def _story_bible() -> dict:
                 "palette_hint": "rose-cyan bloom",
                 "lighting_hint": "wide glow",
                 "camera_commitment": "hero frontal release",
+                "space_event": "The lane opens and the sign light pulses",
             },
         ],
         "section_progression": [
@@ -321,6 +322,7 @@ def _story_bible_with_section(name: str, beat: str, location: str, escalation: s
                 "palette_hint": "teal glow",
                 "lighting_hint": "soft rim light",
                 "camera_commitment": "clean stage depth",
+                "space_event": "The background light keeps breathing across the block",
             }
         ],
         "section_progression": [

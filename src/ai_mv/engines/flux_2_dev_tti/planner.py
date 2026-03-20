@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
 from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.profile_policy import resolve_profile_policy
-from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_tti_prompt
+from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause, compact_prompt_clause, compose_flux2_prompt, compose_flux2_tti_prompt
 from ai_mv.core.visual_pipeline import attach_tti_metadata
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -47,9 +47,13 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "Use scene_change_level to decide whether the beat stays on the same image state, evolves it, shifts to a new state in the same world, or resets into a fresh visual event. "
         "Use anchor_strategy to say whether downstream should mostly reuse the same anchor logic, refine the anchor for continuity, or generate a new anchor. "
         "new_anchor is for fresh image invention and strong scene resets; refine_anchor is for continuity-sensitive continuation; reuse_anchor is only for near-hold beats that should not ask ref to invent a new scene. "
-        "workflow_motion_clause must be a compact natural motion clause for downstream Flux Ref and WAN prompts. "
-        "Make workflow_motion_clause phase-neutral and directly reusable across split clips; use a compact gerund-led clause such as stepping, holding, turning, moving, easing, pivoting, or advancing. "
-        "Do not write workflow_motion_clause as a full sentence or finite-verb sentence starting with she/he. "
+        "workflow_motion_clause must be a short natural-English action clause for downstream Flux Ref and WAN prompts. "
+        "Write it so it can complete a sentence like 'The girl ...', for example swings the guitar down with extreme force, turns sharply to the left, steps through the gate line, or eyes dart quickly to the side. "
+        "Do not write workflow_motion_clause as a gerund-led fragment such as stepping, holding, turning, moving, easing, pivoting, or advancing. "
+        "Do not write workflow_motion_clause as a full sentence and do not start it with she/he/the girl. "
+        "camera_language must already be a short natural-English camera phrase that can be copied directly into a prompt, such as an extreme low-angle dynamic shot, a wide off-center frame from the left, or a tight off-center close-up. Do not output taxonomy labels or compressed metadata. "
+        "scene_detail must already be a drawable natural-English visual phrase, not a category label. "
+        "space_relation must already be a natural-English relation phrase, not a diagram label or shorthand token. "
         "Use the story bible and lyric beat as the source of truth. "
         "NO TEXT, NO TYPOGRAPHY, NO WATERMARKS, NO LOGOS, NO SIGNAGE, NO UI OVERLAY. "
         "Make the shot plan genuinely varied: if two nearby beats share a shot_type, they must still differ materially in camera_language, pose_delta, scene_detail, or framing scale. "
@@ -57,7 +61,7 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "If prompt_focus is object, space, or graphic, do not default back to a heroine-facing close-up unless the policy explicitly demands it. "
         "Use shot_type as a storytelling choice, not a default. Verses should usually favor observation and traversal, pre-chorus should tighten intention, chorus should simplify into the hook image, bridge should interrupt or isolate, and outro should resolve. "
         "Do not repeat the same lane/crosswalk/reflection composition across adjacent beats unless the lyric explicitly repeats and the camera intent escalates. "
-        "Do not solve most graphic beats with split-screen, diptych, mirrored-face, doubled-subject, centered two-body, static cover-pose close crops, tight face crops, badge-like emblem compositions, runway poses, or mannequin stances; prefer asymmetrical poster crops, anime keyframe turns, mid-step lane cuts, isolated small figures, floating object fields, offset silhouette holds, sticker-like clusters, and off-center compositions as the default graphic language. "
+        "Do not solve most graphic beats with split-screen, diptych, mirrored-face, doubled-subject, centered two-body, centered sparse-negative-space staging, centered floating-object staging, static cover-pose close crops, tight face crops, badge-like emblem compositions, runway poses, or mannequin stances; prefer asymmetrical poster crops, anime keyframe turns, mid-step lane cuts, isolated small figures, floating object fields with off-center figures, offset silhouette holds, sticker-like clusters, and off-center compositions as the default graphic language. "
         "scene_detail should name the concrete visual state of the beat, not just restate the location family. "
         f"Allowed shot types={', '.join(SHOT_TYPES)}. "
         f"Allowed kinetic transitions={', '.join(KINETIC_TRANSITIONS)}. "
@@ -82,6 +86,7 @@ def _generate_tti_spec(config: dict, payload: dict, story_bible: dict, attempts:
             spec = generate_structured(config, current_prompt, shot_timeline_schema())
         try:
             _validate_tti_spec_contract(spec, expected_ids)
+            _validate_tti_language_contract(spec)
             return spec
         except RuntimeError as exc:
             last_exc = exc
@@ -113,6 +118,44 @@ def _validate_tti_spec_contract(spec: dict, expected_ids: list[str]) -> None:
         raise RuntimeError("shot contract mismatch: " + "; ".join(detail))
 
 
+_BANNED_TTI_LABELS = {
+    "asymmetrical poster crop",
+    "editorial three-quarter turn",
+    "mid-step lane cut",
+    "low horizon silhouette",
+    "diagonal lane cut",
+    "floating object field",
+    "isolated small figure",
+    "sticker-cluster layout",
+    "offset silhouette crop",
+    "single-profile reflection trace",
+}
+
+
+def _validate_tti_language_contract(spec: dict) -> None:
+    shots = [row for row in spec.get("shots", []) if isinstance(row, dict)]
+    for idx, row in enumerate(shots, start=1):
+        for field in ("camera_language", "scene_detail", "space_relation", "workflow_motion_clause"):
+            text = str(row.get(field, "")).strip()
+            if not text:
+                raise RuntimeError(f"tti language contract mismatch: blank {field} at shot {idx}")
+            low = text.lower()
+            if low in _BANNED_TTI_LABELS:
+                raise RuntimeError(f"tti language contract mismatch: {field} is still a taxonomy label at shot {idx}: {text}")
+            if any(mark in text for mark in ("[", "]", "|", ";")):
+                raise RuntimeError(f"tti language contract mismatch: {field} contains metadata punctuation at shot {idx}: {text}")
+        motion = str(row.get("workflow_motion_clause", "")).strip().lower()
+        first_token = motion.split(" ", 1)[0] if motion else ""
+        if first_token.endswith("ing"):
+            raise RuntimeError(
+                f"tti language contract mismatch: workflow_motion_clause is still gerund-led at shot {idx}: {motion}"
+            )
+        if motion.startswith(("she ", "he ", "the girl ", "the heroine ")):
+            raise RuntimeError(
+                f"tti language contract mismatch: workflow_motion_clause starts with an explicit subject at shot {idx}: {motion}"
+            )
+
+
 def _tti_repair_prompt(base_prompt: str, spec: dict, expected_ids: list[str], error: str) -> str:
     shots = [row for row in spec.get("shots", []) if isinstance(row, dict)]
     actual_ids = [str(row.get("lyric_beat_id", "")).strip() for row in shots if str(row.get("lyric_beat_id", "")).strip()]
@@ -123,6 +166,7 @@ def _tti_repair_prompt(base_prompt: str, spec: dict, expected_ids: list[str], er
         f"Expected lyric_beat_id order={', '.join(expected_ids)}. "
         f"Previous lyric_beat_id order={', '.join(actual_ids)}. "
         "Repair the JSON only. "
+        "camera_language, scene_detail, and space_relation must be plain natural-English prompt phrases, not taxonomy labels or shorthand tags. "
         "Keep master_anchor, but rewrite shots so that shots.length matches the expected count exactly and each expected lyric_beat_id appears once in the same order."
     )
 
@@ -272,54 +316,53 @@ def _shot_prompt_text(shot: dict, story_bible: dict) -> str:
     style = str(story_bible.get("visual_style_contract", "")).strip()
     heroine = str(story_bible.get("heroine_invariants", story_bible.get("hero_identity_lock", ""))).strip()
     world = str(story_bible.get("world_invariants", story_bible.get("world_rules", ""))).strip()
-    location = _normalize_location_for_prompt(str(shot.get("location_family", "")).strip())
-    scene = _normalize_scene_for_prompt(str(shot.get("scene_detail", "")).strip(), shot_type, focus)
+    location = clean_prompt_clause(str(shot.get("location_family", "")).strip())
+    scene = clean_prompt_clause(str(shot.get("scene_detail", "")).strip())
     space_event = str(shot.get("space_event", "")).strip()
     emotion = str(shot.get("emotion", "")).strip()
     camera = str(shot.get("camera_language", "")).strip()
     device = str(shot.get("edit_device", "")).strip()
     motif = str(shot.get("motif_object", "")).strip()
-    composition = _normalize_composition_for_prompt(str(shot.get("composition_shape", "")).strip(), shot_type, focus)
+    composition = clean_prompt_clause(str(shot.get("composition_shape", "")).strip())
     palette_mode = str(shot.get("palette_mode", "")).strip()
     render_mode = str(shot.get("character_render_mode", "")).strip()
     shot_type_text = shot_type.lower().replace("_", " ")
     face = str(shot.get("face_exposure_level", "")).strip()
     continuity = str(shot.get("continuity_lock", "")).strip()
     if focus == "object":
-        shot_sentence = (
-            f"An object-led frame focuses on {motif or scene or 'a symbolic object'} inside {composition or 'an off-center frame'}, "
-            f"with {palette_mode or 'a high-chroma pop palette'} and {location or 'a planar city block'}."
+        subject_sentence = (
+            f"A 2D anime heroine appears as a secondary full-body figure while {motif or scene or 'a symbolic object'} carries the action."
         )
-        character_sentence = "The heroine stays visible as a secondary full-body figure near the edge of the frame rather than centered."
+        background_sentence = (
+            f"The background is {location or 'a planar city block'} with {scene or space_event or 'simplified geometry'} and {palette_mode or 'a high-chroma pop palette'}."
+        )
+        camera_sentence = f"The camera uses {camera or composition or 'an off-center frame'}."
     elif focus == "space":
-        shot_sentence = (
-            f"A wide asymmetrical shot places the heroine as a small full-body figure inside {location or 'a planar city block'}. "
-            f"The frame uses {composition or 'an off-center moving figure layout'} and {space_event or scene or 'flat city geometry'}."
+        subject_sentence = (
+            f"A 2D anime heroine moves as a small full-body figure through {space_event or scene or 'a flat city geometry event'}."
         )
-        character_sentence = (
-            f"She keeps {render_mode or 'long-limbed fashion proportions'}, {emotion or 'a controlled expression'}, "
-            f"and {camera or 'anime keyframe staging'}."
+        background_sentence = (
+            f"The background is {location or 'a planar city block'} with {palette_mode or 'a high-chroma pop palette'} and non-photographic layered geometry."
         )
+        camera_sentence = f"The camera uses {camera or composition or 'a wide asymmetrical frame'}."
     elif focus == "graphic":
-        shot_sentence = (
-            f"A graphic impact shot frames the heroine through {device or motif or 'a symbolic graphic event'}. "
-            f"The shot uses {composition or 'an off-center moving figure layout'} and {palette_mode or 'a vibrant pop palette'}."
+        subject_sentence = (
+            f"A 2D anime heroine moves through {device or motif or 'a graphic impact event'} as one living figure, never a split-screen emblem."
         )
-        character_sentence = "The heroine stays fully present as one living full-body figure in the frame, never as a split-screen emblem."
+        background_sentence = (
+            f"The background is {location or 'a planar graphic field'} with {scene or space_event or 'symbolic graphic elements'} and {palette_mode or 'a vibrant pop palette'}."
+        )
+        camera_sentence = f"The camera uses {camera or composition or 'an asymmetrical graphic frame'}."
     else:
-        shot_sentence = (
-            f"A dynamic {shot_type_text} shot frames the heroine in {composition or 'an asymmetrical poster crop'}. "
-            f"She moves through {str(shot.get('literal_image', '')).strip() or scene or 'a clear visual beat'} with {palette_mode or 'a vibrant pop palette'}."
+        subject_sentence = (
+            f"A 2D anime heroine in {render_mode or 'long-limbed fashion proportions'} {str(shot.get('pose_delta', '')).strip() or 'moves through a readable acting pose'} through "
+            f"{str(shot.get('literal_image', '')).strip() or scene or 'a clear visual beat'}, with {emotion or 'a cool expression'} and {face or 'partial'} face exposure."
         )
-        character_sentence = (
-            f"She appears as a complete full-body or clear three-quarter figure with {render_mode or 'long-limbed fashion proportions'}, "
-            f"{face or 'partial'} face exposure, {emotion or 'a cool expression'}, and {str(shot.get('pose_delta', '')).strip() or 'a readable acting pose'}."
+        background_sentence = (
+            f"The background is {location or 'graphic city blocks'} with {scene or 'simplified environment geometry'}, {palette_mode or 'a vibrant pop palette'}, and {world or continuity or 'the same continuous world'}."
         )
-    background_sentence = (
-        f"The background stays non-photographic and planar with {location or 'graphic city blocks'}, "
-        f"{scene or 'simplified environment geometry'}, and {world or continuity or 'the same continuous world'}."
-    )
-    return compose_flux2_tti_prompt(style, shot_sentence, character_sentence, background_sentence)
+        camera_sentence = f"The camera uses {camera or composition or 'an asymmetrical poster crop'}."
+    return compose_flux2_tti_prompt(style, subject_sentence, background_sentence, camera_sentence)
 
 
 def _style_master_anchor(master: dict, story_bible: dict) -> dict:

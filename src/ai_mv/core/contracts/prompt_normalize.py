@@ -285,13 +285,13 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
 def _normalize_frame_anchor(raw: object, label: str) -> dict:
     if not isinstance(raw, dict) or not raw:
         return {
-            "composition": "centered medium framing",
+            "composition": "off-center medium framing",
             "subject_scale": "medium",
             "camera_axis": "eye level",
             "lighting_state": "natural practical glow",
         }
     return {
-        "composition": _optional_text(raw, "composition", "centered medium framing"),
+        "composition": _optional_text(raw, "composition", "off-center medium framing"),
         "subject_scale": _optional_text(raw, "subject_scale", "medium"),
         "camera_axis": _optional_text(raw, "camera_axis", "eye level"),
         "lighting_state": _optional_text(raw, "lighting_state", "natural practical glow"),
@@ -427,7 +427,6 @@ def _normalize_keyscale(text: str) -> str:
 
 def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int) -> str:
     text = " ".join(str(raw).strip().split())
-    text = _trim_words(text, max_words)
     words = [x for x in text.replace(",", " ").split() if x]
     has_alpha = any(ch.isalpha() for ch in text)
     if len(words) < 2 or not has_alpha:
@@ -437,7 +436,6 @@ def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int
 
 def _normalize_optional_clause(raw: object, max_words: int) -> str:
     text = " ".join(str(raw).strip().split()).rstrip(". ")
-    text = _trim_words(text, max_words)
     if not text:
         return ""
     return text

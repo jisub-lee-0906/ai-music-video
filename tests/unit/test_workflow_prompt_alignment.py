@@ -4,6 +4,7 @@ import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
 import ai_mv.engines.lyrics_timeline.planner as lyrics_timeline_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 from ai_mv.core.contracts.prompt_schema import lyrics_timeline_schema
+from ai_mv.core.workflow_prompt_contracts import compose_flux2_tti_prompt
 
 
 def test_audio_prompt_mentions_acestep_tags_field_alignment():
@@ -54,7 +55,7 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "Write a shot timeline for downstream Flux and video workflows" in prompt
     assert "master_anchor prompt_text must contain only stable identity and world facts" in prompt
     assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,clip_count" in prompt
-    assert "workflow_motion_clause must be a compact natural motion clause" in prompt
+    assert "workflow_motion_clause must be a short natural-English action clause" in prompt
     assert "Profile policy=" in prompt
     assert "face_policy=payoff_only" in prompt
     assert "Make the shot plan genuinely varied" in prompt
@@ -90,8 +91,8 @@ def test_flux2_ref_prompt_mentions_atom_generation_contract():
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
     assert "deterministic flux2 reference composer" in prompt
-    assert "hero=hero" in prompt
-    assert "world=world" in prompt
+    assert "anchors=S010(" in prompt
+    assert "|heroine|" in prompt
     assert "S010(" in prompt
 
 
@@ -103,8 +104,24 @@ def test_wan_prompt_mentions_motion_atom_contract():
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "deterministic wan composer" in prompt
     assert "clip_ids=S010_C01" in prompt
-    assert "hero=hero" in prompt
     assert "clips=S010_C01(" in prompt
+    assert "S010_C01(heroine|" in prompt
+    assert "clips=S010_C01(" in prompt
+
+
+def test_flux2_tti_prompt_uses_style_subject_background_camera_order():
+    text = compose_flux2_tti_prompt(
+        "Base style sentence",
+        "A heroine swings a guitar down",
+        "The background is a planar alley with neon signs",
+        "The camera uses an extreme low-angle dynamic shot",
+    )
+    assert text == (
+        "Base style sentence. "
+        "A heroine swings a guitar down. "
+        "The background is a planar alley with neon signs. "
+        "The camera uses an extreme low-angle dynamic shot."
+    )
 
 
 def test_wan_energy_policy_lifts_final_chorus():

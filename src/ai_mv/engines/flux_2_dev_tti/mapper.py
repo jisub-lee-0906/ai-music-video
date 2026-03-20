@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import zlib
 
-from ai_mv.core.workflow_prompt_contracts import workflow_no_text_suffix
 from ai_mv.utils.text_utils import parse_size, parse_target
 
 TTI_TEXT = "98:6"
@@ -47,7 +46,7 @@ def _tti_prompt_text(shot: dict) -> str:
     text = str(shot["prompt_text"]).strip()
     if not text:
         raise RuntimeError("empty Flux TTI prompt_text")
-    return f"{text}{workflow_no_text_suffix()}"
+    return text
 
 
 def _tti_seed(shot: dict) -> int:

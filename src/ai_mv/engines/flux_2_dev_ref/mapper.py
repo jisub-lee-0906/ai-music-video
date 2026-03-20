@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import zlib
 
-from ai_mv.core.workflow_prompt_contracts import workflow_no_text_suffix
 from ai_mv.utils.text_utils import parse_size, parse_target
 
 FLUX2_REF_LOAD_IMAGE = "46"
@@ -51,7 +50,7 @@ def _flux2_ref_prompt(item: dict) -> str:
     text = str(item["prompt_text"]).strip()
     if not text:
         raise RuntimeError(f"empty Flux2 reference prompt_text: {item['shot_id']}")
-    return f"{text}{workflow_no_text_suffix()}"
+    return text
 
 
 def _flux2_ref_size(config: dict) -> tuple[int, int]:

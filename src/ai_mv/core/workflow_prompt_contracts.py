@@ -43,9 +43,13 @@ def compact_prompt_clause(text: object, max_words: int) -> str:
     return " ".join(words).replace(" ,", ",").strip(" ,")
 
 
+def clean_prompt_clause(text: object) -> str:
+    return _clean(text).strip(" ,.")
+
+
 def compose_flux2_prompt(style_contract: object, parts: Iterable[object], max_words: int = 56) -> str:
     base = _base_flux2_style(style_contract)
-    variation = compact_prompt_clause(", ".join(part for part in (_clean(part) for part in parts) if part), max_words).rstrip(". ")
+    variation = clean_prompt_clause(", ".join(part for part in (_clean(part) for part in parts) if part)).rstrip(". ")
     if base and variation:
         return f"{base} {variation}."
     if base:
@@ -53,9 +57,18 @@ def compose_flux2_prompt(style_contract: object, parts: Iterable[object], max_wo
     return f"{variation}." if variation else ""
 
 
-def compose_flux2_tti_prompt(style_contract: object, shot_sentence: object, character_sentence: object = "", background_sentence: object = "") -> str:
+def compose_flux2_tti_prompt(
+    style_contract: object,
+    subject_action_sentence: object,
+    background_sentence: object = "",
+    camera_framing_sentence: object = "",
+) -> str:
     base = _base_flux2_style(style_contract)
-    parts = [_sentence(shot_sentence), _sentence(character_sentence), _sentence(background_sentence)]
+    parts = [
+        _sentence(subject_action_sentence),
+        _sentence(background_sentence),
+        _sentence(camera_framing_sentence),
+    ]
     detail = " ".join(part for part in parts if part)
     if base and detail:
         return f"{base} {detail}".strip()
@@ -184,7 +197,7 @@ def sanitize_flux2_negative_text(text: object) -> str:
         "white-silver bloom",
     ]
     merged = ", ".join(part for part in (cleaned, ", ".join(extras)) if part)
-    return compact_prompt_clause(merged, 40)
+    return clean_prompt_clause(merged)
 
 
 def workflow_no_text_suffix() -> str:
@@ -192,7 +205,7 @@ def workflow_no_text_suffix() -> str:
 
 
 def workflow_negative_prompt(extra_terms: Iterable[str] | None = None) -> str:
-    extras = [compact_prompt_clause(term, 6) for term in list(extra_terms or []) if compact_prompt_clause(term, 6)]
+    extras = [clean_prompt_clause(term) for term in list(extra_terms or []) if clean_prompt_clause(term)]
     return ", ".join(part for part in (WAN_BASE_NEGATIVE, ", ".join(extras).strip(", ")) if part).strip(", ")
 
 

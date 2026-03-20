@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from ai_mv.core.contracts.prompt_normalize import normalize_lyrics_timeline
 from ai_mv.core.contracts.prompt_schema import lyrics_timeline_schema
 from ai_mv.infra.codex_cli_client import generate_structured
@@ -8,8 +10,14 @@ from ai_mv.infra.codex_cli_client import generate_structured
 def build_lyrics_timeline(config: dict, payload: dict) -> dict:
     audio_plan = payload["audio_plan"]
     sections = list(payload["audio_map"]["sections"])
-    raw = generate_structured(config, _planner_prompt(audio_plan, sections), lyrics_timeline_schema())
-    timeline = normalize_lyrics_timeline(raw, sections)
+    prompt = _planner_prompt(audio_plan, sections)
+    raw = generate_structured(config, prompt, lyrics_timeline_schema())
+    try:
+        timeline = normalize_lyrics_timeline(raw, sections)
+    except RuntimeError as exc:
+        retry_prompt = _planner_retry_prompt(audio_plan, sections, str(exc))
+        raw = generate_structured(config, retry_prompt, lyrics_timeline_schema())
+        timeline = normalize_lyrics_timeline(raw, sections)
     _attach_time_ranges(timeline, sections)
     return timeline
 
@@ -26,19 +34,46 @@ def _planner_prompt(audio_plan: dict, sections: list[dict]) -> str:
         "Required field: sections. Each section must include section_name,section_label,lines,hook_lines,lyric_beats. "
         "Every lyric_beat must include beat_id,line_refs,literal_image,visible_action,emotional_turn,continuity_anchor,payoff_role,repeat_variant_of. "
         "Use the final generated lyrics as the source of truth. "
+        "For each section, copy the source lyric lines into sections[].lines exactly as provided. "
+        "Do not rewrite, shorten, translate, merge, drop, or renumber any line. "
+        "Every lines item must contain both line_index and text. "
+        "The set of section line_index values in your output must exactly match the source section lines. "
         f"Break each section into 1-{max_beats} visual beats depending on line count and section length. "
         "Use more beats when a section has many lines, clear image turns, or a hook/release split. "
         "Favor 2 beats for compact sections, 3-4 beats for dense verses or choruses, and 4-5 only when the lyrics genuinely present multiple distinct visual turns. "
         "Cover every lyric line at least once across the section's beat line_refs; do not leave lyric lines unmapped. "
         "Treat line_refs as a complete coverage map for the section. Prefer contiguous or musically coherent line groupings instead of arbitrary scattering. "
         "line_refs must point only to line_index values from that section. "
+        "Never invent a line_index that is not present in the source section. "
+        "Never output an empty line text. "
         "literal_image must stay close to the lyric image. "
         "visible_action must be screen-readable. "
         "Within a section, avoid flattening all beats into the same image or action. "
         "If a chorus repeats, keep the core motif but change at least the emotional_turn or payoff_role and shift the image/action emphasis. "
         "Intro should establish the world cleanly, verses should progress through distinct observations, pre-chorus should tighten and aim, chorus should present the hook image and release, bridge should interrupt or thin the motion, and outro should resolve with a final after-image. "
         "Repeated choruses must not collapse into the same emotional_turn and payoff_role. "
-        f"Sections={_section_digest(sections)}. Lyrics={_lyrics_digest(audio_plan)}."
+        "Before finalizing, check every section: all source lines are present, each has line_index and text, and all beat line_refs refer only to that section's line_index values. "
+        f"Sections={_section_digest(sections)}. "
+        f"Source section lines JSON={_section_lines_json(sections)}. "
+        f"Lyrics={_lyrics_digest(audio_plan)}."
+    )
+
+
+def _planner_retry_prompt(audio_plan: dict, sections: list[dict], error: str) -> str:
+    max_beats = _recommended_max_beats(audio_plan, sections)
+    return (
+        "Retry the lyric-to-scene timeline plan. "
+        "Return strict JSON only. No prose outside JSON. "
+        "The previous output failed validation. "
+        f"Validation error={error}. "
+        "Fix the JSON by preserving the source section lines exactly. "
+        "Each section.lines item must include both line_index and text. "
+        "Do not omit any source line. Do not invent or renumber lines. Do not leave text blank. "
+        f"Break each section into 1-{max_beats} visual beats and keep line_refs valid for that section only. "
+        "Before finalizing, verify that each section output lines exactly matches the source section lines JSON. "
+        f"Sections={_section_digest(sections)}. "
+        f"Source section lines JSON={_section_lines_json(sections)}. "
+        f"Lyrics={_lyrics_digest(audio_plan)}."
     )
 
 
@@ -63,6 +98,29 @@ def _lyrics_digest(audio_plan: dict) -> str:
             + " / ".join(f"{line.get('line_index', 0)}:{line.get('text', '')}" for line in lines if str(line.get("text", "")).strip())
         )
     return " ; ".join(rows)
+
+
+def _section_lines_json(sections: list[dict]) -> str:
+    payload = []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        lines = []
+        for row in section.get("lines", []):
+            if not isinstance(row, dict):
+                continue
+            line_index = int(row.get("line_index", 0))
+            text = str(row.get("text", "")).strip()
+            if line_index > 0 and text:
+                lines.append({"line_index": line_index, "text": text})
+        payload.append(
+            {
+                "section_name": str(section.get("name", "section")).strip(),
+                "section_label": str(section.get("label", section.get("name", "section"))).strip(),
+                "lines": lines,
+            }
+        )
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
 def _attach_time_ranges(timeline: dict, sections: list[dict]) -> None:

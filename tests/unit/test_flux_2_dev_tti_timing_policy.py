@@ -258,6 +258,7 @@ def _beat(name: str, idx: int) -> dict:
         "palette_hint": "teal and magenta",
         "lighting_hint": "soft rim light",
         "camera_commitment": "clean stage depth",
+        "space_event": "The stage lights sweep across the runway",
     }
 
 
@@ -337,7 +338,7 @@ def _shot(
         "emotion": emotion,
         "scene_detail": detail,
         "motion_hint": motion,
-        "workflow_motion_clause": "moving through the stage depth and holding the camera line",
+        "workflow_motion_clause": "moves through the stage depth and holds the camera line",
         "space_relation": "light spill stays camera-right while stage depth opens behind her",
         "edit_role": "release" if idx % 2 else "develop",
         "continuity_lock": "same heroine and world",

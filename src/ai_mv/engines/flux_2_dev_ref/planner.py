@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_refinement_prompt
+from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause, compact_prompt_clause, compose_flux2_prompt, compose_flux2_refinement_prompt
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 
 
@@ -13,18 +13,15 @@ def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
 
 
 def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
-    world = compact_world_atoms(payload["visual_story_bible"])
     summary = _anchor_summary(anchors)
-    carry_clause = f"carry={carry}; " if carry else ""
-    style = compact_prompt_clause(str(world.get("visual_style_contract", "")).strip(), 14)
-    heroine = compact_prompt_clause(str(world.get("hero_identity", "")).strip(), 10)
-    world_rules = compact_prompt_clause(str(world.get("world_rules", "")).strip(), 12)
     return (
         "deterministic flux2 reference composer; "
         "maintain the same character and world while changing pose, action, or framing; "
-        "compose short continuity prompts for the workflow positive text field; "
+        "compose short continuity prompts only; "
+        "follow this formula: The same heroine + changed action or pose + camera or framing + flat cel shading and thick clean outlines; "
+        "do not restate full background, palette, or long style paragraphs; "
         "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
-        f"{carry_clause}style={style}; hero={heroine}; world={world_rules}; anchors={summary}."
+        f"anchors={summary}."
     )
 
 
@@ -41,17 +38,15 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     section = _beat_atoms(brief, anchor)
     subject_clause = _subject_clause(brief, anchor)
     action_clause = _action_clause(anchor, section)
+    camera_clause = _camera_clause(anchor)
     environment_clause = _environment_clause(anchor, section)
     continuity_clause = _continuity_clause(anchor)
     kinetic_clause = _kinetic_clause(anchor)
-    safety_clause = _safety_clause()
     prompt_text = _compose_flux2_ref_prompt(
         subject_clause,
         action_clause,
+        camera_clause,
         continuity_clause,
-        environment_clause,
-        kinetic_clause,
-        safety_clause,
     )
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
@@ -65,6 +60,7 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         "style_clause": "",
         "subject_clause": subject_clause,
         "action_clause": action_clause,
+        "camera_clause": camera_clause,
         "environment_clause": environment_clause,
         "continuity_clause": continuity_clause,
         "duration_sec": float(anchor["duration_sec"]),
@@ -100,12 +96,12 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
     heroine = _ref_heroine_phrase(str(world.get("hero_identity", "")).strip())
     focus = str(anchor.get("prompt_focus", "")).strip().lower()
     if focus == "object":
-        return compact_prompt_clause(f"The same {heroine} stays implied at the edge while the object changes", 16)
+        return clean_prompt_clause(f"The same {heroine} stays implied at the edge while the object changes")
     if focus == "space":
-        return compact_prompt_clause(f"The same {heroine} shifts as a small full-body figure in the same world", 16)
+        return clean_prompt_clause(f"The same {heroine} shifts as a small full-body figure in the same world")
     if focus == "graphic":
-        return compact_prompt_clause(f"The same {heroine} shifts inside the same graphic frame", 16)
-    return compact_prompt_clause(f"The same {heroine} changes pose and framing", 14)
+        return clean_prompt_clause(f"The same {heroine} shifts inside the same graphic frame")
+    return clean_prompt_clause(f"The same {heroine} changes pose and framing")
 
 
 def _ref_heroine_phrase(text: str) -> str:
@@ -121,7 +117,7 @@ def _ref_heroine_phrase(text: str) -> str:
         if low.startswith(prefix):
             cleaned = cleaned[len(prefix):].strip(" ,")
             break
-    shortened = compact_prompt_clause(cleaned or "anime girl", 6)
+    shortened = clean_prompt_clause(cleaned or "anime girl")
     if not shortened:
         return "anime girl"
     if shortened.lower().startswith("stylized east asian heroine"):
@@ -130,29 +126,35 @@ def _ref_heroine_phrase(text: str) -> str:
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
-    phase = _clip_phase(anchor)
-    motion_axis = _workflow_axis(section, anchor)
     pose_phrase = _planned_motion_clause(anchor)
-    if phase == "establish":
-        return compact_prompt_clause(_join_action(f"set the {motion_axis}", pose_phrase), 16)
-    if phase == "resolve":
-        return compact_prompt_clause(_join_action(f"land the {motion_axis}", pose_phrase), 16)
-    if phase == "advance":
-        return compact_prompt_clause(_join_action(f"carry the {motion_axis} forward", pose_phrase), 16)
-    return compact_prompt_clause(pose_phrase, 16)
+    return clean_prompt_clause(pose_phrase)
+
+
+def _camera_clause(anchor: dict) -> str:
+    composition = clean_prompt_clause(str(anchor.get("composition_shape", "")).strip())
+    camera = clean_prompt_clause(str(anchor.get("camera_language", "")).strip())
+    clause = camera or composition
+    if not clause:
+        return ""
+    low = clause.lower()
+    if low.startswith(("from ", "in ", "with ", "viewed ", "at ")):
+        return clause
+    return f"viewed in {clause}"
 
 
 def _environment_clause(anchor: dict, section: dict) -> str:
-    palette = str(anchor.get("palette_mode", "")).strip() or str(section.get("palette_hint", "")).strip()
-    lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
     location = _normalize_location_for_prompt(
         str(section.get("location_family", "")).strip()
         or str(section.get("location_anchor", "")).strip()
         or str(anchor.get("scene_detail", "")).strip()
     )
     space_event = str(anchor.get("space_event", "")).strip()
-    parts = [location, space_event, palette, lighting]
-    return compact_prompt_clause(", ".join(part for part in parts if part), 12)
+    focus = str(anchor.get("prompt_focus", "")).strip().lower()
+    if focus == "object":
+        return clean_prompt_clause(", ".join(part for part in (location, str(anchor.get("motif_object", "")).strip()) if part))
+    if focus in {"space", "graphic"}:
+        return clean_prompt_clause(", ".join(part for part in (location, space_event) if part))
+    return clean_prompt_clause(location)
 
 
 def _normalize_location_for_prompt(location: str) -> str:
@@ -224,42 +226,72 @@ def _normalize_scene_for_prompt(scene: str) -> str:
 
 
 def _continuity_clause(anchor: dict) -> str:
-    relation = str(anchor.get("space_relation", "")).strip() or "keeping the same space relation"
-    phase = _clip_phase(anchor)
-    continuity = str(anchor.get("continuity_lock", "")).strip() or "same heroine in one world"
-    basis = str(anchor.get("continuity_basis", "")).strip() or "world"
-    strategy = str(anchor.get("anchor_strategy", "")).strip().replace("_", " ") or "refine anchor"
-    return compact_prompt_clause(f"{continuity}, continuity basis {basis}, {relation}, phase {phase}, {strategy}", 28)
+    return "maintaining the exact flat cel-shaded design and bold outlines"
 
 
 def _compose_flux2_ref_prompt(
     subject_clause: str,
     action_clause: str,
+    camera_clause: str,
     continuity_clause: str,
-    environment_clause: str,
-    kinetic_clause: str,
-    safety_clause: str,
 ) -> str:
+    action_text = clean_prompt_clause(action_clause)
+    if action_text and not action_text.lower().startswith(("now ", "while ", "as ")):
+        action_text = f"now {action_text}"
     change_sentence = ", ".join(
         part
         for part in (
             subject_clause,
-            action_clause,
-            environment_clause,
-            kinetic_clause,
+            action_text,
+            camera_clause,
         )
         if str(part).strip()
     )
-    continuity_sentence = ", ".join(
-        part
-        for part in (
-            continuity_clause,
-            "maintaining the exact flat cel-shaded design and bold outlines",
-            safety_clause,
-        )
-        if str(part).strip()
-    )
+    continuity_sentence = continuity_clause
     return compose_flux2_refinement_prompt(change_sentence, continuity_sentence)
+
+
+def _naturalize_ref_camera(text: str) -> str:
+    cleaned = clean_prompt_clause(text)
+    if not cleaned:
+        return ""
+    low = cleaned.lower()
+    replacements = (
+        ("floating object field, centered but sparse negative space, gentle hover", "in an off-center frame with sparse negative space and a gentle hover"),
+        ("floating object field, centered", "in an off-center floating-object frame"),
+        ("floating object field with off-center figure", "in an off-center floating-object frame"),
+        ("tight reflective insert with a shallow diagonal crop and one bright light band", "in a tight reflective close-up with a shallow diagonal crop"),
+        ("tight reflective insert", "in a tight reflective close-up"),
+        ("offset silhouette crop", "viewed in an off-center silhouette crop"),
+        ("off-center moving silhouette", "viewed in an off-center silhouette frame"),
+        ("off-center upper-body turn", "viewed in an off-center upper-body turn"),
+        ("near upper-body turn", "viewed in a near upper-body turn"),
+        ("horizontal strip pan with mild parallax", "viewed in a horizontal pan"),
+        ("slow lateral drift", "with a slow lateral drift"),
+        ("low horizon moving figure", "from a low-angle moving frame"),
+        ("moving poster crop", "in an asymmetrical poster-style frame"),
+        ("wide hold", "in a wide frame"),
+        ("tight close", "in a tight close-up"),
+        ("tight close-up", "in a tight close-up"),
+        ("close-up", "in a close-up"),
+        ("medium", "in a medium shot"),
+        ("wide", "in a wide shot"),
+        ("profile", "from a profile angle"),
+        ("side-on", "from a side angle"),
+        ("low-angle", "from a low angle"),
+        ("low angle", "from a low angle"),
+        ("dutch", "from a dutch angle"),
+    )
+    out = low
+    for old, new in replacements:
+        if old in out:
+            out = out.replace(old, new)
+    out = " ".join(out.split())
+    if out.startswith(("viewed ", "from ", "with ", "in ")):
+        return out
+    if " close-up" in out or " shot" in out or " angle" in out or " frame" in out or " crop" in out:
+        return f"in {out}"
+    return f"viewed {out}"
 
 
 def _anchor_summary(anchors: list[dict]) -> str:
@@ -268,14 +300,13 @@ def _anchor_summary(anchors: list[dict]) -> str:
 
 def _anchor_summary_row(anchor: dict) -> str:
     sid = str(anchor["shot_id"])
-    section = str(anchor.get("section_name", "section"))
-    label = str(anchor.get("section_label", section))
     shot_type = str(anchor.get("shot_type", "CHAR_MASTER"))
-    relation = _normalize_scene_for_prompt(str(anchor.get("space_relation", "")).strip()) or "space stays stable"
+    focus = str(anchor.get("prompt_focus", "")).strip().lower() or "heroine"
     phase = _clip_phase(anchor)
     kinetic = str(anchor.get("kinetic_transition", "")).strip() or "none"
-    intensity = str(anchor.get("kinetic_intensity", "")).strip() or "normal"
-    return f"{sid}({section}|{label}|{shot_type}|{relation}|{phase}|{kinetic}|{intensity})"
+    pose = compact_prompt_clause(str(anchor.get("pose_delta", "")).strip(), 5) or "pose shift"
+    camera = compact_prompt_clause(str(anchor.get("camera_language", "")).strip(), 5) or "framing shift"
+    return f"{sid}({shot_type}|{focus}|{phase}|{kinetic}|{pose}|{camera})"
 
 
 def _sentence(text: str) -> str:
@@ -311,7 +342,7 @@ def _kinetic_clause(anchor: dict) -> str:
         parts.append(f"kinetic move {transition}")
     if intensity:
         parts.append(f"intensity {intensity}")
-    return compact_prompt_clause(", ".join(parts), 12)
+    return clean_prompt_clause(", ".join(parts))
 
 
 def _safety_clause() -> str:

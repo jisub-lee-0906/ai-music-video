@@ -99,7 +99,6 @@ def _world_invariants(visual: dict, mv: dict) -> str:
             "one continuous world",
             "stylized 2d graphic music-video space with flat background planes, simple wall blocks, blank sign panels, cut-paper shadow shapes, and strong negative space",
             _extract_fragment(_text(mv, "story_world"), ("same night", "one continuous", "continuous", "same emotional weather", "same luxurious pulse", "same momentum", "same rebellious force", "same electric pressure", "same suspended emotional current", "same sense of supernatural authority")),
-            _extract_fragment(_text(visual, "brief"), ("readable", "center framing", "center-dominant", "heroine legible", "heroine readable")),
         ]
     )
 

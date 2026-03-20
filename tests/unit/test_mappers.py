@@ -90,8 +90,7 @@ def test_tti_mapper():
     assert nodes["98:47"]["height"] == 1024
     assert nodes["98:48"]["width"] == 1024
     assert nodes["98:48"]["height"] == 1024
-    assert nodes["98:6"]["text"].startswith(shot["prompt_text"])
-    assert "no text" in nodes["98:6"]["text"]
+    assert nodes["98:6"]["text"] == shot["prompt_text"]
     assert nodes["98:25"]["noise_seed"] >= 1000
 
 
@@ -115,8 +114,7 @@ def test_flux2_ref_mapper():
     assert nodes["68:47"]["height"] == 576
     assert nodes["68:48"]["width"] == 1024
     assert nodes["68:48"]["height"] == 576
-    assert nodes["68:6"]["text"].startswith(item["prompt_text"])
-    assert "no text" in nodes["68:6"]["text"]
+    assert nodes["68:6"]["text"] == item["prompt_text"]
     assert nodes["68:25"]["noise_seed"] > 2000
 
 
