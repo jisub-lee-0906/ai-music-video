@@ -6,10 +6,10 @@ __pycache__/
 src/*.egg-info/
 *.egg-info/
 
-artifacts/
-artifacts/latest/
-artifacts/runs/
-artifacts/runs_state/
-artifacts/reports/
-artifacts/**/__pycache__/
+/artifacts/
+/artifacts/latest/
+/artifacts/runs/
+/artifacts/runs_state/
+/artifacts/reports/
+/artifacts/**/__pycache__/
 
