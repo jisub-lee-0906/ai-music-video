@@ -319,6 +319,20 @@ def _negative_prompt(clip: dict, brief: dict) -> str:
     world = compact_world_atoms(brief)
     relation = str(clip.get("space_relation", "")).strip().lower()
     extra: list[str] = []
+    extra.extend(
+        [
+            "3d render",
+            "photorealistic",
+            "volumetric lighting",
+            "soft shading",
+            "morphing",
+            "melting limbs",
+            "warping limbs",
+            "melted guitar shape",
+            "slow motion",
+            "smooth transitions",
+        ]
+    )
     if "glass" in relation:
         extra.append("warped reflections")
     if bool(clip.get("use_ref", False)):
@@ -335,6 +349,8 @@ def _negative_prompt(clip: dict, brief: dict) -> str:
         )
     if str(clip.get("face_exposure_level", "")).strip().lower() in {"direct", "soft"}:
         extra.extend(["different person", "age drift", "hairstyle drift", "wardrobe swap", "duplicate subject"])
+    if str(clip.get("camera_language", "")).strip().lower() in {"locked", "lockoff", "static"}:
+        extra.extend(["camera movement", "zooming", "panning"])
     if "world_rules" in world and "night" in str(world.get("world_rules", "")).lower():
         extra.append("daylight mismatch")
     return workflow_negative_prompt(extra)

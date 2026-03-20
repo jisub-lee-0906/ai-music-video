@@ -290,7 +290,7 @@ def _shot_prompt_text(shot: dict, story_bible: dict) -> str:
             f"An object-led frame focuses on {motif or scene or 'a symbolic object'} inside {composition or 'an off-center frame'}, "
             f"with {palette_mode or 'a high-chroma pop palette'} and {location or 'a planar city block'}."
         )
-        character_sentence = "The heroine stays implied at the edge of the frame rather than centered."
+        character_sentence = "The heroine stays visible as a secondary full-body figure near the edge of the frame rather than centered."
     elif focus == "space":
         shot_sentence = (
             f"A wide asymmetrical shot places the heroine as a small full-body figure inside {location or 'a planar city block'}. "
@@ -305,15 +305,15 @@ def _shot_prompt_text(shot: dict, story_bible: dict) -> str:
             f"A graphic impact shot frames the heroine through {device or motif or 'a symbolic graphic event'}. "
             f"The shot uses {composition or 'an off-center moving figure layout'} and {palette_mode or 'a vibrant pop palette'}."
         )
-        character_sentence = "The heroine stays fully present as one living figure in the frame, never as a split-screen emblem."
+        character_sentence = "The heroine stays fully present as one living full-body figure in the frame, never as a split-screen emblem."
     else:
         shot_sentence = (
             f"A dynamic {shot_type_text} shot frames the heroine in {composition or 'an asymmetrical poster crop'}. "
             f"She moves through {str(shot.get('literal_image', '')).strip() or scene or 'a clear visual beat'} with {palette_mode or 'a vibrant pop palette'}."
         )
         character_sentence = (
-            f"She keeps {render_mode or 'long-limbed fashion proportions'}, {face or 'partial'} face exposure, "
-            f"{emotion or 'a cool expression'}, and {str(shot.get('pose_delta', '')).strip() or 'a readable acting pose'}."
+            f"She appears as a complete full-body or clear three-quarter figure with {render_mode or 'long-limbed fashion proportions'}, "
+            f"{face or 'partial'} face exposure, {emotion or 'a cool expression'}, and {str(shot.get('pose_delta', '')).strip() or 'a readable acting pose'}."
         )
     background_sentence = (
         f"The background stays non-photographic and planar with {location or 'graphic city blocks'}, "

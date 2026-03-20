@@ -41,7 +41,6 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     environment_clause = _environment_clause(anchor, section)
     continuity_clause = _continuity_clause(anchor)
     kinetic_clause = _kinetic_clause(anchor)
-    lighting_clause = _lighting_clause(anchor, section)
     safety_clause = _safety_clause()
     prompt_text = _compose_flux2_ref_prompt(
         subject_clause,
@@ -49,7 +48,6 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         continuity_clause,
         environment_clause,
         kinetic_clause,
-        lighting_clause,
         safety_clause,
     )
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
@@ -99,12 +97,12 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
     heroine = compact_prompt_clause(str(world.get("hero_identity", "")).strip() or "the heroine", 6)
     focus = str(anchor.get("prompt_focus", "")).strip().lower()
     if focus == "object":
-        return compact_prompt_clause(f"The object shifts while {heroine} stays implied at the edge of the frame", 18)
+        return compact_prompt_clause(f"The same {heroine} stays implied at the edge while the object changes", 16)
     if focus == "space":
-        return compact_prompt_clause(f"{heroine} moves as a small full-body figure inside the same planar world", 18)
+        return compact_prompt_clause(f"The same {heroine} shifts as a small full-body figure in the same world", 16)
     if focus == "graphic":
-        return compact_prompt_clause(f"{heroine} shifts inside the same graphic frame without losing the exact design", 18)
-    return compact_prompt_clause(f"{heroine} changes pose while keeping the same exact design and silhouette", 18)
+        return compact_prompt_clause(f"The same {heroine} shifts inside the same graphic frame", 16)
+    return compact_prompt_clause(f"The same {heroine} changes pose and framing", 14)
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
@@ -216,7 +214,6 @@ def _compose_flux2_ref_prompt(
     continuity_clause: str,
     environment_clause: str,
     kinetic_clause: str,
-    lighting_clause: str,
     safety_clause: str,
 ) -> str:
     change_sentence = ", ".join(
@@ -291,13 +288,6 @@ def _kinetic_clause(anchor: dict) -> str:
     if intensity:
         parts.append(f"intensity {intensity}")
     return compact_prompt_clause(", ".join(parts), 12)
-
-
-def _lighting_clause(anchor: dict, section: dict) -> str:
-    lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
-    if not lighting:
-        return "cinematic lighting"
-    return compact_prompt_clause(f"cinematic lighting, lighting accent {lighting}", 14)
 
 
 def _safety_clause() -> str:
