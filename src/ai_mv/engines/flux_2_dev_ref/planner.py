@@ -16,12 +16,15 @@ def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str
     world = compact_world_atoms(payload["visual_story_bible"])
     summary = _anchor_summary(anchors)
     carry_clause = f"carry={carry}; " if carry else ""
+    style = compact_prompt_clause(str(world.get("visual_style_contract", "")).strip(), 14)
+    heroine = compact_prompt_clause(str(world.get("hero_identity", "")).strip(), 10)
+    world_rules = compact_prompt_clause(str(world.get("world_rules", "")).strip(), 12)
     return (
         "deterministic flux2 reference composer; "
-        "maintain identity and continuity while preserving the anchor frame intent; "
-        "compose compact prompts for the workflow positive text field; "
+        "maintain the same character and world while changing pose, action, or framing; "
+        "compose short continuity prompts for the workflow positive text field; "
         "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
-        f"{carry_clause}style={world.get('visual_style_contract', '')}; hero={world['hero_identity']}; world={world['world_rules']}; anchors={summary}."
+        f"{carry_clause}style={style}; hero={heroine}; world={world_rules}; anchors={summary}."
     )
 
 
@@ -94,7 +97,7 @@ def _chain_key(anchor: dict) -> str:
 
 def _subject_clause(brief: dict, anchor: dict) -> str:
     world = compact_world_atoms(brief)
-    heroine = compact_prompt_clause(str(world.get("hero_identity", "")).strip() or "the heroine", 6)
+    heroine = _ref_heroine_phrase(str(world.get("hero_identity", "")).strip())
     focus = str(anchor.get("prompt_focus", "")).strip().lower()
     if focus == "object":
         return compact_prompt_clause(f"The same {heroine} stays implied at the edge while the object changes", 16)
@@ -103,6 +106,27 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
     if focus == "graphic":
         return compact_prompt_clause(f"The same {heroine} shifts inside the same graphic frame", 16)
     return compact_prompt_clause(f"The same {heroine} changes pose and framing", 14)
+
+
+def _ref_heroine_phrase(text: str) -> str:
+    cleaned = str(text).strip()
+    low = cleaned.lower()
+    prefixes = (
+        "same heroine throughout the video,",
+        "same heroine throughout the video",
+        "the same heroine throughout the video,",
+        "the same heroine throughout the video",
+    )
+    for prefix in prefixes:
+        if low.startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip(" ,")
+            break
+    shortened = compact_prompt_clause(cleaned or "anime girl", 6)
+    if not shortened:
+        return "anime girl"
+    if shortened.lower().startswith("stylized east asian heroine"):
+        return "anime girl"
+    return shortened
 
 
 def _action_clause(anchor: dict, section: dict) -> str:

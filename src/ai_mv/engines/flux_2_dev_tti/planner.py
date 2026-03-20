@@ -650,12 +650,12 @@ def _rank_shot_types(shot: dict, beat: dict, policy: dict, idx: int, total: int)
     if any(token in composition_shape for token in ("poster", "asymmetrical", "offset", "isolated", "floating object", "low horizon", "sticker")):
         scores["GRAPHIC_EVENT"] += 1.0
         scores["SYMBOLIC_INSERT"] += 0.5
-    if any(token in composition_shape for token in ("centered icon", "centered two-body", "bilateral", "symmetrical", "centered", "face-forward", "dominant against", "close hero")):
+    if any(token in composition_shape for token in ("centered icon", "centered two-body", "bilateral", "symmetrical", "centered", "face-forward", "dominant against", "close hero", "near face", "stable subject", "balanced around")):
         scores["GRAPHIC_EVENT"] -= 0.75
-        scores["WORLD_EVENT"] -= 0.5
+        scores["WORLD_EVENT"] -= 1.0
         scores["TRANSITIONAL_ABSTRACT"] -= 0.25
-        scores["CHAR_MASTER"] -= 1.0
-        scores["EMOTION_CLOSE"] -= 0.75
+        scores["CHAR_MASTER"] -= 1.5
+        scores["EMOTION_CLOSE"] -= 1.0
     if any(token in composition_shape for token in ("split", "diptych", "mirrored", "doubled")) or any(
         token in edit_device for token in ("mirror", "split", "reflection split")
     ):
@@ -714,14 +714,24 @@ def _normalize_composition_for_prompt(composition: str, shot_type: str, focus: s
         return "single-profile reflection crop"
     if "centered icon frame" in lowered:
         return "off-center icon crop"
+    if "centered low" in lowered:
+        return "off-center low moving figure"
     if "poster close crop" in lowered:
         return "off-center three-quarter step turn"
+    if "close heroine crop" in lowered:
+        return "off-center upper-body turn"
     if "tight face crop" in lowered:
         return "off-center three-quarter step turn"
+    if "near face" in lowered:
+        return "near upper-body turn in off-center space"
     if "face-forward payoff" in lowered:
         return "off-center heroine turn in open negative space"
     if "heroine dominant against" in lowered:
         return "off-center heroine turn against organized city planes"
+    if "balanced around her" in lowered:
+        return "off-center around organized city planes"
+    if "stable subject" in lowered:
+        return "moving figure"
     if "emblematic composition" in lowered or "emblematic" in lowered:
         return "off-center moving figure"
     if "editorial three-quarter turn" in lowered:
@@ -788,6 +798,28 @@ def _normalize_scene_for_prompt(scene: str, shot_type: str, focus: str) -> str:
         ("street planes converge toward center", "street planes stack in flat bands"),
         ("block receding toward the center", "block stacked in flat layers"),
         ("block receding in layers", "block stacked in flat layers"),
+        ("near face with the world condensed behind her", "near upper-body turn with the world compressed into flat bands"),
+        ("small heroine centered low against broad moving city bands", "small heroine off-center against broad moving city bands"),
+        ("heroine centered in a widened street compressed passage blocks", "heroine off-center in widened street passage blocks"),
+        ("heroine centered in a widened street corridor", "heroine off-center in a widened street corridor"),
+        ("curving exterior ribbon enclosing a stable subject", "curving exterior ribbon crossing a moving figure"),
+        ("fully embedded in the city grid with the frame balanced around her", "fully embedded in the city grid with off-center city pressure around her"),
+        ("tiny circle centered in open negative space", "tiny circle off-center in open negative space"),
+        ("lights arranged around center, block feels complete", "lights arranged across the block, the block feels complete"),
+        ("two figures aligned across the crossing, city receding", "one figure crossing with an offset echo, city stacked behind"),
+        ("city receding", "city stacked behind"),
+        ("receding city planes", "stacked city planes"),
+        ("receding city plane blocks", "stacked city plane blocks"),
+        ("graphic corridor receding behind a single red point near center", "graphic corridor stacked in flat bands behind an off-center red point"),
+        ("close heroine crop against a layered blue field and receding city plane blocks", "off-center upper-body turn against a layered blue field and stacked city plane blocks"),
+        ("close heroine crop against a layered blue field and receding city planes", "off-center upper-body turn against a layered blue field and stacked city planes"),
+        ("close heroine crop against a shallow field of night geometry", "off-center upper-body turn against a shallow field of night geometry"),
+        ("dense layered field where the motifs converge around a small anchor point", "dense layered field where the motifs converge around a small off-center figure"),
+        ("broad city space with the heroine reduced to a small anchored point", "broad city space with the heroine reduced to a small off-center figure"),
+        ("object-led foreground window with the route receding behind it", "object-led foreground window with the route stacked behind it"),
+        ("small anchored point", "small off-center figure"),
+        ("small anchor point", "small off-center figure"),
+        ("near center", "off-center"),
         ("foreground dominant", "foreground left"),
         ("occupying most of the frame edge", "touching the frame edge"),
     )

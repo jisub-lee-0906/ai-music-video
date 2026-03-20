@@ -21,10 +21,13 @@ def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) 
     clip_ids = _clip_ids(clips)
     summary = _clip_summary(clips)
     carry_clause = f"carry={carry}; " if carry else ""
+    style = compact_prompt_clause(str(world.get("visual_style_contract", "")).strip(), 12)
+    heroine = compact_prompt_clause(str(world.get("hero_identity", "")).strip(), 8)
+    world_rules = compact_prompt_clause(str(world.get("world_rules", "")).strip(), 10)
     return (
         "deterministic wan composer; "
-        "compose short style-consistent prompts for the workflow positive and negative text fields; "
-        f"{carry_clause}style={world.get('visual_style_contract', '')}; hero={world['hero_identity']}; world={world['world_rules']}; clip_ids={clip_ids}; clips={summary}."
+        "compose short motion-first prompts for the workflow positive and negative text fields; "
+        f"{carry_clause}style={style}; hero={heroine}; world={world_rules}; clip_ids={clip_ids}; clips={summary}."
     )
 
 
@@ -372,6 +375,10 @@ def _normalize_wan_composition(composition: str) -> str:
     lowered = text.lower()
     replacements = (
         ("centered", "off-center"),
+        ("near face", "near upper-body turn"),
+        ("close heroine crop", "off-center upper-body turn"),
+        ("stable subject", "moving figure"),
+        ("balanced around her", "off-center around city planes"),
         ("runway", "moving"),
         ("poster crop", "moving poster crop"),
         ("low horizon silhouette", "off-center low horizon moving figure"),
@@ -414,6 +421,28 @@ def _normalize_wan_relation(relation: str) -> str:
         ("receding in layers", "stacked in flat layers"),
         ("deep center", "stacked bands"),
         ("converge toward center", "stack in flat bands"),
+        ("receding city planes", "stacked city planes"),
+        ("receding city plane blocks", "stacked city plane blocks"),
+        ("small heroine centered low against broad moving city bands", "small heroine off-center against broad moving city bands"),
+        ("heroine centered in a widened street corridor", "heroine off-center in a widened street corridor"),
+        ("heroine centered in a widened street compressed passage blocks", "heroine off-center in widened street passage blocks"),
+        ("near face with the world condensed behind her", "near upper-body turn with the world compressed into flat bands"),
+        ("close heroine crop against a layered blue field and receding city plane blocks", "off-center upper-body turn against a layered blue field and stacked city plane blocks"),
+        ("close heroine crop against a layered blue field and receding city planes", "off-center upper-body turn against a layered blue field and stacked city planes"),
+        ("close heroine crop against a shallow field of night geometry", "off-center upper-body turn against a shallow field of night geometry"),
+        ("curving exterior ribbon enclosing a stable subject", "curving exterior ribbon crossing a moving figure"),
+        ("fully embedded in the city grid with the frame balanced around her", "fully embedded in the city grid with off-center city pressure around her"),
+        ("tiny circle centered in open negative space", "tiny circle off-center in open negative space"),
+        ("lights arranged around center, block feels complete", "lights arranged across the block, the block feels complete"),
+        ("two figures aligned across the crossing, city receding", "one figure crossing with an offset echo, city stacked behind"),
+        ("city receding", "city stacked behind"),
+        ("graphic corridor receding behind a single red point near center", "graphic corridor stacked in flat bands behind an off-center red point"),
+        ("broad city space with the heroine reduced to a small anchored point", "broad city space with the heroine reduced to a small off-center figure"),
+        ("dense layered field where the motifs converge around a small anchor point", "dense layered field where the motifs converge around a small off-center figure"),
+        ("object-led foreground window with the route receding behind it", "object-led foreground window with the route stacked behind it"),
+        ("small anchored point", "small off-center figure"),
+        ("small anchor point", "small off-center figure"),
+        ("near center", "off-center"),
         ("foreground dominant", "foreground left"),
         ("occupying most of the frame edge", "touching the frame edge"),
         ("street plane", "flat street plane"),
