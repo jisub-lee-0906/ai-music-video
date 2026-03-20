@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
 from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.profile_policy import resolve_profile_policy
-from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_slot_prompt
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_tti_prompt
 from ai_mv.core.visual_pipeline import attach_tti_metadata
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -286,82 +286,40 @@ def _shot_prompt_text(shot: dict, story_bible: dict) -> str:
     face = str(shot.get("face_exposure_level", "")).strip()
     continuity = str(shot.get("continuity_lock", "")).strip()
     if focus == "object":
-        slots = [
-            "object-led frame",
-            motif,
-            device,
-            composition,
-            palette_mode,
-            location,
-            scene,
-            camera,
-            emotion,
-            "heroine implied only",
-            "single subject in frame",
-            world,
-            continuity,
-        ]
+        shot_sentence = (
+            f"An object-led frame focuses on {motif or scene or 'a symbolic object'} inside {composition or 'an off-center frame'}, "
+            f"with {palette_mode or 'a high-chroma pop palette'} and {location or 'a planar city block'}."
+        )
+        character_sentence = "The heroine stays implied at the edge of the frame rather than centered."
     elif focus == "space":
-        slots = [
-            "space-led frame",
-            location,
-            space_event,
-            composition,
-            palette_mode,
-            scene,
-            camera,
-            emotion,
-            "heroine small in frame but whole body readable",
-            "single subject in frame",
-            "off-center moving figure",
-            "compressed anime background blocks",
-            world,
-            continuity,
-        ]
+        shot_sentence = (
+            f"A wide asymmetrical shot places the heroine as a small full-body figure inside {location or 'a planar city block'}. "
+            f"The frame uses {composition or 'an off-center moving figure layout'} and {space_event or scene or 'flat city geometry'}."
+        )
+        character_sentence = (
+            f"She keeps {render_mode or 'long-limbed fashion proportions'}, {emotion or 'a controlled expression'}, "
+            f"and {camera or 'anime keyframe staging'}."
+        )
     elif focus == "graphic":
-        slots = [
-            "graphic-led frame",
-            device,
-            motif,
-            composition,
-            palette_mode,
-            location,
-            scene,
-            camera,
-            "bold clean outlines",
-            "flat color blocking",
-            "single subject in frame",
-            "graphic keyframe impact",
-            "off-center moving figure",
-            "anime acting pose",
-            world,
-            continuity,
-        ]
+        shot_sentence = (
+            f"A graphic impact shot frames the heroine through {device or motif or 'a symbolic graphic event'}. "
+            f"The shot uses {composition or 'an off-center moving figure layout'} and {palette_mode or 'a vibrant pop palette'}."
+        )
+        character_sentence = "The heroine stays fully present as one living figure in the frame, never as a split-screen emblem."
     else:
-        slots = [
-            "heroine-led frame",
-            heroine,
-            str(shot.get("literal_image", "")).strip(),
-            str(shot.get("pose_delta", "")).strip(),
-            motif,
-            composition,
-            palette_mode,
-            render_mode,
-            location,
-            scene,
-            camera,
-            emotion,
-            f"{shot_type_text} framing",
-            f"{face} face exposure",
-            "long-limbed fashion figure",
-            "sharp almond eyes",
-            "thick solid hair shape",
-            "three-quarter turn or full-figure framing",
-            "anime cel acting pose",
-            world,
-            continuity,
-        ]
-    return compose_flux2_slot_prompt(style, slots)
+        shot_sentence = (
+            f"A dynamic {shot_type_text} shot frames the heroine in {composition or 'an asymmetrical poster crop'}. "
+            f"She moves through {str(shot.get('literal_image', '')).strip() or scene or 'a clear visual beat'} with {palette_mode or 'a vibrant pop palette'}."
+        )
+        character_sentence = (
+            f"She keeps {render_mode or 'long-limbed fashion proportions'}, {face or 'partial'} face exposure, "
+            f"{emotion or 'a cool expression'}, and {str(shot.get('pose_delta', '')).strip() or 'a readable acting pose'}."
+        )
+    background_sentence = (
+        f"The background stays non-photographic and planar with {location or 'graphic city blocks'}, "
+        f"{scene or 'simplified environment geometry'}, and {world or continuity or 'the same continuous world'}."
+    )
+    return compose_flux2_tti_prompt(style, shot_sentence, character_sentence, background_sentence)
 
 
 def _style_master_anchor(master: dict, story_bible: dict) -> dict:
@@ -826,6 +784,12 @@ def _normalize_scene_for_prompt(scene: str, shot_type: str, focus: str) -> str:
         ("reflection loosens from stillness into ribbon-like separation", "reflection thins into a single offset trace"),
         ("side-face reflection in dark window", "single side profile against dark window"),
         ("mirrored glass", "dark glass plane"),
+        ("city pull coming from deep center", "city bands stacked behind"),
+        ("street planes converge toward center", "street planes stack in flat bands"),
+        ("block receding toward the center", "block stacked in flat layers"),
+        ("block receding in layers", "block stacked in flat layers"),
+        ("foreground dominant", "foreground left"),
+        ("occupying most of the frame edge", "touching the frame edge"),
     )
     out = text
     lowered = out.lower()

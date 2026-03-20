@@ -23,8 +23,9 @@ def test_flux2_ref_prompt_text_includes_subject_action_and_environment():
     payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
     text = out["items"][0]["prompt_text"]
-    assert "silver-haired city-pop heroine" in text
-    assert "reflective threshold" in text
+    low = text.lower()
+    assert "silver-haired city-pop heroine" in low
+    assert "reflective threshold" in low
     assert text.endswith(".")
 
 

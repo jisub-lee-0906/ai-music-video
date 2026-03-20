@@ -86,7 +86,7 @@ def _heroine_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
             "same heroine throughout the video",
-            "stylized East Asian heroine with sharp almond eyes, small mouth, minimal nose, thick solid hair shape, long-limbed fashion shape, non-chibi proportions, solid cel shadow, matte flat skin color, and clean anime linework",
+            "stylized East Asian heroine with sharp almond eyes, small mouth, minimal nose, thick solid hair shape, long-limbed streetwear-ready fashion proportions, non-chibi proportions, solid cel shadow, matte flat skin color, and clean anime linework",
             _extract_fragment(_text(visual, "brief"), ("East Asian heroine", "young adult East Asian heroine", "female solo vocal", "lead")),
             _extract_fragment(_text(mv, "story_world"), ("same heroine",)),
         ]

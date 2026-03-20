@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_slot_prompt
+from ai_mv.core.workflow_prompt_contracts import compact_prompt_clause, compose_flux2_prompt, compose_flux2_refinement_prompt
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 
 
@@ -36,7 +36,6 @@ def _flux2_ref_planner_batch_size(config: dict) -> int:
 
 def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     section = _beat_atoms(brief, anchor)
-    style_clause = compact_prompt_clause(str(brief.get("visual_style_contract", "")).strip(), 24)
     subject_clause = _subject_clause(brief, anchor)
     action_clause = _action_clause(anchor, section)
     environment_clause = _environment_clause(anchor, section)
@@ -52,7 +51,6 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         kinetic_clause,
         lighting_clause,
         safety_clause,
-        style_clause,
     )
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
@@ -63,7 +61,7 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         "ref": ref,
         "style_ref": "",
         "prompt_text": prompt_text,
-        "style_clause": style_clause,
+        "style_clause": "",
         "subject_clause": subject_clause,
         "action_clause": action_clause,
         "environment_clause": environment_clause,
@@ -98,17 +96,15 @@ def _chain_key(anchor: dict) -> str:
 
 def _subject_clause(brief: dict, anchor: dict) -> str:
     world = compact_world_atoms(brief)
-    shot_type = str(anchor.get("shot_type", "")).strip().lower().replace("_", " ")
-    face = str(anchor.get("face_exposure_level", "")).strip()
+    heroine = compact_prompt_clause(str(world.get("hero_identity", "")).strip() or "the heroine", 6)
     focus = str(anchor.get("prompt_focus", "")).strip().lower()
-    render_mode = str(anchor.get("character_render_mode", "")).strip()
     if focus == "object":
-        return compact_prompt_clause(f"object-led frame, heroine implied only, single subject in frame, bubblegum pink and aqua cyan with deep navy, thick solid hair shape, off-center full figure, {shot_type} framing, {render_mode}", 24)
+        return compact_prompt_clause(f"The object shifts while {heroine} stays implied at the edge of the frame", 18)
     if focus == "space":
-        return compact_prompt_clause(f"space-led frame, heroine small as graphic figure, long-limbed fashion figure, single subject in frame, bubblegum pink and aqua cyan with deep navy, off-center moving figure, compressed anime background blocks, whole body readable, {shot_type} framing, {render_mode}", 24)
+        return compact_prompt_clause(f"{heroine} moves as a small full-body figure inside the same planar world", 18)
     if focus == "graphic":
-        return compact_prompt_clause(f"graphic-led frame, heroine secondary but fully present, single subject in frame, bubblegum pink and aqua cyan with deep navy, graphic keyframe impact, off-center moving figure, flat background planes, anime acting pose, {shot_type} framing, {render_mode}", 24)
-    return compact_prompt_clause(f"{world['heroine_invariants'] or world['hero_identity']}, long-limbed fashion figure, sharp almond eyes, thick solid hair shape, simplified environment geometry, bubblegum pink and aqua cyan with deep navy, anime three-quarter turn or full-figure framing, anime cel acting pose, {shot_type} framing, {face} face exposure, {render_mode}", 28)
+        return compact_prompt_clause(f"{heroine} shifts inside the same graphic frame without losing the exact design", 18)
+    return compact_prompt_clause(f"{heroine} changes pose while keeping the same exact design and silhouette", 18)
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
@@ -133,9 +129,8 @@ def _environment_clause(anchor: dict, section: dict) -> str:
         or str(anchor.get("scene_detail", "")).strip()
     )
     space_event = str(anchor.get("space_event", "")).strip()
-    composition = str(anchor.get("composition_shape", "")).strip()
-    parts = [location, _normalize_scene_for_prompt(str(anchor.get("scene_detail", "")).strip()), space_event, composition, palette, lighting]
-    return compact_prompt_clause(", ".join(part for part in parts if part), 18)
+    parts = [location, space_event, palette, lighting]
+    return compact_prompt_clause(", ".join(part for part in parts if part), 12)
 
 
 def _normalize_location_for_prompt(location: str) -> str:
@@ -190,6 +185,12 @@ def _normalize_scene_for_prompt(scene: str) -> str:
         ("paired figures", "a single figure"),
         ("two figures", "a single figure"),
         ("mirrored glass", "dark glass plane"),
+        ("city pull coming from deep center", "city bands stacked behind"),
+        ("street planes converge toward center", "street planes stack in flat bands"),
+        ("block receding toward the center", "block stacked in flat layers"),
+        ("block receding in layers", "block stacked in flat layers"),
+        ("foreground dominant", "foreground left"),
+        ("occupying most of the frame edge", "touching the frame edge"),
     )
     out = text
     lowered = out.lower()
@@ -217,20 +218,27 @@ def _compose_flux2_ref_prompt(
     kinetic_clause: str,
     lighting_clause: str,
     safety_clause: str,
-    style_clause: str,
 ) -> str:
-    return compose_flux2_slot_prompt(
-        style_clause,
-        [
+    change_sentence = ", ".join(
+        part
+        for part in (
             subject_clause,
-            environment_clause,
             action_clause,
-            continuity_clause,
+            environment_clause,
             kinetic_clause,
-            lighting_clause,
-            safety_clause,
-        ],
+        )
+        if str(part).strip()
     )
+    continuity_sentence = ", ".join(
+        part
+        for part in (
+            continuity_clause,
+            "maintaining the exact flat cel-shaded design and bold outlines",
+            safety_clause,
+        )
+        if str(part).strip()
+    )
+    return compose_flux2_refinement_prompt(change_sentence, continuity_sentence)
 
 
 def _anchor_summary(anchors: list[dict]) -> str:
@@ -242,7 +250,7 @@ def _anchor_summary_row(anchor: dict) -> str:
     section = str(anchor.get("section_name", "section"))
     label = str(anchor.get("section_label", section))
     shot_type = str(anchor.get("shot_type", "CHAR_MASTER"))
-    relation = str(anchor.get("space_relation", "")).strip() or "space stays stable"
+    relation = _normalize_scene_for_prompt(str(anchor.get("space_relation", "")).strip()) or "space stays stable"
     phase = _clip_phase(anchor)
     kinetic = str(anchor.get("kinetic_transition", "")).strip() or "none"
     intensity = str(anchor.get("kinetic_intensity", "")).strip() or "normal"

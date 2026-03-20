@@ -26,10 +26,10 @@ HOUSE_STYLE_PHRASES = (
 )
 
 FLUX2_BASE_STYLE = (
-    "A high-quality 2D digital illustration of a hip anime girl with sharp almond eyes, a small mouth, a minimal nose, and thick solid hair shapes.",
-    "She has long-limbed fashion proportions, clean anime linework, thick clean outlines, and flat cel shading with solid cel shadows and matte flat skin color.",
-    "The image uses a vibrant pop-art palette with bubblegum pink, aqua cyan, and deep navy, high contrast, bold graphic poster energy, and asymmetrical poster framing.",
-    "The background is non-photographic and planar, with simplified environment geometry, simple wall blocks, blank sign panels, cut-paper shadow shapes, and minimalist graphic patterns.",
+    "A high-quality 2D digital illustration in a bold Japanese pop visual style, featuring a hip anime heroine with sharp almond eyes, a small mouth, a minimal nose, and thick solid hair shapes.",
+    "She has long-limbed streetwear-ready fashion proportions, clean anime linework, thick clean outlines, and flat cel shading with solid cel shadows and matte flat skin color.",
+    "The image uses a vibrant pop-art palette with bubblegum pink, aqua cyan, and deep navy, high contrast, bold graphic poster style, asymmetrical framing, and rhythm-game-inspired visual impact.",
+    "The background is non-photographic and planar, with simplified environment geometry, geometric shapes, blank sign panels, cut-paper shadow shapes, and minimalist patterns.",
 )
 
 
@@ -82,6 +82,24 @@ def compose_flux2_slot_prompt(style_contract: object, slots: Iterable[object]) -
     if base:
         return base
     return f"{variation}." if variation else ""
+
+
+def compose_flux2_tti_prompt(style_contract: object, shot_sentence: object, character_sentence: object = "", background_sentence: object = "") -> str:
+    base = _base_flux2_style(style_contract)
+    parts = [_sentence(shot_sentence), _sentence(character_sentence), _sentence(background_sentence)]
+    detail = " ".join(part for part in parts if part)
+    if base and detail:
+        return f"{base} {detail}".strip()
+    return base or detail
+
+
+def compose_flux2_refinement_prompt(change_sentence: object, continuity_sentence: object = "") -> str:
+    change = _sentence(change_sentence)
+    continuity = _sentence(
+        continuity_sentence
+        or "Maintain the exact character design, flat cel shading, and bold clean outlines"
+    )
+    return " ".join(part for part in (change, continuity) if part).strip()
 
 
 def flux2_visual_style_contract(source: object = "", profile_policy: dict | None = None) -> str:

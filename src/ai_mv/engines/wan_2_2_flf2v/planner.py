@@ -182,7 +182,7 @@ def _clip_summary(clips: list[dict]) -> str:
 
 def _clip_summary_row(clip: dict) -> str:
     sid = str(clip["shot_id"])
-    relation = str(clip.get("space_relation", "")).strip() or "space stays stable"
+    relation = _normalize_wan_relation(str(clip.get("space_relation", "")).strip()) or "space stays stable"
     motion = str(clip.get("kinetic_transition", "")).strip() or str(clip.get("motion_hint", "")).strip() or "impact move"
     label = str(clip.get("section_label", clip.get("section_name", "section")))
     return f"{sid}({label}|{motion}|{relation})"
@@ -215,28 +215,28 @@ def _subject_motion(clip: dict, section: dict) -> str:
     action = _planned_motion_clause(clip)
     focus = str(clip.get("prompt_focus", "")).strip().lower()
     motif = str(clip.get("motif_object", "")).strip()
-    space_event = str(clip.get("space_event", "")).strip()
     device = str(clip.get("edit_device", "")).strip()
     if focus == "object":
         prefix = {
-            "establish": f"The {motif or 'motif object'} sets the beat",
-            "resolve": f"The {motif or 'motif object'} resolves the beat",
-            "advance": f"The {motif or 'motif object'} carries the beat",
-        }.get(phase, f"The {motif or 'motif object'} holds the beat")
+            "establish": f"The {motif or 'motif object'} leads the move",
+            "resolve": f"The {motif or 'motif object'} lands the move",
+            "advance": f"The {motif or 'motif object'} carries the move",
+        }.get(phase, f"The {motif or 'motif object'} holds the move")
         return _sentence_clause(_join_motion(prefix, action))
     if focus == "space":
+        space_event = str(clip.get("space_event", "")).strip()
         prefix = {
-            "establish": "The space opens the beat",
-            "resolve": "The space resolves the beat",
-            "advance": "The space carries the beat",
-        }.get(phase, "The space holds the beat")
+            "establish": f"The space {space_event or 'opens'}",
+            "resolve": f"The space {space_event or 'settles'}",
+            "advance": f"The space {space_event or 'shifts'}",
+        }.get(phase, f"The space {space_event or 'holds'}")
         return _sentence_clause(_join_motion(prefix, action))
     if focus == "graphic":
         prefix = {
-            "establish": f"The {device or 'graphic hit'} sets the beat",
-            "resolve": f"The {device or 'graphic hit'} resolves the beat",
-            "advance": f"The {device or 'graphic hit'} carries the beat",
-        }.get(phase, f"The {device or 'graphic hit'} holds the beat")
+            "establish": f"The {device or 'graphic hit'} triggers the move",
+            "resolve": f"The {device or 'graphic hit'} lands the move",
+            "advance": f"The {device or 'graphic hit'} carries the move",
+        }.get(phase, f"The {device or 'graphic hit'} holds the move")
         return _sentence_clause(_join_motion(prefix, action))
     if phase == "establish":
         return _sentence_clause(_join_motion("She sets the move", action))
@@ -255,9 +255,9 @@ def _camera_relation(clip: dict, section: dict) -> str:
     intensity = str(clip.get("kinetic_intensity", "")).strip().lower()
     escalation = str(section.get("escalation_level", "")).strip().lower()
     if focus in {"object", "space", "graphic"} and composition:
-        return compact_prompt_clause(_normalize_wan_composition(composition), 10)
+        return _motion_camera_phrase(_normalize_wan_composition(composition), camera)
     if camera:
-        return compact_prompt_clause(", ".join(part for part in (composition, camera) if part), 12)
+        return _motion_camera_phrase(composition, camera)
     if kinetic_transition == "whip_pan_left":
         return "whips hard left across her line"
     if kinetic_transition == "whip_pan_right":
@@ -300,18 +300,19 @@ def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     focus = str(clip.get("prompt_focus", "")).strip().lower()
     if focus in {"object", "space", "graphic"}:
         render_mode = ""
-    text = ", ".join(
-        part
-        for part in (
-            _normalize_wan_location(location),
-            _normalize_wan_composition(composition),
-            palette,
-            render_mode,
-            lighting_fx or lighting or world_rules,
-        )
-        if part
-    )
-    return compact_prompt_clause(text, 16)
+    location_text = _normalize_wan_location(location)
+    mood = lighting_fx or lighting or world_rules
+    if focus == "object":
+        text = ", ".join(part for part in (f"{location_text} drift behind it", palette, mood) if part)
+        return compact_prompt_clause(text, 12)
+    if focus == "space":
+        text = ", ".join(part for part in (f"{location_text} slide in flat layers", palette, mood) if part)
+        return compact_prompt_clause(text, 12)
+    if focus == "graphic":
+        text = ", ".join(part for part in (f"{location_text} pulse behind the hit", palette, mood) if part)
+        return compact_prompt_clause(text, 12)
+    text = ", ".join(part for part in (f"{location_text} move behind her", palette, render_mode, mood) if part)
+    return compact_prompt_clause(text, 14)
 
 
 def _negative_prompt(clip: dict, brief: dict) -> str:
@@ -378,6 +379,28 @@ def _normalize_wan_location(location: str) -> str:
         ("street", "street blocks"),
         ("corridor", "passage blocks"),
         ("lane", "lane blocks"),
+    )
+    out = text
+    lowered = out.lower()
+    for old, new in replacements:
+        if old in lowered:
+            out = out.replace(old, new).replace(old.title(), new)
+            lowered = out.lower()
+    return out
+
+
+def _normalize_wan_relation(relation: str) -> str:
+    text = str(relation).strip()
+    if not text:
+        return text
+    replacements = (
+        ("receding toward the center", "stacked in flat layers"),
+        ("receding in layers", "stacked in flat layers"),
+        ("deep center", "stacked bands"),
+        ("converge toward center", "stack in flat bands"),
+        ("foreground dominant", "foreground left"),
+        ("occupying most of the frame edge", "touching the frame edge"),
+        ("street plane", "flat street plane"),
     )
     out = text
     lowered = out.lower()
@@ -472,6 +495,27 @@ def _camera_relation_is_weak(text: str) -> bool:
         return True
     weak_starts = ("a gentle retreat", "a steady retreat", "the glide", "the backward tracking", "the arc")
     return low.startswith(weak_starts)
+
+
+def _motion_camera_phrase(composition: str, camera: str) -> str:
+    comp = compact_prompt_clause(_normalize_wan_composition(composition), 8)
+    cam = compact_prompt_clause(camera, 8)
+    combined = ", ".join(part for part in (comp, cam) if part)
+    low = combined.lower()
+    replacements = (
+        ("off-center moving silhouette", "camera tracks an off-center silhouette"),
+        ("off-center low horizon moving figure", "camera skims a low off-center figure"),
+        ("small moving figure in open negative space", "camera keeps a small figure drifting through open space"),
+        ("floating object field with off-center figure", "camera moves through a floating object field past an off-center figure"),
+        ("moving poster crop", "camera pushes through a moving poster crop"),
+        ("off-center", "camera stays off-center"),
+    )
+    out = combined
+    for source, target in replacements:
+        if source in low:
+            out = out.replace(source, target).replace(source.title(), target)
+            low = out.lower()
+    return compact_prompt_clause(out, 14)
 
 
 def _naturalize_relation(text: str) -> str:
