@@ -250,9 +250,12 @@ def _subject_motion(clip: dict, section: dict) -> str:
 def _camera_relation(clip: dict, section: dict) -> str:
     camera = str(clip.get("camera_language", "")).strip()
     composition = str(clip.get("composition_shape", "")).strip()
+    focus = str(clip.get("prompt_focus", "")).strip().lower()
     kinetic_transition = str(clip.get("kinetic_transition", "")).strip().lower()
     intensity = str(clip.get("kinetic_intensity", "")).strip().lower()
     escalation = str(section.get("escalation_level", "")).strip().lower()
+    if focus in {"object", "space", "graphic"} and composition:
+        return compact_prompt_clause(_normalize_wan_composition(composition), 10)
     if camera:
         return compact_prompt_clause(", ".join(part for part in (composition, camera) if part), 12)
     if kinetic_transition == "whip_pan_left":
@@ -294,7 +297,20 @@ def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     lighting_fx = str(clip.get("lighting_fx", "")).strip()
     composition = str(clip.get("composition_shape", "")).strip()
     render_mode = str(clip.get("character_render_mode", "")).strip()
-    text = ", ".join(part for part in (location, composition, palette, render_mode, lighting_fx or lighting or world_rules) if part)
+    focus = str(clip.get("prompt_focus", "")).strip().lower()
+    if focus in {"object", "space", "graphic"}:
+        render_mode = ""
+    text = ", ".join(
+        part
+        for part in (
+            _normalize_wan_location(location),
+            _normalize_wan_composition(composition),
+            palette,
+            render_mode,
+            lighting_fx or lighting or world_rules,
+        )
+        if part
+    )
     return compact_prompt_clause(text, 16)
 
 
@@ -307,7 +323,15 @@ def _negative_prompt(clip: dict, brief: dict) -> str:
     if bool(clip.get("use_ref", False)):
         extra.append("identity drift")
     if str(clip.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"}:
-        extra.extend(["generic live-action portrait", "photorealistic skin texture"])
+        extra.extend(
+            [
+                "generic live-action portrait",
+                "photorealistic skin texture",
+                "photographic background depth",
+                "realistic architecture detail",
+                "soft atmospheric bloom",
+            ]
+        )
     if str(clip.get("face_exposure_level", "")).strip().lower() in {"direct", "soft"}:
         extra.extend(["different person", "age drift", "hairstyle drift", "wardrobe swap", "duplicate subject"])
     if "world_rules" in world and "night" in str(world.get("world_rules", "")).lower():
@@ -322,6 +346,46 @@ def _suggested_energy(clip: dict, section: dict) -> str:
     if escalation in {"interrupt", "residue"}:
         return "low"
     return "normal"
+
+
+def _normalize_wan_composition(composition: str) -> str:
+    text = str(composition).strip()
+    if not text:
+        return text
+    lowered = text.lower()
+    replacements = (
+        ("centered", "off-center"),
+        ("runway", "moving"),
+        ("poster crop", "moving poster crop"),
+        ("low horizon silhouette", "off-center low horizon moving figure"),
+        ("isolated small figure", "small moving figure in open negative space"),
+        ("offset silhouette crop", "off-center moving silhouette"),
+        ("floating object field", "floating object field with off-center figure"),
+    )
+    out = text
+    for old, new in replacements:
+        if old in lowered:
+            out = out.replace(old, new).replace(old.title(), new)
+            lowered = out.lower()
+    return out
+
+
+def _normalize_wan_location(location: str) -> str:
+    text = str(location).strip()
+    if not text:
+        return text
+    replacements = (
+        ("street", "street blocks"),
+        ("corridor", "passage blocks"),
+        ("lane", "lane blocks"),
+    )
+    out = text
+    lowered = out.lower()
+    for old, new in replacements:
+        if old in lowered:
+            out = out.replace(old, new).replace(old.title(), new)
+            lowered = out.lower()
+    return out
 
 
 def _compose_positive_prompt(row: dict) -> str:

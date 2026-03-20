@@ -44,7 +44,7 @@ def compact_world_atoms(brief: dict) -> dict:
         "heroine_invariants": compact_prompt_clause(world.get("heroine_invariants", "") or world.get("hero_identity", ""), 28),
         "world_rules": compact_prompt_clause(world.get("world_rules", ""), 24),
         "world_invariants": compact_prompt_clause(world.get("world_invariants", "") or world.get("world_rules", ""), 28),
-        "visual_style_contract": compact_prompt_clause(brief.get("visual_style_contract", ""), 24),
+        "visual_style_contract": _compact_style_contract(brief.get("visual_style_contract", "")),
     }
 
 
@@ -117,3 +117,25 @@ def _compact_hero_identity(text: object) -> str:
     if not kept:
         kept = clauses[:3]
     return compact_prompt_clause(", ".join(kept), 18)
+
+
+def _compact_style_contract(text: object) -> str:
+    raw = " ".join(str(text).strip().split())
+    if not raw:
+        return ""
+    sentences = [part.strip() for part in raw.split(".") if part.strip()]
+    if not sentences:
+        return compact_prompt_clause(raw, 36)
+    kept = []
+    word_budget = 0
+    for sentence in sentences:
+        sentence_words = len(sentence.split())
+        if kept and word_budget + sentence_words > 42:
+            break
+        kept.append(sentence.rstrip("."))
+        word_budget += sentence_words
+        if len(kept) >= 3:
+            break
+    if not kept:
+        return compact_prompt_clause(raw, 36)
+    return ". ".join(kept) + "."

@@ -1,5 +1,3 @@
-# 화려한 실내 세트와 럭셔리한 비주얼이 강조된 정석적인 K-Pop 아이돌 뮤직비디오에 최적화
-# Suggested Filename: kpop_highgloss.yaml
 audio:
   language: ko
   tags:
@@ -33,38 +31,28 @@ audio_ending_policy:
     - polished ending
 visual:
   brief: >
-    A stylized 2D glossy K-pop visual MV with a young adult East Asian heroine, premium styling,
-    bold clean outlines, mirror-clean surfaces, luminous thresholds, sleek passages, and open
-    performance lanes. Push the luxury pop finish through whip pan transitions, snap zoom hook
-    punches, strobe accents, match-cut pose continuity, glam close-up impact, high-contrast
-    lighting, and crisp shadow design. Prioritize pristine center framing, clean set geometry,
-    and premium wardrobe read before adding extra motion.
+    Glossy premium K-pop at night. Favor polished platforms, reflective thresholds, sleek
+    passages, performance lanes, and controlled luxury energy. Keep it pristine, direct, and
+    commanding rather than gritty or chaotic.
   negative: >
-    Avoid grungy decay, sleepy wandering, random props, messy streetwear drift, muddy lighting,
-    disconnected spaces, typography, text, subtitles, watermarks, logo, and UI overlay,
-    photorealistic skin texture, and live-action portrait realism.
+    Avoid grunge decay, prop mess, random street drift, muddy light, cheap glamour, or geography
+    changes that break the set-controlled polish.
 mv:
   story_world: >
-    The video should feel like one controlled high-shine night world built from recurring
-    environment families: reflective thresholds, sleek passages, polished platforms, and open
-    performance lanes. The same heroine and the same luxurious pulse should hold through the
-    whole piece.
+    One controlled high-shine night world built from polished platforms, reflective thresholds,
+    open lanes, set edges, and clean passage geometry.
   action_vocabulary: >
-    Prefer readable pop actions: stepping into center, turning shoulders into light, holding a
-    direct stare, pivoting through a lane, brushing past reflective walls, hitting a pose on the
-    beat, and landing a strong stop. Keep motion sharp, clean, and legible rather than theatrical,
-    overbusy, or too dance-rehearsal literal. Favor one clean motion idea per beat that can drop
-    directly into downstream workflow prompts.
+    Prefer readable pop beats: stepping into center, direct stare, reflective pass, lane pivot,
+    pose hit, shoulder turn into light, and strong stop.
   payoff_style: >
-    The final return should feel like total pop command: strongest center framing, cleaner
-    lines, brighter reflections, stronger contrast, whip pan releases into snap zoom hook
-    impacts, match-cut pose precision, restrained strobe flashes, and one extreme close-up.
+    The final return should feel like total pop command: clean center gravity, brighter set
+    reflections, stronger contrast, and one decisive close-up inside an overall premium final
+    hit.
   outro_feel: >
-    End with a final held image that seals her control of the set like a last signature frame,
-    polished, dominant, and impossible to shrink into a fade-out.
+    End with a final held frame that feels like the whole stage seals around her.
   avoid: >
-    Avoid overcomplicated narrative acting, dull atmosphere, passive body language, random
-    geography changes, and endings that shrink instead of peak.
+    Avoid dull atmosphere, passive body language, overcomplicated acting, random location drift,
+    or endings that shrink instead of peak.
 visual_policy:
   visual_mode: character_heavy
   continuity_mode: same_heroine

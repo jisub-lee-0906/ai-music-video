@@ -1,5 +1,3 @@
-# 강렬한 비트와 반항적인 태도가 돋보이는 K-Pop 힙합 및 다크한 퍼포먼스 곡에 최적화
-# Suggested Filename: kpop_impact.yaml
 audio:
   language: ko
   tags:
@@ -33,38 +31,26 @@ audio_ending_policy:
     - slammed-shut ending
 visual:
   brief: >
-    A stylized 2D rebellious diva visual MV with a young adult East Asian heroine, strong
-    silhouette, dark-gloss styling, industrial shine, shadowed thresholds, hard-lit passages,
-    and dominant open lanes. Push maximum kinetic tension with whip pan lane attacks, snap zoom
-    pressure, strobe hits, match-cut body punctuation, challenge close-up stares, high-contrast
-    lighting, and graphic shadows. Favor commanding center holds, hard turns, stop-start
-    pressure, and confrontational pose changes over constant forward charging. Keep the frame
-    readable and center-dominant before adding aggression.
+    Fierce dark-gloss K-pop with industrial thresholds, hard-lit passages, dominant lanes, and
+    confrontational stage pressure. Keep it sharp, clean, and forceful rather than messy or cute.
   negative: >
-    Avoid soft romance drift, timid posing, luxury-only prettiness, cluttered props, pastel
-    sweetness, disconnected locations, typography, text, subtitles, watermarks, logo, and UI
-    overlay, photorealistic skin texture, and live-action portrait realism.
+    Avoid soft romance drift, luxury-only prettiness, pastel sweetness, cluttered props, timid
+    posing, or disconnected spaces that dilute the pressure.
 mv:
   story_world: >
-    The video should feel like one charged after-dark world built from recurring environment
-    families: shadowed thresholds, hard-lit passages, industrial platforms, and dominant open
-    lanes. The same heroine and the same rebellious charge should drive the whole piece.
+    One charged after-dark world built from hard-lit passages, industrial platforms, shadowed
+    thresholds, and open lanes that feel built for confrontation.
   action_vocabulary: >
-    Prefer readable assertive actions: stepping into center, turning with attitude, holding a
-    challenge stare, cutting across a lane, pausing in hard shadow, snapping into a new pose, and
-    landing a final look. Keep motion crisp, controlled, and forceful rather than chaotic,
-    repetitive lane-running, or stunt-heavy. Favor single-impact clauses rather than stacked
-    performance instructions.
+    Prefer readable assertive beats: step to center, challenge stare, lane cut, attitude turn,
+    hard-shadow pause, pose snap, and final look.
   payoff_style: >
-    The final return should feel like full command: hardest eye line, strongest posture, sharper
-    contrast, heavier shadows, whip pan escalations, snap zoom impact, strobe bursts, and an
-    extreme close-up strike.
+    The final return should feel like full command: hardest eye line, strongest posture, heavier
+    contrast, and a clean final strike that closes the space on her terms.
   outro_feel: >
-    End with one last attitude-heavy image that closes the lane on her terms and leaves the
-    frame under pressure, like the ending has been slammed shut instead of tapering off.
+    End with one last forceful image that feels slammed shut, not softened.
   avoid: >
-    Avoid polite softness, static glamour for its own sake, random narrative detours, timid
-    endings, and drift toward cute idol sweetness.
+    Avoid polite softness, static glamour for its own sake, random detours, timid endings, or
+    cute-idol drift.
 visual_policy:
   visual_mode: character_heavy
   continuity_mode: same_heroine

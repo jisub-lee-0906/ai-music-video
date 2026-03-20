@@ -218,11 +218,21 @@ def _same_heroine_protection(config: dict, payload: dict) -> dict:
 def _style_alignment(payload: dict) -> dict:
     shots = [row for row in payload.get("shot_timeline", {}).get("shots", []) if isinstance(row, dict)]
     routes = [row for row in payload.get("clip_routes", []) if isinstance(row, dict)]
+    beat_to_section = _beat_to_section_label(payload)
     total_shots = len(shots) or 1
     graphic_types = {"GRAPHIC_EVENT", "SYMBOLIC_INSERT", "WORLD_EVENT", "TRANSITIONAL_ABSTRACT", "RHYTHM_DETAIL"}
     graphic_count = sum(1 for row in shots if str(row.get("shot_type", "")).strip().upper() in graphic_types)
     alt_focus_count = sum(1 for row in shots if str(row.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"})
-    payoff_rows = [row for row in shots if str(row.get("section_label", "")).strip().lower() == "final chorus"]
+    payoff_rows = [
+        row
+        for row in shots
+        if _canonical_section_label(
+            str(row.get("section_label", row.get("section_name", ""))).strip(),
+            str(row.get("lyric_beat_id", "")).strip(),
+            beat_to_section,
+        ).lower()
+        == "final chorus"
+    ]
     payoff_graphic = sum(1 for row in payoff_rows if str(row.get("shot_type", "")).strip().upper() in graphic_types)
     route_focus_ratio = (
         sum(1 for row in routes if str(row.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"}) / float(len(routes))
@@ -384,10 +394,35 @@ def _beat_to_section_label(payload: dict) -> dict[str, str]:
 
 def _route_section_label(row: dict, beat_to_section: dict[str, str]) -> str:
     beat_id = str(row.get("lyric_beat_id", "")).strip()
-    mapped = beat_to_section.get(beat_id, "").strip()
+    mapped = _canonical_section_label("", beat_id, beat_to_section)
     if mapped:
         return mapped
     label = str(row.get("section_label", row.get("section_name", "section"))).strip()
     if "[" in label and "]" in label:
-        return str(row.get("section_name", "section")).strip() or "section"
-    return label or "section"
+        label = str(row.get("section_name", "section")).strip()
+    return _canonical_section_label(label, beat_id, beat_to_section) or "section"
+
+
+def _canonical_section_label(raw_label: str, beat_id: str, beat_to_section: dict[str, str]) -> str:
+    mapped = beat_to_section.get(beat_id, "").strip()
+    if mapped:
+        return mapped
+    label = str(raw_label).strip()
+    if not label:
+        return ""
+    norm = label.lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "intro": "Intro",
+        "verse_1": "Verse 1",
+        "verse1": "Verse 1",
+        "verse_2": "Verse 2",
+        "verse2": "Verse 2",
+        "pre_chorus": "Pre-Chorus",
+        "prechorus": "Pre-Chorus",
+        "chorus": "Chorus",
+        "bridge": "Bridge",
+        "final_chorus": "Final Chorus",
+        "finalchorus": "Final Chorus",
+        "outro": "Outro",
+    }
+    return aliases.get(norm, label)

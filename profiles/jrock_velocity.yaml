@@ -1,5 +1,3 @@
-# 질주감 있는 하이템포 J-Rock 및 애니메이션 오프닝 스타일의 곡에 최적화
-# Suggested Filename: jrock_velocity.yaml
 audio:
   language: ja
   tags:
@@ -33,38 +31,27 @@ audio_ending_policy:
     - driving outro
 visual:
   brief: >
-    A stylized 2D J-rock visual MV with a young adult East Asian lead, sharp styling, bold clean
-    outlines, wind-cut motion, reflective thresholds, elevated passages, and forward performance
-    corridors. Keep the geography hard, readable, and lane-driven before extra aggression. Push
-    kinetic camera energy with whip pans, snap zoom pressure, close-up punctuation, match-cut
-    body accents, strobe hits, high-contrast lighting, and hard graphic shadows. Favor fast
-    pivots, rail turns, hard stops, shoulder snaps, and impact stares over literal running.
+    Anime-rock urgency moving through elevated lanes, rooftop edges, rail lines, and forward
+    night corridors. Keep it bright, fast, and emotionally direct rather than ornamental or
+    passive.
   negative: >
-    Avoid heavy nightclub glamour, sluggish posing, random prop clutter, soft passive staging,
-    disconnected environments, typography, text, subtitles, watermarks, logo, and UI overlay,
-    photorealistic skin texture, and live-action portrait realism.
+    Avoid nightclub glamour, sleepy posing, random props, soft passivity, disconnected spaces, or
+    beauty-first staging that weakens the sense of forward drive.
 mv:
   story_world: >
-    The video should feel like one continuous emotional charge through recurring urban-night
-    environment families: elevated passages, reflective thresholds, rooftop edges, and forward
-    performance corridors. The same heroine and the same momentum should carry through the whole
-    piece.
+    One continuous charge through rails, rooftop passages, threshold edges, elevated walks, and
+    night lanes that always feel like they are pulling forward.
   action_vocabulary: >
-    Prefer readable energetic actions: stepping into wind, pivoting on a threshold, bracing at a
-    rail, snapping shoulders into light, cutting a sharp turn, lifting the chin into impact, and
-    holding a forward stare. Keep motion physically simple but urgent rather than chaotic,
-    repetitive sprinting, or fight-scene heavy. Favor compact beat-sized action clauses over
-    over-described chase behavior.
+    Prefer compact urgent beats: stepping into wind, bracing at a rail, pivoting at a threshold,
+    shoulder snap, chin lift, quick turn, and forward stare.
   payoff_style: >
-    The final return should feel like full emotional breakthrough: stronger eye contact, wider
-    body line, brighter backlight, sharper shadows, faster visual pulse, and one extreme
-    close-up impact before the final held corridor release.
+    The final return should feel like breakthrough: wider body line, cleaner directional light,
+    stronger motion energy, and a decisive heroine beat before the final release.
   outro_feel: >
-    End on a final forward-looking hold that feels earned and sealed, leaving a hard after-image
-    that locks the arc in place instead of letting the energy simply drop away.
+    End on a final forward hold that feels earned, breathless, and sealed.
   avoid: >
-    Avoid sleepy wandering, static beauty posing, forced cuteness, random spectacle, and muted
-    endings.
+    Avoid sleepy wandering, static posing, forced cuteness, random spectacle, or endings that
+    flatten the momentum.
 visual_policy:
   visual_mode: character_heavy
   continuity_mode: same_heroine

@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import string
 
-from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES
+from ai_mv.core.contracts.prompt_schema import (
+    ANCHOR_STRATEGIES,
+    CONTINUITY_BASES,
+    KINETIC_INTENSITIES,
+    KINETIC_TRANSITIONS,
+    SCENE_CHANGE_LEVELS,
+    SHOT_TYPES,
+)
 
 
 def normalize_tti_shot(raw: dict, idx: int) -> dict:
@@ -192,14 +199,14 @@ def normalize_visual_story_bible(raw: dict, sections: list[dict]) -> dict:
                 "palette_hint": _require_text(row, "palette_hint"),
                 "lighting_hint": _require_text(row, "lighting_hint"),
                 "camera_commitment": _require_text(row, "camera_commitment"),
-                "symbolic_image": _require_text(row, "symbolic_image"),
-                "motif_object": _require_text(row, "motif_object"),
-                "edit_device": _require_text(row, "edit_device"),
-                "prompt_focus": _require_text(row, "prompt_focus"),
-                "space_event": _require_text(row, "space_event"),
-                "composition_shape": _require_text(row, "composition_shape"),
-                "palette_mode": _require_text(row, "palette_mode"),
-                "character_render_mode": _require_text(row, "character_render_mode"),
+                "symbolic_image": _optional_text(row, "symbolic_image", _require_text(row, "literal_image")),
+                "motif_object": _optional_text(row, "motif_object", _require_text(row, "location_family")),
+                "edit_device": _optional_text(row, "edit_device", "silhouette hold"),
+                "prompt_focus": _optional_text(row, "prompt_focus", "heroine"),
+                "space_event": _optional_text(row, "space_event", _require_text(row, "visible_action")),
+                "composition_shape": _optional_text(row, "composition_shape", "asymmetrical poster crop"),
+                "palette_mode": _optional_text(row, "palette_mode", _require_text(row, "palette_hint")),
+                "character_render_mode": _optional_text(row, "character_render_mode", "long-limbed fashion figure"),
             }
         )
     out = {
@@ -261,6 +268,9 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "space_relation": _require_text(row, "space_relation"),
                 "edit_role": _optional_text(row, "edit_role", "support"),
                 "continuity_lock": _optional_text(row, "continuity_lock", "same heroine and world"),
+                "scene_change_level": _normalize_scene_change_level(row, beat, shot_type),
+                "anchor_strategy": _normalize_anchor_strategy(row, beat, shot_type),
+                "continuity_basis": _normalize_continuity_basis(row, beat, shot_type),
                 "clip_count": max(1, int(row.get("clip_count", 1))),
                 "start_frame": _normalize_frame_anchor(row.get("start_frame", {}), "start_frame"),
                 "end_frame": _normalize_frame_anchor(row.get("end_frame", {}), "end_frame"),
@@ -286,6 +296,58 @@ def _normalize_frame_anchor(raw: object, label: str) -> dict:
         "camera_axis": _optional_text(raw, "camera_axis", "eye level"),
         "lighting_state": _optional_text(raw, "lighting_state", "natural practical glow"),
     }
+
+
+def _normalize_scene_change_level(raw: dict, beat: dict, shot_type: str) -> str:
+    value = str(raw.get("scene_change_level", "")).strip().lower()
+    if value in SCENE_CHANGE_LEVELS:
+        if value == "hold" and str(shot_type).strip().upper() in {"WORLD_EVENT", "ENV_TRANSITION", "TRANSITIONAL_ABSTRACT"}:
+            return "shift"
+        return value
+    payoff_role = str(beat.get("payoff_role", "")).strip().lower()
+    focus = str(beat.get("prompt_focus", "")).strip().lower()
+    shot = str(shot_type).strip().upper()
+    if payoff_role in {"interrupt", "entry", "peak"}:
+        return "reset"
+    if shot in {"WORLD_EVENT", "ENV_TRANSITION", "TRANSITIONAL_ABSTRACT"} or focus in {"space", "graphic"}:
+        return "shift"
+    if shot in {"EMOTION_CLOSE", "CHAR_MASTER", "PERF_WIDE"} or focus == "heroine":
+        return "evolve"
+    return "hold"
+
+
+def _normalize_anchor_strategy(raw: dict, beat: dict, shot_type: str) -> str:
+    value = str(raw.get("anchor_strategy", "")).strip().lower()
+    scene_change = _normalize_scene_change_level(raw, beat, shot_type)
+    if value in ANCHOR_STRATEGIES:
+        if scene_change == "reset" and value != "new_anchor":
+            return "new_anchor"
+        if scene_change in {"hold", "evolve"} and value == "new_anchor":
+            return "refine_anchor" if scene_change == "evolve" else "reuse_anchor"
+        return value
+    focus = str(beat.get("prompt_focus", "")).strip().lower()
+    if scene_change == "reset":
+        return "new_anchor"
+    if scene_change == "shift":
+        return "new_anchor" if focus in {"space", "graphic"} else "refine_anchor"
+    if scene_change == "evolve":
+        return "refine_anchor"
+    return "reuse_anchor"
+
+
+def _normalize_continuity_basis(raw: dict, beat: dict, shot_type: str) -> str:
+    value = str(raw.get("continuity_basis", "")).strip().lower()
+    if value in CONTINUITY_BASES:
+        return value
+    focus = str(beat.get("prompt_focus", "")).strip().lower()
+    shot = str(shot_type).strip().upper()
+    if focus == "object" or shot in {"DETAIL_INSERT", "SYMBOLIC_INSERT", "RHYTHM_DETAIL"}:
+        return "motif"
+    if focus in {"space", "graphic"} or shot in {"WORLD_EVENT", "ENV_TRANSITION", "TRANSITIONAL_ABSTRACT", "GRAPHIC_EVENT"}:
+        return "world"
+    if shot in {"EMOTION_CLOSE", "CHAR_MASTER", "PERF_WIDE"}:
+        return "heroine"
+    return "none"
 
 
 def _render_lyrics_blocks(blocks: list[dict]) -> str:

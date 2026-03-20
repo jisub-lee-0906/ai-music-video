@@ -180,10 +180,18 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     kinetic_intensity = str(shot.get("kinetic_intensity", "")).strip().lower()
     face_exposure = str(shot.get("face_exposure_level", "")).strip().lower() or _default_face_exposure(shot_type, mv_function)
     continuity_priority = str(shot.get("continuity_priority", "")).strip().lower()
+    anchor_strategy = str(shot.get("anchor_strategy", "")).strip().lower()
+    continuity_basis = str(shot.get("continuity_basis", "")).strip().lower()
     wardrobe_read = str(shot.get("wardrobe_read", "")).strip().lower()
     ref_triggers = policy.get("ref_triggers", {}) if isinstance(policy, dict) else {}
     direct_face_sections = {str(x).strip().lower() for x in policy.get("direct_face_sections", [])} if isinstance(policy, dict) else set()
     is_priority_section = any(ref in label for ref in settings["reference_priority_sections"])
+    if anchor_strategy == "refine_anchor" and continuity_basis in {"heroine", "motif", "world"} and phase != "advance":
+        return True, f"refine anchor for {continuity_basis} continuity"
+    if anchor_strategy == "reuse_anchor" and continuity_basis in {"none", "motif"} and face_exposure not in {"direct", "soft"}:
+        return False, "reuse anchor hold beat"
+    if anchor_strategy == "new_anchor" and continuity_priority != "high" and face_exposure not in {"direct", "soft"} and not is_priority_section:
+        return False, "new anchor scene change"
     if bool(ref_triggers.get("face_sensitive", True)) and face_exposure in {"direct", "soft"} and phase != "advance":
         return True, "identity-sensitive face shot"
     if continuity_priority == "high" and phase in {"single", "establish", "resolve"}:

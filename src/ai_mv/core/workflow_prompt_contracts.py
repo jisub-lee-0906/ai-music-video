@@ -5,7 +5,7 @@ from typing import Iterable
 
 WORKFLOW_NO_TEXT_SUFFIX = (
     ", no text, no typography, no watermark, no logo, no signage, no ui overlay"
-    ", ugly, deformed, distorted, low quality, blurry face"
+    ", no readable letters, no words, no subtitles, ugly, deformed, distorted, low quality, blurry face"
 )
 
 WAN_BASE_NEGATIVE = (
@@ -26,14 +26,10 @@ HOUSE_STYLE_PHRASES = (
 )
 
 FLUX2_BASE_STYLE = (
-    "flat 2d graphic character design",
-    "hard cel shading",
-    "bold clean outlines",
-    "poster-like music-video layout",
-    "high-chroma pop color blocking",
-    "simplified icon face",
-    "sticker-like silhouette design",
-    "non-photorealistic image design",
+    "A high-quality 2D digital illustration of a hip anime girl with sharp almond eyes, a small mouth, a minimal nose, and thick solid hair shapes.",
+    "She has long-limbed fashion proportions, clean anime linework, thick clean outlines, and flat cel shading with solid cel shadows and matte flat skin color.",
+    "The image uses a vibrant pop-art palette with bubblegum pink, aqua cyan, and deep navy, high contrast, bold graphic poster energy, and asymmetrical poster framing.",
+    "The background is non-photographic and planar, with simplified environment geometry, simple wall blocks, blank sign panels, cut-paper shadow shapes, and minimalist graphic patterns.",
 )
 
 
@@ -64,66 +60,71 @@ def compose_image_prompt(parts: Iterable[object], max_words: int = 48) -> str:
 
 
 def compose_flux2_prompt(style_contract: object, parts: Iterable[object], max_words: int = 56) -> str:
-    base = [style_contract] if str(style_contract).strip() else list(FLUX2_BASE_STYLE)
-    text = ", ".join(part for part in (_clean(part) for part in [*base, *parts]) if part)
-    cleaned = compact_prompt_clause(text, max_words).rstrip(". ")
-    return f"{cleaned}." if cleaned else ""
+    base = _base_flux2_style(style_contract)
+    variation = compact_prompt_clause(", ".join(part for part in (_clean(part) for part in parts) if part), max_words).rstrip(". ")
+    if base and variation:
+        return f"{base} {variation}."
+    if base:
+        return base
+    return f"{variation}." if variation else ""
 
 
 def compose_flux2_slot_prompt(style_contract: object, slots: Iterable[object]) -> str:
     parts: list[str] = []
-    base = compact_prompt_clause(style_contract, 18)
-    if base:
-        parts.append(base)
+    base = _base_flux2_style(style_contract)
     for slot in slots:
         cleaned = compact_prompt_clause(slot, 12)
         if cleaned:
             parts.append(cleaned)
-    cleaned = ", ".join(part for part in parts if part).rstrip(". ")
-    return f"{cleaned}." if cleaned else ""
+    variation = ", ".join(part for part in parts if part).rstrip(". ")
+    if base and variation:
+        return f"{base} Shot variation: {variation}."
+    if base:
+        return base
+    return f"{variation}." if variation else ""
 
 
 def flux2_visual_style_contract(source: object = "", profile_policy: dict | None = None) -> str:
     policy = profile_policy or {}
     source_text = _clean(source).lower()
-    parts = list(FLUX2_BASE_STYLE)
-    parts.extend(
-        [
-            "minimal facial detail",
-            "sharp heavy-lid eye shape",
-            "small mouth",
-            "minimal nose",
-            "2-3 dominant color blocks",
-            "angular fashion silhouette",
-            "street-pop graphic attitude",
-            "toy-like deformed proportions",
-            "limited poster contrast palette",
-        ]
-    )
+    detail_parts = [
+        "hard cel shading",
+        "bold clean outlines",
+        "flat color blocking",
+        "simple window blocks",
+        "anime acting pose",
+        "full-figure framing",
+    ]
     if str(policy.get("visual_mv_mode", "")).strip() in {"symbolic_edit", "bga_event"}:
-        parts.append("symbolic visual beats")
+        detail_parts.append("symbolic visual beats")
     if str(policy.get("graphic_event_density", "")).strip() == "high":
-        parts.append("graphic shape contrast")
+        detail_parts.append("graphic shape contrast")
     if str(policy.get("environment_event_density", "")).strip() == "high":
-        parts.append("designed negative space")
+        detail_parts.append("designed negative space")
     if str(policy.get("subject_exposure", "")).strip() in {"selective", "low"}:
-        parts.append("object-led and space-led framing")
+        detail_parts.append("object-led and space-led framing")
     if str(policy.get("reflection_usage", "")).strip() == "selected_only":
-        parts.append("reflection motif only on selected impact beats")
+        detail_parts.append("reflection motif only on selected impact beats")
     palette_bias = str(policy.get("palette_bias", "")).strip()
     if palette_bias == "retro_pop_neon":
-        parts.append("retro-pop neon palette discipline")
+        detail_parts.append("mint green hot pink lavender purple")
     elif palette_bias == "cyber_pop_high_contrast":
-        parts.append("cyber-pop high-contrast palette")
+        detail_parts.append("aqua cyan magenta indigo")
     elif palette_bias == "graphic_pop":
-        parts.append("graphic pop palette discipline")
+        detail_parts.append("coral pink lavender purple blue-black")
     if any(token in source_text for token in ("city pop", "city-pop", "neon night", "late-night city")):
-        parts.append("city-pop neon night palette")
+        detail_parts.append("bubblegum pink aqua cyan deep navy")
     if any(token in source_text for token in ("street", "streetwear", "fashion")):
-        parts.append("street-fashion silhouette")
+        detail_parts.append("street-fashion silhouette")
     if any(token in source_text for token in ("cyber", "future bass", "electro-pop", "neon")):
-        parts.append("cyber-pop accents")
-    return compact_prompt_clause(", ".join(parts), 36)
+        detail_parts.append("cyber-pop accents")
+    detail_clause = compact_prompt_clause(", ".join(detail_parts), 22)
+    style_sentences = list(FLUX2_BASE_STYLE)
+    if detail_clause:
+        style_sentences.append(
+            f"The frame uses geometric shapes, minimalist patterns, rhythm-game-inspired MV framing, and {detail_clause}."
+        )
+    return " ".join(sentence.strip() for sentence in style_sentences if sentence.strip())
 
 
 def sanitize_flux2_positive_text(text: object) -> str:
@@ -171,6 +172,29 @@ def sanitize_flux2_negative_text(text: object) -> str:
         "photorealistic skin texture",
         "live-action portrait",
         "cinematic realism",
+        "soft atmospheric bloom",
+        "photographic background depth",
+        "realistic architecture detail",
+        "readable letters",
+        "printed words",
+        "chibi",
+        "mascot-like",
+        "floating head",
+        "detached portrait emblem",
+        "split-screen",
+        "bilateral symmetry",
+        "centered two-shot",
+        "static cover pose",
+        "stiff half-body crop",
+        "anime glamour portrait",
+        "doll-like character",
+        "runway pose",
+        "mannequin stance",
+        "airbrushed skin shading",
+        "glossy hair shine",
+        "pin-up glamour",
+        "red-black editorial palette",
+        "white-silver bloom",
     ]
     merged = ", ".join(part for part in (cleaned, ", ".join(extras)) if part)
     return compact_prompt_clause(merged, 40)
@@ -211,6 +235,13 @@ def _sentence(text: object) -> str:
 
 def _clean(text: object) -> str:
     return " ".join(str(text).strip().split())
+
+
+def _base_flux2_style(style_contract: object) -> str:
+    text = _clean(style_contract)
+    if text:
+        return _sentence(text)
+    return " ".join(FLUX2_BASE_STYLE)
 
 
 def _capitalize_first(text: str) -> str:

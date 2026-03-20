@@ -1,5 +1,3 @@
-# 90년대 빈티지한 질감과 거친 반항적 에너지가 느껴지는 얼터너티브 록 및 올드스쿨 힙합에 최적화
-# Suggested Filename: retro_grunge.yaml
 audio:
   language: en
   tags:
@@ -33,39 +31,27 @@ audio_ending_policy:
     - hard stop
 visual:
   brief: >
-    A stylized 2D retro-grunge visual MV with an East Asian heroine, concrete walls, rusted
-    cages, decayed corridors, 90s street textures, sodium-vapor shadows, rough practical light,
-    and film-grain-like graphic texture. Keep the piece kinetic and brutal with smash reframe
-    violence, hard-cut punctuation, whip pan breaks, snap zoom punches, dirty strobe hits,
-    match-cut attitude poses, stare pressure, high-contrast lighting, and analog-feeling shadow
-    design. Keep the geography blunt and readable before layering grit.
+    Retro-grunge night with concrete thresholds, chain-link edges, rusted passages, dim street
+    corners, and rough practical light. Keep it blunt, rebellious, and physical rather than
+    polished.
   negative: >
-    Avoid glossy futurism, luxury-only styling, clean sterile sets, random comedy props, weak
-    lighting, typography, text, subtitles, watermarks, logo, UI overlay, photorealistic skin
-    texture, live-action portrait realism, and low-quality image artifacts.
+    Avoid glossy futurism, luxury styling, fake vintage gimmicks, comedy props, weak light, or
+    clean sterile environments.
 mv:
   story_world: >
-    The video should feel like one continuous rough urban world built from recurring environment
-    families: concrete thresholds, rusted passages, dim street corners, chain-link boundaries,
-    and wide asphalt lanes. The same heroine and the same rebellious force should hold through
-    the whole piece.
+    One rough urban world built from concrete thresholds, rusted passages, chain-link boundaries,
+    dim corners, and wide asphalt lanes.
   action_vocabulary: >
-    Prefer readable hard-edged actions: kicking through a threshold, turning into camera with
-    contempt, pacing a cracked lane, bracing against a rusted wall, cutting through shadow,
-    shifting weight into a hard pose, and landing a final stance that feels untouchable. Keep
-    motion blunt, physical, and forceful rather than stunt-heavy, sloppy, or over-choreographed.
-    Favor compact physical beats over long narrative business.
+    Prefer hard-edged readable beats: threshold kick, contempt turn, cracked-lane pace, wall
+    brace, shadow cut, hard pose, and an untouchable final stance.
   payoff_style: >
     The final return should feel like total retro-grunge impact: hardest silhouette, dirtiest
-    light contrast, deeper shadows, smash reframe shocks, hard-cut attitude hits, whip pan
-    interruptions, snap zoom impact, strobe flashes, match-cut pose aggression, and one extreme
-    close-up.
+    light contrast, smash-reframe force, and one hard final hit that stains the frame.
   outro_feel: >
-    End with one last defiant image that leaves a dirty after-image burned into the street
-    world, like the ending has been nailed down rather than softened into a comedown.
+    End with one last defiant image that leaves a dirty after-image in the street world.
   avoid: >
-    Avoid polished idol sweetness, disconnected locations, fake vintage gimmicks, passive body
-    language, and muted endings.
+    Avoid polished sweetness, passive body language, disconnected locations, or endings that land
+    softly.
 visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine

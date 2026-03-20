@@ -1,5 +1,3 @@
-# 동양적인 신비로움과 현대적인 록 비트가 결합된 미스테리하고 강렬한 곡에 최적화
-# Suggested Filename: mystic_impact.yaml
 audio:
   language: ko
   tags:
@@ -35,41 +33,26 @@ audio_ending_policy:
     - final strike
 visual:
   brief: >
-    A stylized 2D mystical dark-impact visual MV with an East Asian heroine, a mystical gaze,
-    deep-shadow temple corridors, gothic thresholds, lacquered black floors, ritual spaces with
-    traditional motifs, and crimson-violet light chambers. Drive the piece with whip pan
-    transitions, snap zoom pressure, strobe bursts, match-cut body echoes, stare impacts,
-    high-contrast lighting, and ritual shadow design. Favor iconic held poses, threshold turns,
-    and ritualized camera pressure over literal running or supernatural chaos. Keep the world
-    iconic and readable before adding occult detail.
+    Mystical night impact with temple thresholds, lacquer-dark passages, carved chamber edges,
+    ceremonial corridors, and crimson-violet pressure. Keep it severe, iconic, and ritualized.
   negative: >
-    Avoid flat fantasy cosplay, cheap historical costume drift, cartoon stylization, random
-    props, bright comedy tone, messy crowd clutter, weak lighting, typography, text, subtitles,
-    watermarks, logo, UI overlay, photorealistic skin texture, live-action portrait realism, and
-    distorted rendering.
+    Avoid campy occult clutter, costume-play historical drift, bright comedy tone, random props,
+    crowd noise, or fantasy excess that breaks the ritual severity.
 mv:
   story_world: >
-    The video should feel like one continuous ritual night world built from recurring environment
-    families: shadowed temple thresholds, gothic East Asian halls, carved ritual chambers,
-    lacquer-black passageways, and open ceremonial lanes. The same heroine and the same sense of
-    supernatural authority should carry through the whole piece.
+    One ritual night world built from temple thresholds, carved halls, chamber lanes, lacquer
+    floors, and shadowed ceremonial passages.
   action_vocabulary: >
-    Prefer readable ritual-impact actions: stepping across a marked threshold, turning with a
-    controlled sleeve or coat sweep, holding a mystical stare, advancing through a corridor like
-    a verdict, pausing under hard crimson light, striking a pose that match cuts into the next
-    space, and landing a final still command. Keep motion crisp, elegant, and forceful rather
-    than chaotic, stunt-heavy, melodramatically theatrical, or overloaded with occult spectacle.
-    Favor one ceremonially clear action per beat.
+    Prefer ceremonially clear beats: threshold crossing, sleeve turn, ritual stare, corridor
+    advance, crimson-light pause, matched pose, and final still command.
   payoff_style: >
-    The final return should feel like total mystical impact: hardest eye line, strongest
-    silhouette, crimson-violet contrast, deeper shadows, whip pan escalations, snap zoom impact,
-    strobe bursts, match-cut ritual continuity, and one extreme close-up strike.
+    The final return should feel like a sealed verdict: hardest silhouette, strongest crimson-
+    violet contrast, heroine presence under full ritual pressure, and a decisive final strike.
   outro_feel: >
-    End with a final image that feels like a verdict has been sealed and the ritual completed,
-    elegant, absolute, and not allowed to dissolve into loose residue.
+    End on an image that feels like the ritual has completed and cannot be reversed.
   avoid: >
-    Avoid soft historical romance drift, campy supernatural clichés, random monster imagery,
-    disconnected locations, passive body language, and diluted endings.
+    Avoid soft historical romance drift, random monster imagery, passive body language,
+    disconnected locations, or endings that weaken the sense of sealed impact.
 visual_policy:
   visual_mode: character_heavy
   continuity_mode: same_heroine

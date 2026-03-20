@@ -23,6 +23,9 @@ KINETIC_TRANSITIONS = [
     "match_cut_pose",
 ]
 KINETIC_INTENSITIES = ["low", "medium", "high", "max"]
+SCENE_CHANGE_LEVELS = ["hold", "evolve", "shift", "reset"]
+ANCHOR_STRATEGIES = ["reuse_anchor", "refine_anchor", "new_anchor"]
+CONTINUITY_BASES = ["heroine", "motif", "world", "none"]
 
 
 def lyrics_timeline_schema() -> dict:
@@ -308,6 +311,9 @@ def _shot_timeline_item_schema() -> dict:
             "space_relation",
             "edit_role",
             "continuity_lock",
+            "scene_change_level",
+            "anchor_strategy",
+            "continuity_basis",
             "clip_count",
             "start_frame",
             "end_frame",
@@ -327,6 +333,9 @@ def _shot_timeline_item_schema() -> dict:
             "space_relation": {"type": "string"},
             "edit_role": {"type": "string"},
             "continuity_lock": {"type": "string"},
+            "scene_change_level": {"type": "string", "enum": SCENE_CHANGE_LEVELS},
+            "anchor_strategy": {"type": "string", "enum": ANCHOR_STRATEGIES},
+            "continuity_basis": {"type": "string", "enum": CONTINUITY_BASES},
             "clip_count": {"type": "integer"},
             "start_frame": _frame_anchor_schema(),
             "end_frame": _frame_anchor_schema(),

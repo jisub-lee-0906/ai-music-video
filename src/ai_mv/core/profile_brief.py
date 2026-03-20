@@ -86,7 +86,7 @@ def _heroine_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
             "same heroine throughout the video",
-            "stylized East Asian heroine with a sticker-like silhouette, simplified icon face, sharp heavy-lid eye shape, minimal facial detail, angular fashion shape, and toy-like deformed proportions",
+            "stylized East Asian heroine with sharp almond eyes, small mouth, minimal nose, thick solid hair shape, long-limbed fashion shape, non-chibi proportions, solid cel shadow, matte flat skin color, and clean anime linework",
             _extract_fragment(_text(visual, "brief"), ("East Asian heroine", "young adult East Asian heroine", "female solo vocal", "lead")),
             _extract_fragment(_text(mv, "story_world"), ("same heroine",)),
         ]
@@ -97,7 +97,7 @@ def _world_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
             "one continuous world",
-            "stylized 2d graphic music-video space with flat poster depth and strong negative space",
+            "stylized 2d graphic music-video space with flat background planes, simple wall blocks, blank sign panels, cut-paper shadow shapes, and strong negative space",
             _extract_fragment(_text(mv, "story_world"), ("same night", "one continuous", "continuous", "same emotional weather", "same luxurious pulse", "same momentum", "same rebellious force", "same electric pressure", "same suspended emotional current", "same sense of supernatural authority")),
             _extract_fragment(_text(visual, "brief"), ("readable", "center framing", "center-dominant", "heroine legible", "heroine readable")),
         ]
@@ -105,10 +105,7 @@ def _world_invariants(visual: dict, mv: dict) -> str:
 
 
 def _visual_intent(config: dict, visual: dict, mv: dict, policy: dict) -> str:
-    source = " ".join([_text(visual, "brief"), _text(mv, "story_world"), _text(mv, "payoff_style")]).strip()
-    cleaned = sanitize_flux2_positive_text(source)
-    style = _visual_style_contract(config, visual, mv, policy)
-    return _join_parts([style, cleaned])
+    return sanitize_flux2_positive_text(_text(visual, "brief"))
 
 
 def _visual_style_contract(config: dict, visual: dict, mv: dict, policy: dict) -> str:
@@ -117,18 +114,28 @@ def _visual_style_contract(config: dict, visual: dict, mv: dict, policy: dict) -
 
 
 def _visual_negative(visual: dict) -> str:
-    return sanitize_flux2_negative_text(_text(visual, "negative"))
+    return _text(visual, "negative")
 
 
 def _location_families(mv: dict) -> list[str]:
     text = _text(mv, "story_world")
-    marker = "families:"
     low = text.lower()
-    if marker not in low:
+    markers = ("families:", "built from", "through")
+    tail = ""
+    for marker in markers:
+        if marker in low:
+            tail = text[low.index(marker) + len(marker) :]
+            break
+    if not tail:
         return []
-    tail = text[low.index(marker) + len(marker) :]
     tail = tail.split(".", 1)[0]
-    return [part.strip(" .") for part in tail.split(",") if part.strip(" .")][:8]
+    cleaned = (
+        tail.replace(" and ", ", ")
+        .replace(" with ", ", ")
+        .replace(" through ", ", ")
+    )
+    vals = [part.strip(" .") for part in cleaned.split(",") if part.strip(" .")]
+    return vals[:8]
 
 
 def _closeup_policy(visual: dict, mv: dict) -> str:

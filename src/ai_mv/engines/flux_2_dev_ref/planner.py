@@ -86,6 +86,9 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         "lighting_fx": str(anchor.get("lighting_fx", "")),
         "kinetic_intensity": str(anchor.get("kinetic_intensity", "")),
         "route_reason": str(anchor.get("route_reason", "")),
+        "scene_change_level": str(anchor.get("scene_change_level", "evolve")),
+        "anchor_strategy": str(anchor.get("anchor_strategy", "refine_anchor")),
+        "continuity_basis": str(anchor.get("continuity_basis", "world")),
     }
 
 
@@ -100,12 +103,12 @@ def _subject_clause(brief: dict, anchor: dict) -> str:
     focus = str(anchor.get("prompt_focus", "")).strip().lower()
     render_mode = str(anchor.get("character_render_mode", "")).strip()
     if focus == "object":
-        return compact_prompt_clause(f"object-led frame, heroine implied as icon shape, street-pop graphic attitude, limited poster palette, {shot_type} framing, {render_mode}", 18)
+        return compact_prompt_clause(f"object-led frame, heroine implied only, single subject in frame, bubblegum pink and aqua cyan with deep navy, thick solid hair shape, off-center full figure, {shot_type} framing, {render_mode}", 24)
     if focus == "space":
-        return compact_prompt_clause(f"space-led frame, heroine small as icon figure, angular fashion silhouette, limited poster palette, {shot_type} framing, {render_mode}", 18)
+        return compact_prompt_clause(f"space-led frame, heroine small as graphic figure, long-limbed fashion figure, single subject in frame, bubblegum pink and aqua cyan with deep navy, off-center moving figure, compressed anime background blocks, whole body readable, {shot_type} framing, {render_mode}", 24)
     if focus == "graphic":
-        return compact_prompt_clause(f"graphic-led frame, heroine secondary as icon shape, street-pop graphic attitude, limited poster palette, {shot_type} framing, {render_mode}", 18)
-    return compact_prompt_clause(f"{world['heroine_invariants'] or world['hero_identity']}, graphic character design, angular fashion silhouette, toy-like deformed proportions, {shot_type} framing, {face} face exposure, {render_mode}", 24)
+        return compact_prompt_clause(f"graphic-led frame, heroine secondary but fully present, single subject in frame, bubblegum pink and aqua cyan with deep navy, graphic keyframe impact, off-center moving figure, flat background planes, anime acting pose, {shot_type} framing, {render_mode}", 24)
+    return compact_prompt_clause(f"{world['heroine_invariants'] or world['hero_identity']}, long-limbed fashion figure, sharp almond eyes, thick solid hair shape, simplified environment geometry, bubblegum pink and aqua cyan with deep navy, anime three-quarter turn or full-figure framing, anime cel acting pose, {shot_type} framing, {face} face exposure, {render_mode}", 28)
 
 
 def _action_clause(anchor: dict, section: dict) -> str:
@@ -124,22 +127,86 @@ def _action_clause(anchor: dict, section: dict) -> str:
 def _environment_clause(anchor: dict, section: dict) -> str:
     palette = str(anchor.get("palette_mode", "")).strip() or str(section.get("palette_hint", "")).strip()
     lighting = str(anchor.get("lighting_fx", "")).strip() or str(section.get("lighting_hint", "")).strip()
-    location = (
+    location = _normalize_location_for_prompt(
         str(section.get("location_family", "")).strip()
         or str(section.get("location_anchor", "")).strip()
         or str(anchor.get("scene_detail", "")).strip()
     )
     space_event = str(anchor.get("space_event", "")).strip()
     composition = str(anchor.get("composition_shape", "")).strip()
-    parts = [location, space_event, composition, palette, lighting]
+    parts = [location, _normalize_scene_for_prompt(str(anchor.get("scene_detail", "")).strip()), space_event, composition, palette, lighting]
     return compact_prompt_clause(", ".join(part for part in parts if part), 18)
+
+
+def _normalize_location_for_prompt(location: str) -> str:
+    text = str(location).strip()
+    if not text:
+        return text
+    if "reflective threshold" in text.lower():
+        return text
+    replacements = (
+        ("station front", "graphic station block"),
+        ("station frontage", "graphic station block"),
+        ("ticket gate", "gate silhouettes"),
+        ("ticket gates", "gate silhouettes"),
+        ("open night lane", "flat lane blocks"),
+        ("reflective threshold", "threshold plane"),
+        ("lit passage", "lit passage blocks"),
+        ("sheltered edge", "sheltered edge plane"),
+        ("mirrored glass", "dark glass plane"),
+        ("street", "street blocks"),
+        ("corridor", "passage blocks"),
+    )
+    out = text
+    lowered = out.lower()
+    for old, new in replacements:
+        if old in lowered:
+            out = out.replace(old, new).replace(old.title(), new)
+            lowered = out.lower()
+    return out
+
+
+def _normalize_scene_for_prompt(scene: str) -> str:
+    text = str(scene).strip()
+    if not text:
+        return text
+    replacements = (
+        ("late train station frontage", "graphic station frontage"),
+        ("station frontage", "graphic station frontage"),
+        ("ticket gate", "gate silhouettes"),
+        ("ticket gates", "gate silhouettes"),
+        ("wet, wide street frontage", "wet pavement plane"),
+        ("wet street frontage", "wet pavement plane"),
+        ("station front", "station block"),
+        ("platform", "platform block"),
+        ("window frame", "window block"),
+        ("corridor", "compressed passage blocks"),
+        ("street plane", "flat street plane"),
+        ("street opening", "open block plane"),
+        ("open street edge", "open block edge"),
+        ("open night lane", "flat lane blocks"),
+        ("lane", "lane block"),
+        ("two figures offset", "a single figure with an offset echo"),
+        ("paired figures", "a single figure"),
+        ("two figures", "a single figure"),
+        ("mirrored glass", "dark glass plane"),
+    )
+    out = text
+    lowered = out.lower()
+    for old, new in replacements:
+        if old in lowered:
+            out = out.replace(old, new).replace(old.title(), new)
+            lowered = out.lower()
+    return out
 
 
 def _continuity_clause(anchor: dict) -> str:
     relation = str(anchor.get("space_relation", "")).strip() or "keeping the same space relation"
     phase = _clip_phase(anchor)
     continuity = str(anchor.get("continuity_lock", "")).strip() or "same heroine in one world"
-    return compact_prompt_clause(f"{continuity}, {relation}, phase {phase}", 28)
+    basis = str(anchor.get("continuity_basis", "")).strip() or "world"
+    strategy = str(anchor.get("anchor_strategy", "")).strip().replace("_", " ") or "refine anchor"
+    return compact_prompt_clause(f"{continuity}, continuity basis {basis}, {relation}, phase {phase}, {strategy}", 28)
 
 
 def _compose_flux2_ref_prompt(

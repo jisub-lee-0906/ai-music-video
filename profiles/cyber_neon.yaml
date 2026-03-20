@@ -1,5 +1,3 @@
-# 하이테크 사이버펑크 무드와 네온 조명이 강조된 일렉트로니카 및 퓨처 베이스 장르에 최적화
-# Suggested Filename: cyber_neon.yaml
 audio:
   language: en
   tags:
@@ -33,40 +31,27 @@ audio_ending_policy:
     - clean final hit
 visual:
   brief: >
-    A stylized 2D cyber-neon visual MV with an East Asian heroine, bold clean outlines, flat cel
-    shading, sharp eye design, neon green and magenta light, hologram-like reflections,
-    rain-slick cyber streets, mirrored tech corridors, and glowing urban depth. Keep the frame
-    premium and readable rather than overloaded with props or interfaces, and keep the heroine
-    legible before adding effects. Drive the visuals with snap zoom attacks on high-tech detail,
-    whip pan transitions through neon lanes, digital-noise strobe bursts, match-cut pose
-    continuity, close-up eye locks, high-contrast lighting, and graphic shadow shapes.
+    Cyber-neon pressure at night. Favor server corridors, glowing lane cuts, reflective tech
+    surfaces, hard electric contrast, and a controlled sense of speed. Keep it sleek, premium,
+    and exact rather than cluttered or toy-like.
   negative: >
-    Avoid cheap sci-fi props, toy-like cyber gear, flat lighting, muddy color, random world
-    clutter, typography, text, subtitles, watermarks, logo, UI overlay, photorealistic skin
-    texture, live-action portrait realism, and low-quality image artifacts.
+    Avoid cheap gadget clutter, soft EDM dreaminess, random hacker stereotypes, messy geography,
+    diluted glamour, or visual noise that weakens the system-locked tone.
 mv:
   story_world: >
-    The video should feel like one continuous cyberpunk night world built from recurring
-    environment families: neon alleys, reflective server corridors, holographic thresholds, and
-    luminous high-rise walkways. The same heroine and the same electric pressure should hold
-    through the whole piece.
+    One continuous cyber-neon world built from server bands, tech thresholds, luminous walkways,
+    reflective walls, and compressed electronic corridors.
   action_vocabulary: >
-    Prefer readable high-tech actions: stepping through a lit threshold, locking eyes through a
-    neon haze, turning into a corridor flash, brushing a glowing wall, cutting across a
-    circuit-lit lane, and landing a final stare like a system override. Keep motion crisp,
-    forceful, and camera-readable rather than chaotic, cluttered, or fight-scene heavy. Favor
-    one decisive motion idea per beat instead of chaining multiple effects into the same action.
+    Prefer clear high-tech beats: threshold override, corridor flash turn, signal flicker, lane
+    cut, wall pass, scan hold, and one decisive motion idea per beat.
   payoff_style: >
-    The final return should feel like total cyber-neon domination: strongest eye line, hardest
-    silhouette, brighter green-magenta contrast, sharper shadows, snap zoom pressure on key tech
-    details, whip pan lane attacks, digital-noise strobe bursts, and one extreme close-up
-    impact.
+    The final return should feel like a system override: hardest contrast, strongest lane energy,
+    a cleaner locked-in pose, and heroine presence inside a larger electric-world peak.
   outro_feel: >
-    End with a decisive after-image that feels system-locked by her presence, as if the city
-    has been overridden and sealed rather than fading back into ambient neon.
+    End with a sealed after-image, as if the whole system has snapped into final alignment.
   avoid: >
-    Avoid soft ambient drift, disconnected locations, random hacker clichés, flat commercial
-    beauty shots, and diluted endings.
+    Avoid soft drift, disconnected locations, costume-only cyber styling, weak drop visuals, or
+    endings that lose tension before the finish.
 visual_policy:
   visual_mode: character_heavy
   continuity_mode: same_heroine

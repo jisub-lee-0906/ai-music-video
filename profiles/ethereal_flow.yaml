@@ -1,5 +1,3 @@
-# 몽환적이고 환상적인 대기감과 부드러운 속도감이 공존하는 퓨처 팝 및 서정적인 일렉트로 장르에 최적화
-# Suggested Filename: ethereal_flow.yaml
 audio:
   language: en
   tags:
@@ -33,39 +31,28 @@ audio_ending_policy:
     - lingering fade
 visual:
   brief: >
-    A stylized 2D ethereal-flow visual MV with an East Asian heroine, a luminous dream-pop
-    presence, soft cel shading, surreal white-toned spaces, luminous fog shapes, reflective
-    floors, blooming light fields, and pearlescent depth. Keep the motion kinetic but elegant
-    with whip pan transitions, snap zoom emphasis on emotional turns, soft-pulse strobe,
-    match-cut body echoes, selective motion-blur residue, soft close-up eye focus, high-contrast
-    lighting, and graphic shadows inside the glow. Keep the heroine readable, centered, and
-    physically clear even when the space feels dreamlike.
+    Luminous dream-pop suspended in a white-blue night. Favor reflective planes, soft threshold
+    glow, open corridors of light, drifting haze bands, and a feeling of suspended emotional
+    space without losing clarity.
   negative: >
-    Avoid muddy haze, flat commercial softness, random fantasy props, childish fairy styling,
-    washed-out faces, typography, text, subtitles, watermarks, logo, UI overlay, photorealistic
-    skin texture, live-action portrait realism, and low-quality render artifacts.
+    Avoid muddy haze, childish fantasy clutter, vague emptiness, washed-out color, random props,
+    or beauty coverage with no environmental logic.
 mv:
   story_world: >
-    The video should feel like one continuous luminous dream-world built from recurring
-    environment families: white thresholds, radiant corridors, reflective void rooms, and open
-    glowing lanes. The same heroine and the same suspended emotional current should carry through
-    the whole piece.
+    One luminous dream-world built from reflective white thresholds, glowing lanes, pale chamber
+    edges, and open fields of light. The world should feel continuous and lucid rather than
+    random or decorative.
   action_vocabulary: >
-    Prefer readable graceful actions: entering a field of light, turning through drifting fog,
-    holding a serene but intense gaze, crossing a reflective plane, pausing under a flare bloom,
-    and arriving at a final still point with complete control. Keep motion elegant, physically
-    simple, and emotionally precise rather than limp, over-floated, or overly theatrical. Favor
-    one lucid movement per beat so the dreamlike world still resolves into clean render prompts.
+    Prefer graceful readable beats: crossing a reflective plane, entering a light field, turning
+    through haze, pausing at a flare edge, and one lucid motion per beat.
   payoff_style: >
-    The final return should feel like ethereal impact: brighter white-on-silver contrast, deeper
-    shadows under the glow, whip pan relocations, snap zoom emotional accents, soft-pulse
-    strobe, intentional motion-blur residue, and an extreme close-up eye lock.
+    The final return should feel like ethereal impact through cleaner contrast, wider glow bands,
+    a more legible heroine beat, and one luminous system-wide image rather than only face payoff.
   outro_feel: >
-    End with one inevitable final image that lingers in the luminous space like a sealed memory,
-    calm but unmistakably final rather than dissolving into softness.
+    End with one final image that hangs in memory like the light remains after the body passes.
   avoid: >
-    Avoid sleepy aimlessness, flat beauty coverage, random fantasy clutter, broken geography,
-    and weak endings.
+    Avoid sleepy aimlessness, empty fantasy symbolism, disconnected locations, or endings that
+    blur instead of resolve.
 visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine

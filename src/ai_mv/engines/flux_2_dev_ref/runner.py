@@ -84,6 +84,9 @@ def _pack_item(
         "scene_detail": str(item.get("scene_detail", "")),
         "motion_hint": str(item.get("motion_hint", "")),
         "space_relation": str(item.get("space_relation", "")),
+        "scene_change_level": str(item.get("scene_change_level", "evolve")),
+        "anchor_strategy": str(item.get("anchor_strategy", "refine_anchor")),
+        "continuity_basis": str(item.get("continuity_basis", "world")),
         "retry": 0,
         "error_body": "",
         "start": start,
@@ -106,6 +109,8 @@ def _should_reuse_previous_end(prev_item: dict | None, item: dict, prev_end: str
 
 
 def _chain_break(item: dict, prev_item: dict) -> bool:
+    if str(item.get("anchor_strategy", "")).strip().lower() == "new_anchor" and int(item.get("clip_index", 1)) <= 1:
+        return True
     if str(item.get("kinetic_transition", "")).strip().lower() == "smash_reframe":
         return True
     if _starts_new_major_section(item, prev_item) and int(item.get("clip_index", 1)) <= 1:

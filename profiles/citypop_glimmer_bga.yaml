@@ -1,4 +1,3 @@
-# Experimental profile for symbolic/BGA-style city-pop MV generation.
 audio:
   language: ja
   tags:
@@ -36,44 +35,30 @@ audio_ending_policy:
     - gentle fade out
 visual:
   brief: >
-    A stylized 2D city-pop night visual MV with a young adult East Asian heroine, bold clean
-    outlines, flat cel shading, high-chroma pop color, angular fashion silhouettes, and graphic poster-like framing. Use wet
-    pavement reflections, reflective thresholds, lit passages, open night lanes, mirrored glass,
-    isolated objects, silhouette holds, rhythm-cut inserts, and graphic-feeling light events.
-    Keep the mood polished but sharp, street-pop, and spatially readable, with clear shape design,
-    bold negative space, toy-like deformed proportions, and off-center graphic framing before extra motion. Favor match-cut echoes, snap zoom accents,
-    whip pan reveals, restrained strobe glints, light-smear transitions, and recurring motifs
-    over constant face-led coverage.
+    City-pop with a rhythm-game and visual-MV sensibility. Keep it polished, detached, and
+    motif-driven. Favor train windows, ticket gates, curb edges, puddle rings, vending glow,
+    lane cuts, and off-center city geometry over heroine-only coverage.
   negative: >
-    Avoid futuristic sci-fi tone, cheap club styling, noisy streetwear drift, random location
-    hopping, heavy prop clutter without motif intent, typography, text, subtitles, watermarks,
-    logo, UI overlay, generic performance-only coverage, photorealistic skin texture, and
-    live-action portrait realism.
+    Avoid random spectacle, cheap club styling, location chaos, empty glamour coverage, clutter
+    without motif purpose, or big visual ideas that do not belong to the same city block.
 mv:
   story_world: >
-    The video should feel like one late-night emotional passage through a small set of recurring
-    city-night environment families: reflective thresholds, lit passages, sheltered edges, open
-    lanes, mirrored glass, and quiet public surfaces. The same night, the same heroine, and the
-    same emotional weather should carry through the whole piece, but not every beat needs to be
-    heroine-first.
+    One recurring city-night block built from train-window bands, ticket-gate shapes, puddle
+    rings, umbrella tips, vending glow, curb lines, and quiet public surfaces. The same heroine
+    stays inside the same world, but not every beat needs to be heroine-first.
   action_vocabulary: >
-    Prefer readable small actions and visual events: slowing at a threshold, passing through a
-    lit passage, checking a reflection, stepping forward into clear light, turning the shoulders
-    sharply into frame, a silhouette pause, an object reveal, a reflection split, or a light
-    smear that lands on the beat. Favor one clean visual event per beat rather than long
-    narrative behavior.
+    Prefer image-events over performance coverage: window trace, lane cut, puddle hit, gate pass,
+    phone-light accent, vending glow pause, rail-shadow slide, off-center figure turn, and one
+    clear visual hit per beat.
   payoff_style: >
-    The final return should feel like emotional arrival inside the same city night through a full
-    visual-system payoff: clearer eye contact where needed, brighter reflections, stronger
-    contrast, repeated motifs resolving into one image system, controlled whip pan release, and
-    one elegant close-up only if it serves the larger visual peak.
+    The final return should feel like a city-motif system peak: repeated objects and light bands
+    lock together, heroine presence returns inside the whole system, and the image resolves as a
+    visual MV climax rather than a simple close-up.
   outro_feel: >
-    End on a final held after-image where the city, the heroine, and the recurring reflective
-    motifs resolve together, leaving a polished residue that lingers rather than collapsing into
-    generic fade-out coverage.
+    End on a polished residual city image where motifs and heroine presence linger together.
   avoid: >
-    Avoid random spectacle, abrupt geography changes, disconnected glam shots, generic idol-only
-    coverage, and endings that feel fragmentary.
+    Avoid random idol coverage, geography resets with no setup, cluttered symbolism, or endings
+    that lose the city-motif thread.
 visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine

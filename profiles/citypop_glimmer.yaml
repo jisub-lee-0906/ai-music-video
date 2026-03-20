@@ -1,5 +1,3 @@
-# 세련된 야경과 반짝이는 도시 무드의 시티팝 및 그루비한 J-Pop에 최적화
-# Suggested Filename: citypop_glimmer.yaml
 audio:
   language: ja
   tags:
@@ -37,40 +35,31 @@ audio_ending_policy:
     - gentle fade out
 visual:
   brief: >
-    A stylized 2D city-pop nightlife visual MV with a young adult East Asian heroine, youthful
-    elegance, bold clean outlines, flat cel shading, wet pavement reflections, reflective
-    thresholds, lit passages, and open night lanes. Keep the mood polished, graceful, and
-    spatially readable, with clean lane depth, clear shape design, and controlled center framing
-    before extra motion. Drive it with whip pan reveals, snap zoom accents, match-cut motion
-    echoes, selective close-up impact, restrained strobe glints, high-contrast lighting, and
-    elegant shadow shapes. Favor poised stillness punctuated by elegant turns rather than
-    constant movement.
+    Adult Japanese city-pop at night. Keep the mood polished, wistful, and quietly elegant.
+    Favor reflective curb lines, train-window traces, sheltered sidewalks, lit passages, and a
+    compact recurring city block that feels intimate rather than spectacular.
   negative: >
-    Avoid futuristic sci-fi tone, cheap club styling, noisy streetwear drift, random location
-    hopping, heavy prop emphasis, typography, text, subtitles, watermarks, logo, and UI overlay,
-    photorealistic skin texture, live-action portrait realism, and muddy low-contrast color.
+    Avoid cheap club energy, loud sci-fi drift, random set-hopping, prop clutter, heavy glamour
+    posing, or aggressive action that breaks the mature city-pop tone.
 mv:
   story_world: >
-    The video should feel like one late-night emotional passage through a small set of recurring
-    city-night environment families: reflective thresholds, lit passages, sheltered edges, and
-    open lanes. The same night, the same heroine, and the same emotional weather should carry
-    through the whole piece.
+    One late-night city walk through repeating families of places: covered lanes, train windows,
+    curb edges, crosswalk light, quiet storefront glow, and small reflective thresholds. The
+    same heroine and the same night carry the whole piece.
   action_vocabulary: >
-    Prefer readable small actions: slowing at a threshold, passing through a lit passage, pausing
-    near an open lane, checking a reflection, stepping forward into clear light, turning the
-    shoulders softly into frame, and holding a gaze. Keep motion graceful and physically simple
-    rather than plot-heavy, fidgety, or theatrical. Favor actions that can resolve as one clean
-    workflow-ready clause instead of long narrative behavior.
+    Prefer small readable beats: slowing at a corner, passing a lit gate, glancing at a window,
+    heel rhythm on wet pavement, a soft shoulder turn, a held pause under light, and one clean
+    image event at a time.
   payoff_style: >
-    The final return should feel like emotional arrival inside the same city night: clearer eye
-    contact, more open posture, brighter reflections, stronger contrast, a match-cut cadence
-    through the last phrases, a controlled whip pan release, and one elegant extreme close-up.
+    The final return should feel like emotional arrival inside the same city night. Let the
+    recurring reflections and lanes resolve into one calm, brighter image system with heroine
+    presence inside it rather than pure face-only payoff.
   outro_feel: >
-    End on a final held look or small forward step that seals the night decisively, leaving a
-    polished after-image that feels locked in rather than softly fading away.
+    End on a warm residual image, like the city light keeps glowing for a moment after she moves
+    through it.
   avoid: >
-    Avoid random spectacle, abrupt geography changes, disconnected glam shots, and endings that
-    feel fragmentary.
+    Avoid abrupt geography breaks, disconnected glam shots, noisy spectacle, or endings that feel
+    crowded instead of graceful.
 visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine
