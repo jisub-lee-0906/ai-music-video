@@ -31,9 +31,9 @@ audio_ending_policy:
     - lingering fade
 visual:
   brief: >
-    Luminous dream-pop suspended in a white-blue night. Favor reflective planes, soft threshold
-    glow, open corridors of light, drifting haze bands, and a feeling of suspended emotional
-    space without losing clarity.
+    Luminous dream-pop with a rhythm-game and visual-MV sensibility. Favor reflective planes,
+    soft threshold glow, open corridors of light, drifting haze bands, and floating light systems
+    over heroine-only coverage.
   negative: >
     Avoid muddy haze, childish fantasy clutter, vague emptiness, washed-out color, random props,
     or beauty coverage with no environmental logic.
@@ -57,12 +57,41 @@ visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine
   face_policy: payoff_only
-  shot_bias: environment
+  shot_bias: object_symbol
   ref_policy: endpoints
   closeup_density: low
   motion_density: medium
   geography_mode: recurring_families
   anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: luminous_dream
+  motif_families:
+    - light band
+    - haze strip
+    - glass plane
+    - chamber edge
+    - halo ring
+    - pale corridor
+    - flare seam
+    - reflection field
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - floating object field
+    - isolated small figure
+    - offset silhouette crop
+    - low horizon silhouette
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
   direct_face_sections:
     - Final Chorus
   priority_sections:
@@ -71,4 +100,4 @@ visual_policy:
   hero_shot_types:
     - EMOTION_CLOSE
     - CHAR_MASTER
-  max_direct_face_ratio: 0.12
+  max_direct_face_ratio: 0.1

@@ -31,9 +31,9 @@ audio_ending_policy:
     - polished ending
 visual:
   brief: >
-    Glossy premium K-pop at night. Favor polished platforms, reflective thresholds, sleek
-    passages, performance lanes, and controlled luxury energy. Keep it pristine, direct, and
-    commanding rather than gritty or chaotic.
+    Glossy premium K-pop at night with a rhythm-game and visual-MV sensibility. Favor polished
+    platforms, reflective thresholds, sleek passages, performance lanes, and stacked light bands
+    over heroine-only coverage.
   negative: >
     Avoid grunge decay, prop mess, random street drift, muddy light, cheap glamour, or geography
     changes that break the set-controlled polish.
@@ -54,24 +54,50 @@ mv:
     Avoid dull atmosphere, passive body language, overcomplicated acting, random location drift,
     or endings that shrink instead of peak.
 visual_policy:
-  visual_mode: character_heavy
+  visual_mode: balanced
   continuity_mode: same_heroine
-  face_policy: selective
-  shot_bias: performance
-  ref_policy: identity_sensitive_only
-  closeup_density: medium
+  face_policy: payoff_only
+  shot_bias: object_symbol
+  ref_policy: endpoints
+  closeup_density: low
   motion_density: high
   geography_mode: recurring_families
   anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: glossy_pop
+  motif_families:
+    - stage strip
+    - mirror panel
+    - escalator light
+    - runway edge
+    - glass threshold
+    - chrome rail
+    - sign glow
+    - floor reflection
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - floating object field
+    - offset silhouette crop
+    - low horizon silhouette
+    - isolated small figure
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
   direct_face_sections:
-    - Chorus 1
-    - Chorus 2
     - Final Chorus
   priority_sections:
     - Final Chorus
     - Chorus 2
-    - Chorus 1
   hero_shot_types:
-    - EMOTION_CLOSE
     - CHAR_MASTER
-  max_direct_face_ratio: 0.2
+    - EMOTION_CLOSE
+  max_direct_face_ratio: 0.1

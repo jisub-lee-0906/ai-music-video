@@ -31,9 +31,9 @@ audio_ending_policy:
     - hard stop
 visual:
   brief: >
-    Retro-grunge night with concrete thresholds, chain-link edges, rusted passages, dim street
-    corners, and rough practical light. Keep it blunt, rebellious, and physical rather than
-    polished.
+    Retro-grunge night with a rhythm-game and visual-MV sensibility. Favor concrete thresholds,
+    chain-link edges, rusted passages, dim street corners, and rough practical light systems
+    over heroine-only coverage.
   negative: >
     Avoid glossy futurism, luxury styling, fake vintage gimmicks, comedy props, weak light, or
     clean sterile environments.
@@ -55,13 +55,42 @@ mv:
 visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine
-  face_policy: selective
-  shot_bias: environment
+  face_policy: payoff_only
+  shot_bias: object_symbol
   ref_policy: endpoints
   closeup_density: low
   motion_density: high
   geography_mode: recurring_families
   anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: dirty_analog
+  motif_families:
+    - chain-link edge
+    - rust stripe
+    - cracked lane
+    - sodium lamp
+    - concrete seam
+    - spray mark
+    - puddle smear
+    - fence shadow
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - low horizon silhouette
+    - offset silhouette crop
+    - floating object field
+    - isolated small figure
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
   direct_face_sections:
     - Final Chorus
   priority_sections:
@@ -71,4 +100,4 @@ visual_policy:
   hero_shot_types:
     - EMOTION_CLOSE
     - CHAR_MASTER
-  max_direct_face_ratio: 0.14
+  max_direct_face_ratio: 0.1

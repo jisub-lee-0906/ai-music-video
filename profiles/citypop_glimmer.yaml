@@ -35,25 +35,26 @@ audio_ending_policy:
     - gentle fade out
 visual:
   brief: >
-    Adult Japanese city-pop at night. Keep the mood polished, wistful, and quietly elegant.
-    Favor reflective curb lines, train-window traces, sheltered sidewalks, lit passages, and a
-    compact recurring city block that feels intimate rather than spectacular.
+    Adult Japanese city-pop at night with a rhythm-game and visual-MV sensibility. Keep the mood
+    polished, wistful, and quietly elegant. Favor train windows, ticket gates, curb edges,
+    puddle rings, vending glow, lane cuts, and off-center city geometry over heroine-only
+    coverage.
   negative: >
     Avoid cheap club energy, loud sci-fi drift, random set-hopping, prop clutter, heavy glamour
     posing, or aggressive action that breaks the mature city-pop tone.
 mv:
   story_world: >
-    One late-night city walk through repeating families of places: covered lanes, train windows,
-    curb edges, crosswalk light, quiet storefront glow, and small reflective thresholds. The
-    same heroine and the same night carry the whole piece.
+    One recurring city-night block built from train-window bands, ticket-gate shapes, puddle
+    rings, umbrella tips, vending glow, curb lines, and quiet public surfaces. The same heroine
+    stays inside the same world, but not every beat needs to be heroine-first.
   action_vocabulary: >
-    Prefer small readable beats: slowing at a corner, passing a lit gate, glancing at a window,
-    heel rhythm on wet pavement, a soft shoulder turn, a held pause under light, and one clean
-    image event at a time.
+    Prefer image-events over performance coverage: window trace, lane cut, puddle hit, gate pass,
+    phone-light accent, vending glow pause, rail-shadow slide, off-center figure turn, and one
+    clear visual hit per beat.
   payoff_style: >
-    The final return should feel like emotional arrival inside the same city night. Let the
-    recurring reflections and lanes resolve into one calm, brighter image system with heroine
-    presence inside it rather than pure face-only payoff.
+    The final return should feel like a city-motif system peak: repeated objects and light bands
+    lock together, heroine presence returns inside the whole system, and the image resolves as a
+    visual MV climax rather than a simple close-up.
   outro_feel: >
     End on a warm residual image, like the city light keeps glowing for a moment after she moves
     through it.
@@ -64,19 +65,47 @@ visual_policy:
   visual_mode: balanced
   continuity_mode: same_heroine
   face_policy: payoff_only
-  shot_bias: environment
-  ref_policy: identity_sensitive_only
+  shot_bias: object_symbol
+  ref_policy: endpoints
   closeup_density: low
   motion_density: medium
   geography_mode: recurring_families
   anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: retro_pop_neon
+  motif_families:
+    - train window
+    - curb edge
+    - puddle ring
+    - umbrella tip
+    - ticket gate
+    - vending glow
+    - phone light
+    - rail shadow
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - low horizon silhouette
+    - floating object field
+    - isolated small figure
+    - offset silhouette crop
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
   direct_face_sections:
     - Final Chorus
   priority_sections:
     - Final Chorus
     - Chorus 2
-    - Chorus 1
   hero_shot_types:
-    - EMOTION_CLOSE
     - CHAR_MASTER
-  max_direct_face_ratio: 0.12
+    - EMOTION_CLOSE
+  max_direct_face_ratio: 0.1

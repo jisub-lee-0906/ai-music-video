@@ -33,8 +33,9 @@ audio_ending_policy:
     - final strike
 visual:
   brief: >
-    Mystical night impact with temple thresholds, lacquer-dark passages, carved chamber edges,
-    ceremonial corridors, and crimson-violet pressure. Keep it severe, iconic, and ritualized.
+    Mystical night impact with a rhythm-game and visual-MV sensibility. Favor temple thresholds,
+    lacquer-dark passages, carved chamber edges, ceremonial corridors, and crimson-violet motif
+    systems over heroine-only coverage.
   negative: >
     Avoid campy occult clutter, costume-play historical drift, bright comedy tone, random props,
     crowd noise, or fantasy excess that breaks the ritual severity.
@@ -54,23 +55,51 @@ mv:
     Avoid soft historical romance drift, random monster imagery, passive body language,
     disconnected locations, or endings that weaken the sense of sealed impact.
 visual_policy:
-  visual_mode: character_heavy
+  visual_mode: balanced
   continuity_mode: same_heroine
-  face_policy: selective
-  shot_bias: mixed
-  ref_policy: identity_sensitive_only
-  closeup_density: medium
+  face_policy: payoff_only
+  shot_bias: object_symbol
+  ref_policy: endpoints
+  closeup_density: low
   motion_density: high
   geography_mode: recurring_families
   anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: ritual_crimson
+  motif_families:
+    - gate talisman
+    - lantern band
+    - lacquer floor
+    - ritual shadow
+    - carved pillar
+    - sleeve edge
+    - incense line
+    - seal mark
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - low horizon silhouette
+    - floating object field
+    - offset silhouette crop
+    - isolated small figure
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
   direct_face_sections:
-    - Chorus 1
     - Final Chorus
   priority_sections:
     - Final Chorus
     - Chorus 2
     - Bridge
   hero_shot_types:
-    - EMOTION_CLOSE
     - CHAR_MASTER
-  max_direct_face_ratio: 0.18
+    - EMOTION_CLOSE
+  max_direct_face_ratio: 0.1

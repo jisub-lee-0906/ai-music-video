@@ -31,8 +31,9 @@ audio_ending_policy:
     - slammed-shut ending
 visual:
   brief: >
-    Fierce dark-gloss K-pop with industrial thresholds, hard-lit passages, dominant lanes, and
-    confrontational stage pressure. Keep it sharp, clean, and forceful rather than messy or cute.
+    Fierce dark-gloss K-pop with a rhythm-game and visual-MV sensibility. Favor industrial
+    thresholds, hard-lit passages, dominant lanes, warning strips, and confrontational set
+    systems over heroine-only coverage.
   negative: >
     Avoid soft romance drift, luxury-only prettiness, pastel sweetness, cluttered props, timid
     posing, or disconnected spaces that dilute the pressure.
@@ -52,24 +53,50 @@ mv:
     Avoid polite softness, static glamour for its own sake, random detours, timid endings, or
     cute-idol drift.
 visual_policy:
-  visual_mode: character_heavy
+  visual_mode: balanced
   continuity_mode: same_heroine
-  face_policy: selective
-  shot_bias: performance
-  ref_policy: identity_sensitive_only
-  closeup_density: medium
+  face_policy: payoff_only
+  shot_bias: object_symbol
+  ref_policy: endpoints
+  closeup_density: low
   motion_density: high
   geography_mode: recurring_families
   anchor_mode: shot_anchor_required
+  visual_mv_mode: bga_event
+  subject_exposure: selective
+  motif_density: high
+  graphic_event_density: high
+  environment_event_density: high
+  visual_payoff_mode: system_peak
+  reflection_usage: selected_only
+  palette_bias: dark_gloss_impact
+  motif_families:
+    - warning strip
+    - gate seam
+    - hazard light
+    - stage rail
+    - chain shadow
+    - lane cut
+    - red signal
+    - hard floor reflection
+  preferred_composition_families:
+    - asymmetrical poster crop
+    - low horizon silhouette
+    - offset silhouette crop
+    - floating object field
+    - isolated small figure
+    - sticker-cluster layout
+  disfavored_composition_families:
+    - split reflection diptych
+    - centered two-body
+    - bilateral symmetry
+    - mirrored-face split
   direct_face_sections:
-    - Chorus 1
-    - Chorus 2
     - Final Chorus
   priority_sections:
     - Final Chorus
     - Chorus 2
-    - Chorus 1
   hero_shot_types:
-    - EMOTION_CLOSE
     - CHAR_MASTER
-  max_direct_face_ratio: 0.22
+    - EMOTION_CLOSE
+  max_direct_face_ratio: 0.1
