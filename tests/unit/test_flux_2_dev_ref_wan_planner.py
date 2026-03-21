@@ -11,7 +11,7 @@ def test_flux2_ref_plan_is_deterministic():
     assert shot_ids == ["a", "b"]
     assert out["items"][0]["prompt_text"]
     assert out["items"][0]["subject_clause"]
-    assert out["items"][0]["continuity_clause"] == "maintaining the exact flat cel-shaded design and bold outlines"
+    assert out["items"][0]["continuity_clause"] == "Flat cel shading, thick clean outlines"
 
 
 def test_flux2_ref_plan_empty_when_no_ref_routes():
@@ -24,10 +24,10 @@ def test_flux2_ref_prompt_text_matches_short_continuity_formula():
     out = build_flux2_ref_plan({}, payload)
     text = out["items"][0]["prompt_text"]
     low = text.lower()
-    assert "silver-haired city-pop heroine" in low
+    assert low.startswith("the same anime girl, now ")
     assert "reflective threshold" not in low
     assert "no text" not in low
-    assert "maintaining the exact flat cel-shaded design and bold outlines" in low
+    assert "flat cel shading, thick clean outlines" in low
     assert text.endswith(".")
 
 

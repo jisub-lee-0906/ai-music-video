@@ -92,16 +92,7 @@ def _chain_key(anchor: dict) -> str:
 
 
 def _subject_clause(brief: dict, anchor: dict) -> str:
-    world = compact_world_atoms(brief)
-    heroine = _ref_heroine_phrase(str(world.get("hero_identity", "")).strip())
-    focus = str(anchor.get("prompt_focus", "")).strip().lower()
-    if focus == "object":
-        return clean_prompt_clause(f"The same {heroine} stays implied at the edge while the object changes")
-    if focus == "space":
-        return clean_prompt_clause(f"The same {heroine} shifts as a small full-body figure in the same world")
-    if focus == "graphic":
-        return clean_prompt_clause(f"The same {heroine} shifts inside the same graphic frame")
-    return clean_prompt_clause(f"The same {heroine} changes pose and framing")
+    return "The same anime girl"
 
 
 def _ref_heroine_phrase(text: str) -> str:
@@ -136,10 +127,7 @@ def _camera_clause(anchor: dict) -> str:
     clause = camera or composition
     if not clause:
         return ""
-    low = clause.lower()
-    if low.startswith(("from ", "in ", "with ", "viewed ", "at ")):
-        return clause
-    return f"viewed in {clause}"
+    return _naturalize_ref_camera(clause)
 
 
 def _environment_clause(anchor: dict, section: dict) -> str:
@@ -226,7 +214,7 @@ def _normalize_scene_for_prompt(scene: str) -> str:
 
 
 def _continuity_clause(anchor: dict) -> str:
-    return "maintaining the exact flat cel-shaded design and bold outlines"
+    return "Flat cel shading, thick clean outlines"
 
 
 def _compose_flux2_ref_prompt(
@@ -238,17 +226,16 @@ def _compose_flux2_ref_prompt(
     action_text = clean_prompt_clause(action_clause)
     if action_text and not action_text.lower().startswith(("now ", "while ", "as ")):
         action_text = f"now {action_text}"
-    change_sentence = ", ".join(
+    lead = ", ".join(
         part
         for part in (
             subject_clause,
             action_text,
-            camera_clause,
         )
         if str(part).strip()
     )
-    continuity_sentence = continuity_clause
-    return compose_flux2_refinement_prompt(change_sentence, continuity_sentence)
+    parts = [lead, camera_clause, continuity_clause]
+    return " ".join(_sentence(part) for part in parts if str(part).strip()).strip()
 
 
 def _naturalize_ref_camera(text: str) -> str:
@@ -290,8 +277,8 @@ def _naturalize_ref_camera(text: str) -> str:
     if out.startswith(("viewed ", "from ", "with ", "in ")):
         return out
     if " close-up" in out or " shot" in out or " angle" in out or " frame" in out or " crop" in out:
-        return f"in {out}"
-    return f"viewed {out}"
+        return out
+    return cleaned
 
 
 def _anchor_summary(anchors: list[dict]) -> str:

@@ -51,7 +51,11 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "Write it so it can complete a sentence like 'The girl ...', for example swings the guitar down with extreme force, turns sharply to the left, steps through the gate line, or eyes dart quickly to the side. "
         "Do not write workflow_motion_clause as a gerund-led fragment such as stepping, holding, turning, moving, easing, pivoting, or advancing. "
         "Do not write workflow_motion_clause as a full sentence and do not start it with she/he/the girl. "
-        "camera_language must already be a short natural-English camera phrase that can be copied directly into a prompt, such as an extreme low-angle dynamic shot, a wide off-center frame from the left, or a tight off-center close-up. Do not output taxonomy labels or compressed metadata. "
+        "camera_language must already be a short natural-English camera phrase that can be copied directly into a prompt, such as an extreme low-angle dynamic shot, a wide off-center frame from the left, or a tight off-center close-up. "
+        "camera_language must read like one clean shot phrase only. "
+        "Do not repeat words such as shot shot, frame frame, angle angle, or close-up close-up. "
+        "Do not output broken hybrids such as diagonal corridor-in a wide shot shot, very in a wide shot, or decisive off-center in a close-up. "
+        "Do not output taxonomy labels or compressed metadata. "
         "scene_detail must already be a drawable natural-English visual phrase, not a category label. "
         "space_relation must already be a natural-English relation phrase, not a diagram label or shorthand token. "
         "Use the story bible and lyric beat as the source of truth. "
@@ -154,6 +158,11 @@ def _validate_tti_language_contract(spec: dict) -> None:
             raise RuntimeError(
                 f"tti language contract mismatch: workflow_motion_clause starts with an explicit subject at shot {idx}: {motion}"
             )
+        camera = str(row.get("camera_language", "")).strip().lower()
+        if any(token in camera for token in ("shot shot", "frame frame", "angle angle", "close-up close-up", "close up close up")):
+            raise RuntimeError(f"tti language contract mismatch: camera_language repeats camera terms at shot {idx}: {camera}")
+        if camera.startswith(("very in ", "decisive off-center in ", "diagonal corridor-in ")):
+            raise RuntimeError(f"tti language contract mismatch: camera_language is malformed at shot {idx}: {camera}")
 
 
 def _tti_repair_prompt(base_prompt: str, spec: dict, expected_ids: list[str], error: str) -> str:

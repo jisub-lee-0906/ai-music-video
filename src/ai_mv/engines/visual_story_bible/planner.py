@@ -69,7 +69,11 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "space_event must already be a short natural-English background-motion clause with a finite verb that can be reused in WAN, such as the corridor opens and snaps back, background neon lights flicker rapidly, the city lights streak past, or the window world folds inward. "
         "Do not write space_event as a noun phrase, taxonomy label, or abstract metadata fragment. "
         "composition_shape must already be a short natural-English framing phrase that can be copied directly into a render prompt, such as a small figure against stacked flat bands, a diagonal walking line, or an off-center silhouette near dark glass. Do not output taxonomy labels, shorthand tags, or internal category names. "
-        "camera_commitment must already be a short natural-English camera phrase that can be copied directly into a render prompt, such as an extreme low-angle dynamic shot, a tight off-center close-up, or a wide off-center frame from the left. camera_commitment must describe camera or shot language and must not repeat composition_shape. Do not output labels or compressed metadata. "
+        "camera_commitment must already be a short natural-English camera phrase that can be copied directly into a render prompt, such as an extreme low-angle dynamic shot, a tight off-center close-up, or a wide off-center frame from the left. "
+        "camera_commitment must describe one clean camera or shot phrase only and must not repeat composition_shape. "
+        "Do not output broken hybrids such as diagonal corridor-in a wide shot shot, very in a wide shot, or decisive off-center in a close-up. "
+        "Do not repeat words such as shot shot, frame frame, angle angle, or close-up close-up. "
+        "Do not output labels or compressed metadata. "
         "palette_mode should define the beat color system in short direct natural-English terms such as bubblegum pink and aqua cyan with deep navy, mint green and hot pink with violet shadow, coral pink and lavender purple with blue-black, or aqua cyan and magenta with indigo. Avoid red-black editorial palettes and white-silver bloom. "
         "character_render_mode should define how the heroine is drawn in a direct natural-English phrase, such as sharp almond eyes with thick hair shapes, a long-limbed fashion figure, or a small full-body figure at the edge of frame. Avoid chibi or mascot-like render modes. "
         "Do not let all beats collapse into the same lane, crosswalk, or reflection treatment if the lyrics turn. "
@@ -217,6 +221,10 @@ def _validate_story_bible_language_contract(raw: dict) -> None:
             raise RuntimeError(f"story bible language contract mismatch: camera_commitment duplicates composition_shape at beat {idx}: {camera}")
         if not any(token in camera for token in ("shot", "angle", "frame", "close-up", "close up", "wide", "profile", "low-angle", "low angle", "dutch", "overhead")):
             raise RuntimeError(f"story bible language contract mismatch: camera_commitment is not camera language at beat {idx}: {camera}")
+        if any(token in camera for token in ("shot shot", "frame frame", "angle angle", "close-up close-up", "close up close up")):
+            raise RuntimeError(f"story bible language contract mismatch: camera_commitment repeats camera terms at beat {idx}: {camera}")
+        if camera.startswith(("very in ", "decisive off-center in ", "diagonal corridor-in ")):
+            raise RuntimeError(f"story bible language contract mismatch: camera_commitment is malformed at beat {idx}: {camera}")
         space = str(row.get("space_event", "")).strip().lower()
         if space.split(" ", 1)[0].endswith("ing"):
             raise RuntimeError(f"story bible language contract mismatch: space_event is still gerund-led at beat {idx}: {space}")
