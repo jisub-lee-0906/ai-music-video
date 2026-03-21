@@ -6,9 +6,10 @@ def test_normalize_flux2_ref_preserves_long_optional_clauses():
     raw_items = [
         {
             "shot_id": "S001",
+            "prompt_text": "The same anime girl, now hero turns and smiles. Neon city skyline. Flat cel shading, thick clean outlines.",
             "subject_clause": " ".join([f"word{i}" for i in range(1, 30)]),
             "action_clause": "hero turns and smiles",
-            "environment_clause": "neon city skyline",
+            "camera_clause": "neon city skyline",
             "continuity_clause": "keeps same lane",
         },
     ]

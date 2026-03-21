@@ -19,7 +19,7 @@ def test_flux2_ref_prompt_mentions_return_intensity():
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
     assert "Final Chorus should feel like the visual peak" not in prompt
     assert "Profile steering=" not in prompt
-    assert "deterministic flux2 reference composer" in prompt
+    assert "Write Flux2 ref prompts for continuity shots" in prompt
     assert "Lyrics context=" not in prompt
     assert "Avoid=" not in prompt
 
@@ -31,10 +31,10 @@ def test_wan_prompt_mentions_final_chorus_payoff():
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
     assert "Final Chorus should feel like the motion payoff" not in prompt
-    assert "deterministic wan composer" in prompt
+    assert "Write WAN FLF2V prompts for start and end frames that are already fixed" in prompt
     assert "Profile steering=" not in prompt
     assert "motifs=" not in prompt
-    assert "clip_ids=S010_C01" in prompt
+    assert "Shot manifest=S010_C01" in prompt
 
 
 def _story_bible() -> dict:

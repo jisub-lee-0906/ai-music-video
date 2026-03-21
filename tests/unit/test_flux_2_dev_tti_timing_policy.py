@@ -280,33 +280,33 @@ def _timeline(names: list[str], durations: list[float]) -> dict:
     return {"sections": sections}
 
 
-def _fake_tti_generate_four(_config, _prompt, _schema):
+def _fake_tti_generate_four(_config, _prompt, _schema, **_kwargs):
     return {"master_anchor": _master(101), "shots": [_shot(i) for i in range(4)]}
 
 
-def _fake_tti_generate_three(_config, _prompt, _schema):
+def _fake_tti_generate_three(_config, _prompt, _schema, **_kwargs):
     return {"master_anchor": _master(201), "shots": [_shot(i, "gentle push-in framing", "small chin lift", "calm intensity", "club light haze", "controlled motion") for i in range(3)]}
 
 
-def _fake_tti_generate_two(_config, _prompt, _schema):
+def _fake_tti_generate_two(_config, _prompt, _schema, **_kwargs):
     return {"master_anchor": _master(301), "shots": [_shot(i) for i in range(2)]}
 
 
-def _fake_tti_generate_five(_config, _prompt, _schema):
+def _fake_tti_generate_five(_config, _prompt, _schema, **_kwargs):
     return {
         "master_anchor": _master(401),
         "shots": [_shot(i, detail=f"detail {i}", shot_type="DETAIL_INSERT") for i in range(5)],
     }
 
 
-def _fake_tti_generate_five_emotion_close(_config, _prompt, _schema):
+def _fake_tti_generate_five_emotion_close(_config, _prompt, _schema, **_kwargs):
     return {
         "master_anchor": _master(402),
         "shots": [_shot(i, detail=f"detail {i}", shot_type="EMOTION_CLOSE") for i in range(5)],
     }
 
 
-def _fake_tti_generate_two_emotion_close(_config, _prompt, _schema):
+def _fake_tti_generate_two_emotion_close(_config, _prompt, _schema, **_kwargs):
     return {
         "master_anchor": _master(403),
         "shots": [_shot(i, shot_type="EMOTION_CLOSE") for i in range(2)],
@@ -332,6 +332,12 @@ def _shot(
     return {
         "lyric_beat_id": f"LB{idx+1:02d}_01",
         "shot_type": shot_type,
+        "prompt_text": (
+            "A 2D graphic anime illustration. "
+            f"The heroine {pose}. "
+            f"The background is {detail}. "
+            f"{camera}."
+        ),
         "camera_language": camera,
         "pose_delta": pose,
         "emotion": emotion,
@@ -341,5 +347,23 @@ def _shot(
         "space_relation": "light spill stays camera-right while stage depth opens behind her",
         "edit_role": "release" if idx % 2 else "develop",
         "continuity_lock": "same heroine and world",
+        "scene_change_level": "evolve",
+        "anchor_strategy": "new_anchor",
+        "continuity_basis": "heroine",
         "clip_count": 1,
+        "start_frame": {
+            "composition": "off-center medium frame",
+            "subject_scale": "medium",
+            "camera_axis": "level",
+            "lighting_state": "soft rim",
+        },
+        "end_frame": {
+            "composition": "off-center medium frame",
+            "subject_scale": "medium",
+            "camera_axis": "level",
+            "lighting_state": "soft rim",
+        },
+        "kinetic_transition": "crash_push_in",
+        "lighting_fx": "soft rim",
+        "kinetic_intensity": "medium",
     }

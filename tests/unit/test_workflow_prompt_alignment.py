@@ -54,7 +54,7 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     prompt = tti_planner._planner_prompt({}, payload)
     assert "Write a shot timeline for downstream Flux and video workflows" in prompt
     assert "master_anchor prompt_text should contain only stable identity and world facts" in prompt
-    assert "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count" in prompt
+    assert "Every shot must include lyric_beat_id,shot_type,prompt_text,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count" in prompt
     assert "workflow_motion_clause should be a full WAN action clause beginning with a finite verb phrase" in prompt
     assert "Profile policy=" in prompt
     assert "face_policy=payoff_only" in prompt
@@ -90,8 +90,8 @@ def test_flux2_ref_prompt_mentions_atom_generation_contract():
     }
     anchors = [_anchor("S010", "chorus", "Final Chorus")]
     prompt = flux2_ref_planner._planner_prompt({}, payload, anchors, "")
-    assert "deterministic flux2 reference composer" in prompt
-    assert "anchors=S010(" in prompt
+    assert "Write Flux2 ref prompts for continuity shots" in prompt
+    assert "Shot manifest=S010(" in prompt
     assert "|heroine|" in prompt
     assert "S010(" in prompt
 
@@ -102,11 +102,11 @@ def test_wan_prompt_mentions_motion_atom_contract():
     }
     clips = [_clip("S010_C01", "chorus", "Final Chorus")]
     prompt = wan_planner._planner_prompt({}, payload, clips, "")
-    assert "deterministic wan composer" in prompt
-    assert "clip_ids=S010_C01" in prompt
-    assert "clips=S010_C01(" in prompt
+    assert "Write WAN FLF2V prompts for start and end frames that are already fixed" in prompt
+    assert "Shot manifest=S010_C01" in prompt
+    assert "Clip summary=S010_C01(" in prompt
     assert "S010_C01(heroine|" in prompt
-    assert "clips=S010_C01(" in prompt
+    assert "Clip summary=S010_C01(" in prompt
 
 
 def test_flux2_tti_prompt_uses_style_subject_background_camera_order():
@@ -124,17 +124,9 @@ def test_flux2_tti_prompt_uses_style_subject_background_camera_order():
     )
 
 
-def test_wan_energy_policy_lifts_final_chorus():
-    final_clip = _clip("S010_C01", "chorus", "Final Chorus")
-    chorus2_clip = _clip("S008_C01", "chorus", "Chorus 2")
-    chorus_clip = _clip("S004_C01", "chorus", "Chorus")
-    assert wan_planner._energy_policy(final_clip, "normal") == "high"
-    assert wan_planner._energy_policy(chorus2_clip, "normal") == "normal"
-    assert wan_planner._energy_policy(chorus_clip, "normal") == "normal"
-
-
 def test_flux2_ref_anchor_summary_includes_clip_phase():
     row = flux2_ref_planner._anchor_summary_row(
+        _story_bible(),
         {
             "shot_id": "S010_C01",
             "section_name": "chorus",
@@ -146,7 +138,7 @@ def test_flux2_ref_anchor_summary_includes_clip_phase():
             "space_relation": "glass stays camera-right",
             "clip_index": 1,
             "clip_count": 3,
-        }
+        },
     )
     assert "establish" in row
 

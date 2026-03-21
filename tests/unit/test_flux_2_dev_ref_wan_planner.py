@@ -1,17 +1,38 @@
 from ai_mv.engines.flux_2_dev_ref.planner import build_flux2_ref_plan
-from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan
+from ai_mv.engines.wan_2_2_flf2v.planner import build_wan_plan, _compose_positive_prompt
 import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 
 
-def test_flux2_ref_plan_is_deterministic():
+def test_flux2_ref_plan_uses_llm_output_verbatim(monkeypatch):
+    def fake_generate_structured(config, prompt, schema, attempts=1):
+        return {
+            "items": [
+                {
+                    "shot_id": "a",
+                    "prompt_text": "The same anime girl, now turns sharply to the left. Tight profile shot. Flat cel shading, thick clean outlines.",
+                    "subject_clause": "The same anime girl",
+                    "action_clause": "now turns sharply to the left",
+                    "camera_clause": "Tight profile shot",
+                    "continuity_clause": "Flat cel shading, thick clean outlines",
+                },
+                {
+                    "shot_id": "b",
+                    "prompt_text": "The same anime girl, now raises the guitar above her shoulder. Extreme low-angle dynamic shot. Flat cel shading, thick clean outlines.",
+                    "subject_clause": "The same anime girl",
+                    "action_clause": "now raises the guitar above her shoulder",
+                    "camera_clause": "Extreme low-angle dynamic shot",
+                    "continuity_clause": "Flat cel shading, thick clean outlines",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(flux2_ref_planner, "generate_structured", fake_generate_structured)
     payload = {"clip_routes": [_route("a", True), _route("b", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
-    shot_ids = [x["shot_id"] for x in out["items"]]
-    assert shot_ids == ["a", "b"]
-    assert out["items"][0]["prompt_text"]
-    assert out["items"][0]["subject_clause"]
-    assert out["items"][0]["continuity_clause"] == "Flat cel shading, thick clean outlines"
+    assert [x["shot_id"] for x in out["items"]] == ["a", "b"]
+    assert out["items"][0]["prompt_text"] == fake_generate_structured({}, "", {}, 1)["items"][0]["prompt_text"]
+    assert out["items"][0]["camera_clause"] == "Tight profile shot"
 
 
 def test_flux2_ref_plan_empty_when_no_ref_routes():
@@ -19,44 +40,56 @@ def test_flux2_ref_plan_empty_when_no_ref_routes():
     assert out["items"] == []
 
 
-def test_flux2_ref_prompt_text_matches_short_continuity_formula():
+def test_flux2_ref_prompt_text_matches_short_continuity_formula(monkeypatch):
+    expected = "The same anime girl, now fiercely smashing the guitar onto the ground, bending her knees. Extreme low-angle dynamic shot. Flat cel shading, thick clean outlines."
+
+    def fake_generate_structured(config, prompt, schema, attempts=1):
+        return {
+            "items": [
+                {
+                    "shot_id": "a",
+                    "prompt_text": expected,
+                    "subject_clause": "The same anime girl",
+                    "action_clause": "now fiercely smashing the guitar onto the ground, bending her knees",
+                    "camera_clause": "Extreme low-angle dynamic shot",
+                    "continuity_clause": "Flat cel shading, thick clean outlines",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(flux2_ref_planner, "generate_structured", fake_generate_structured)
     payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
-    text = out["items"][0]["prompt_text"]
-    low = text.lower()
-    assert low.startswith("the same anime girl, now ")
-    assert "reflective threshold" not in low
-    assert "no text" not in low
-    assert "flat cel shading, thick clean outlines" in low
-    assert text.endswith(".")
+    assert out["items"][0]["prompt_text"] == expected
 
 
-def test_wan_plan_uses_start_end_only():
-    payload = {
-        "clip_routes": [_route("x", False)],
-        "flux2_ref_images": [_flux2_ref("x", 4.0)],
-        "visual_story_bible": _story_bible(),
-    }
-    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
-    assert len(out["clips"]) == 1
-    assert out["clips"][0]["shot_id"] == "x"
-    assert out["clips"][0]["camera_language"] == "clean hero framing"
-    assert out["clips"][0]["positive_prompt"]
-    assert out["clips"][0]["subject_motion"]
-    assert out["clips"][0]["camera_relation"]
-    assert out["clips"][0]["positive_prompt"].startswith("Camera ")
-    assert "she she" not in out["clips"][0]["positive_prompt"].lower()
+def test_wan_plan_uses_llm_prompt_and_ref_frames(monkeypatch):
+    def fake_generate_structured(config, prompt, schema, attempts=1):
+        return {
+            "clips": [
+                {
+                    "shot_id": "x",
+                    "positive_prompt": "Camera crashes forward on impact. The girl swings the guitar down with extreme force. Background neon lights flicker rapidly.",
+                    "negative_prompt": "3d render, photorealistic, morphing, static",
+                    "subject_motion": "The girl swings the guitar down with extreme force",
+                    "camera_relation": "Camera crashes forward on impact",
+                    "environment_detail": "Background neon lights flicker rapidly",
+                    "energy": "normal",
+                }
+            ]
+        }
 
-
-def test_wan_plan_prefers_ref_frames_when_route_requires_it():
+    monkeypatch.setattr(wan_planner, "generate_structured", fake_generate_structured)
     payload = {
         "clip_routes": [_route("x", True)],
         "flux2_ref_images": [_flux2_ref("x", 4.0)],
         "visual_story_bible": _story_bible(),
     }
     out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
-    assert out["clips"][0]["start"] == "s.png"
-    assert out["clips"][0]["end"] == "e.png"
+    clip = out["clips"][0]
+    assert clip["start"] == "s.png"
+    assert clip["end"] == "e.png"
+    assert clip["positive_prompt"].startswith("Camera crashes forward on impact.")
 
 
 def test_wan_plan_requires_ref_frames_for_ref_routed_clip():
@@ -81,117 +114,19 @@ def test_wan_planner_clip_cap_guard():
         assert "exceeds cap" in str(exc)
 
 
-def test_wan_energy_policy_pre_chorus_not_forced_high():
-    out = build_wan_plan(
-        {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}},
+def test_wan_positive_prompt_formula():
+    text = _compose_positive_prompt(
         {
-            "clip_routes": [{**_route("x", False), "section_name": "pre_chorus", "section_label": "Pre-Chorus"}],
-            "flux2_ref_images": [_flux2_ref("x", 4.0)],
-            "visual_story_bible": _story_bible_with_section("pre_chorus", "pre chorus lift", "lit passage", "lift", "travel line"),
-        },
+            "camera_relation": "Camera is completely locked off and static",
+            "subject_motion": "The girl's eyes dart quickly to the left",
+            "environment_detail": "The floating holographic UI elements slowly rotate clockwise",
+        }
     )
-    assert out["clips"][0]["energy"] == "normal"
-
-
-def test_wan_chains_split_clip_starts_from_previous_end():
-    clips = build_wan_plan(
-        {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}},
-        {
-            "clip_routes": [
-                {**_route("S001_C01", False), "shot_id": "S001_C01"},
-                {**_route("S001_C02", False), "shot_id": "S001_C02"},
-                {**_route("S001_C03", False), "shot_id": "S001_C03"},
-            ],
-            "flux2_ref_images": [],
-            "visual_story_bible": _story_bible(),
-        },
-    )["clips"]
-    assert clips[0]["start"] == "S001_C01.png"
-    assert clips[1]["start"] == clips[0]["end"]
-    assert clips[2]["start"] == clips[1]["end"]
-
-
-def test_wan_plan_varies_subject_motion_by_clip_phase():
-    clips = build_wan_plan(
-        {"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}},
-        {
-            "clip_routes": [
-                {**_route("S001_C01", False), "shot_id": "S001_C01", "clip_index": 1, "clip_count": 3},
-                {**_route("S001_C02", False), "shot_id": "S001_C02", "clip_index": 2, "clip_count": 3},
-                {**_route("S001_C03", False), "shot_id": "S001_C03", "clip_index": 3, "clip_count": 3},
-            ],
-            "flux2_ref_images": [],
-            "visual_story_bible": _story_bible(),
-        },
-    )["clips"]
-    motions = [clip["subject_motion"].lower() for clip in clips]
-    assert motions[0] == motions[1] == motions[2]
-    assert motions[0].startswith("moves")
-
-
-def test_flux2_ref_action_clause_is_not_prefixed_with_duplicate_subject():
-    payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
-    out = build_flux2_ref_plan({}, payload)
-    assert "she she" not in out["items"][0]["prompt_text"].lower()
-
-
-def test_flux2_ref_action_clause_uses_workflow_motion_clause():
-    anchor = {
-        **_route("S020_C01", True),
-        "clip_index": 1,
-        "clip_count": 3,
-        "workflow_motion_clause": "taking a deep breath and lifting her chin into the height",
-        "pose_delta": "takes a deep breath and lifts her chin",
-    }
-    item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
-    assert item["action_clause"].lower() == "takes a deep breath and lifts her chin"
-
-
-def test_flux2_ref_action_clause_uses_workflow_motion_clause_for_hits_pattern():
-    anchor = {
-        **_route("S020_C03", True),
-        "clip_index": 3,
-        "clip_count": 3,
-        "workflow_motion_clause": "hitting the hook entry faster and holding a colder direct stare",
-        "pose_delta": "hits the hook entry faster and holds a colder direct stare",
-    }
-    item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
-    assert item["action_clause"].lower() == "hits the hook entry faster and holds a colder direct stare"
-
-
-def test_flux2_ref_requires_workflow_motion_clause():
-    anchor = dict(_route("S020_C03", True), pose_delta="", workflow_motion_clause="")
-    try:
-        flux2_ref_planner._build_item(anchor, _story_bible(), 1)
-        assert False, "expected RuntimeError"
-    except RuntimeError as exc:
-        assert "pose_delta missing" in str(exc)
-
-
-def test_wan_single_clip_subject_motion_avoids_hits_through_stays():
-    clip = wan_planner._apply_prompt(
-        {
-            **_route("S025", False),
-            "shot_id": "S025",
-            "clip_index": 1,
-            "clip_count": 1,
-            "use_ref": False,
-            "workflow_motion_clause": "staying centered and perfectly clear",
-            "motion_hint": "stays centered and perfectly clear",
-        },
-        _story_bible_with_section("outro", "stays centered and perfectly clear", "reflective threshold", "residue", "stillness hold"),
+    assert text == (
+        "Camera is completely locked off and static. "
+        "The girl's eyes dart quickly to the left. "
+        "The floating holographic UI elements slowly rotate clockwise."
     )
-    assert "hits through stays" not in clip["positive_prompt"].lower()
-    assert "staying centered and perfectly clear" in clip["positive_prompt"].lower()
-
-
-def test_wan_requires_workflow_motion_clause():
-    clip = dict(_route("S025", False), workflow_motion_clause="")
-    try:
-        wan_planner._apply_prompt(clip, _story_bible())
-        assert False, "expected RuntimeError"
-    except RuntimeError as exc:
-        assert "workflow_motion_clause missing" in str(exc)
 
 
 def _flux2_ref(shot_id: str, duration: float) -> dict:
@@ -288,36 +223,4 @@ def _story_bible() -> dict:
             {"section_name": "chorus", "section_label": "Final Chorus", "dominant_emotion": "bright release", "story_function": "payoff", "lyric_beat_ids": ["LB02_01"]},
         ],
         "repeat_escalation_rules": ["final chorus should escalate"],
-    }
-
-
-def _story_bible_with_section(name: str, beat: str, location: str, escalation: str, motion_axis: str) -> dict:
-    return {
-        "hero_identity_lock": "silver-haired city-pop heroine",
-        "world_rules": "retro neon nightlife with polished stage depth",
-        "recurring_location_families": [location],
-        "forbidden_drift": ["identity drift"],
-        "lyric_beats": [
-            {
-                "beat_id": "LB01_01",
-                "section_name": name,
-                "section_label": name,
-                "line_refs": [1],
-                "literal_image": location,
-                "visible_action": beat,
-                "emotional_turn": "lift",
-                "continuity_anchor": motion_axis,
-                "payoff_role": escalation,
-                "repeat_variant_of": "",
-                "location_family": location,
-                "palette_hint": "teal glow",
-                "lighting_hint": "soft rim light",
-                "camera_commitment": "clean stage depth",
-                "space_event": "The background light keeps breathing across the block",
-            }
-        ],
-        "section_progression": [
-            {"section_name": name, "section_label": name, "dominant_emotion": "lift", "story_function": escalation, "lyric_beat_ids": ["LB01_01"]}
-        ],
-        "repeat_escalation_rules": ["repeats must vary"],
     }

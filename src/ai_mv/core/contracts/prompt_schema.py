@@ -151,12 +151,13 @@ def audio_schema() -> dict:
 def flux2_ref_schema() -> dict:
     item = {
         "type": "object",
-        "required": ["shot_id", "subject_clause", "action_clause", "environment_clause", "continuity_clause"],
+        "required": ["shot_id", "prompt_text", "subject_clause", "action_clause", "camera_clause", "continuity_clause"],
         "properties": {
             "shot_id": {"type": "string"},
+            "prompt_text": {"type": "string"},
             "subject_clause": {"type": "string"},
             "action_clause": {"type": "string"},
-            "environment_clause": {"type": "string"},
+            "camera_clause": {"type": "string"},
             "continuity_clause": {"type": "string"},
         },
     }
@@ -166,9 +167,10 @@ def flux2_ref_schema() -> dict:
 def wan_schema() -> dict:
     clip = {
         "type": "object",
-        "required": ["shot_id", "subject_motion", "camera_relation", "environment_detail", "negative_prompt", "energy"],
+        "required": ["shot_id", "positive_prompt", "negative_prompt", "subject_motion", "camera_relation", "environment_detail", "energy"],
         "properties": {
             "shot_id": {"type": "string"},
+            "positive_prompt": {"type": "string"},
             "subject_motion": {"type": "string"},
             "camera_relation": {"type": "string"},
             "environment_detail": {"type": "string"},
@@ -302,6 +304,7 @@ def _shot_timeline_item_schema() -> dict:
         "required": [
             "lyric_beat_id",
             "shot_type",
+            "prompt_text",
             "camera_language",
             "pose_delta",
             "emotion",
@@ -324,6 +327,7 @@ def _shot_timeline_item_schema() -> dict:
         "properties": {
             "lyric_beat_id": {"type": "string"},
             "shot_type": {"type": "string", "enum": SHOT_TYPES},
+            "prompt_text": {"type": "string"},
             "camera_language": {"type": "string"},
             "pose_delta": {"type": "string"},
             "emotion": {"type": "string"},

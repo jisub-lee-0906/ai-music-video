@@ -11,13 +11,11 @@ def build_lyrics_timeline(config: dict, payload: dict) -> dict:
     audio_plan = payload["audio_plan"]
     sections = list(payload["audio_map"]["sections"])
     prompt = _planner_prompt(audio_plan, sections)
-    raw = generate_structured(config, prompt, lyrics_timeline_schema())
+    raw = generate_structured(config, prompt, lyrics_timeline_schema(), attempts=1)
     try:
         timeline = normalize_lyrics_timeline(raw, sections)
     except RuntimeError as exc:
-        retry_prompt = _planner_retry_prompt(audio_plan, sections, str(exc))
-        raw = generate_structured(config, retry_prompt, lyrics_timeline_schema())
-        timeline = normalize_lyrics_timeline(raw, sections)
+        raise RuntimeError(f"lyrics_timeline validation failed: {exc}") from exc
     _attach_time_ranges(timeline, sections)
     return timeline
 
@@ -57,25 +55,6 @@ def _planner_prompt(audio_plan: dict, sections: list[dict]) -> str:
         f"Source section lines JSON={_section_lines_json(sections)}. "
         f"Lyrics={_lyrics_digest(audio_plan)}."
     )
-
-
-def _planner_retry_prompt(audio_plan: dict, sections: list[dict], error: str) -> str:
-    max_beats = _recommended_max_beats(audio_plan, sections)
-    return (
-        "Retry the lyric-to-scene timeline plan. "
-        "Return strict JSON only. No prose outside JSON. "
-        "The previous output failed validation. "
-        f"Validation error={error}. "
-        "Fix the JSON by preserving the source section lines exactly. "
-        "Each section.lines item must include both line_index and text. "
-        "Do not omit any source line. Do not invent or renumber lines. Do not leave text blank. "
-        f"Break each section into 1-{max_beats} visual beats and keep line_refs valid for that section only. "
-        "Before finalizing, verify that each section output lines exactly matches the source section lines JSON. "
-        f"Sections={_section_digest(sections)}. "
-        f"Source section lines JSON={_section_lines_json(sections)}. "
-        f"Lyrics={_lyrics_digest(audio_plan)}."
-    )
-
 
 def _section_digest(sections: list[dict]) -> str:
     return ", ".join(

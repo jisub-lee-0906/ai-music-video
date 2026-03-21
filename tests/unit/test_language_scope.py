@@ -44,6 +44,9 @@ def test_audio_prompt_contains_language_clause_only_for_lyrics():
         assert "station corridor glass" not in prompt
         assert "crosswalk under neon" not in prompt
 
+    assert "Write Flux2 ref prompts for continuity shots" in flux2_ref_prompt
+    assert "Write WAN FLF2V prompts for start and end frames that are already fixed" in wan_prompt
+
 
 def _audio_map() -> dict:
     return {

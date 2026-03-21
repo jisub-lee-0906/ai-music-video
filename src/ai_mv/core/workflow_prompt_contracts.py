@@ -1,17 +1,5 @@
 from __future__ import annotations
 
-from typing import Iterable
-
-WAN_BASE_NEGATIVE = (
-    "overexposed, static frame, unclear details, subtitle, watermark, logo, "
-    "low quality, jpeg artifacts, ugly, defective, extra fingers, poorly drawn hands, "
-    "poorly drawn face, deformed anatomy, disfigured limbs, fused fingers, cluttered background"
-)
-
-def clean_prompt_clause(text: object) -> str:
-    return _clean(text).strip(" ,.")
-
-
 def compose_flux2_tti_prompt(
     style_contract: object,
     subject_action_sentence: object,
@@ -28,11 +16,6 @@ def compose_flux2_tti_prompt(
     if base and detail:
         return f"{base} {detail}".strip()
     return base or detail
-
-
-def workflow_negative_prompt(extra_terms: Iterable[str] | None = None) -> str:
-    extras = [clean_prompt_clause(term) for term in list(extra_terms or []) if clean_prompt_clause(term)]
-    return ", ".join(part for part in (WAN_BASE_NEGATIVE, ", ".join(extras).strip(", ")) if part).strip(", ")
 
 
 def _sentence(text: object) -> str:

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause, workflow_negative_prompt
+from ai_mv.core.contracts.prompt_normalize import normalize_wan_clips
+from ai_mv.core.contracts.prompt_schema import wan_schema
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
-from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
+from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms
+from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.utils.text_utils import parse_target
+
 
 def build_wan_plan(config: dict, payload: dict) -> dict:
     fps = parse_target(config["video"]["target"])[2]
@@ -12,21 +15,73 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
     if not clips:
         raise RuntimeError("WAN clips empty")
     _enforce_clip_cap(config, clips, fps)
-    rendered = [_apply_prompt(clip, payload["visual_story_bible"]) for clip in clips]
+    spec = _generate_wan_spec(config, payload, clips)
+    keyed = normalize_wan_clips(spec.get("clips", []), clips)
+    rendered = [_apply_llm_prompt(clip, keyed[str(clip["shot_id"])]) for clip in clips]
     return {"clips": rendered}
 
 
 def _planner_prompt(config: dict, payload: dict, clips: list[dict], carry: str) -> str:
     clip_ids = _clip_ids(clips)
-    summary = _clip_summary(clips)
+    summary = _clip_summary(payload.get("visual_story_bible", {}), clips)
     return (
-        "deterministic wan composer; "
-        "compose short motion-first prompts for the workflow positive and negative text fields; "
-        "positive prompt formula: camera movement + action verbs + background motion; "
-        "negative prompt formula: 3d or realism anti-tags + morphing or anatomy error anti-tags + unwanted motion anti-tags; "
-        "do not restate visual style in the positive prompt; "
-        f"clip_ids={clip_ids}; clips={summary}."
+        "Write WAN FLF2V prompts for start and end frames that are already fixed. "
+        "Return strict JSON only with shape {\"clips\":[...]}. No prose outside JSON. "
+        f"Return exactly {len(clips)} clips, one for each shot_id in the manifest order. "
+        "Each clip must contain shot_id,positive_prompt,negative_prompt,subject_motion,camera_relation,environment_detail,energy. "
+        "positive_prompt must follow this exact formula: [Camera Movement] + [Action Verbs] + [Background Motion]. "
+        "Do not mention visual style, rendering style, cel shading, outlines, colors, or background design style in the positive prompt. "
+        "camera_relation should be the first sentence of positive_prompt. "
+        "subject_motion should be the second sentence of positive_prompt. "
+        "environment_detail should be the third sentence of positive_prompt. "
+        "negative_prompt must be a suppression list of 3D or realism anti-tags, morphing or anatomy error anti-tags, and unwanted motion anti-tags. "
+        "Use finite natural English clauses, not labels or metadata fragments. "
+        "Energy must be one of low, normal, high. "
+        f"Shot manifest={clip_ids}. "
+        f"Clip summary={summary}."
     )
+
+
+def _generate_wan_spec(config: dict, payload: dict, clips: list[dict], attempts: int = 3) -> dict:
+    prompt = _planner_prompt(config, payload, clips, "")
+    expected_ids = [str(clip["shot_id"]) for clip in clips]
+    current_prompt = prompt
+    last_exc: Exception | None = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        spec = generate_structured(config, current_prompt, wan_schema(), attempts=1)
+        try:
+            keyed = normalize_wan_clips(spec.get("clips", []), clips)
+            for shot_id in expected_ids:
+                row = keyed[shot_id]
+                if row["positive_prompt"] != _compose_positive_prompt(
+                    {
+                        "camera_relation": row["camera_relation"],
+                        "subject_motion": row["subject_motion"],
+                        "environment_detail": row["environment_detail"],
+                    }
+                ):
+                    raise RuntimeError(f"positive_prompt formula mismatch: {shot_id}")
+            return spec
+        except RuntimeError as exc:
+            last_exc = exc
+            if attempt >= attempts:
+                raise
+            actual_ids = [
+                str(row.get("shot_id", "")).strip()
+                for row in spec.get("clips", [])
+                if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+            ]
+            current_prompt = (
+                f"{prompt}\n\n"
+                "Previous output failed validation. "
+                f"Failure={exc}. "
+                f"Expected shot_id order={', '.join(expected_ids)}. "
+                f"Previous shot_id order={', '.join(actual_ids)}. "
+                "Rewrite the JSON only and follow the exact positive prompt formula."
+            )
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("wan planner failed without validation error")
 
 
 def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
@@ -155,21 +210,6 @@ def _wan_planner_batch_size(config: dict, count: int) -> int:
     return max(1, min(max(1, count), n))
 
 
-def _carry_hint(rows: list[dict]) -> str:
-    if not rows:
-        return ""
-    last = rows[-1]
-    return " | ".join(
-        part
-        for part in (
-            str(last.get("subject_motion", "")).strip(),
-            str(last.get("camera_relation", "")).strip(),
-            str(last.get("environment_detail", "")).strip(),
-        )
-        if part
-    )[:120]
-
-
 def _clip_ids(clips: list[dict]) -> str:
     ids = [str(clip["shot_id"]) for clip in clips]
     if not ids:
@@ -177,255 +217,48 @@ def _clip_ids(clips: list[dict]) -> str:
     return ", ".join(ids)
 
 
-def _clip_summary(clips: list[dict]) -> str:
-    return ", ".join(_clip_summary_row(c) for c in clips)
+def _clip_summary(brief: dict, clips: list[dict]) -> str:
+    return ", ".join(_clip_summary_row(brief, c) for c in clips)
 
 
-def _clip_summary_row(clip: dict) -> str:
+def _clip_summary_row(brief: dict, clip: dict) -> str:
     sid = str(clip["shot_id"])
     focus = str(clip.get("prompt_focus", "")).strip().lower() or "heroine"
-    motion = str(clip.get("kinetic_transition", "")).strip() or str(clip.get("motion_hint", "")).strip() or "impact move"
-    camera = clean_prompt_clause(str(clip.get("camera_language", "")).strip()) or "camera move"
-    bg = clean_prompt_clause(str(clip.get("space_event", "")).strip() or str(clip.get("scene_detail", "")).strip()) or "background motion"
-    return f"{sid}({focus}|{motion}|{camera}|{bg})"
-
-
-def _apply_prompt(clip: dict, brief: dict) -> dict:
+    motion = str(clip.get("workflow_motion_clause", "")).strip() or "action move"
+    camera = str(clip.get("camera_language", "")).strip() or "camera move"
     section = _beat_atoms(brief, clip)
-    subject_motion = _subject_motion(clip, section)
-    camera_relation = _camera_relation(clip, section)
-    environment_detail = _environment_detail(clip, section, brief)
-    row = {
-        "subject_motion": subject_motion,
-        "camera_relation": camera_relation,
-        "environment_detail": environment_detail,
-        "negative_prompt": _negative_prompt(clip, brief),
-        "energy": _energy_policy(clip, _suggested_energy(clip, section)),
-    }
+    background = str(section.get("space_event", "")).strip() or str(clip.get("scene_detail", "")).strip() or "background motion"
+    return f"{sid}({focus}|{motion}|{camera}|{background})"
+
+
+def _apply_llm_prompt(clip: dict, row: dict) -> dict:
     out = dict(clip)
-    out["subject_motion"] = row["subject_motion"]
-    out["camera_relation"] = row["camera_relation"]
-    out["environment_detail"] = row["environment_detail"]
-    out["positive_prompt"] = _compose_positive_prompt(row)
-    out["negative_prompt"] = row["negative_prompt"]
-    out["energy"] = row["energy"]
+    out["subject_motion"] = str(row["subject_motion"])
+    out["camera_relation"] = str(row["camera_relation"])
+    out["environment_detail"] = str(row["environment_detail"])
+    out["positive_prompt"] = str(row["positive_prompt"])
+    out["negative_prompt"] = str(row["negative_prompt"])
+    out["energy"] = str(row["energy"])
     return out
 
 
-def _subject_motion(clip: dict, section: dict) -> str:
-    action = _planned_motion_clause(clip)
-    if action:
-        return _sentence_clause(action)
-    motion = clean_prompt_clause(str(clip.get("motion_hint", "")).strip())
-    if motion:
-        return _sentence_clause(motion)
-    return "holds the motion"
-
-
-def _camera_relation(clip: dict, section: dict) -> str:
-    camera = str(clip.get("camera_language", "")).strip()
-    kinetic_transition = str(clip.get("kinetic_transition", "")).strip().lower()
-    intensity = str(clip.get("kinetic_intensity", "")).strip().lower()
-    if kinetic_transition == "whip_pan_left":
-        return "Camera whips hard left"
-    if kinetic_transition == "whip_pan_right":
-        return "Camera whips hard right"
-    if kinetic_transition == "snap_zoom_in":
-        return "Camera snap-zooms in"
-    if kinetic_transition == "snap_zoom_out":
-        return "Camera snaps back out"
-    if kinetic_transition == "crash_push_in":
-        return "Camera crashes forward on impact"
-    if kinetic_transition == "smash_reframe":
-        return "Camera smash-reframes to a new axis"
-    if kinetic_transition == "strobe_jump":
-        return "Camera jumps forward on the beat"
-    if kinetic_transition == "match_cut_pose":
-        return "Camera holds the angle and cuts on pose impact"
-    if camera:
-        return _simple_camera_motion(camera)
-    if intensity in {"high", "max"}:
-        return "Camera drives fast with no soft drift"
-    return "Camera holds the frame"
-
-
-def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
-    scene_event = str(clip.get("space_event", "")).strip()
-    scene_detail = str(clip.get("scene_detail", "")).strip()
-    if scene_event:
-        return clean_prompt_clause(scene_event)
-    if scene_detail:
-        return clean_prompt_clause(scene_detail)
-    location = (
-        str(clip.get("location_family", "")).strip()
-        or str(section.get("location_family", "")).strip()
-        or str(section.get("location_anchor", "")).strip()
-    )
-    location_text = clean_prompt_clause(location)
-    if location_text:
-        return f"The {location_text} moves in the background"
-    return "Background planes move behind the action"
-
-
-def _negative_prompt(clip: dict, brief: dict) -> str:
-    world = compact_world_atoms(brief)
-    relation = str(clip.get("space_relation", "")).strip().lower()
-    extra: list[str] = []
-    extra.extend(
-        [
-            "3d render",
-            "photorealistic",
-            "volumetric lighting",
-            "soft shading",
-            "morphing",
-            "melting limbs",
-            "warping limbs",
-            "melted guitar shape",
-            "slow motion",
-            "smooth transitions",
-        ]
-    )
-    if "glass" in relation:
-        extra.append("warped reflections")
-    if bool(clip.get("use_ref", False)):
-        extra.append("identity drift")
-    if str(clip.get("prompt_focus", "")).strip().lower() in {"object", "space", "graphic"}:
-        extra.extend(
-            [
-                "generic live-action portrait",
-                "photorealistic skin texture",
-                "photographic background depth",
-                "realistic architecture detail",
-                "soft atmospheric bloom",
-            ]
-        )
-    if str(clip.get("face_exposure_level", "")).strip().lower() in {"direct", "soft"}:
-        extra.extend(["different person", "age drift", "hairstyle drift", "wardrobe swap", "duplicate subject"])
-    if str(clip.get("camera_language", "")).strip().lower() in {"locked", "lockoff", "static"}:
-        extra.extend(["camera movement", "zooming", "panning"])
-    if "world_rules" in world and "night" in str(world.get("world_rules", "")).lower():
-        extra.append("daylight mismatch")
-    return workflow_negative_prompt(extra)
-
-
-def _suggested_energy(clip: dict, section: dict) -> str:
-    escalation = str(section.get("escalation_level", "")).strip().lower()
-    if escalation == "payoff":
-        return "high"
-    if escalation in {"interrupt", "residue"}:
-        return "low"
-    return "normal"
-
-
-
-
 def _compose_positive_prompt(row: dict) -> str:
-    camera_motion = _sentence(_clause(row.get("camera_relation", "")))
-    subject_motion = _sentence(_naturalize_wan_action(_clause(row.get("subject_motion", "")), row))
-    background_motion = _sentence(_clause(row.get("environment_detail", "")))
-    if not camera_motion or not subject_motion or not background_motion:
+    parts = [
+        _sentence(str(row.get("camera_relation", "")).strip()),
+        _sentence(str(row.get("subject_motion", "")).strip()),
+        _sentence(str(row.get("environment_detail", "")).strip()),
+    ]
+    text = " ".join(part for part in parts if part).strip()
+    if not text:
         raise RuntimeError("empty composed WAN prompt")
-    return f"{camera_motion} {subject_motion} {background_motion}".strip()
-
-
-def _clause(text: object) -> str:
-    return " ".join(str(text).strip().rstrip(". ").split())
+    return text
 
 
 def _sentence(text: str) -> str:
-    cleaned = str(text).strip().rstrip(". ")
+    cleaned = " ".join(str(text).strip().rstrip(". ").split())
     if not cleaned:
         return ""
-    return f"{_capitalize_first(cleaned)}."
-
-
-def _sentence_clause(text: str) -> str:
-    cleaned = " ".join(str(text).strip().split())
-    if cleaned.lower().startswith("she she "):
-        cleaned = cleaned[4:]
-    return cleaned
-
-
-def _simple_camera_motion(camera: str) -> str:
-    low = str(camera).strip().lower()
-    if not low:
-        return "Camera holds the frame"
-    if "locked" in low or "lockoff" in low or "static" in low:
-        return "Camera stays completely locked off"
-    if "tracking" in low or "track" in low or "follow" in low:
-        return "Camera tracks with the action"
-    if "side-on" in low or "profile" in low:
-        return "Camera tracks from the side"
-    if "low" in low:
-        return "Camera stays low and aggressive"
-    if "close" in low or "tight" in low:
-        return "Camera pushes in close"
-    if "wide" in low:
-        return "Camera holds a wide moving frame"
-    return "Camera stays with the motion"
-
-
-def _naturalize_wan_action(text: str, clip: dict) -> str:
-    cleaned = clean_prompt_clause(text)
-    if not cleaned:
-        return "The figure moves through the beat"
-    low = cleaned.lower()
-    subject = "The girl"
-    focus = str(clip.get("prompt_focus", "")).strip().lower()
-    if focus == "object":
-        subject = "The object"
-    elif focus == "space":
-        subject = "The figure"
-    elif focus == "graphic":
-        subject = "The graphic figure"
-    if low.startswith(subject.lower()):
-        return cleaned
-    if low.startswith(("she ", "the girl ", "the figure ", "the object ", "the graphic figure ")):
-        return cleaned[:1].upper() + cleaned[1:]
-    return f"{subject} {cleaned}"
-
-
-def _capitalize_first(text: str) -> str:
-    cleaned = str(text)
-    if not cleaned:
-        return ""
-    return cleaned[:1].upper() + cleaned[1:]
-
-
-def _energy_policy(clip: dict, suggested: str) -> str:
-    sec = _section_token(clip)
-    label = _section_label(clip)
-    if "final chorus" in label:
-        return "high"
-    if "chorus 2" in label:
-        return "high" if suggested == "high" else "normal"
-    if sec == "chorus" or sec.startswith("chorus_"):
-        return "high" if suggested == "high" else "normal"
-    if sec in {"bridge", "outro"}:
-        return "low" if suggested == "low" else "normal"
-    if suggested in {"low", "normal", "high"}:
-        return suggested
-    return "normal"
-
-
-def _section_token(clip: dict) -> str:
-    return str(clip.get("section_name", "")).strip().lower()
-
-
-def _section_label(clip: dict) -> str:
-    return str(clip.get("section_label", clip.get("section_name", ""))).strip().lower()
-
-
-def _clip_phase(clip: dict) -> str:
-    count = int(clip.get("clip_count", 1))
-    index = int(clip.get("clip_index", 1))
-    if count <= 1:
-        return "single"
-    if index <= 1:
-        return "establish"
-    if index >= count:
-        return "resolve"
-    return "advance"
+    return f"{cleaned[:1].upper() + cleaned[1:]}."
 
 
 def _frame_floor(fps: int) -> int:
@@ -441,10 +274,3 @@ def _beat_atoms(brief: dict, clip: dict) -> dict:
             if str(beat.get("beat_id", "")).strip() == beat_id:
                 return dict(beat)
     return compact_section_atoms(brief, str(clip.get("section_name", "")), beat_id)
-def _planned_motion_clause(clip: dict) -> str:
-    text = " ".join(str(clip.get("workflow_motion_clause", "")).strip().rstrip(". ").split())
-    if not text:
-        raise RuntimeError(f"workflow_motion_clause missing for wan shot: {clip.get('shot_id', '')}")
-    if text.lower().startswith("she "):
-        text = text[4:].strip()
-    return text

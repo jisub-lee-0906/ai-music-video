@@ -48,6 +48,7 @@ def _flux2_ref_prompt_batches(stage_input: StageInput, plan: dict) -> list[dict]
                 for part in (
                     str(last.get("subject_clause", "")).strip(),
                     str(last.get("action_clause", "")).strip(),
+                    str(last.get("camera_clause", "")).strip(),
                     str(last.get("continuity_clause", "")).strip(),
                 )
                 if part
@@ -97,9 +98,10 @@ def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
 
 def _flux2_ref_atom_view(item: dict) -> dict:
     return {
+        "prompt_text": str(item.get("prompt_text", "")),
         "subject_clause": str(item.get("subject_clause", "")),
         "action_clause": str(item.get("action_clause", "")),
-        "environment_clause": str(item.get("environment_clause", "")),
+        "camera_clause": str(item.get("camera_clause", "")),
         "continuity_clause": str(item.get("continuity_clause", "")),
     }
 

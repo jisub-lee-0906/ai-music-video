@@ -20,6 +20,7 @@ def test_tti_shots_keep_section_label():
             {
                 "lyric_beat_id": "LB01_01",
                 "shot_type": "PERF_WIDE",
+                "prompt_text": "A 2D graphic anime illustration. The heroine steps forward. The background is city glow. Clean frame.",
                 "camera_language": "clean frame",
                 "pose_delta": "small turn",
                 "emotion": "lift",
@@ -29,7 +30,25 @@ def test_tti_shots_keep_section_label():
                 "space_relation": "lane depth behind",
                 "edit_role": "release",
                 "continuity_lock": "same heroine",
+                "scene_change_level": "evolve",
+                "anchor_strategy": "new_anchor",
+                "continuity_basis": "heroine",
                 "clip_count": 1,
+                "start_frame": {
+                    "composition": "off-center medium frame",
+                    "subject_scale": "medium",
+                    "camera_axis": "level",
+                    "lighting_state": "soft rim",
+                },
+                "end_frame": {
+                    "composition": "off-center medium frame",
+                    "subject_scale": "medium",
+                    "camera_axis": "level",
+                    "lighting_state": "soft rim",
+                },
+                "kinetic_transition": "crash_push_in",
+                "lighting_fx": "soft rim",
+                "kinetic_intensity": "medium",
             }
         ],
     }

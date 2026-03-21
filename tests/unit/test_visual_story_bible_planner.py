@@ -44,7 +44,7 @@ def test_visual_story_bible_prompt_mentions_lyric_first_contract():
     assert "Forbidden drift=no drift" in prompt
 
 
-def _fake_generate(_config, _prompt, _schema):
+def _fake_generate(_config, _prompt, _schema, **_kwargs):
     return {
         "hero_identity_lock": "silver-haired city-pop heroine with polished stage styling",
         "world_rules": "retro neon nightlife world with elegant concert geometry",

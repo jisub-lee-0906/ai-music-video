@@ -1,28 +1,19 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause
-from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
+from ai_mv.core.contracts.prompt_normalize import normalize_flux2_ref_items
+from ai_mv.core.contracts.prompt_schema import flux2_ref_schema
+from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms
+from ai_mv.infra.codex_cli_client import generate_structured
 
 
 def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
     routes = [dict(row) for row in payload.get("clip_routes", []) if isinstance(row, dict) and bool(row.get("use_ref", False))]
     if not routes:
         return {"items": []}
-    items = [_build_item(route, payload["visual_story_bible"], idx) for idx, route in enumerate(routes, start=1)]
+    spec = _generate_ref_spec(config, payload, routes)
+    keyed = normalize_flux2_ref_items(spec.get("items", []), routes)
+    items = [_build_item(route, keyed[str(route["shot_id"])], idx) for idx, route in enumerate(routes, start=1)]
     return {"items": items}
-
-
-def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
-    summary = _anchor_summary(anchors)
-    return (
-        "deterministic flux2 reference composer; "
-        "maintain the same character and world while changing pose, action, or framing; "
-        "compose short continuity prompts only; "
-        "follow this formula: The same heroine + changed action or pose + camera or framing + flat cel shading and thick clean outlines; "
-        "do not restate full background, palette, or long style paragraphs; "
-        "no text, no typography, no watermarks, no logos, no signage, no ui overlay; "
-        f"anchors={summary}."
-    )
 
 
 def _flux2_ref_planner_batch_size(config: dict) -> int:
@@ -34,18 +25,75 @@ def _flux2_ref_planner_batch_size(config: dict) -> int:
         return 4
 
 
-def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
-    section = _beat_atoms(brief, anchor)
-    subject_clause = _subject_clause(brief, anchor)
-    action_clause = _action_clause(anchor, section)
-    camera_clause = _camera_clause(anchor)
-    continuity_clause = _continuity_clause(anchor)
-    prompt_text = _compose_flux2_ref_prompt(
-        subject_clause,
-        action_clause,
-        camera_clause,
-        continuity_clause,
+def _planner_prompt(config: dict, payload: dict, anchors: list[dict], carry: str) -> str:
+    summary = _anchor_summary(payload.get("visual_story_bible", {}), anchors)
+    clip_count = len(anchors)
+    return (
+        "Write Flux2 ref prompts for continuity shots. "
+        "Return strict JSON only with shape {\"items\":[...]}. No prose outside JSON. "
+        f"Return exactly {clip_count} items, one for each shot_id in the manifest order. "
+        "Each item must contain shot_id,prompt_text,subject_clause,action_clause,camera_clause,continuity_clause. "
+        "Use this exact formula for prompt_text: [Base Identity] + [Changed Action/Pose] + [Camera/Framing] + [Minimal Style]. "
+        "Write prompt_text as natural English sentences only, not as a list and not with plus signs. "
+        "prompt_text must be exactly three sentences in this order: "
+        "'The same anime girl, now ... .' then the camera sentence then the minimal style sentence. "
+        "Do not restate background, palette, location, or long style paragraphs. "
+        "The subject_clause should stay close to 'The same anime girl'. "
+        "The action_clause should describe only the changed pose or changed action and should not include a leading plus sign. "
+        "The camera_clause should be a single clean camera or framing sentence fragment, for example 'Extreme low-angle dynamic shot'. "
+        "The continuity_clause should stay minimal, for example 'Flat cel shading, thick clean outlines'. "
+        "Use the TTI anchor as the source of truth and preserve the same character and same world. "
+        "Do not add safety suffixes, negative tags, or typography bans. "
+        "Do not use '+' anywhere in any field. "
+        "Example prompt_text: 'The same anime girl, now fiercely smashing the guitar onto the ground, bending her knees. Extreme low-angle dynamic shot. Flat cel shading, thick clean outlines.' "
+        f"Shot manifest={summary}."
     )
+
+
+def _generate_ref_spec(config: dict, payload: dict, anchors: list[dict], attempts: int = 3) -> dict:
+    prompt = _planner_prompt(config, payload, anchors, "")
+    expected_ids = [str(anchor["shot_id"]) for anchor in anchors]
+    current_prompt = prompt
+    last_exc: Exception | None = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        spec = generate_structured(config, current_prompt, flux2_ref_schema(), attempts=1)
+        try:
+            keyed = normalize_flux2_ref_items(spec.get("items", []), anchors)
+            for shot_id in expected_ids:
+                row = keyed[shot_id]
+                if "+" in str(row["prompt_text"]) or "+" in str(row["action_clause"]) or "+" in str(row["camera_clause"]):
+                    raise RuntimeError(f"plus-sign formatting mismatch: {shot_id}")
+                if str(row["prompt_text"]).strip() != _compose_prompt_text(
+                    row["subject_clause"],
+                    row["action_clause"],
+                    row["camera_clause"],
+                    row["continuity_clause"],
+                ):
+                    raise RuntimeError(f"prompt_text formula mismatch: {shot_id}")
+            return spec
+        except RuntimeError as exc:
+            last_exc = exc
+            if attempt >= attempts:
+                raise
+            actual_ids = [
+                str(row.get("shot_id", "")).strip()
+                for row in spec.get("items", [])
+                if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+            ]
+            current_prompt = (
+                f"{prompt}\n\n"
+                "Previous output failed validation. "
+                f"Failure={exc}. "
+                f"Expected shot_id order={', '.join(expected_ids)}. "
+                f"Previous shot_id order={', '.join(actual_ids)}. "
+                "Rewrite the JSON only and follow the exact prompt_text formula."
+            )
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("flux2_ref planner failed without validation error")
+
+
+def _build_item(anchor: dict, row: dict, timeline_index: int) -> dict:
     ref = str(anchor.get("identity_anchor", anchor["anchor"]))
     return {
         "shot_id": anchor["shot_id"],
@@ -54,13 +102,13 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         "anchor": anchor["anchor"],
         "ref": ref,
         "style_ref": "",
-        "prompt_text": prompt_text,
+        "prompt_text": str(row["prompt_text"]),
         "style_clause": "",
-        "subject_clause": subject_clause,
-        "action_clause": action_clause,
-        "camera_clause": camera_clause,
+        "subject_clause": str(row["subject_clause"]),
+        "action_clause": str(row["action_clause"]),
+        "camera_clause": str(row["camera_clause"]),
         "environment_clause": "",
-        "continuity_clause": continuity_clause,
+        "continuity_clause": str(row["continuity_clause"]),
         "duration_sec": float(anchor["duration_sec"]),
         "clip_index": int(anchor.get("clip_index", 1)),
         "clip_count": int(anchor.get("clip_count", 1)),
@@ -85,94 +133,42 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     }
 
 
-def _chain_key(anchor: dict) -> str:
-    return f"{str(anchor.get('shot_id', '')).strip()}:{int(anchor.get('clip_index', 1))}"
+def _compose_prompt_text(subject_clause: str, action_clause: str, camera_clause: str, continuity_clause: str) -> str:
+    subject = " ".join(str(subject_clause).strip().split())
+    action = " ".join(str(action_clause).strip().split())
+    if action and not action.lower().startswith(("now ", "while ", "as ")):
+        action = f"now {action}"
+    if subject and action:
+        lead = f"{subject}, {action}"
+    else:
+        lead = subject or action
+    parts = [lead, camera_clause.strip(), continuity_clause.strip()]
+    return " ".join(_sentence(part) for part in parts if part).strip()
 
 
-def _subject_clause(brief: dict, anchor: dict) -> str:
-    return "The same anime girl"
+def _anchor_summary(brief: dict, anchors: list[dict]) -> str:
+    return ", ".join(_anchor_summary_row(brief, a) for a in anchors)
 
 
-def _ref_heroine_phrase(text: str) -> str:
-    cleaned = str(text).strip()
-    low = cleaned.lower()
-    prefixes = (
-        "same heroine throughout the video,",
-        "same heroine throughout the video",
-        "the same heroine throughout the video,",
-        "the same heroine throughout the video",
-    )
-    for prefix in prefixes:
-        if low.startswith(prefix):
-            cleaned = cleaned[len(prefix):].strip(" ,")
-            break
-    shortened = clean_prompt_clause(cleaned or "anime girl")
-    if not shortened:
-        return "anime girl"
-    if shortened.lower().startswith("stylized east asian heroine"):
-        return "anime girl"
-    return shortened
-
-
-def _action_clause(anchor: dict, section: dict) -> str:
-    pose_phrase = _planned_motion_clause(anchor)
-    return clean_prompt_clause(pose_phrase)
-
-
-def _camera_clause(anchor: dict) -> str:
-    composition = clean_prompt_clause(str(anchor.get("composition_shape", "")).strip())
-    camera = clean_prompt_clause(str(anchor.get("camera_language", "")).strip())
-    clause = camera or composition
-    if not clause:
-        return ""
-    return clause
-
-
-def _continuity_clause(anchor: dict) -> str:
-    return "Flat cel shading, thick clean outlines"
-
-
-def _compose_flux2_ref_prompt(
-    subject_clause: str,
-    action_clause: str,
-    camera_clause: str,
-    continuity_clause: str,
-) -> str:
-    action_text = clean_prompt_clause(action_clause)
-    if action_text and not action_text.lower().startswith(("now ", "while ", "as ")):
-        action_text = f"now {action_text}"
-    lead = ", ".join(
-        part
-        for part in (
-            subject_clause,
-            action_text,
-        )
-        if str(part).strip()
-    )
-    parts = [lead, camera_clause, continuity_clause]
-    return " ".join(_sentence(part) for part in parts if str(part).strip()).strip()
-
-
-
-
-def _anchor_summary(anchors: list[dict]) -> str:
-    return ", ".join(_anchor_summary_row(a) for a in anchors)
-
-
-def _anchor_summary_row(anchor: dict) -> str:
+def _anchor_summary_row(brief: dict, anchor: dict) -> str:
     sid = str(anchor["shot_id"])
     shot_type = str(anchor.get("shot_type", "CHAR_MASTER"))
     focus = str(anchor.get("prompt_focus", "")).strip().lower() or "heroine"
     phase = _clip_phase(anchor)
-    kinetic = str(anchor.get("kinetic_transition", "")).strip() or "none"
-    pose = clean_prompt_clause(str(anchor.get("pose_delta", "")).strip()) or "pose shift"
-    camera = clean_prompt_clause(str(anchor.get("camera_language", "")).strip()) or "framing shift"
-    return f"{sid}({shot_type}|{focus}|{phase}|{kinetic}|{pose}|{camera})"
+    section = _beat_atoms(brief, anchor)
+    pose = str(anchor.get("pose_delta", "")).strip() or "pose shift"
+    camera = str(anchor.get("camera_language", "")).strip() or "framing shift"
+    visible_action = str(section.get("visible_action", "")).strip()
+    return f"{sid}({shot_type}|{focus}|{phase}|{pose}|{camera}|{visible_action})"
+
+
+def _chain_key(anchor: dict) -> str:
+    return f"{str(anchor.get('shot_id', '')).strip()}:{int(anchor.get('clip_index', 1))}"
 
 
 def _sentence(text: str) -> str:
-    cleaned = str(text).strip().rstrip(". ")
-    return f"{cleaned}."
+    cleaned = " ".join(str(text).strip().rstrip(". ").split())
+    return f"{cleaned}." if cleaned else ""
 
 
 def _clip_phase(anchor: dict) -> str:
@@ -196,17 +192,3 @@ def _beat_atoms(brief: dict, anchor: dict) -> dict:
             if str(beat.get("beat_id", "")).strip() == beat_id:
                 return dict(beat)
     return compact_section_atoms(brief, str(anchor.get("section_name", "")), beat_id)
-
-
-def _planned_motion_clause(anchor: dict) -> str:
-    text = " ".join(str(anchor.get("pose_delta", "")).strip().rstrip(". ").split())
-    if text:
-        return text
-    text = " ".join(str(anchor.get("workflow_motion_clause", "")).strip().rstrip(". ").split())
-    if not text:
-        raise RuntimeError(f"pose_delta missing for flux2_ref shot: {anchor.get('shot_id', '')}")
-    if text.lower().startswith("she "):
-        text = text[4:].strip()
-    elif text.lower().startswith("the girl "):
-        text = text[9:].strip()
-    return text

@@ -28,7 +28,17 @@ def test_tti_prompt_removes_hardcoded_beauty_baseline():
 
 
 def test_flux2_ref_prompt_does_not_inject_house_style_without_profile_support():
-    item = flux2_ref_planner._build_item(_anchor("S001"), _plain_story_bible(), 1)
+    item = flux2_ref_planner._build_item(
+        _anchor("S001"),
+        {
+            "prompt_text": "The same anime girl, now turns into center light. Clean medium shot. Flat cel shading, thick clean outlines.",
+            "subject_clause": "The same anime girl",
+            "action_clause": "now turns into center light",
+            "camera_clause": "Clean medium shot",
+            "continuity_clause": "Flat cel shading, thick clean outlines",
+        },
+        1,
+    )
     assert "stunningly beautiful" not in item["prompt_text"]
     assert "idol-like" not in item["prompt_text"]
     assert "high-end fashion model aesthetic" not in item["prompt_text"]
@@ -36,11 +46,21 @@ def test_flux2_ref_prompt_does_not_inject_house_style_without_profile_support():
 
 
 def test_wan_prompt_does_not_inject_house_style_without_profile_support():
-    clip = wan_planner._apply_prompt(_clip("S001_C01"), _plain_story_bible())
+    clip = wan_planner._apply_llm_prompt(
+        _clip("S001_C01"),
+        {
+            "positive_prompt": "Camera snap-zooms in. The girl moves through the lane and holding the look. Background threshold lights pulse.",
+            "negative_prompt": "3d render, photorealistic, morphing",
+            "subject_motion": "The girl moves through the lane and holding the look",
+            "camera_relation": "Camera snap-zooms in",
+            "environment_detail": "Background threshold lights pulse",
+            "energy": "high",
+        },
+    )
     assert "stunningly beautiful" not in clip["positive_prompt"]
     assert "idol-like" not in clip["positive_prompt"]
     assert "high-end fashion model aesthetic" not in clip["positive_prompt"]
-    assert "moving through the lane and holding the look" in clip["positive_prompt"].lower()
+    assert "the girl moves through the lane and holding the look" in clip["positive_prompt"].lower()
 
 
 def test_compact_world_atoms_keeps_identity_constraints_without_house_style_drift():

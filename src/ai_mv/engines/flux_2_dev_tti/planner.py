@@ -3,7 +3,6 @@ from __future__ import annotations
 from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
 from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.profile_policy import resolve_profile_policy
-from ai_mv.core.workflow_prompt_contracts import compose_flux2_tti_prompt
 from ai_mv.core.visual_pipeline import attach_tti_metadata
 from ai_mv.infra.codex_cli_client import generate_structured
 
@@ -35,7 +34,9 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "The shots array length must equal the lyric beat count exactly; do not add extra shots, do not omit shots. "
         "Use each lyric_beat_id exactly once and preserve the exact manifest order. "
         "master_anchor prompt_text should contain only stable identity and world facts. "
-        "Every shot must include lyric_beat_id,shot_type,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
+        "Every shot must include lyric_beat_id,shot_type,prompt_text,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
+        "prompt_text must be the final render-facing TTI prompt and must follow this exact formula: [Base Style] + [Subject/Action] + [Background] + [Camera/Framing]. "
+        "Write prompt_text as natural English sentences only, never labels or plus signs. "
         "scene_change_level must be one of hold,evolve,shift,reset. "
         "anchor_strategy must be one of reuse_anchor,refine_anchor,new_anchor. "
         "continuity_basis must be one of heroine,motif,world,none. "
@@ -60,27 +61,15 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     )
 
 
-def _generate_tti_spec(config: dict, payload: dict, story_bible: dict, attempts: int = 3) -> dict:
+def _generate_tti_spec(config: dict, payload: dict, story_bible: dict, attempts: int = 1) -> dict:
     prompt = _planner_prompt(config, payload)
     expected_ids = _expected_lyric_beat_ids(story_bible)
-    current_prompt = prompt
-    last_exc: Exception | None = None
-    for attempt in range(1, max(1, int(attempts)) + 1):
-        try:
-            spec = generate_structured(config, current_prompt, shot_timeline_schema(), attempts=1)
-        except TypeError:
-            spec = generate_structured(config, current_prompt, shot_timeline_schema())
-        try:
-            _validate_tti_spec_contract(spec, expected_ids)
-            return spec
-        except RuntimeError as exc:
-            last_exc = exc
-            if attempt >= attempts:
-                raise
-            current_prompt = _tti_repair_prompt(prompt, spec, expected_ids, str(exc))
-    if last_exc is not None:
-        raise last_exc
-    raise RuntimeError("tti planner failed without a validation error")
+    try:
+        spec = generate_structured(config, prompt, shot_timeline_schema(), attempts=1)
+    except TypeError:
+        spec = generate_structured(config, prompt, shot_timeline_schema())
+    _validate_tti_spec_contract(spec, expected_ids)
+    return spec
 
 
 def _validate_tti_spec_contract(spec: dict, expected_ids: list[str]) -> None:
@@ -101,20 +90,6 @@ def _validate_tti_spec_contract(spec: dict, expected_ids: list[str]) -> None:
         if not detail:
             detail.append("order mismatch")
         raise RuntimeError("shot contract mismatch: " + "; ".join(detail))
-
-
-def _tti_repair_prompt(base_prompt: str, spec: dict, expected_ids: list[str], error: str) -> str:
-    shots = [row for row in spec.get("shots", []) if isinstance(row, dict)]
-    actual_ids = [str(row.get("lyric_beat_id", "")).strip() for row in shots if str(row.get("lyric_beat_id", "")).strip()]
-    return (
-        f"{base_prompt}\n\n"
-        "Previous output failed the exact shot contract. "
-        f"Failure={error}. "
-        f"Expected lyric_beat_id order={', '.join(expected_ids)}. "
-        f"Previous lyric_beat_id order={', '.join(actual_ids)}. "
-        "Repair the JSON only. "
-        "Keep master_anchor, but rewrite shots so that shots.length matches the expected count exactly and each expected lyric_beat_id appears once in the same order."
-    )
 
 
 def _expected_lyric_beat_ids(story_bible: dict) -> list[str]:
@@ -181,38 +156,10 @@ def _assign_story_metadata(shots: list[dict], timeline: dict, story_bible: dict)
         item["heroine_visibility"] = _heroine_visibility(item)
         item["continuity_priority"] = _continuity_priority(item, policy)
         item["wardrobe_read"] = _wardrobe_read(item, policy)
-        item["prompt_text"] = _shot_prompt_text(item, story_bible)
+        item["prompt_text"] = str(item.get("prompt_text", "")).strip()
         item["seed"] = 10_000 + idx * 97 + int(item.get("hero_frame_score", 1)) * 13
         out.append(item)
     return out
-
-
-def _shot_prompt_text(shot: dict, story_bible: dict) -> str:
-    style = str(story_bible.get("visual_style_contract", "")).strip()
-    render_mode = str(shot.get("character_render_mode", "")).strip()
-    action = (
-        str(shot.get("pose_delta", "")).strip()
-        or str(shot.get("workflow_motion_clause", "")).strip()
-        or "moves through the beat"
-    )
-    literal = str(shot.get("literal_image", "")).strip()
-    emotion = str(shot.get("emotion", "")).strip()
-    scene = str(shot.get("scene_detail", "")).strip()
-    location = str(shot.get("location_family", "")).strip()
-    space_event = str(shot.get("space_event", "")).strip()
-    palette_mode = str(shot.get("palette_mode", "")).strip()
-    camera = str(shot.get("camera_language", "")).strip() or str(shot.get("composition_shape", "")).strip()
-
-    subject_sentence = (
-        f"A 2D anime heroine in {render_mode or 'long-limbed fashion proportions'} {action}"
-        + (f", with {emotion}" if emotion else "")
-        + (f", around {literal}" if literal else "")
-        + "."
-    )
-    background_bits = [part for part in (location, scene, space_event, palette_mode) if str(part).strip()]
-    background_sentence = f"The background is {', '.join(background_bits)}." if background_bits else ""
-    camera_sentence = camera
-    return compose_flux2_tti_prompt(style, subject_sentence, background_sentence, camera_sentence)
 
 
 def _face_exposure_level(shot: dict, defaults: dict[str, str], policy: dict) -> str:

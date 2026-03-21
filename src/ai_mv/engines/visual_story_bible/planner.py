@@ -11,13 +11,8 @@ from ai_mv.infra.codex_cli_client import generate_structured
 def build_visual_story_bible(config: dict, payload: dict) -> dict:
     timeline = payload["lyrics_timeline"]
     prompt = _planner_prompt(config, payload)
-    raw = generate_structured(config, prompt, visual_story_bible_schema())
-    try:
-        _validate_story_bible_contract(raw, timeline)
-    except RuntimeError as exc:
-        retry_prompt = _planner_retry_prompt(config, payload, str(exc))
-        raw = generate_structured(config, retry_prompt, visual_story_bible_schema())
-        _validate_story_bible_contract(raw, timeline)
+    raw = generate_structured(config, prompt, visual_story_bible_schema(), attempts=1)
+    _validate_story_bible_contract(raw, timeline)
     story = normalize_visual_story_bible(raw, list(_timeline_sections(timeline)))
     world = payload.get("profile_intent", {}).get("world_intent", {}) if isinstance(payload.get("profile_intent", {}), dict) else {}
     story["heroine_invariants"] = str(world.get("heroine_invariants", story.get("hero_identity_lock", ""))).strip()
@@ -43,11 +38,17 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     negative = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
     timeline = payload["lyrics_timeline"]
     policy = payload.get("profile_intent", {}).get("resolved_profile_policy", {}) if isinstance(payload.get("profile_intent", {}), dict) else {}
+    beat_rows = _timeline_beats(timeline)
+    beat_count = len(beat_rows)
     return (
         "Write a lyric-first visual story bible for downstream image and video workflows. "
         "Return strict JSON only. No prose outside JSON. "
+        f"Create exactly {beat_count} lyric_beats items, no more and no fewer. "
         "Create exactly one lyric_beats item for each lyric_timeline beat in the same order and preserve every source beat_id exactly. "
+        "Treat the source lyric beats as a locked one-to-one transform. "
         "Do not split, merge, invent, omit, or rewrite beat ids. "
+        "Do not split a source beat into multiple beats. Do not merge beats. Do not invent beats. Do not omit beats. Do not rewrite beat ids. "
+        "Copy section_name, section_label, and line_refs directly from the matching source beat. "
         "Required top-level fields: hero_identity_lock, world_rules, recurring_location_families, forbidden_drift, lyric_beats, section_progression, repeat_escalation_rules. "
         "Required beat fields: beat_id, section_name, section_label, line_refs, literal_image, visible_action, emotional_turn, continuity_anchor, payoff_role, repeat_variant_of, location_family, palette_hint, lighting_hint, camera_commitment, symbolic_image, motif_object, edit_device, prompt_focus, space_event, composition_shape, palette_mode, character_render_mode. "
         "Write render-facing natural English. "
@@ -67,22 +68,9 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         f"Forbidden drift={negative.get('visual_negative', '')}; Avoid={negative.get('mv_avoid', '')}; "
         f"Location grammar={location_grammar_digest(config)}; "
         f"Lyric beat manifest={_timeline_beat_digest(timeline)}; "
+        f"Source lyric beats JSON={json.dumps(beat_rows, ensure_ascii=True)}; "
         f"Lyric timeline={_timeline_digest(timeline)}."
     )
-
-
-def _planner_retry_prompt(config: dict, payload: dict, error: str) -> str:
-    timeline = payload["lyrics_timeline"]
-    base = _planner_prompt(config, payload)
-    return (
-        f"{base} "
-        "Retry the visual story bible. "
-        f"Validation error={error}. "
-        "Fix the JSON by preserving the lyric timeline beat ids exactly and filling every required field with plain natural-English render phrases. "
-        f"Expected beat ids JSON={json.dumps(_expected_timeline_beat_ids(timeline), ensure_ascii=False, separators=(',', ':'))}."
-    )
-
-
 def _timeline_sections(timeline: dict) -> list[dict]:
     return [
         {
@@ -127,6 +115,36 @@ def _timeline_beat_digest(timeline: dict) -> str:
             + ",".join(part for part in beats if part)
         )
     return " ; ".join(row for row in rows if row)
+
+
+def _timeline_beats(timeline: dict) -> list[dict]:
+    rows: list[dict] = []
+    for section in timeline.get("sections", []):
+        if not isinstance(section, dict):
+            continue
+        section_name = str(section.get("section_name", "")).strip()
+        section_label = str(section.get("section_label", section_name)).strip()
+        for beat in section.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            beat_id = str(beat.get("beat_id", "")).strip()
+            if not beat_id:
+                continue
+            rows.append(
+                {
+                    "beat_id": beat_id,
+                    "section_name": section_name,
+                    "section_label": section_label,
+                    "line_refs": [int(x) for x in beat.get("line_refs", []) if int(x) > 0],
+                    "literal_image": str(beat.get("literal_image", "")).strip(),
+                    "visible_action": str(beat.get("visible_action", "")).strip(),
+                    "emotional_turn": str(beat.get("emotional_turn", "")).strip(),
+                    "continuity_anchor": str(beat.get("continuity_anchor", "")).strip(),
+                    "payoff_role": str(beat.get("payoff_role", "")).strip(),
+                    "repeat_variant_of": str(beat.get("repeat_variant_of", "")).strip(),
+                }
+            )
+    return rows
 
 
 def _expected_timeline_beat_ids(timeline: dict) -> list[str]:

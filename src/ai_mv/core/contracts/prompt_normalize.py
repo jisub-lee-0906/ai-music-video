@@ -87,9 +87,10 @@ def normalize_flux2_ref_items(raw_items: list[dict], anchors: list[dict]) -> dic
         if row is None:
             raise RuntimeError(f"Flux2 reference planner missing shot_id: {sid}")
         out[sid] = {
+            "prompt_text": _normalize_prompt_text(row["prompt_text"], sid, "prompt_text"),
             "subject_clause": _normalize_atom_clause(row["subject_clause"], sid, "subject_clause", 24),
             "action_clause": _normalize_atom_clause(row["action_clause"], sid, "action_clause", 16),
-            "environment_clause": _normalize_atom_clause(row["environment_clause"], sid, "environment_clause", 20),
+            "camera_clause": _normalize_atom_clause(row["camera_clause"], sid, "camera_clause", 12),
             "continuity_clause": _normalize_atom_clause(row["continuity_clause"], sid, "continuity_clause", 22),
         }
     return out
@@ -108,6 +109,7 @@ def normalize_wan_clips(raw_clips: list[dict], clips: list[dict]) -> dict[str, d
         if energy not in {"low", "normal", "high"}:
             raise RuntimeError(f"invalid wan energy: {energy}")
         out[sid] = {
+            "positive_prompt": _normalize_prompt_text(row["positive_prompt"], sid, "positive_prompt"),
             "subject_motion": _normalize_subject_motion(row["subject_motion"], sid),
             "camera_relation": _normalize_camera_relation(row["camera_relation"], sid),
             "environment_detail": _normalize_optional_clause(row["environment_detail"], 16),
@@ -248,7 +250,7 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
         kinetic_transition = str(row.get("kinetic_transition", "")).strip().lower()
         if kinetic_transition and kinetic_transition not in KINETIC_TRANSITIONS:
             raise RuntimeError(f"invalid kinetic transition: {kinetic_transition}")
-        kinetic_intensity = str(row.get("kinetic_intensity", "medium")).strip().lower() or "medium"
+        kinetic_intensity = str(row.get("kinetic_intensity", "")).strip().lower()
         if kinetic_intensity not in KINETIC_INTENSITIES:
             raise RuntimeError(f"invalid kinetic intensity: {kinetic_intensity}")
         out.append(
@@ -259,6 +261,7 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "section_label": str(beat.get("section_label", beat.get("section_name", ""))),
                 "is_chorus": _is_chorus_section(str(beat.get("section_name", ""))),
                 "shot_type": shot_type,
+                "prompt_text": _require_text(row, "prompt_text"),
                 "camera_language": _require_text(row, "camera_language"),
                 "pose_delta": _require_text(row, "pose_delta"),
                 "emotion": _require_text(row, "emotion"),
@@ -268,9 +271,9 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "space_relation": _require_text(row, "space_relation"),
                 "edit_role": _optional_text(row, "edit_role", ""),
                 "continuity_lock": _optional_text(row, "continuity_lock", ""),
-                "scene_change_level": _require_enum(row, "scene_change_level", SCENE_CHANGE_LEVELS, "evolve"),
-                "anchor_strategy": _require_enum(row, "anchor_strategy", ANCHOR_STRATEGIES, "refine_anchor"),
-                "continuity_basis": _require_enum(row, "continuity_basis", CONTINUITY_BASES, "world"),
+                "scene_change_level": _require_enum(row, "scene_change_level", SCENE_CHANGE_LEVELS),
+                "anchor_strategy": _require_enum(row, "anchor_strategy", ANCHOR_STRATEGIES),
+                "continuity_basis": _require_enum(row, "continuity_basis", CONTINUITY_BASES),
                 "clip_count": max(1, int(row.get("clip_count", 1))),
                 "start_frame": _normalize_frame_anchor(row.get("start_frame", {}), "start_frame"),
                 "end_frame": _normalize_frame_anchor(row.get("end_frame", {}), "end_frame"),
@@ -331,8 +334,6 @@ def _optional_text(raw: dict, field: str, default: str) -> str:
 def _require_enum(raw: dict, field: str, allowed: set[str] | tuple[str, ...] | list[str], default: str = "") -> str:
     text = str(raw.get(field, "")).strip().lower()
     if text not in set(allowed):
-        if default and default in set(allowed):
-            return default
         raise RuntimeError(f"{field} missing or invalid")
     return text
 
@@ -404,6 +405,15 @@ def _normalize_negative_list(raw: object, shot_id: str) -> str:
         raise RuntimeError(f"negative_prompt missing: {shot_id}")
     if "." in text and "," not in text:
         raise RuntimeError(f"negative_prompt must be suppression list: {shot_id}")
+    return text
+
+
+def _normalize_prompt_text(raw: object, shot_id: str, field: str) -> str:
+    text = " ".join(str(raw).strip().split())
+    if not text:
+        raise RuntimeError(f"{field} missing: {shot_id}")
+    if len([x for x in text.split() if x]) < 4:
+        raise RuntimeError(f"invalid {field}: {shot_id}")
     return text
 
 
