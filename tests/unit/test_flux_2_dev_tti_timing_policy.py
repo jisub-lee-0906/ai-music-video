@@ -135,7 +135,7 @@ def test_tti_plan_allows_missing_creative_seed_fields(monkeypatch):
     assert len(out["shots"]) == 2
 
 
-def test_tti_rebalances_shot_types_for_environment_first_profiles(monkeypatch):
+def test_tti_preserves_llm_shot_types_for_environment_first_profiles(monkeypatch):
     monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_five_emotion_close)
     payload = {
         "audio_map": {
@@ -176,11 +176,10 @@ def test_tti_rebalances_shot_types_for_environment_first_profiles(monkeypatch):
     }
     out = build_tti_plan({}, payload)
     types = [shot["shot_type"] for shot in out["shots"]]
-    assert "EMOTION_CLOSE" not in types
-    assert sum(1 for shot_type in types if shot_type in {"ENV_TRANSITION", "DETAIL_INSERT"}) >= 3
+    assert types == ["EMOTION_CLOSE"] * 5
 
 
-def test_tti_keeps_payoff_closeup_only_in_direct_face_sections(monkeypatch):
+def test_tti_preserves_llm_payoff_closeup_choice(monkeypatch):
     monkeypatch.setattr(tti_planner, "generate_structured", _fake_tti_generate_two_emotion_close)
     story_bible = _story_bible(["verse", "chorus"])
     story_bible["lyric_beats"][1]["payoff_role"] = "release"
@@ -220,7 +219,7 @@ def test_tti_keeps_payoff_closeup_only_in_direct_face_sections(monkeypatch):
         "lyrics_timeline": _timeline(["verse", "chorus"], [5.0, 5.0]),
     }
     out = build_tti_plan({}, payload)
-    assert out["shots"][0]["shot_type"] != "EMOTION_CLOSE"
+    assert out["shots"][0]["shot_type"] == "EMOTION_CLOSE"
     assert out["shots"][1]["shot_type"] == "EMOTION_CLOSE"
     assert out["shots"][1]["edit_role"] == "release"
     assert out["shots"][1]["mv_function"] == "payoff"

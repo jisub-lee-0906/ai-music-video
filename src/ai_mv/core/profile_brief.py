@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.intent_models import ProfileIntent
 from ai_mv.core.profile_policy import resolve_profile_policy
-from ai_mv.core.workflow_prompt_contracts import flux2_visual_style_contract, sanitize_flux2_negative_text, sanitize_flux2_positive_text
 
 
 _REQUIRED_FIELDS = (
@@ -85,9 +84,8 @@ def _text(node: dict, key: str) -> str:
 def _heroine_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
-            "same heroine throughout the video",
-            "stylized East Asian heroine with sharp almond eyes, small mouth, minimal nose, thick solid hair shape, long-limbed streetwear-ready fashion proportions, non-chibi proportions, solid cel shadow, matte flat skin color, and clean anime linework",
-            _extract_fragment(_text(visual, "brief"), ("East Asian heroine", "young adult East Asian heroine", "female solo vocal", "lead")),
+            _text(visual, "brief"),
+            _extract_fragment(_text(visual, "brief"), ("same heroine", "heroine", "young woman", "girl")),
             _extract_fragment(_text(mv, "story_world"), ("same heroine",)),
         ]
     )
@@ -96,20 +94,18 @@ def _heroine_invariants(visual: dict, mv: dict) -> str:
 def _world_invariants(visual: dict, mv: dict) -> str:
     return _join_parts(
         [
-            "one continuous world",
-            "stylized 2d graphic music-video space with flat background planes, simple wall blocks, blank sign panels, cut-paper shadow shapes, and strong negative space",
-            _extract_fragment(_text(mv, "story_world"), ("same night", "one continuous", "continuous", "same emotional weather", "same luxurious pulse", "same momentum", "same rebellious force", "same electric pressure", "same suspended emotional current", "same sense of supernatural authority")),
+            _text(mv, "story_world"),
+            _extract_fragment(_text(mv, "story_world"), ("one continuous", "same night", "same world", "continuous")),
         ]
     )
 
 
 def _visual_intent(config: dict, visual: dict, mv: dict, policy: dict) -> str:
-    return sanitize_flux2_positive_text(_text(visual, "brief"))
+    return _text(visual, "brief")
 
 
 def _visual_style_contract(config: dict, visual: dict, mv: dict, policy: dict) -> str:
-    source = " ".join([_text(visual, "brief"), _text(mv, "story_world"), _text(mv, "payoff_style"), _text(mv, "action_vocabulary")])
-    return flux2_visual_style_contract(source, policy)
+    return _text(visual, "brief")
 
 
 def _visual_negative(visual: dict) -> str:

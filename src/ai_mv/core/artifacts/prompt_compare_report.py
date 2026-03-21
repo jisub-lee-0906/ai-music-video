@@ -4,11 +4,20 @@ from pathlib import Path
 from typing import Any
 
 from ai_mv.core.artifacts.paths import preflight_root
-from ai_mv.core.workflow_prompt_contracts import leaked_house_phrases
 from ai_mv.utils.json_utils import read_json
 
 
 _STAGES = ("shot_timeline", "flux2_ref_chain", "wan_interpolation")
+_HOUSE_STYLE_PHRASES = (
+    "stunningly beautiful",
+    "idol-like",
+    "high-end fashion model aesthetic",
+    "sharp focus on eyes",
+    "8k polish",
+    "highly detailed face",
+    "aggressive live-action",
+    "luxury editorial",
+)
 
 
 def write_prompt_compare_report(before_run_id: str, after_run_id: str, profile_name: str, selected_profile: dict) -> dict[str, Any]:
@@ -29,8 +38,8 @@ def write_prompt_compare_report(before_run_id: str, after_run_id: str, profile_n
         after_inputs = after_workflow_preview.get("workflow_inputs", {}).get(stage, {})
         before_prompt = _extract_prompt_text(stage, before_prompt_data, before_inputs)
         after_prompt = _extract_prompt_text(stage, after_prompt_data, after_inputs)
-        before_leaks = leaked_house_phrases(before_prompt, profile_text)
-        after_leaks = leaked_house_phrases(after_prompt, profile_text)
+        before_leaks = _leaked_house_phrases(before_prompt, profile_text)
+        after_leaks = _leaked_house_phrases(after_prompt, profile_text)
         removed_leaks = [item for item in before_leaks if item not in after_leaks]
         introduced_leaks = [item for item in after_leaks if item not in before_leaks]
         stage_aligned = "aligned" if (not introduced_leaks and bool(before_prompt) and bool(after_prompt)) else "needs_review"
@@ -94,3 +103,9 @@ def _flatten_text(value: Any) -> str:
     if isinstance(value, (list, tuple)):
         return " ".join(_flatten_text(v) for v in value)
     return str(value)
+
+
+def _leaked_house_phrases(text: object, profile_text: object) -> list[str]:
+    haystack = str(text).lower()
+    allowed = str(profile_text).lower()
+    return [phrase for phrase in _HOUSE_STYLE_PHRASES if phrase in haystack and phrase not in allowed]

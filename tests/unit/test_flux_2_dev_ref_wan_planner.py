@@ -129,13 +129,6 @@ def test_wan_plan_varies_subject_motion_by_clip_phase():
     assert motions[0].startswith("moves")
 
 
-def test_wan_workflow_axis_falls_back_when_section_axis_is_noisy():
-    section = {"motion_axis": "left/right, split"}
-    clip = {"motion_hint": "push forward hard"}
-    axis = wan_planner._workflow_axis(section, clip)
-    assert axis == "push forward hard"
-
-
 def test_flux2_ref_action_clause_is_not_prefixed_with_duplicate_subject():
     payload = {"clip_routes": [_route("a", True)], "visual_story_bible": _story_bible()}
     out = build_flux2_ref_plan({}, payload)
@@ -151,8 +144,7 @@ def test_flux2_ref_action_clause_uses_workflow_motion_clause():
         "pose_delta": "takes a deep breath and lifts her chin",
     }
     item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
-    assert "with takes" not in item["action_clause"].lower()
-    assert item["action_clause"].lower() == "taking a deep breath and lifting her chin into the height"
+    assert item["action_clause"].lower() == "takes a deep breath and lifts her chin"
 
 
 def test_flux2_ref_action_clause_uses_workflow_motion_clause_for_hits_pattern():
@@ -164,17 +156,16 @@ def test_flux2_ref_action_clause_uses_workflow_motion_clause_for_hits_pattern():
         "pose_delta": "hits the hook entry faster and holds a colder direct stare",
     }
     item = flux2_ref_planner._build_item(anchor, _story_bible(), 1)
-    assert "with hits" not in item["action_clause"].lower()
-    assert item["action_clause"].lower() == "hitting the hook entry faster and holding a colder direct stare"
+    assert item["action_clause"].lower() == "hits the hook entry faster and holds a colder direct stare"
 
 
 def test_flux2_ref_requires_workflow_motion_clause():
-    anchor = dict(_route("S020_C03", True), workflow_motion_clause="")
+    anchor = dict(_route("S020_C03", True), pose_delta="", workflow_motion_clause="")
     try:
         flux2_ref_planner._build_item(anchor, _story_bible(), 1)
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
-        assert "workflow_motion_clause missing" in str(exc)
+        assert "pose_delta missing" in str(exc)
 
 
 def test_wan_single_clip_subject_motion_avoids_hits_through_stays():

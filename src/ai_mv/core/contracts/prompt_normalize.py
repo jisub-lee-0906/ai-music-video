@@ -199,14 +199,14 @@ def normalize_visual_story_bible(raw: dict, sections: list[dict]) -> dict:
                 "palette_hint": _require_text(row, "palette_hint"),
                 "lighting_hint": _require_text(row, "lighting_hint"),
                 "camera_commitment": _require_text(row, "camera_commitment"),
-                "symbolic_image": _optional_text(row, "symbolic_image", _require_text(row, "literal_image")),
-                "motif_object": _optional_text(row, "motif_object", _require_text(row, "location_family")),
-                "edit_device": _optional_text(row, "edit_device", "silhouette hold"),
-                "prompt_focus": _optional_text(row, "prompt_focus", "heroine"),
-                "space_event": _optional_text(row, "space_event", _require_text(row, "visible_action")),
-                "composition_shape": _optional_text(row, "composition_shape", "asymmetrical poster crop"),
-                "palette_mode": _optional_text(row, "palette_mode", _require_text(row, "palette_hint")),
-                "character_render_mode": _optional_text(row, "character_render_mode", "long-limbed fashion figure"),
+                "symbolic_image": _optional_text(row, "symbolic_image", ""),
+                "motif_object": _optional_text(row, "motif_object", ""),
+                "edit_device": _optional_text(row, "edit_device", ""),
+                "prompt_focus": _optional_text(row, "prompt_focus", ""),
+                "space_event": _optional_text(row, "space_event", ""),
+                "composition_shape": _optional_text(row, "composition_shape", ""),
+                "palette_mode": _optional_text(row, "palette_mode", ""),
+                "character_render_mode": _optional_text(row, "character_render_mode", ""),
             }
         )
     out = {
@@ -266,16 +266,16 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
                 "motion_hint": _require_text(row, "motion_hint"),
                 "workflow_motion_clause": _require_text(row, "workflow_motion_clause"),
                 "space_relation": _require_text(row, "space_relation"),
-                "edit_role": _optional_text(row, "edit_role", "support"),
-                "continuity_lock": _optional_text(row, "continuity_lock", "same heroine and world"),
-                "scene_change_level": _normalize_scene_change_level(row, beat, shot_type),
-                "anchor_strategy": _normalize_anchor_strategy(row, beat, shot_type),
-                "continuity_basis": _normalize_continuity_basis(row, beat, shot_type),
+                "edit_role": _optional_text(row, "edit_role", ""),
+                "continuity_lock": _optional_text(row, "continuity_lock", ""),
+                "scene_change_level": _require_enum(row, "scene_change_level", SCENE_CHANGE_LEVELS, "evolve"),
+                "anchor_strategy": _require_enum(row, "anchor_strategy", ANCHOR_STRATEGIES, "refine_anchor"),
+                "continuity_basis": _require_enum(row, "continuity_basis", CONTINUITY_BASES, "world"),
                 "clip_count": max(1, int(row.get("clip_count", 1))),
                 "start_frame": _normalize_frame_anchor(row.get("start_frame", {}), "start_frame"),
                 "end_frame": _normalize_frame_anchor(row.get("end_frame", {}), "end_frame"),
                 "kinetic_transition": kinetic_transition,
-                "lighting_fx": _optional_text(row, "lighting_fx", "natural practical glow"),
+                "lighting_fx": _optional_text(row, "lighting_fx", ""),
                 "kinetic_intensity": kinetic_intensity,
             }
         )
@@ -283,71 +283,14 @@ def normalize_shot_timeline(raw: dict, lyric_beats: list[dict]) -> dict:
 
 
 def _normalize_frame_anchor(raw: object, label: str) -> dict:
-    if not isinstance(raw, dict) or not raw:
-        return {
-            "composition": "off-center medium framing",
-            "subject_scale": "medium",
-            "camera_axis": "eye level",
-            "lighting_state": "natural practical glow",
-        }
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"{label} missing")
     return {
-        "composition": _optional_text(raw, "composition", "off-center medium framing"),
-        "subject_scale": _optional_text(raw, "subject_scale", "medium"),
-        "camera_axis": _optional_text(raw, "camera_axis", "eye level"),
-        "lighting_state": _optional_text(raw, "lighting_state", "natural practical glow"),
+        "composition": _optional_text(raw, "composition", ""),
+        "subject_scale": _optional_text(raw, "subject_scale", ""),
+        "camera_axis": _optional_text(raw, "camera_axis", ""),
+        "lighting_state": _optional_text(raw, "lighting_state", ""),
     }
-
-
-def _normalize_scene_change_level(raw: dict, beat: dict, shot_type: str) -> str:
-    value = str(raw.get("scene_change_level", "")).strip().lower()
-    if value in SCENE_CHANGE_LEVELS:
-        if value == "hold" and str(shot_type).strip().upper() in {"WORLD_EVENT", "ENV_TRANSITION", "TRANSITIONAL_ABSTRACT"}:
-            return "shift"
-        return value
-    payoff_role = str(beat.get("payoff_role", "")).strip().lower()
-    focus = str(beat.get("prompt_focus", "")).strip().lower()
-    shot = str(shot_type).strip().upper()
-    if payoff_role in {"interrupt", "entry", "peak"}:
-        return "reset"
-    if shot in {"WORLD_EVENT", "ENV_TRANSITION", "TRANSITIONAL_ABSTRACT"} or focus in {"space", "graphic"}:
-        return "shift"
-    if shot in {"EMOTION_CLOSE", "CHAR_MASTER", "PERF_WIDE"} or focus == "heroine":
-        return "evolve"
-    return "hold"
-
-
-def _normalize_anchor_strategy(raw: dict, beat: dict, shot_type: str) -> str:
-    value = str(raw.get("anchor_strategy", "")).strip().lower()
-    scene_change = _normalize_scene_change_level(raw, beat, shot_type)
-    if value in ANCHOR_STRATEGIES:
-        if scene_change == "reset" and value != "new_anchor":
-            return "new_anchor"
-        if scene_change in {"hold", "evolve"} and value == "new_anchor":
-            return "refine_anchor" if scene_change == "evolve" else "reuse_anchor"
-        return value
-    focus = str(beat.get("prompt_focus", "")).strip().lower()
-    if scene_change == "reset":
-        return "new_anchor"
-    if scene_change == "shift":
-        return "new_anchor" if focus in {"space", "graphic"} else "refine_anchor"
-    if scene_change == "evolve":
-        return "refine_anchor"
-    return "reuse_anchor"
-
-
-def _normalize_continuity_basis(raw: dict, beat: dict, shot_type: str) -> str:
-    value = str(raw.get("continuity_basis", "")).strip().lower()
-    if value in CONTINUITY_BASES:
-        return value
-    focus = str(beat.get("prompt_focus", "")).strip().lower()
-    shot = str(shot_type).strip().upper()
-    if focus == "object" or shot in {"DETAIL_INSERT", "SYMBOLIC_INSERT", "RHYTHM_DETAIL"}:
-        return "motif"
-    if focus in {"space", "graphic"} or shot in {"WORLD_EVENT", "ENV_TRANSITION", "TRANSITIONAL_ABSTRACT", "GRAPHIC_EVENT"}:
-        return "world"
-    if shot in {"EMOTION_CLOSE", "CHAR_MASTER", "PERF_WIDE"}:
-        return "heroine"
-    return "none"
 
 
 def _render_lyrics_blocks(blocks: list[dict]) -> str:
@@ -383,6 +326,15 @@ def _require_text(raw: dict, field: str) -> str:
 def _optional_text(raw: dict, field: str, default: str) -> str:
     text = str(raw.get(field, "")).strip() if isinstance(raw, dict) else ""
     return text or default
+
+
+def _require_enum(raw: dict, field: str, allowed: set[str] | tuple[str, ...] | list[str], default: str = "") -> str:
+    text = str(raw.get(field, "")).strip().lower()
+    if text not in set(allowed):
+        if default and default in set(allowed):
+            return default
+        raise RuntimeError(f"{field} missing or invalid")
+    return text
 
 
 def _validate_repeated_hook_variation(section_rows: list[dict]) -> None:
@@ -426,24 +378,16 @@ def _normalize_keyscale(text: str) -> str:
 
 
 def _normalize_atom_clause(raw: object, shot_id: str, field: str, max_words: int) -> str:
-    text = " ".join(str(raw).strip().split())
+    text = str(raw).strip()
     words = [x for x in text.replace(",", " ").split() if x]
     has_alpha = any(ch.isalpha() for ch in text)
     if len(words) < 2 or not has_alpha:
         raise RuntimeError(f"invalid {field}: {shot_id}")
-    return text.rstrip(". ")
-
-
-def _normalize_optional_clause(raw: object, max_words: int) -> str:
-    text = " ".join(str(raw).strip().split()).rstrip(". ")
-    if not text:
-        return ""
     return text
 
 
-def _trim_words(text: str, max_words: int) -> str:
-    words = [word for word in str(text).replace(",", " ").split() if word]
-    return " ".join(words[:max_words]).replace(" ,", ",").rstrip(",")
+def _normalize_optional_clause(raw: object, max_words: int) -> str:
+    return str(raw).strip()
 
 
 def _normalize_subject_motion(raw: object, shot_id: str) -> str:

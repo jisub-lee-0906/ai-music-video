@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause, compact_prompt_clause, workflow_negative_prompt
+from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause, workflow_negative_prompt
 from ai_mv.engines.common.clip_timing import read_max_clip_sec
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 from ai_mv.utils.text_utils import parse_target
@@ -185,8 +185,8 @@ def _clip_summary_row(clip: dict) -> str:
     sid = str(clip["shot_id"])
     focus = str(clip.get("prompt_focus", "")).strip().lower() or "heroine"
     motion = str(clip.get("kinetic_transition", "")).strip() or str(clip.get("motion_hint", "")).strip() or "impact move"
-    camera = compact_prompt_clause(str(clip.get("camera_language", "")).strip(), 5) or "camera move"
-    bg = compact_prompt_clause(str(clip.get("space_event", "")).strip() or str(clip.get("scene_detail", "")).strip(), 6) or "background motion"
+    camera = clean_prompt_clause(str(clip.get("camera_language", "")).strip()) or "camera move"
+    bg = clean_prompt_clause(str(clip.get("space_event", "")).strip() or str(clip.get("scene_detail", "")).strip()) or "background motion"
     return f"{sid}({focus}|{motion}|{camera}|{bg})"
 
 
@@ -252,17 +252,18 @@ def _camera_relation(clip: dict, section: dict) -> str:
 def _environment_detail(clip: dict, section: dict, brief: dict) -> str:
     scene_event = str(clip.get("space_event", "")).strip()
     scene_detail = str(clip.get("scene_detail", "")).strip()
-    background_motion = clean_prompt_clause(scene_event or scene_detail)
-    if background_motion:
-        return _background_motion_clause(background_motion)
+    if scene_event:
+        return clean_prompt_clause(scene_event)
+    if scene_detail:
+        return clean_prompt_clause(scene_detail)
     location = (
         str(clip.get("location_family", "")).strip()
         or str(section.get("location_family", "")).strip()
         or str(section.get("location_anchor", "")).strip()
     )
-    location_text = _normalize_wan_location(location)
+    location_text = clean_prompt_clause(location)
     if location_text:
-        return f"Background {location_text} slides past"
+        return f"The {location_text} moves in the background"
     return "Background planes move behind the action"
 
 
@@ -316,92 +317,6 @@ def _suggested_energy(clip: dict, section: dict) -> str:
     return "normal"
 
 
-def _normalize_wan_composition(composition: str) -> str:
-    text = str(composition).strip()
-    if not text:
-        return text
-    lowered = text.lower()
-    replacements = (
-        ("centered", "off-center"),
-        ("near face", "near upper-body turn"),
-        ("close heroine crop", "off-center upper-body turn"),
-        ("stable subject", "moving figure"),
-        ("balanced around her", "off-center around city planes"),
-        ("runway", "moving"),
-        ("poster crop", "moving poster crop"),
-        ("low horizon silhouette", "off-center low horizon moving figure"),
-        ("isolated small figure", "small moving figure in open negative space"),
-        ("offset silhouette crop", "off-center moving silhouette"),
-        ("floating object field", "floating object field with off-center figure"),
-    )
-    out = text
-    for old, new in replacements:
-        if old in lowered:
-            out = out.replace(old, new).replace(old.title(), new)
-            lowered = out.lower()
-    return out
-
-
-def _normalize_wan_location(location: str) -> str:
-    text = str(location).strip()
-    if not text:
-        return text
-    replacements = (
-        ("street", "street blocks"),
-        ("corridor", "passage blocks"),
-        ("lane", "lane blocks"),
-    )
-    out = text
-    lowered = out.lower()
-    for old, new in replacements:
-        if old in lowered:
-            out = out.replace(old, new).replace(old.title(), new)
-            lowered = out.lower()
-    return out
-
-
-def _normalize_wan_relation(relation: str) -> str:
-    text = str(relation).strip()
-    if not text:
-        return text
-    replacements = (
-        ("receding toward the center", "stacked in flat layers"),
-        ("receding in layers", "stacked in flat layers"),
-        ("deep center", "stacked bands"),
-        ("converge toward center", "stack in flat bands"),
-        ("receding city planes", "stacked city planes"),
-        ("receding city plane blocks", "stacked city plane blocks"),
-        ("small heroine centered low against broad moving city bands", "small heroine off-center against broad moving city bands"),
-        ("heroine centered in a widened street corridor", "heroine off-center in a widened street corridor"),
-        ("heroine centered in a widened street compressed passage blocks", "heroine off-center in widened street passage blocks"),
-        ("near face with the world condensed behind her", "near upper-body turn with the world compressed into flat bands"),
-        ("close heroine crop against a layered blue field and receding city plane blocks", "off-center upper-body turn against a layered blue field and stacked city plane blocks"),
-        ("close heroine crop against a layered blue field and receding city planes", "off-center upper-body turn against a layered blue field and stacked city planes"),
-        ("close heroine crop against a shallow field of night geometry", "off-center upper-body turn against a shallow field of night geometry"),
-        ("curving exterior ribbon enclosing a stable subject", "curving exterior ribbon crossing a moving figure"),
-        ("fully embedded in the city grid with the frame balanced around her", "fully embedded in the city grid with off-center city pressure around her"),
-        ("tiny circle centered in open negative space", "tiny circle off-center in open negative space"),
-        ("lights arranged around center, block feels complete", "lights arranged across the block, the block feels complete"),
-        ("two figures aligned across the crossing, city receding", "one figure crossing with an offset echo, city stacked behind"),
-        ("city receding", "city stacked behind"),
-        ("graphic corridor receding behind a single red point near center", "graphic corridor stacked in flat bands behind an off-center red point"),
-        ("broad city space with the heroine reduced to a small anchored point", "broad city space with the heroine reduced to a small off-center figure"),
-        ("dense layered field where the motifs converge around a small anchor point", "dense layered field where the motifs converge around a small off-center figure"),
-        ("object-led foreground window with the route receding behind it", "object-led foreground window with the route stacked behind it"),
-        ("small anchored point", "small off-center figure"),
-        ("small anchor point", "small off-center figure"),
-        ("near center", "off-center"),
-        ("foreground dominant", "foreground left"),
-        ("occupying most of the frame edge", "touching the frame edge"),
-        ("street plane", "flat street plane"),
-    )
-    out = text
-    lowered = out.lower()
-    for old, new in replacements:
-        if old in lowered:
-            out = out.replace(old, new).replace(old.title(), new)
-            lowered = out.lower()
-    return out
 
 
 def _compose_positive_prompt(row: dict) -> str:
@@ -431,17 +346,6 @@ def _sentence_clause(text: str) -> str:
     return cleaned
 
 
-def _compose_second_sentence(camera_relation: str, environment_detail: str) -> str:
-    if environment_detail and _camera_relation_is_weak(camera_relation):
-        return _sentence(environment_detail)
-    if not camera_relation:
-        return ""
-    relation = _clean_relation(camera_relation)
-    if environment_detail:
-        return _sentence(f"{relation}, while {_lowercase_first(environment_detail)}")
-    return _sentence(relation)
-
-
 def _simple_camera_motion(camera: str) -> str:
     low = str(camera).strip().lower()
     if not low:
@@ -459,37 +363,6 @@ def _simple_camera_motion(camera: str) -> str:
     if "wide" in low:
         return "Camera holds a wide moving frame"
     return "Camera stays with the motion"
-
-
-def _background_motion_clause(text: str) -> str:
-    cleaned = clean_prompt_clause(text)
-    if not cleaned:
-        return "Background planes move behind the action"
-    low = cleaned.lower()
-    if low.startswith(
-        (
-            "background ",
-            "the ",
-            "neon ",
-            "lights ",
-            "windows ",
-            "city ",
-            "street ",
-            "lane ",
-            "block ",
-            "passage ",
-            "corridor ",
-            "platform ",
-            "station ",
-            "reflection ",
-            "glass ",
-            "ground ",
-            "gate ",
-            "window ",
-        )
-    ):
-        return cleaned
-    return f"Background {cleaned}"
 
 
 def _naturalize_wan_action(text: str, clip: dict) -> str:
@@ -512,291 +385,11 @@ def _naturalize_wan_action(text: str, clip: dict) -> str:
     return f"{subject} {cleaned}"
 
 
-def _naturalize_wan_background(text: str) -> str:
-    cleaned = clean_prompt_clause(text)
-    if not cleaned:
-        return "Background planes move behind the action"
-    low = cleaned.lower()
-    if not low.startswith(("background ", "the background ")):
-        return cleaned[:1].upper() + cleaned[1:]
-    if low.startswith(("background ", "the background ")):
-        return cleaned[:1].upper() + cleaned[1:]
-    if low.startswith("the "):
-        return cleaned[:1].upper() + cleaned[1:]
-    return f"Background {cleaned}"
-
-
-def _phase_action_clause(text: str, phase: str) -> str:
-    clause = clean_prompt_clause(text)
-    if not clause:
-        return ""
-    low = clause.lower()
-    if phase == "advance" and (low.startswith("continuing ") or low.startswith("continues ")):
-        return clause
-    if phase == "resolve" and (low.startswith("finishing ") or low.startswith("finishes ")):
-        return clause
-    if phase == "advance":
-        return f"continues {clause}"
-    if phase == "resolve":
-        return f"finishes {clause}"
-    return clause
-
-
-def _has_motion_verb(text: str) -> bool:
-    low = str(text).strip().lower()
-    verbs = (
-        "begin",
-        "begins",
-        "beginning",
-        "hold",
-        "holds",
-        "holding",
-        "move",
-        "moves",
-        "moving",
-        "open",
-        "opens",
-        "opening",
-        "stack",
-        "stacks",
-        "stacking",
-        "shift",
-        "shifts",
-        "shifting",
-        "slide",
-        "slides",
-        "sliding",
-        "tighten",
-        "tightens",
-        "tightening",
-        "flatten",
-        "flattens",
-        "flattening",
-        "align",
-        "aligns",
-        "aligning",
-        "empty",
-        "empties",
-        "emptying",
-        "double",
-        "doubles",
-        "doubling",
-        "lock",
-        "locks",
-        "locking",
-        "pulse",
-        "pulses",
-        "pulsing",
-        "gather",
-        "gathers",
-        "gathering",
-        "grow",
-        "grows",
-        "growing",
-        "widen",
-        "widens",
-        "widening",
-        "clear",
-        "clears",
-        "clearing",
-        "hang",
-        "hangs",
-        "hanging",
-        "quiet",
-        "quiets",
-        "quieting",
-        "resolve",
-        "resolves",
-        "resolving",
-        "become",
-        "becomes",
-        "becoming",
-        "feel",
-        "feels",
-        "feeling",
-        "repeat",
-        "repeats",
-        "repeating",
-        "stretch",
-        "stretches",
-        "stretching",
-        "thin",
-        "thins",
-        "thinning",
-        "turn",
-        "turns",
-        "turning",
-        "drift",
-        "drifts",
-        "drifting",
-        "flicker",
-        "flickers",
-        "flickering",
-        "trail",
-        "trails",
-        "trailing",
-        "sync",
-        "syncs",
-        "synchronizes",
-        "settles",
-        "settle",
-        "closing",
-        "closes",
-        "opening",
-        "opens",
-        "rises",
-        "rising",
-        "compress",
-        "compresses",
-        "brighten",
-        "brightens",
-        "flare",
-        "flares",
-        "stretch",
-        "stretches",
-        "resolve",
-        "resolves",
-    )
-    return any(f" {verb}" in f" {low} " for verb in verbs)
-
-
-def _gerund_to_finite(text: str) -> str:
-    cleaned = clean_prompt_clause(text)
-    if not cleaned:
-        return ""
-    words = cleaned.split()
-    if not words:
-        return cleaned
-    first = words[0].lower()
-    irregular = {
-        "holding": "holds",
-        "gliding": "glides",
-        "sliding": "slides",
-        "turning": "turns",
-        "moving": "moves",
-        "easing": "eases",
-        "pivoting": "pivots",
-        "advancing": "advances",
-        "swaying": "sways",
-        "stepping": "steps",
-        "separating": "separates",
-        "fading": "fades",
-        "sprinting": "sprints",
-        "smashing": "smashes",
-        "swinging": "swings",
-    }
-    words[0] = irregular.get(first, first[:-3] + "s" if first.endswith("ing") and len(first) > 4 else first)
-    return " ".join(words)
-
-
-def _space_event_subject(text: str) -> str:
-    cleaned = clean_prompt_clause(text)
-    if not cleaned:
-        return ""
-    low = cleaned.lower()
-    prefixes = ("the space ", "space ", "the ")
-    for prefix in prefixes:
-        if low.startswith(prefix):
-            cleaned = cleaned[len(prefix):].strip()
-            low = cleaned.lower()
-            break
-    if not cleaned:
-        return ""
-    if cleaned.endswith("."):
-        cleaned = cleaned.rstrip(". ")
-    if cleaned[:1].islower():
-        cleaned = cleaned[:1].upper() + cleaned[1:]
-    if not cleaned.lower().startswith(("the ", "city ", "lights ", "background ", "frame ", "world ", "block ", "lane ", "passage ", "space ")):
-        cleaned = f"The space {cleaned}"
-    return cleaned
-
-
-def _clean_relation(text: str) -> str:
-    cleaned = str(text).strip()
-    if not cleaned:
-        return ""
-    cleaned = _naturalize_relation(cleaned)
-    low = cleaned.lower()
-    if low.startswith("the camera "):
-        return cleaned
-    if low.startswith("camera "):
-        return cleaned
-    return _capitalize_first(cleaned)
-
-
 def _capitalize_first(text: str) -> str:
     cleaned = str(text)
     if not cleaned:
         return ""
     return cleaned[:1].upper() + cleaned[1:]
-
-
-def _lowercase_first(text: str) -> str:
-    cleaned = str(text).strip()
-    if not cleaned:
-        return ""
-    return cleaned[:1].lower() + cleaned[1:]
-
-
-def _camera_relation_is_weak(text: str) -> bool:
-    low = str(text).strip().lower()
-    if not low:
-        return True
-    technical_subjects = (
-        "the frame ",
-        "the track ",
-        "the side track ",
-        "the follow ",
-    )
-    if low.startswith(technical_subjects):
-        return True
-    dynamic = ("whip", "snap", "crash", "slam", "smash", "jump", "track", "tracks", "push", "pushes", "pull", "pulls", "glide", "glides")
-    if not any(word in low for word in dynamic):
-        return True
-    weak_starts = ("a gentle retreat", "a steady retreat", "the glide", "the backward tracking", "the arc")
-    return low.startswith(weak_starts)
-
-
-def _motion_camera_phrase(composition: str, camera: str) -> str:
-    comp = clean_prompt_clause(_normalize_wan_composition(composition))
-    cam = clean_prompt_clause(camera)
-    combined = ", ".join(part for part in (comp, cam) if part)
-    low = combined.lower()
-    replacements = (
-        ("off-center moving silhouette", "camera tracks an off-center silhouette"),
-        ("off-center low horizon moving figure", "camera skims a low off-center figure"),
-        ("small moving figure in open negative space", "camera keeps a small figure drifting through open space"),
-        ("floating object field with off-center figure", "camera moves through a floating object field past an off-center figure"),
-        ("moving poster crop", "camera pushes through a moving poster crop"),
-        ("off-center", "camera stays off-center"),
-    )
-    out = combined
-    for source, target in replacements:
-        if source in low:
-            out = out.replace(source, target).replace(source.title(), target)
-            low = out.lower()
-    return clean_prompt_clause(out)
-
-
-def _naturalize_relation(text: str) -> str:
-    cleaned = " ".join(str(text).strip().split())
-    replacements = (
-        ("keeps her centered", "stays centered on her"),
-        ("keeps close to her", "stays close to her"),
-        ("keeps her aligned", "stays aligned with her"),
-        ("gives her space", "gives her a little space"),
-        ("stays before her", "stays just ahead of her"),
-        ("stays before her.", "stays just ahead of her."),
-    )
-    out = cleaned
-    low = out.lower()
-    for source, target in replacements:
-        src_low = source.lower()
-        if src_low in low:
-            idx = low.index(src_low)
-            out = out[:idx] + target + out[idx + len(source) :]
-            low = out.lower()
-    return out
 
 
 def _energy_policy(clip: dict, suggested: str) -> str:
@@ -823,18 +416,6 @@ def _section_label(clip: dict) -> str:
     return str(clip.get("section_label", clip.get("section_name", ""))).strip().lower()
 
 
-def _clip_phase_from_id(shot_id: str) -> str:
-    if "_C" not in shot_id:
-        return "single"
-    try:
-        suffix = int(shot_id.rsplit("_C", 1)[1])
-    except Exception:
-        return "single"
-    if suffix <= 1:
-        return "establish"
-    return "advance"
-
-
 def _clip_phase(clip: dict) -> str:
     count = int(clip.get("clip_count", 1))
     index = int(clip.get("clip_index", 1))
@@ -851,11 +432,6 @@ def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
 
 
-def _trim_words(text: str, max_words: int) -> str:
-    words = [word for word in str(text).replace(",", " ,").split() if word]
-    return " ".join(words[: max_words]).replace(" ,", ",").strip(" ,")
-
-
 def _beat_atoms(brief: dict, clip: dict) -> dict:
     beat_id = str(clip.get("lyric_beat_id", "")).strip()
     if beat_id:
@@ -865,67 +441,6 @@ def _beat_atoms(brief: dict, clip: dict) -> dict:
             if str(beat.get("beat_id", "")).strip() == beat_id:
                 return dict(beat)
     return compact_section_atoms(brief, str(clip.get("section_name", "")), beat_id)
-
-
-def _workflow_axis(section: dict, clip: dict) -> str:
-    raw = compact_prompt_clause(section.get("motion_axis", ""), 4)
-    if raw and "," not in raw and "." not in raw:
-        return raw
-    return _kinetic_axis(clip)
-
-
-def _kinetic_axis(clip: dict) -> str:
-    raw = compact_prompt_clause(str(clip.get("motion_hint", "")), 4)
-    if raw and "," not in raw and "." not in raw:
-        return raw
-    raw = compact_prompt_clause(str(clip.get("scene_detail", "")), 4)
-    if raw and "," not in raw and "." not in raw:
-        return raw
-    raw = compact_prompt_clause(str(clip.get("space_relation", "")), 6)
-    if raw:
-        return raw
-    return "impact move"
-
-
-def _join_motion(prefix: str, action: str) -> str:
-    text = str(action).strip()
-    if not text:
-        return str(prefix).strip()
-    first = text.split(" ", 1)[0].lower()
-    if first in {"staying", "holding", "remaining", "keeping"}:
-        linker = "while"
-    elif first.endswith("ing"):
-        linker = "by"
-    elif first in {"under", "over", "through", "into", "across", "inside", "between", "before", "after", "while", "as"}:
-        linker = "as"
-    elif first in {"a", "an", "the"}:
-        linker = "through"
-    else:
-        linker = "with"
-    return f"{str(prefix).strip()} {linker} {text}".strip()
-
-
-def _single_motion_sentence(action: str) -> str:
-    text = str(action).strip()
-    if not text:
-        return "She holds the beat"
-    first = text.split(" ", 1)[0].lower()
-    if first in {"staying", "holding", "remaining", "keeping"}:
-        lead_map = {
-            "staying": "stays",
-            "holding": "holds",
-            "remaining": "remains",
-            "keeping": "keeps",
-        }
-        rest = text.split(" ", 1)[1] if " " in text else ""
-        return f"She {lead_map.get(first, first)} {rest}".strip()
-    if first.endswith("ing"):
-        return f"She follows through by {text}"
-    if first in {"a", "an", "the"}:
-        return f"She hits through {text}"
-    return f"She {text}"
-
-
 def _planned_motion_clause(clip: dict) -> str:
     text = " ".join(str(clip.get("workflow_motion_clause", "")).strip().rstrip(". ").split())
     if not text:

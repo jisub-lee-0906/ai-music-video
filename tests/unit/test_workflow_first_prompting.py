@@ -32,7 +32,7 @@ def test_flux2_ref_prompt_does_not_inject_house_style_without_profile_support():
     assert "stunningly beautiful" not in item["prompt_text"]
     assert "idol-like" not in item["prompt_text"]
     assert "high-end fashion model aesthetic" not in item["prompt_text"]
-    assert "turning into center light and holding the line" in item["action_clause"]
+    assert "turns into center light" in item["action_clause"]
 
 
 def test_wan_prompt_does_not_inject_house_style_without_profile_support():

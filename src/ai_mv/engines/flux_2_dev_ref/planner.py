@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause, compact_prompt_clause, compose_flux2_prompt, compose_flux2_refinement_prompt
+from ai_mv.core.workflow_prompt_contracts import clean_prompt_clause
 from ai_mv.engines.visual_story_bible.brief_views import compact_section_atoms, compact_world_atoms
 
 
@@ -39,9 +39,7 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
     subject_clause = _subject_clause(brief, anchor)
     action_clause = _action_clause(anchor, section)
     camera_clause = _camera_clause(anchor)
-    environment_clause = _environment_clause(anchor, section)
     continuity_clause = _continuity_clause(anchor)
-    kinetic_clause = _kinetic_clause(anchor)
     prompt_text = _compose_flux2_ref_prompt(
         subject_clause,
         action_clause,
@@ -61,7 +59,7 @@ def _build_item(anchor: dict, brief: dict, timeline_index: int) -> dict:
         "subject_clause": subject_clause,
         "action_clause": action_clause,
         "camera_clause": camera_clause,
-        "environment_clause": environment_clause,
+        "environment_clause": "",
         "continuity_clause": continuity_clause,
         "duration_sec": float(anchor["duration_sec"]),
         "clip_index": int(anchor.get("clip_index", 1)),
@@ -127,90 +125,7 @@ def _camera_clause(anchor: dict) -> str:
     clause = camera or composition
     if not clause:
         return ""
-    return _naturalize_ref_camera(clause)
-
-
-def _environment_clause(anchor: dict, section: dict) -> str:
-    location = _normalize_location_for_prompt(
-        str(section.get("location_family", "")).strip()
-        or str(section.get("location_anchor", "")).strip()
-        or str(anchor.get("scene_detail", "")).strip()
-    )
-    space_event = str(anchor.get("space_event", "")).strip()
-    focus = str(anchor.get("prompt_focus", "")).strip().lower()
-    if focus == "object":
-        return clean_prompt_clause(", ".join(part for part in (location, str(anchor.get("motif_object", "")).strip()) if part))
-    if focus in {"space", "graphic"}:
-        return clean_prompt_clause(", ".join(part for part in (location, space_event) if part))
-    return clean_prompt_clause(location)
-
-
-def _normalize_location_for_prompt(location: str) -> str:
-    text = str(location).strip()
-    if not text:
-        return text
-    if "reflective threshold" in text.lower():
-        return text
-    replacements = (
-        ("station front", "graphic station block"),
-        ("station frontage", "graphic station block"),
-        ("ticket gate", "gate silhouettes"),
-        ("ticket gates", "gate silhouettes"),
-        ("open night lane", "flat lane blocks"),
-        ("reflective threshold", "threshold plane"),
-        ("lit passage", "lit passage blocks"),
-        ("sheltered edge", "sheltered edge plane"),
-        ("mirrored glass", "dark glass plane"),
-        ("street", "street blocks"),
-        ("corridor", "passage blocks"),
-    )
-    out = text
-    lowered = out.lower()
-    for old, new in replacements:
-        if old in lowered:
-            out = out.replace(old, new).replace(old.title(), new)
-            lowered = out.lower()
-    return out
-
-
-def _normalize_scene_for_prompt(scene: str) -> str:
-    text = str(scene).strip()
-    if not text:
-        return text
-    replacements = (
-        ("late train station frontage", "graphic station frontage"),
-        ("station frontage", "graphic station frontage"),
-        ("ticket gate", "gate silhouettes"),
-        ("ticket gates", "gate silhouettes"),
-        ("wet, wide street frontage", "wet pavement plane"),
-        ("wet street frontage", "wet pavement plane"),
-        ("station front", "station block"),
-        ("platform", "platform block"),
-        ("window frame", "window block"),
-        ("corridor", "compressed passage blocks"),
-        ("street plane", "flat street plane"),
-        ("street opening", "open block plane"),
-        ("open street edge", "open block edge"),
-        ("open night lane", "flat lane blocks"),
-        ("lane", "lane block"),
-        ("two figures offset", "a single figure with an offset echo"),
-        ("paired figures", "a single figure"),
-        ("two figures", "a single figure"),
-        ("mirrored glass", "dark glass plane"),
-        ("city pull coming from deep center", "city bands stacked behind"),
-        ("street planes converge toward center", "street planes stack in flat bands"),
-        ("block receding toward the center", "block stacked in flat layers"),
-        ("block receding in layers", "block stacked in flat layers"),
-        ("foreground dominant", "foreground left"),
-        ("occupying most of the frame edge", "touching the frame edge"),
-    )
-    out = text
-    lowered = out.lower()
-    for old, new in replacements:
-        if old in lowered:
-            out = out.replace(old, new).replace(old.title(), new)
-            lowered = out.lower()
-    return out
+    return clause
 
 
 def _continuity_clause(anchor: dict) -> str:
@@ -238,47 +153,6 @@ def _compose_flux2_ref_prompt(
     return " ".join(_sentence(part) for part in parts if str(part).strip()).strip()
 
 
-def _naturalize_ref_camera(text: str) -> str:
-    cleaned = clean_prompt_clause(text)
-    if not cleaned:
-        return ""
-    low = cleaned.lower()
-    replacements = (
-        ("floating object field, centered but sparse negative space, gentle hover", "in an off-center frame with sparse negative space and a gentle hover"),
-        ("floating object field, centered", "in an off-center floating-object frame"),
-        ("floating object field with off-center figure", "in an off-center floating-object frame"),
-        ("tight reflective insert with a shallow diagonal crop and one bright light band", "in a tight reflective close-up with a shallow diagonal crop"),
-        ("tight reflective insert", "in a tight reflective close-up"),
-        ("offset silhouette crop", "viewed in an off-center silhouette crop"),
-        ("off-center moving silhouette", "viewed in an off-center silhouette frame"),
-        ("off-center upper-body turn", "viewed in an off-center upper-body turn"),
-        ("near upper-body turn", "viewed in a near upper-body turn"),
-        ("horizontal strip pan with mild parallax", "viewed in a horizontal pan"),
-        ("slow lateral drift", "with a slow lateral drift"),
-        ("low horizon moving figure", "from a low-angle moving frame"),
-        ("moving poster crop", "in an asymmetrical poster-style frame"),
-        ("wide hold", "in a wide frame"),
-        ("tight close", "in a tight close-up"),
-        ("tight close-up", "in a tight close-up"),
-        ("close-up", "in a close-up"),
-        ("medium", "in a medium shot"),
-        ("wide", "in a wide shot"),
-        ("profile", "from a profile angle"),
-        ("side-on", "from a side angle"),
-        ("low-angle", "from a low angle"),
-        ("low angle", "from a low angle"),
-        ("dutch", "from a dutch angle"),
-    )
-    out = low
-    for old, new in replacements:
-        if old in out:
-            out = out.replace(old, new)
-    out = " ".join(out.split())
-    if out.startswith(("viewed ", "from ", "with ", "in ")):
-        return out
-    if " close-up" in out or " shot" in out or " angle" in out or " frame" in out or " crop" in out:
-        return out
-    return cleaned
 
 
 def _anchor_summary(anchors: list[dict]) -> str:
@@ -291,8 +165,8 @@ def _anchor_summary_row(anchor: dict) -> str:
     focus = str(anchor.get("prompt_focus", "")).strip().lower() or "heroine"
     phase = _clip_phase(anchor)
     kinetic = str(anchor.get("kinetic_transition", "")).strip() or "none"
-    pose = compact_prompt_clause(str(anchor.get("pose_delta", "")).strip(), 5) or "pose shift"
-    camera = compact_prompt_clause(str(anchor.get("camera_language", "")).strip(), 5) or "framing shift"
+    pose = clean_prompt_clause(str(anchor.get("pose_delta", "")).strip()) or "pose shift"
+    camera = clean_prompt_clause(str(anchor.get("camera_language", "")).strip()) or "framing shift"
     return f"{sid}({shot_type}|{focus}|{phase}|{kinetic}|{pose}|{camera})"
 
 
@@ -313,44 +187,6 @@ def _clip_phase(anchor: dict) -> str:
     return "advance"
 
 
-def _trim_words(text: str, max_words: int) -> str:
-    words = [word for word in str(text).replace(",", " ,").split() if word]
-    out = " ".join(words[: max_words]).replace(" ,", ",")
-    return out.strip(" ,")
-
-
-def _kinetic_clause(anchor: dict) -> str:
-    transition = str(anchor.get("kinetic_transition", "")).strip().replace("_", " ")
-    intensity = str(anchor.get("kinetic_intensity", "")).strip().lower()
-    if not transition and not intensity:
-        return ""
-    parts = []
-    if transition:
-        parts.append(f"kinetic move {transition}")
-    if intensity:
-        parts.append(f"intensity {intensity}")
-    return clean_prompt_clause(", ".join(parts))
-
-
-def _safety_clause() -> str:
-    return "no text, no typography, no watermarks, no logos, no signage, no ui overlay"
-
-
-def _kinetic_axis(anchor: dict) -> str:
-    transition = str(anchor.get("kinetic_transition", "")).strip().lower()
-    mapping = {
-        "snap_zoom_in": "forward snap",
-        "snap_zoom_out": "recoil pullback",
-        "whip_pan_left": "left whip line",
-        "whip_pan_right": "right whip line",
-        "crash_push_in": "impact push",
-        "smash_reframe": "reframe break",
-        "strobe_jump": "strobe burst",
-        "match_cut_pose": "pose impact",
-    }
-    return mapping.get(transition, "pose shift")
-
-
 def _beat_atoms(brief: dict, anchor: dict) -> dict:
     beat_id = str(anchor.get("lyric_beat_id", "")).strip()
     if beat_id:
@@ -362,33 +198,15 @@ def _beat_atoms(brief: dict, anchor: dict) -> dict:
     return compact_section_atoms(brief, str(anchor.get("section_name", "")), beat_id)
 
 
-def _workflow_axis(section: dict, anchor: dict) -> str:
-    raw = compact_prompt_clause(section.get("motion_axis", ""), 4)
-    if raw and "," not in raw and "." not in raw:
-        return raw
-    return _kinetic_axis(anchor)
-
-
 def _planned_motion_clause(anchor: dict) -> str:
+    text = " ".join(str(anchor.get("pose_delta", "")).strip().rstrip(". ").split())
+    if text:
+        return text
     text = " ".join(str(anchor.get("workflow_motion_clause", "")).strip().rstrip(". ").split())
     if not text:
-        raise RuntimeError(f"workflow_motion_clause missing for flux2_ref shot: {anchor.get('shot_id', '')}")
+        raise RuntimeError(f"pose_delta missing for flux2_ref shot: {anchor.get('shot_id', '')}")
     if text.lower().startswith("she "):
         text = text[4:].strip()
+    elif text.lower().startswith("the girl "):
+        text = text[9:].strip()
     return text
-def _join_action(prefix: str, action: str) -> str:
-    text = str(action).strip()
-    if not text:
-        return str(prefix).strip()
-    first = text.split(" ", 1)[0].lower()
-    if first in {"staying", "holding", "remaining", "keeping"}:
-        linker = "while"
-    elif first.endswith("ing"):
-        linker = "by"
-    elif first in {"under", "over", "through", "into", "across", "inside", "between", "before", "after", "while", "as"}:
-        linker = "as"
-    elif first in {"a", "an", "the"}:
-        linker = "through"
-    else:
-        linker = "with"
-    return f"{str(prefix).strip()} {linker} {text}".strip()
