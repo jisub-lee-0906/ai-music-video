@@ -2,7 +2,7 @@ import ai_mv.engines.flux_2_dev_tti.runner as tti_runner
 from ai_mv.core.output_paths import master_anchor_prefix
 
 
-def test_run_tti_generates_master_and_shot_anchors(monkeypatch):
+def test_run_tti_uses_master_anchor_for_all_shots(monkeypatch):
     calls = {"n": 0}
 
     def _fake_run(_config, _workflow, bindings, _required):
@@ -23,7 +23,7 @@ def test_run_tti_generates_master_and_shot_anchors(monkeypatch):
         ],
     }
     out = tti_runner.run_tti(cfg, plan)
-    assert calls["n"] == 3
-    assert out[0]["anchor"] != out[1]["anchor"]
+    assert calls["n"] == 1
+    assert out[0]["anchor"] == out[1]["anchor"]
     assert out[0]["identity_anchor"] == f"{master_anchor_prefix()}.png"
-    assert out[0]["shot_anchor"].endswith("anchors/S001.png")
+    assert out[0]["shot_anchor"] == f"{master_anchor_prefix()}.png"

@@ -18,8 +18,8 @@ DEFAULT_CONFIG: dict = {
         "flux2_ref_planner_batch_size": 4,
     },
     "visual_pipeline": {
-        "visual_pipeline_mode": "tti_selective_ref",
-        "consistency_mode": "selective",
+        "visual_pipeline_mode": "tti_ref_all",
+        "consistency_mode": "always",
         "kinetic_ref_mode": "endpoints",
         "hero_shot_types": ["EMOTION_CLOSE"],
         "reference_priority_sections": ["Final Chorus", "Chorus 2", "Chorus 1"],

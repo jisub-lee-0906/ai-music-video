@@ -53,7 +53,8 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     }
     prompt = tti_planner._planner_prompt({}, payload)
     assert "Write a shot timeline for downstream Flux and video workflows" in prompt
-    assert "master_anchor prompt_text should contain only stable identity and world facts" in prompt
+    assert "master_anchor prompt_text must be the final render-facing master character anchor prompt" in prompt
+    assert "master_anchor should show the heroine as a clear full-body or strong three-quarter figure" in prompt
     assert "Every shot must include lyric_beat_id,shot_type,prompt_text,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count" in prompt
     assert "workflow_motion_clause should be a full WAN action clause beginning with a finite verb phrase" in prompt
     assert "Profile policy=" in prompt

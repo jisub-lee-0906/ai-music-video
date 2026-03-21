@@ -66,7 +66,6 @@ def build_shot_timeline_preview_payload(config: dict, payload: dict) -> dict:
         _pack_anchor(
             shot,
             "preflight://anchor/master.png",
-            f"preflight://anchor/{str(shot.get('shot_id', '')).lower()}.png",
         )
         for shot in plan["shots"]
     ]
