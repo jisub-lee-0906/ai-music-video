@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
 from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.profile_policy import resolve_profile_policy
@@ -26,6 +28,7 @@ def _planner_prompt(config: dict, payload: dict) -> str:
     policy = story_bible.get("resolved_profile_policy", resolve_profile_policy(config)) if isinstance(story_bible, dict) else resolve_profile_policy(config)
     beat_manifest = _tti_beat_manifest(story_bible)
     beat_count = len(beat_manifest)
+    beat_rows = _tti_beat_rows(story_bible)
     return (
         "Write a shot timeline for downstream Flux and video workflows. "
         "Return strict JSON only with shape {\"master_anchor\":{...},\"shots\":[...]}. No prose outside JSON. "
@@ -33,10 +36,53 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         f"Exact shot count contract: return exactly {beat_count} shots. "
         "The shots array length must equal the lyric beat count exactly; do not add extra shots, do not omit shots. "
         "Use each lyric_beat_id exactly once and preserve the exact manifest order. "
+        "Treat the source lyric beats as a locked one-to-one transform. "
+        "Do not split a lyric beat into multiple shots. Do not merge beats. Do not invent extra shots. Do not omit shots. "
         "master_anchor prompt_text should contain only stable identity and world facts. "
         "Every shot must include lyric_beat_id,shot_type,prompt_text,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
         "prompt_text must be the final render-facing TTI prompt and must follow this exact formula: [Base Style] + [Subject/Action] + [Background] + [Camera/Framing]. "
         "Write prompt_text as natural English sentences only, never labels or plus signs. "
+        "prompt_text should be exactly four short sentences in this order: "
+        "a base-style sentence, then a subject or action sentence, then a background sentence, then a camera or framing sentence. "
+        "The background sentence should begin with 'The background is'. "
+        "The camera sentence should be a clean phrase like 'Extreme low-angle dynamic shot' or 'Tight close-up'. "
+        "Do not use composition taxonomy words such as crop, tableau, composition, layout, or silhouette composition inside prompt_text. "
+        "Make every prompt_text look like a direct image-generation prompt a human would type by hand. "
+        "Prefer concrete subject nouns and physical actions over abstract descriptions. "
+        "Prefer strong camera phrases such as 'Extreme low-angle dynamic shot', 'Wide side-tracking shot', 'Tight close-up', 'Locked-off frontal close-up', or 'Off-center medium shot'. "
+        "Prefer drawable background phrases such as 'The background is a non-photographic planar ticket gate with wet floor reflections' or 'The background is a flat train-window band with narrow streetlight streaks'. "
+        "Do not write vague filler such as atmospheric presence, emotional energy, symbolic mood, visual treatment, or graphic feeling. "
+        "Do not write compressed metadata fragments. Write complete natural-English sentences only. "
+        "Good subject or action sentence example: 'The heroine steps through the ticket gate and turns her chin toward the platform lights.' "
+        "Bad subject or action sentence example: 'The heroine carries the emotional presence of the night.' "
+        "Good background sentence example: 'The background is a non-photographic planar ticket gate with wet floor reflections and narrow light bands.' "
+        "Bad background sentence example: 'The background is a symbolic atmosphere of city emotion.' "
+        "Good camera sentence example: 'Wide side-tracking shot.' "
+        "Bad camera sentence example: 'Dynamic visual composition with cinematic energy.' "
+        "When prompt_focus is object or space, still write a strong image prompt, but let the object or location event lead the scene instead of a generic heroine portrait. "
+        "For object-led beats, prefer concrete props such as ticket stubs, umbrella tips, phone lights, puddle rings, gate arms, or vending cans. "
+        "For space-led beats, prefer concrete motion events such as train windows sliding, gate arms opening, light bands crossing glass, curb reflections widening, or signs flickering. "
+        "For graphic-led beats, prefer a bold visual hit such as crossing light bands, doubled shadows in glass, stacked sign strips, or split reflections. "
+        "Keep neighboring shots sharply differentiated. If one shot is a walking beat, the next shot should usually shift to an object hit, a place event, a reflection event, or a different camera distance. "
+        "Avoid returning to the same safe heroine coverage across adjacent beats. Do not repeat the same walking pose, same medium framing, or same window shot unless the source beat explicitly repeats it. "
+        "For intro, bridge, transition, and outro material, default to WORLD_EVENT, SYMBOLIC_INSERT, GRAPHIC_EVENT, ENV_TRANSITION, DETAIL_INSERT, or TRANSITIONAL_ABSTRACT before choosing heroine coverage. "
+        "For final payoff material, prefer WORLD_EVENT, GRAPHIC_EVENT, or SYMBOLIC_INSERT unless the beat explicitly demands a face payoff. "
+        "In final-chorus and outro payoff material, a face-led shot should be rare; default instead to a world resolution, motif lockup, object hit, or graphic system peak. "
+        "Good final payoff prompt example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. Gate arms open in sequence while the heroine stays small beneath the lights. The background is a non-photographic planar concourse with stacked sign bands and rain-dark floor reflections. Wide elevated tracking shot.' "
+        "Bad final payoff prompt example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. The heroine looks into the camera and holds the final feeling. The background is a symbolic atmosphere of closure. Tight emotional close-up.' "
+        "Do not default object-led, space-led, or graphic-led beats to a centered heroine portrait unless the beat explicitly demands it. "
+        "In this project, conventional heroine coverage is not the default. "
+        "Only choose CHAR_MASTER, PERF_WIDE, or EMOTION_CLOSE when the beat clearly needs direct heroine readability or a specific payoff. "
+        "Prefer WORLD_EVENT, SYMBOLIC_INSERT, GRAPHIC_EVENT, ENV_TRANSITION, DETAIL_INSERT, or TRANSITIONAL_ABSTRACT whenever the beat can be told through an object, a place event, or a graphic hit. "
+        "For repeated chorus material, do not simply return to heroine coverage; escalate motif density, graphic impact, or world-system behavior instead. "
+        "For final payoff beats, prefer a world-system peak, a repeating motif lockup, or a graphic event before choosing a face-driven payoff. "
+        "Good object-led example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. A ticket stub warms in her hand as she folds it once. The background is a non-photographic planar station wall with thin reflected light bands. Tight hand detail shot.' "
+        "Good space-led example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. Train window bands slide past while the heroine stays small near the platform edge. The background is a non-photographic planar station block with wet glass and narrow neon streaks. Wide side-tracking shot.' "
+        "Good graphic-led example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. Crossing light bands cut across her reflection as she turns into the glass. The background is a non-photographic planar window wall with doubled neon strips. Tight reflective close-up.' "
+        "Another good world payoff example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. Gate arms open in sequence while the heroine stays small beneath the lights. The background is a non-photographic planar concourse with stacked sign bands and rain-dark floor reflections. Wide elevated tracking shot.' "
+        "Another good object-led insert example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. A phone light shakes once and throws a bright wedge across the wet curb. The background is a non-photographic planar sidewalk strip with narrow reflected neon bands. Tight hand detail shot.' "
+        "Example prompt_text: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. The heroine holds an electric guitar high above her head, ready to strike. The background is a non-photographic planar cyberpunk alley with flat neon signs. Extreme low-angle dynamic shot.' "
+        "Another valid example: 'A 2D graphic anime illustration with flat cel shading and thick clean outlines. The heroine pauses over the wet reflection line as she steps past it. The background is a non-photographic planar ticket gate with rain-dark pavement and narrow light bands. Low reflective shot.' "
         "scene_change_level must be one of hold,evolve,shift,reset. "
         "anchor_strategy must be one of reuse_anchor,refine_anchor,new_anchor. "
         "continuity_basis must be one of heroine,motif,world,none. "
@@ -56,6 +102,7 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "Honor the profile policy when choosing shot types and face exposure. "
         f"Profile policy={_policy_digest(policy)}. "
         f"Shot count manifest={'; '.join(beat_manifest)}. "
+        f"Source beat JSON={json.dumps(beat_rows, ensure_ascii=True)}. "
         f"Story bible={_story_bible_digest(story_bible)}. "
         f"Lyric timeline={_timeline_digest(timeline)}."
     )
@@ -112,6 +159,30 @@ def _tti_beat_manifest(story_bible: dict) -> list[str]:
         payoff = str(beat.get("payoff_role", "")).strip()
         out.append(f"{beat_id}|{section}|{payoff}")
     return out
+
+
+def _tti_beat_rows(story_bible: dict) -> list[dict]:
+    rows: list[dict] = []
+    for beat in story_bible.get("lyric_beats", []):
+        if not isinstance(beat, dict):
+            continue
+        beat_id = str(beat.get("beat_id", "")).strip()
+        if not beat_id:
+            continue
+        rows.append(
+            {
+                "beat_id": beat_id,
+                "section_name": str(beat.get("section_name", "")).strip(),
+                "section_label": str(beat.get("section_label", beat.get("section_name", ""))).strip(),
+                "literal_image": str(beat.get("literal_image", "")).strip(),
+                "visible_action": str(beat.get("visible_action", "")).strip(),
+                "payoff_role": str(beat.get("payoff_role", "")).strip(),
+                "prompt_focus": str(beat.get("prompt_focus", "")).strip(),
+                "space_event": str(beat.get("space_event", "")).strip(),
+                "composition_shape": str(beat.get("composition_shape", "")).strip(),
+            }
+        )
+    return rows
 
 
 def _assign_story_metadata(shots: list[dict], timeline: dict, story_bible: dict) -> list[dict]:
