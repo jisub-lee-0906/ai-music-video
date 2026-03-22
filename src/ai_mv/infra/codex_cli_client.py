@@ -50,6 +50,25 @@ def generate_structured(config: dict, prompt: str, schema: dict, attempts: int =
     raise CodexCliRequestError("Codex CLI structured generation failed without an exception")
 
 
+def generate_text(config: dict, prompt: str, attempts: int = 3) -> str:
+    current_prompt = prompt
+    last_exc: Exception | None = None
+    repair = "Previous output failed formatting. Return plain text only in the exact requested format."
+    total_attempts = max(1, int(attempts))
+    for attempt in range(1, total_attempts + 1):
+        try:
+            return _generate_text_once(config, current_prompt)
+        except CodexCliRequestError as exc:
+            last_exc = exc
+            if attempt >= total_attempts:
+                break
+            current_prompt = f"{prompt}\n\n{repair}"
+            time.sleep(min(2 ** attempt, 8))
+    if last_exc is not None:
+        raise last_exc
+    raise CodexCliRequestError("Codex CLI text generation failed without an exception")
+
+
 def assert_codex_ready(config: dict) -> None:
     status = _login_status(_codex_command_parts(config))
     if "Logged in" not in status:
@@ -70,6 +89,38 @@ def _generate_once(config: dict, prompt: str, schema: dict) -> dict:
         data = _load_output(output_path)
         _validate_schema(data, schema)
         return data
+
+
+def _generate_text_once(config: dict, prompt: str) -> str:
+    cmd = _codex_command_parts(config)
+    model = _codex_model(config)
+    timeout = _codex_timeout(config)
+    args = cmd + [
+        "exec",
+        "--skip-git-repo-check",
+        "--sandbox",
+        "read-only",
+        "-m",
+        model,
+        "-",
+    ]
+    res = subprocess.run(
+        args,
+        input=prompt,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
+    )
+    if res.returncode != 0:
+        detail = res.stderr.strip() or res.stdout.strip()
+        raise CodexCliRequestError(f"Codex CLI exec failed: {detail}")
+    text = (res.stdout or "").strip()
+    if not text:
+        raise CodexCliRequestError("Codex CLI returned empty text output")
+    return _strip_code_fence(text)
 
 
 def _exec_args(cmd: list[str], model: str, schema_path: Path, output_path: Path, prompt: str) -> list[str]:
@@ -153,6 +204,16 @@ def _run(args: list[str], prompt: str, timeout: int | None) -> None:
     if res.returncode != 0:
         detail = res.stderr.strip() or res.stdout.strip()
         raise CodexCliRequestError(f"Codex CLI exec failed: {detail}")
+
+
+def _strip_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) >= 3 and lines[0].startswith("```") and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return stripped
 
 
 def _codex_command_parts(config: dict) -> list[str]:
