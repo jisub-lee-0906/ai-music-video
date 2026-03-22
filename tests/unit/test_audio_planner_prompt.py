@@ -48,6 +48,9 @@ def test_audio_prompt_focuses_on_prompt_engineering_not_checklist():
     assert "Hook intent=neon rain and chrome reflections." in prompt
     assert "Story world=retro city-pop lane." in prompt
     assert "Avoid=no futuristic sci-fi tone." in prompt
+    assert "Do not make Verse 2 feel like a copy-paste replay of Verse 1" in prompt
+    assert "Only use post_chorus when the hook benefits from one extra tag" in prompt
+    assert "Make the final chorus unmistakably bigger or more complete than earlier choruses" in prompt
     assert "quality failure" not in prompt
     assert "heuristic" not in prompt
 

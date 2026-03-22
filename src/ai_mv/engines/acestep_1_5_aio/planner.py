@@ -64,13 +64,23 @@ def _audio_output_contract() -> str:
         "Required top-level keys: genre_description,bpm,keyscale,seed,duration,lyrics_blocks. "
         "Required lyrics_blocks item keys: section,label,style,lines. "
         "lyrics_blocks.lines must be finished sung lyric lines only. "
+        "All lyric lines must be valid readable text in the requested language, not mojibake, not corrupted Unicode, and not random symbol noise. "
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
     )
 
 
 def _audio_song_craft_brief(plan: dict) -> str:
     ending = _ending_policy(plan)
-    rules = ["Write a full song, not a fragment. "]
+    rules = [
+        "Write a full song, not a fragment. "
+        "Prefer a commercially strong but artistically polished form, not a mechanical template. "
+        "Do not make Verse 2 feel like a copy-paste replay of Verse 1. "
+        "Let Verse 2 act like a lifted verse: keep the structure readable but raise the detail, melodic tension, lyrical angle, or arrangement energy slightly. "
+        "If you use a post-chorus, give it a real afterglow or rhythmic release function; do not insert one automatically if the chorus already resolves cleanly. "
+        "Make the final chorus unmistakably bigger or more complete than earlier choruses through lyric twist, melodic lift, harmony expansion, arrangement opening, or emotional escalation. "
+        "Avoid a formula where every return block repeats the same function with only new words. "
+        "Prefer one or two smart form evolutions over needless extra sections. "
+    ]
     if bool(ending.get("final_chorus_required", True)):
         rules.append("Use a distinct final return. Keep that block section='chorus' and label it 'Final Chorus'. ")
     else:
@@ -79,6 +89,12 @@ def _audio_song_craft_brief(plan: dict) -> str:
         rules.append("After the last chorus, include a final section='outro' block that clearly closes the song. ")
     else:
         rules.append("Do not force an outro if a decisive last chorus ending fits better. ")
+    rules.append(
+        "Only use post_chorus when the hook benefits from one extra tag, release tail, or rhythmic afterimage; otherwise move forward without it. "
+    )
+    rules.append(
+        "If the song uses both Chorus 2 and Final Chorus, make the Final Chorus feel like a true payoff rather than a third copy of the same hook. "
+    )
     rules.append(_ending_mode_rule(str(ending.get("ending_mode", ""))))
     rules.append(_ending_density_rule(str(ending.get("ending_vocal_density", ""))))
     return "".join(rules)
@@ -119,12 +135,15 @@ def _language_style_rules(plan: dict) -> str:
             "Write fluent modern Japanese lyrics. "
             "Keep phrasing natural and singable. "
             "Use English sparingly and intentionally. "
+            "Every lyric line must look like valid modern Japanese text with readable kana or kanji, not broken symbols or corrupted characters. "
+            "Prefer clear memorable phrases over opaque fragments. "
         )
     if lang == "ko":
         return (
             "Write fluent modern Korean lyrics. "
             "Keep Hangul phrasing natural and singable. "
             "Use English only as a short intentional accent if needed. "
+            "Every lyric line must look like valid Hangul text, not broken symbols or corrupted characters. "
         )
     return ""
 
