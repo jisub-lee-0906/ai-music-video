@@ -129,11 +129,98 @@ def test_wan_positive_prompt_formula():
     )
 
 
-def _flux2_ref(shot_id: str, duration: float) -> dict:
+def test_wan_plan_chains_across_section_names_when_not_explicit_reset(monkeypatch):
+    def fake_generate_structured(config, prompt, schema, attempts=1):
+        return {
+            "clips": [
+                {
+                    "shot_id": "a",
+                    "positive_prompt": "Camera glides left. The girl steps through the gate. Background sign lights flicker rapidly.",
+                    "negative_prompt": "3d render, photorealistic, morphing, static",
+                    "subject_motion": "The girl steps through the gate",
+                    "camera_relation": "Camera glides left",
+                    "environment_detail": "Background sign lights flicker rapidly",
+                    "energy": "normal",
+                },
+                {
+                    "shot_id": "b",
+                    "positive_prompt": "Camera pushes forward. The girl turns toward the train window. Background window bands slide across the glass.",
+                    "negative_prompt": "3d render, photorealistic, morphing, static",
+                    "subject_motion": "The girl turns toward the train window",
+                    "camera_relation": "Camera pushes forward",
+                    "environment_detail": "Background window bands slide across the glass",
+                    "energy": "normal",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(wan_planner, "generate_structured", fake_generate_structured)
+    payload = {
+        "clip_routes": [
+            _route("a", True, duration=4.0, section_name="verse_1"),
+            _route("b", True, duration=4.0, section_name="chorus"),
+        ],
+        "flux2_ref_images": [
+            _flux2_ref("a", 4.0, start="a_s.png", end="a_e.png"),
+            _flux2_ref("b", 4.0, start="b_s.png", end="b_e.png"),
+        ],
+        "visual_story_bible": _story_bible(),
+    }
+    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
+    assert out["clips"][0]["start"] == "a_s.png"
+    assert out["clips"][0]["end"] == "a_e.png"
+    assert out["clips"][1]["start"] == "a_e.png"
+    assert out["clips"][1]["end"] == "b_e.png"
+    assert out["clips"][1]["start_source"] == "previous_end"
+
+
+def test_wan_plan_breaks_chain_on_explicit_reset(monkeypatch):
+    def fake_generate_structured(config, prompt, schema, attempts=1):
+        return {
+            "clips": [
+                {
+                    "shot_id": "a",
+                    "positive_prompt": "Camera glides left. The girl steps through the gate. Background sign lights flicker rapidly.",
+                    "negative_prompt": "3d render, photorealistic, morphing, static",
+                    "subject_motion": "The girl steps through the gate",
+                    "camera_relation": "Camera glides left",
+                    "environment_detail": "Background sign lights flicker rapidly",
+                    "energy": "normal",
+                },
+                {
+                    "shot_id": "b",
+                    "positive_prompt": "Camera pushes forward. The girl turns toward the train window. Background window bands slide across the glass.",
+                    "negative_prompt": "3d render, photorealistic, morphing, static",
+                    "subject_motion": "The girl turns toward the train window",
+                    "camera_relation": "Camera pushes forward",
+                    "environment_detail": "Background window bands slide across the glass",
+                    "energy": "normal",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(wan_planner, "generate_structured", fake_generate_structured)
+    payload = {
+        "clip_routes": [
+            _route("a", True, duration=4.0, section_name="verse_1"),
+            _route("b", True, duration=4.0, section_name="chorus", scene_change_level="reset"),
+        ],
+        "flux2_ref_images": [
+            _flux2_ref("a", 4.0, start="a_s.png", end="a_e.png"),
+            _flux2_ref("b", 4.0, start="b_s.png", end="b_e.png"),
+        ],
+        "visual_story_bible": _story_bible(),
+    }
+    out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
+    assert out["clips"][1]["start"] == "b_s.png"
+    assert out["clips"][1]["start_source"] == "rendered_start"
+
+
+def _flux2_ref(shot_id: str, duration: float, start: str = "s.png", end: str = "e.png") -> dict:
     return {
         "shot_id": shot_id,
-        "start": "s.png",
-        "end": "e.png",
+        "start": start,
+        "end": end,
         "duration_sec": duration,
         "section_name": "verse",
         "shot_type": "CHAR_MASTER",
@@ -147,7 +234,9 @@ def _flux2_ref(shot_id: str, duration: float) -> dict:
     }
 
 
-def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
+def _route(shot_id: str, chorus: bool, duration: float = 4.0, section_name: str | None = None, scene_change_level: str = "evolve") -> dict:
+    name = section_name or ("chorus" if chorus else "verse")
+    label = "Final Chorus" if "chorus" in name else "Verse 1"
     return {
         "shot_id": shot_id,
         "lyric_beat_id": "LB02_01" if chorus else "LB01_01",
@@ -155,8 +244,8 @@ def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
         "identity_anchor": f"{shot_id}.png",
         "is_chorus": chorus,
         "duration_sec": duration,
-        "section_name": "chorus" if chorus else "verse",
-        "section_label": "Final Chorus" if chorus else "Verse 1",
+        "section_name": name,
+        "section_label": label,
         "shot_type": "EMOTION_CLOSE" if chorus else "CHAR_MASTER",
         "camera_language": "clean hero framing",
         "pose_delta": "small pose shift",
@@ -172,6 +261,8 @@ def _route(shot_id: str, chorus: bool, duration: float = 4.0) -> dict:
         "mv_function": "payoff" if chorus else "coverage",
         "return_weight": 4 if chorus else 1,
         "use_ref": chorus,
+        "scene_change_level": scene_change_level,
+        "anchor_strategy": "new_anchor" if scene_change_level == "reset" else "refine_anchor",
         "route_reason": "priority return section" if chorus else "tti-only coverage shot",
     }
 

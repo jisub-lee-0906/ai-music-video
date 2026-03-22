@@ -158,6 +158,8 @@ def _route_to_clip(item: dict, ref_images: list[dict], fps: int) -> dict:
         "wardrobe_read": str(item.get("wardrobe_read", "")),
         "continuity_lock": str(item.get("continuity_lock", "")),
         "route_reason": str(item.get("route_reason", "")),
+        "scene_change_level": str(item.get("scene_change_level", "")),
+        "anchor_strategy": str(item.get("anchor_strategy", "")),
         "use_ref": use_ref,
         "clip_index": int(item.get("clip_index", 1)),
         "clip_count": int(item.get("clip_count", 1)),
@@ -190,26 +192,11 @@ def _chain_break(clip: dict, prev_clip: dict | None) -> bool:
         return True
     if str(clip.get("kinetic_transition", "")).strip().lower() == "smash_reframe":
         return True
-    if _starts_new_major_section(clip, prev_clip) and int(clip.get("clip_index", 1)) <= 1:
+    if str(clip.get("scene_change_level", "")).strip().lower() == "reset":
+        return True
+    if str(clip.get("anchor_strategy", "")).strip().lower() == "new_anchor":
         return True
     return False
-
-
-def _starts_new_major_section(clip: dict, prev_clip: dict) -> bool:
-    current = _section_token(clip)
-    previous = _section_token(prev_clip)
-    if not current or current == previous:
-        return False
-    return _is_major_reset_section(current)
-
-
-def _section_token(clip: dict) -> str:
-    return str(clip.get("section_name", clip.get("section_label", ""))).strip().lower()
-
-
-def _is_major_reset_section(section: str) -> bool:
-    sec = str(section).strip().lower()
-    return "verse" in sec or sec == "chorus"
 
 
 def _ref_chain_key(row: dict) -> str:

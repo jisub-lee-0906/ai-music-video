@@ -26,7 +26,10 @@ def test_flux2_ref_reanchors_every_shot_from_master_reference(monkeypatch):
     assert out[1]["start"] == f"{ANCHOR_DIR}/master.png"
     assert out[2]["start"] == f"{ANCHOR_DIR}/master.png"
     assert out[3]["start"] == f"{ANCHOR_DIR}/master.png"
-    assert all(row["start_source"] == "tti_start" for row in out)
+    assert out[0]["start_source"] == "tti_start"
+    assert out[1]["start_source"] == "tti_start"
+    assert out[2]["start_source"] == "tti_start"
+    assert out[3]["start_source"] == "tti_start"
     assert trace == [
         ("S001", f"{ANCHOR_DIR}/master.png"),
         ("S002", f"{ANCHOR_DIR}/master.png"),
