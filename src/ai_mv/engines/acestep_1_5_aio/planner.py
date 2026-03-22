@@ -211,6 +211,8 @@ def _audio_lyrics_rules(plan: dict) -> str:
         "Only the chorus may deliberately reuse a hook line, and even then keep the rest of the chorus lines fresh. "
         "Do not let Verse 2 recycle Verse 1 wording unless a hook is intentionally echoed. "
         "Make the final chorus feel more resolved or more intense than Chorus 1. "
+        "Section roles must differ: intro sets the scene, verses add detail, pre-chorus raises anticipation, chorus delivers the hook, bridge reframes or opens the meaning, outro leaves one last image. "
+        "Do not make every section say the same thing with minor wording changes. "
     )
     if lang == "ja":
         return common + (
@@ -222,6 +224,16 @@ def _audio_lyrics_rules(plan: dict) -> str:
             "Prefer distinct concrete images such as train glass, ticket gate, wet curb, timetable glow, vending light, or reflected neon over abstract repetition. "
             "Bad pattern: many lines ending with the same weak verb like 続く or 揺れる without new meaning. "
             "Good pattern: each line adds one new image, gesture, or emotional shift while staying singable. "
+            "Bad pattern: repeated lines like 光が揺れる, 夜が続く, 足音が響く across multiple sections without a new twist. "
+            "Good pattern: each section keeps one city-night motif but changes the angle, object, gesture, or emotional meaning. "
+            "Pre-chorus lines should feel like momentum and anticipation, not static description. "
+            "Bridge lines should reveal a larger system, memory, or emotional turn rather than repeating the chorus hook. "
+            "Final Chorus may reuse one hook line, but at least half of its lines should expand or intensify the image set. "
+            "Do not use awkward katakana transliterations for simple words when normal Japanese wording exists. "
+            "Avoid strange spellings like ポッケット; use natural Japanese such as ポケット. "
+            "Do not leave English words like curb in the lyrics; express them naturally in Japanese such as 縁石 or curb-like wording in Japanese. "
+            "Chorus 2 and Final Chorus must not be exact copies of Chorus 1. "
+            "At least four lines in Final Chorus should be newly written or clearly intensified relative to Chorus 1. "
         )
     if lang == "ko":
         return common + (
@@ -249,6 +261,10 @@ def _audio_lyrics_system_prompt(plan: dict) -> str:
         "Keep exact hook reuse limited to chorus sections. "
         "Avoid generic filler, repetitive weak verbs, and near-duplicate lines across the song. "
         "Prefer one clear image or emotional move per line. "
+        "Make section functions clearly different from each other. "
+        "If two lines feel too similar, rewrite the later line with a new image or action. "
+        "For Japanese output, prefer natural contemporary Japanese wording over awkward loanword spellings. "
+        "Do not copy Chorus 1 into Chorus 2 or Final Chorus verbatim. "
         "If a line is weak, simplify it instead of adding commentary. "
     )
 
@@ -371,13 +387,27 @@ def _plan_outline_with_llm(config: dict, plan: dict) -> dict:
 
 def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
     prompt = _audio_lyrics_prompt(plan, outline)
-    filled = generate_ollama_text(
-        config,
-        prompt,
-        system=_audio_lyrics_system_prompt(plan),
-        options={"temperature": 0.1, "top_p": 0.8},
-    )
-    return _merge_audio_outline_and_lyrics(outline, _parse_audio_lyrics_text(outline, filled))
+    last_exc: Exception | None = None
+    attempt_prompt = prompt
+    for _ in range(3):
+        filled = generate_ollama_text(
+            config,
+            attempt_prompt,
+            system=_audio_lyrics_system_prompt(plan),
+            options={"temperature": 0.1, "top_p": 0.8},
+        )
+        try:
+            return _merge_audio_outline_and_lyrics(outline, _parse_audio_lyrics_text(outline, filled))
+        except RuntimeError as exc:
+            last_exc = exc
+            attempt_prompt = (
+                prompt
+                + f"\nCorrection note: your previous answer failed validation with this exact error: {exc}. "
+                + "Rewrite the entire lyrics output from scratch and satisfy every header and exact line count."
+            )
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("audio lyrics fill failed without a captured error")
 
 
 def _normalize_audio_outline(raw: dict) -> dict:
