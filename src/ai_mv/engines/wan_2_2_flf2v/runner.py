@@ -27,6 +27,7 @@ def _run_clip_wan(config: dict, clip: dict) -> dict:
         WAN_WORKFLOW,
         map_wan_workflow(config, payload),
         wan_required_inputs(),
+        timeout_override=_wan_timeout(config),
     )
 
 
@@ -42,3 +43,13 @@ def _prepare_clip(config: dict, clip: dict) -> dict:
 def _resolve_video_path(config: dict, name: str) -> str:
     path = resolve_generated_file(config, name, {".mp4", ".mov", ".mkv", ".webm"}, "video")
     return str(path)
+
+
+def _wan_timeout(config: dict) -> int | None:
+    limits = config.get("limits", {}) if isinstance(config, dict) else {}
+    raw = limits.get("wan_timeout_seconds", 0) if isinstance(limits, dict) else 0
+    try:
+        value = int(raw)
+    except Exception:
+        return None
+    return None if value <= 0 else value

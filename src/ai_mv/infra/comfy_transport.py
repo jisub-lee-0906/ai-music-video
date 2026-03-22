@@ -23,7 +23,7 @@ def ping_comfy(base_url: str) -> bool:
         return False
 
 
-def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> dict:
+def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int | None) -> dict:
     queued = _queue_prompt(base_url, workflow, timeout)
     prompt_id = _prompt_id_from_queue(queued)
     try:
@@ -40,7 +40,7 @@ def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int) -> di
 def wait_history(
     base_url: str,
     prompt_id: str,
-    timeout: int,
+    timeout: int | None,
     max_transient_errors: int = 8,
 ) -> dict[str, Any]:
     start = time.time()
@@ -50,11 +50,12 @@ def wait_history(
     transient_errors = 0
     while True:
         elapsed = time.time() - start
-        if elapsed > timeout:
+        if timeout is not None and elapsed > timeout:
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
-        remaining = max(0.0, timeout - elapsed)
+        remaining = max(0.0, timeout - elapsed) if timeout is not None else None
         try:
-            data = _safe_history_get(url, min(remaining, 10.0), prompt_id)
+            request_timeout = min(remaining, 10.0) if remaining is not None else None
+            data = _safe_history_get(url, request_timeout, prompt_id)
             transient_errors = 0
         except RecoverableComfyError as exc:
             transient_errors += 1
@@ -64,13 +65,19 @@ def wait_history(
                     f"prompt_id={prompt_id}: {exc}"
                 ) from exc
             backoff = min(2 ** transient_errors, 15)
-            time.sleep(min(backoff, max(0.0, timeout - (time.time() - start))))
+            if timeout is not None:
+                time.sleep(min(backoff, max(0.0, timeout - (time.time() - start))))
+            else:
+                time.sleep(backoff)
             continue
         record = data[prompt_id] if isinstance(data, dict) and prompt_id in data else {}
         if record:
             return record
-        remaining = max(0.0, timeout - (time.time() - start))
-        time.sleep(min(sleep_sec, remaining))
+        remaining = max(0.0, timeout - (time.time() - start)) if timeout is not None else None
+        if remaining is not None:
+            time.sleep(min(sleep_sec, remaining))
+        else:
+            time.sleep(sleep_sec)
         sleep_sec = min(max_sleep_sec, sleep_sec * 1.2)
 
 
@@ -92,7 +99,7 @@ def extract_files(history: dict[str, Any]) -> list[str]:
     return files
 
 
-def _queue_prompt(base_url: str, workflow: dict[str, Any], timeout: int) -> dict:
+def _queue_prompt(base_url: str, workflow: dict[str, Any], timeout: int | None) -> dict:
     url = f"{base_url.rstrip('/')}/prompt"
     res = requests.post(url, json={"prompt": workflow}, timeout=timeout)
     if res.status_code >= 400:
@@ -126,7 +133,7 @@ def _prompt_id_from_queue(queued: dict[str, Any]) -> str:
     return prompt_id
 
 
-def _safe_history_get(url: str, timeout: float, prompt_id: str) -> dict[str, Any]:
+def _safe_history_get(url: str, timeout: float | None, prompt_id: str) -> dict[str, Any]:
     try:
         return _get_json(url, timeout)
     except (requests.RequestException, TimeoutError) as exc:
@@ -135,7 +142,7 @@ def _safe_history_get(url: str, timeout: float, prompt_id: str) -> dict[str, Any
         raise ComfyRequestError(f"Comfy history request failed: {prompt_id}: {exc}") from exc
 
 
-def _get_json(url: str, timeout: float) -> dict[str, Any]:
+def _get_json(url: str, timeout: float | None) -> dict[str, Any]:
     res = requests.get(url, timeout=timeout)
     res.raise_for_status()
     data = res.json()

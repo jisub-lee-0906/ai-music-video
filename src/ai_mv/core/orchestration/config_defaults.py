@@ -48,7 +48,8 @@ DEFAULT_CONFIG: dict = {
         },
     },
     "limits": {
-        "timeout_seconds": 900,
+        "timeout_seconds": 0,
+        "wan_timeout_seconds": 0,
     },
     "integrations": {
         "comfyui_base_url": "http://127.0.0.1:8188",
@@ -56,7 +57,7 @@ DEFAULT_CONFIG: dict = {
         "comfyui_output_dir": r"C:\Users\Desktop\Documents\ComfyUI\output",
         "codex_cli_path": "",
         "codex_model": "gpt-5.4-mini",
-        "codex_timeout_structured_sec": 600,
+        "codex_timeout_structured_sec": 0,
         "workflows_dir": "workflows",
     },
     "runtime": {

@@ -139,7 +139,7 @@ def _login_status(cmd: list[str]) -> str:
     return text
 
 
-def _run(args: list[str], prompt: str, timeout: int) -> None:
+def _run(args: list[str], prompt: str, timeout: int | None) -> None:
     res = subprocess.run(
         args,
         input=prompt,
@@ -188,10 +188,11 @@ def _codex_model(config: dict) -> str:
     return val or "gpt-5.4-mini"
 
 
-def _codex_timeout(config: dict) -> int:
+def _codex_timeout(config: dict) -> int | None:
     integ = config.get("integrations", {}) if isinstance(config, dict) else {}
-    raw = integ.get("codex_timeout_structured_sec", 600) if isinstance(integ, dict) else 600
+    raw = integ.get("codex_timeout_structured_sec", 0) if isinstance(integ, dict) else 0
     try:
-        return max(10, int(raw))
+        value = int(raw)
     except Exception:
-        return 600
+        return None
+    return None if value <= 0 else max(10, value)

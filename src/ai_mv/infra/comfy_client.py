@@ -16,6 +16,7 @@ def run_workflow(
     workflow_name: str,
     bindings: dict[str, Any],
     required: dict[str, list[str]] | None = None,
+    timeout_override: int | None = None,
 ) -> dict:
     validate_local_comfy_config(config)
     base = str(config["integrations"]["workflows_dir"])
@@ -25,16 +26,16 @@ def run_workflow(
         preflight_workflow(workflow, required)
     validate_node_bindings(workflow, bindings)
     patched = patch_workflow(workflow, bindings)
-    return submit(config, patched)
+    return submit(config, patched, timeout_override=timeout_override)
 
 def _load_workflow_template(path: str) -> dict[str, Any]:
     return json.loads(resolve_project_path(path).read_text(encoding="utf-8"))
 
 
-def submit(config: dict, workflow: dict[str, Any]) -> dict:
+def submit(config: dict, workflow: dict[str, Any], timeout_override: int | None = None) -> dict:
     validate_local_comfy_config(config)
     base_url = str(config["integrations"]["comfyui_base_url"])
-    timeout = resolve_timeout(config)
+    timeout = timeout_override if timeout_override is not None else resolve_timeout(config)
     return submit_workflow(base_url, workflow, timeout)
 
 
