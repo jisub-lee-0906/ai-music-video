@@ -226,10 +226,12 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Favor singable, emotionally legible lines over ornate wording. "
         "Do not pad the song with generic filler or duplicate weak phrases across sections. "
         "Outside of one intentional hook line, do not repeat a full lyric line in another block. "
-        "Choose one short hook nucleus for the chorus family only, but do not let the chorus blocks repeat the same full sentence around that nucleus. "
+        "Choose one short hook nucleus for the chorus family only, but that nucleus must be a short image fragment or phrase, not a full lyric sentence. "
         "If a hook nucleus returns, change the verb, surrounding object, or sentence ending so it feels like a variation rather than a copy. "
+        "A hook nucleus should look like a small motif such as 'blue city', 'melted light', or 'cold key', not like a whole repeated line. "
         "Do not place the chorus hook nucleus inside Intro, Verse, or Pre-Chorus blocks. "
         "The opening setup must evolve as the song moves forward: Intro, Verse 1, Pre-Chorus, and Chorus should not recycle the same full line. "
+        "Intro lines must never recur verbatim later in the song; later blocks may only transform the image into new sentences. "
         "Verse lines should add concrete images, tactile objects, visible motions, or emotional detail. "
         "Pre-chorus lines should raise anticipation and momentum. "
         "Chorus lines should deliver one memorable hook image or title-worthy phrase cleanly. "
@@ -257,6 +259,7 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
             "Do not end multiple sections with the same generic hope, journey, or tomorrow line. "
             "Useful city-pop line shapes: 指先で鍵を返す, もう戻れない数を数える, 息を止めたまま一歩だけ出る, 溶けた光の輪が街を包む. "
             "If a chorus hook returns, do not repeat the exact same sentence such as もう戻れない数を静かに数える in multiple chorus-family blocks. "
+            "Prefer tiny hook fragments such as 青い街, 溶けた光, 冷たい鍵, 雨の輪 instead of repeating a whole sentence. "
         )
     if lang == "ko":
         return common + (
@@ -701,6 +704,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
             "Chorus must feel like the first true arrival of the hook, not a copy of the Pre-Chorus. "
             "Keep one hook nucleus if needed, but the section should widen the image and make it more memorable than the setup blocks. "
             "The most memorable line of the song should appear here first, not earlier. "
+            "Do not copy any Intro line or Verse 1 line verbatim into Chorus; transform the motif into a new refrain sentence. "
             f"Existing Pre-Chorus lines to avoid copying verbatim: {pre_lines}. "
         )
     if label == "Verse 2" and verse_1:
