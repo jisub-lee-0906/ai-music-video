@@ -6,9 +6,10 @@ from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
     validate_audio_genre_description_language,
     validate_audio_lyrics_language,
+    validate_audio_lyrics_quality,
 )
 from ai_mv.core.contracts.prompt_schema import audio_outline_schema
-from ai_mv.engines.acestep_1_5_aio.policy import audio_policy
+from ai_mv.engines.acestep_1_5_aio.policy import audio_policy, preferred_songform_rows
 from ai_mv.infra.codex_cli_client import generate_structured
 from ai_mv.infra.ollama_client import generate_text as generate_ollama_text
 
@@ -47,9 +48,10 @@ def _audio_outline_prompt(plan: dict) -> str:
     bpm_clause = _target_bpm_clause(plan)
     seed_clause = f"Creative seed={int(plan.get('seed', 31))}. "
     intent_clause = _intent_clause(plan)
+    labels_clause = _outline_label_clause_qwen(plan)
     return _audio_prompt_rules(plan) + (
         f"{_target_duration_clause(plan)}"
-        f"{bpm_clause}{seed_clause}{tags_clause}{language_clause}{intent_clause}"
+        f"{bpm_clause}{seed_clause}{tags_clause}{language_clause}{intent_clause}{labels_clause}"
     )
 
 
@@ -73,6 +75,7 @@ def _audio_outline_output_contract() -> str:
         "For this planning step, do not write lyric lines yet. "
         "line_count must be the exact number of sung lyric lines wanted for that block. "
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
+        "label is the internal section header and must use the canonical English song labels only. "
     )
 
 
@@ -144,24 +147,35 @@ def _language_style_rules(plan: dict) -> str:
         return (
             "Write fluent modern Japanese lyrics. "
             "Keep phrasing natural and singable. "
+            "Keep lines easy to read at a glance. "
             "Use English sparingly and intentionally. "
-            "Every lyric line must look like valid modern Japanese text with readable kana or kanji, not broken symbols or corrupted characters. "
-            "Prefer clear memorable phrases over opaque fragments. "
-            "Prefer common modern Japanese wording with natural hiragana, katakana, and common-use kanji. "
-            "Do not invent unreadable compounds, corrupted glyph strings, or mixed-script noise. "
-            "If a line becomes visually messy, rewrite it in simpler Japanese. "
-            "Bad example: broken mixed glyph noise or unreadable symbol soup. "
-            "Good example: short, singable, emotionally clear Japanese lines that can be read at a glance. "
+            "Prefer clear city-night imagery and avoid untranslated English nouns. "
+            "Keep the canonical English section labels exactly as provided in the outline. "
         )
     if lang == "ko":
         return (
             "Write fluent modern Korean lyrics. "
-            "Keep Hangul phrasing natural and singable. "
-            "Use English only as a short intentional accent if needed. "
-            "Every lyric line must look like valid Hangul text, not broken symbols or corrupted characters. "
-            "If a line becomes visually messy, rewrite it in simpler Korean. "
+            "Keep Hangul phrasing natural, singable, and emotionally direct. "
+            "Avoid translationese and awkward English noun leakage. "
+            "Keep the canonical English section labels exactly as provided in the outline. "
+        )
+    if lang == "en":
+        return (
+            "Write fluent English lyrics with lyric-like cadence, not flat explanatory prose. "
+            "Prefer concrete urban images and emotionally legible phrasing. "
+            "Keep the canonical English section labels exactly as provided in the outline. "
         )
     return ""
+
+
+def _outline_label_clause_qwen(plan: dict) -> str:
+    rows = preferred_songform_rows()
+    pairs = [f"{row['section']}=>{str(row['label']).strip()}" for row in rows]
+    return (
+        "Use these exact canonical English labels when those sections are present: "
+        + ", ".join(pairs)
+        + ". Do not invent alternative labels and do not translate the labels. "
+    )
 
 
 def _audio_lyrics_prompt(plan: dict, outline: dict) -> str:
@@ -169,6 +183,8 @@ def _audio_lyrics_prompt(plan: dict, outline: dict) -> str:
     intent_clause = _intent_clause(plan)
     outline_text = _outline_text(outline)
     output_template = _outline_fill_template(outline)
+    line_contract = _outline_line_contract(outline)
+    chorus_contract = _chorus_rewrite_contract(outline)
     allowed_headers = " | ".join(
         f"[{str(block.get('label', '')).strip()}]"
         for block in outline.get("lyrics_blocks", [])
@@ -176,9 +192,11 @@ def _audio_lyrics_prompt(plan: dict, outline: dict) -> str:
     )
     return (
         _audio_lyrics_output_contract()
-        + _audio_lyrics_rules(plan)
+        + _audio_lyrics_rules_qwen(plan)
         + f"{language_clause}{intent_clause}"
         + f"Locked outline:\n{outline_text}\n"
+        + line_contract
+        + chorus_contract
         + f"Output skeleton:\n{output_template}\n"
         + (f"Allowed headers only: {allowed_headers}. " if allowed_headers else "")
         +
@@ -188,6 +206,7 @@ def _audio_lyrics_prompt(plan: dict, outline: dict) -> str:
         "Do not copy placeholder tokens such as <line 1> into the final answer. "
         "Keep the block order exactly the same as the outline. "
         "Copy each header verbatim from the locked outline. Do not invent or rename headers. "
+        "Do not translate headers even when the lyric body is Japanese or Korean. "
         "Do not add commentary, numbering, bullets, code fences, or prose outside the lyrics. "
     )
 
@@ -199,73 +218,77 @@ def _audio_lyrics_output_contract() -> str:
     )
 
 
-def _audio_lyrics_rules(plan: dict) -> str:
+def _audio_lyrics_rules_qwen(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
     common = (
         "Every lyric line must be valid readable text in the requested language, not mojibake, not corrupted Unicode, and not random symbol noise. "
-        "If you cannot produce a strong line, choose simpler clear words in the requested language instead of broken text. "
-        "Favor singable, emotionally legible, hook-friendly lines over ornate wording. "
-        "Do not pad the song with generic filler lines that repeat the same weak idea. "
-        "Avoid overusing patterns like 'light sways', 'night continues', 'voice is heard', or other empty stock phrases in multiple blocks. "
-        "Verse lines should introduce concrete images, motions, or emotional details instead of repeating one vague image. "
-        "Only the chorus may deliberately reuse a hook line, and even then keep the rest of the chorus lines fresh. "
-        "Do not let Verse 2 recycle Verse 1 wording unless a hook is intentionally echoed. "
-        "Make the final chorus feel more resolved or more intense than Chorus 1. "
-        "Section roles must differ: intro sets the scene, verses add detail, pre-chorus raises anticipation, chorus delivers the hook, bridge reframes or opens the meaning, outro leaves one last image. "
-        "Do not make every section say the same thing with minor wording changes. "
+        "Keep the exact section skeleton, exact line count, and exact header text. "
+        "Favor singable, emotionally legible lines over ornate wording. "
+        "Do not pad the song with generic filler or duplicate weak phrases across sections. "
+        "Outside of one intentional hook line, do not repeat a full lyric line in another block. "
+        "Verse lines should add concrete images, tactile objects, visible motions, or emotional detail. "
+        "Pre-chorus lines should raise anticipation and momentum. "
+        "Chorus lines should deliver one memorable hook image or title-worthy phrase cleanly. "
+        "Bridge lines should reframe the song with a wider system, memory, or emotional shift. "
+        "Chorus 2 must keep the same emotional center as Chorus but change at least four full lines. "
+        "Final Chorus must keep at most two reused lines from Chorus and rewrite the rest as the clearest payoff, warmest vow, or widest city-night resolution. "
+        "Chorus 2 and Final Chorus should each introduce fresh nouns, verbs, or images instead of just paraphrasing the first chorus. "
+        "Bad pattern: repeating the same weak stock phrase across Verse, Chorus, and Final Chorus. "
+        "Good pattern: each section keeps one city-night motif but changes the angle, object, gesture, or emotional meaning. "
     )
     if lang == "ja":
         return common + (
             "Write fluent modern Japanese lyric lines only. "
             "Use natural hiragana, katakana, and common-use kanji. "
-            "Do not invent unreadable compounds, mixed-script gibberish, or corrupted glyph strings. "
-            "If a line becomes visually messy, rewrite it in simpler Japanese immediately. "
-            "Write polished city-pop lyrics with adult tone, urban imagery, and memorable but readable diction. "
-            "Prefer distinct concrete images such as train glass, ticket gate, wet curb, timetable glow, vending light, or reflected neon over abstract repetition. "
-            "Bad pattern: many lines ending with the same weak verb like 続く or 揺れる without new meaning. "
-            "Good pattern: each line adds one new image, gesture, or emotional shift while staying singable. "
-            "Bad pattern: repeated lines like 光が揺れる, 夜が続く, 足音が響く across multiple sections without a new twist. "
-            "Good pattern: each section keeps one city-night motif but changes the angle, object, gesture, or emotional meaning. "
-            "Pre-chorus lines should feel like momentum and anticipation, not static description. "
-            "Bridge lines should reveal a larger system, memory, or emotional turn rather than repeating the chorus hook. "
-            "Final Chorus may reuse one hook line, but at least half of its lines should expand or intensify the image set. "
-            "Do not use awkward katakana transliterations for simple words when normal Japanese wording exists. "
-            "Avoid strange spellings like ポッケット; use natural Japanese such as ポケット. "
-            "Do not leave English words like curb in the lyrics; express them naturally in Japanese such as 縁石 or curb-like wording in Japanese. "
-            "Chorus 2 and Final Chorus must not be exact copies of Chorus 1. "
-            "At least four lines in Final Chorus should be newly written or clearly intensified relative to Chorus 1. "
+            "Do not leave any Latin alphabet words, romanized spellings, or English production terms in the final Japanese lyrics. "
+            "Rewrite words like timetable, curb, platform, gate, or pocket into natural Japanese. "
+            "Prefer polished adult city-pop diction with concrete images such as train glass, ticket gate, wet curb, vending glow, reflected neon, station clock, and apartment windows. "
+            "Bad pattern: 光が揺れる, 夜が続く, 足音が響く repeated across multiple sections. "
+            "Also avoid fallback lines like 鼓動が早くなる, もうすぐそこにある, このまま進んでいこう, 明日はまた新しい朝が来る unless a section absolutely demands that exact phrase once. "
+            "Good pattern: 改札のガラスに青い街が流れる, 濡れた歩道へネオンが折り返す, 時計台の針だけが先に夜を越える. "
+            "Avoid awkward katakana transliterations when natural Japanese wording exists. "
+            "A good chorus should feel instantly singable and memorable on first listen, not like plain scene description. "
+            "Keep the narrator intimate and elegant; avoid generic group-pop diction such as 僕ら unless the outline clearly demands a collective voice. "
         )
     if lang == "ko":
         return common + (
             "Write fluent modern Korean lyric lines only. "
-            "Use natural Hangul phrasing and keep lines easy to sing. "
-            "If a line becomes visually messy, rewrite it in simpler Korean immediately. "
-            "Prefer distinct concrete urban images and avoid repeating the same weak ending or stock phrase across many lines. "
+            "Use natural Hangul phrasing, natural particles, and singable endings. "
+            "Avoid translationese, stiff written-language endings, and unnecessary English words. "
+            "Prefer polished urban-pop diction with concrete images such as train window, ticket gate, wet curb, vending light, reflected neon, station clock, and apartment windows. "
+            "Bad pattern: 빛이 흔들려, 밤이 계속돼, 발소리만 울려 repeated across many sections. "
+            "Good pattern: 젖은 보도 위로 전광판 불빛이 접히고, 개찰구 유리에 늦은 숨이 닿고, 시계탑 그림자가 먼저 새벽으로 넘어간다. "
+            "Keep the voice intimate, authored, and easy to sing. "
+            "A good chorus should sound like a real hook someone would remember after one listen. "
+            "Avoid idol-group filler diction like 우리를 반복해서 밀어 넣기보다, 장면을 살리는 1인칭 혹은 장면 중심 시선으로 써라. "
         )
-    return common + "Write fluent lyric lines only in the requested language. "
+    return common + (
+        "Write fluent English lyric lines only. "
+        "Use lyric-like cadence, not flat explanatory prose. "
+        "Prefer concrete city-night images, clear verbs, and memorable hook phrasing. "
+        "Bad pattern: the light keeps moving, the night goes on, footsteps echo repeated across many sections. "
+        "Good pattern: station glass catches the blue, wet pavement folds the neon back, a ticket warms inside my hand. "
+        "Avoid overly literal scene description and avoid generic filler choruses. "
+    )
 
 
 def _audio_lyrics_system_prompt(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
-    lang_name = {"ja": "Japanese", "ko": "Korean"}.get(lang, "the requested language")
+    lang_name = {"ja": "Japanese", "ko": "Korean", "en": "English"}.get(lang, "the requested language")
     return (
         "You are a precise lyric block writer. "
         "Follow the supplied block order and exact line counts without deviation. "
         "Return only the requested block headers and lyric lines. "
-        "Do not add explanations, apologies, bullets, numbering, code fences, markdown, or notes. "
-        "Do not omit blocks. Do not add extra lines. "
-        "Header text must match the locked outline exactly. "
+        "Do not add explanations, bullets, numbering, code fences, markdown, or notes. "
+        "Do not omit blocks. Do not add extra lines. Header text must match the locked outline exactly. "
+        "Headers stay in canonical English exactly as provided. Never translate a header. "
         "Count the required lyric lines silently before answering. "
         "Never output placeholder markers like <line 1>; replace them with real lyric lines. "
         f"Write every lyric line in natural {lang_name}. "
-        "Keep exact hook reuse limited to chorus sections. "
-        "Avoid generic filler, repetitive weak verbs, and near-duplicate lines across the song. "
-        "Prefer one clear image or emotional move per line. "
         "Make section functions clearly different from each other. "
         "If two lines feel too similar, rewrite the later line with a new image or action. "
-        "For Japanese output, prefer natural contemporary Japanese wording over awkward loanword spellings. "
         "Do not copy Chorus 1 into Chorus 2 or Final Chorus verbatim. "
-        "If a line is weak, simplify it instead of adding commentary. "
+        "Chorus 2 must feel like a lift. Final Chorus must feel like the emotional and lyrical culmination of the song. "
     )
 
 
@@ -294,6 +317,42 @@ def _outline_fill_template(outline: dict) -> str:
             rows.append(f"<line {idx}>")
         rows.append("")
     return "\n".join(rows).strip()
+
+
+def _outline_line_contract(outline: dict) -> str:
+    specs: list[str] = []
+    for block in outline.get("lyrics_blocks", []):
+        if not isinstance(block, dict):
+            continue
+        label = str(block.get("label", "")).strip()
+        if not label:
+            continue
+        specs.append(f"[{label}]={int(block.get('line_count', 1))} lines")
+    if not specs:
+        return ""
+    return "Exact line count contract: " + ", ".join(specs) + ". "
+
+
+def _chorus_rewrite_contract(outline: dict) -> str:
+    labels = [
+        str(block.get("label", "")).strip()
+        for block in outline.get("lyrics_blocks", [])
+        if isinstance(block, dict)
+    ]
+    rules: list[str] = []
+    if "Chorus" in labels and "Chorus 2" in labels:
+        rules.append(
+            "Chorus 2 must keep the emotional center of Chorus but change at least four full lyric lines so it reads like a lift, not a copy. "
+        )
+    if "Chorus" in labels and "Final Chorus" in labels:
+        rules.append(
+            "Final Chorus must not be a copy of Chorus. Keep at most two reused lines from Chorus and rewrite the rest as the clearest emotional payoff. "
+        )
+    if rules:
+        rules.append(
+            "If you accidentally repeat too much, rewrite Chorus 2 and Final Chorus before finishing. "
+        )
+    return "".join(rules)
 
 
 def _audio_tags(audio: dict) -> str:
@@ -363,6 +422,7 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized = normalize_audio_fields(planned)
     validate_audio_genre_description_language(normalized["genre_description"])
     validate_audio_lyrics_language(normalized["lyrics"], str(plan.get("language", "")).strip())
+    validate_audio_lyrics_quality(normalized["lyrics_blocks"], str(plan.get("language", "")).strip())
     _validate_ending_contract(plan, normalized)
     normalized["lyrics_blocks"] = _attach_line_indexes(normalized.get("lyrics_blocks", []))
     normalized["duration"] = _resolved_duration(plan, normalized)
@@ -381,33 +441,31 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
 
 def _plan_outline_with_llm(config: dict, plan: dict) -> dict:
     prompt = _audio_outline_prompt(plan)
-    outline = generate_structured(config, prompt, audio_outline_schema())
-    return _normalize_audio_outline(outline)
-
-
-def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
-    prompt = _audio_lyrics_prompt(plan, outline)
     last_exc: Exception | None = None
     attempt_prompt = prompt
     for _ in range(3):
-        filled = generate_ollama_text(
-            config,
-            attempt_prompt,
-            system=_audio_lyrics_system_prompt(plan),
-            options={"temperature": 0.1, "top_p": 0.8},
-        )
+        outline = generate_structured(config, attempt_prompt, audio_outline_schema())
+        normalized = _normalize_audio_outline(outline)
         try:
-            return _merge_audio_outline_and_lyrics(outline, _parse_audio_lyrics_text(outline, filled))
+            _validate_outline_labels(plan, normalized)
+            return normalized
         except RuntimeError as exc:
             last_exc = exc
             attempt_prompt = (
                 prompt
-                + f"\nCorrection note: your previous answer failed validation with this exact error: {exc}. "
-                + "Rewrite the entire lyrics output from scratch and satisfy every header and exact line count."
+                + f" Correction note: your previous outline failed validation with this exact error: {exc}. "
+                + "Rewrite the entire outline from scratch and use only valid section labels."
             )
     if last_exc is not None:
         raise last_exc
-    raise RuntimeError("audio lyrics fill failed without a captured error")
+    raise RuntimeError("audio outline generation failed without a captured error")
+
+
+def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
+    completed: list[dict] = []
+    for block in outline.get("lyrics_blocks", []):
+        completed.append(_generate_lyrics_block(config, plan, outline, completed, dict(block)))
+    return _merge_audio_outline_and_lyrics(outline, {"lyrics_blocks": completed})
 
 
 def _normalize_audio_outline(raw: dict) -> dict:
@@ -431,6 +489,16 @@ def _normalize_audio_outline(raw: dict) -> dict:
         "duration": int(raw.get("duration", 0)),
         "lyrics_blocks": blocks,
     }
+
+
+def _validate_outline_labels(plan: dict, outline: dict) -> None:
+    allowed = {str(row["label"]).strip() for row in preferred_songform_rows()}
+    for block in outline.get("lyrics_blocks", []):
+        if not isinstance(block, dict):
+            continue
+        label = str(block.get("label", "")).strip()
+        if label and label not in allowed:
+            raise RuntimeError(f"invalid section label: {label}")
 
 
 def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:
@@ -497,6 +565,153 @@ def _parse_audio_lyrics_text(outline: dict, text: str) -> dict:
     if idx < len(lines):
         raise RuntimeError("audio lyrics fill produced extra trailing content")
     return {"lyrics_blocks": parsed}
+
+
+def _generate_lyrics_block(config: dict, plan: dict, outline: dict, completed: list[dict], block: dict) -> dict:
+    prompt = _audio_lyrics_block_prompt(plan, outline, completed, block)
+    last_exc: Exception | None = None
+    attempt_prompt = prompt
+    for _ in range(4):
+        filled = ""
+        filled = generate_ollama_text(
+            config,
+            attempt_prompt,
+            system=_audio_lyrics_block_system_prompt(plan, block),
+            options=_lyrics_generation_options(config, plan, block),
+        )
+        try:
+            lines = _parse_audio_lyrics_block_lines(block, filled)
+            candidate = {
+                "section": str(block.get("section", "")).strip(),
+                "label": str(block.get("label", "")).strip(),
+                "style": str(block.get("style", "")).strip(),
+                "lines": lines,
+            }
+            _validate_generated_block(plan, completed, candidate)
+            return candidate
+        except RuntimeError as exc:
+            last_exc = exc
+            previous_attempt = "\n".join(line.strip() for line in str(filled).splitlines() if line.strip())
+            attempt_prompt = (
+                prompt
+                + f"\nCorrection note: your previous answer failed validation with this exact error: {exc}. "
+                + (f"\nPrevious invalid attempt:\n{previous_attempt}\n" if previous_attempt else "")
+                + f"Rewrite only the body lines for [{str(block.get('label', '')).strip()}] and output exactly {int(block.get('line_count', 1))} lines."
+            )
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("audio lyrics block fill failed without a captured error")
+
+
+def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict], block: dict) -> str:
+    chorus_contract = _chorus_rewrite_contract(outline)
+    label = str(block.get("label", "")).strip()
+    line_count = int(block.get("line_count", 1))
+    block_constraints = _current_block_constraints(completed, block)
+    return (
+        _audio_lyrics_rules_qwen(plan)
+        + f"{_language_clause(plan)}{_intent_clause(plan)}"
+        + f"Current block=[{label}] section={str(block.get('section', '')).strip()} style={str(block.get('style', '')).strip()} line_count={line_count}. "
+        + chorus_contract
+        + block_constraints
+        + "Write only the lyric body for the current block. "
+        + "Do not output the header. Do not output numbering, bullets, explanations, or blank filler lines. "
+        + f"Output exactly {line_count} finished lyric lines, one per line. "
+        + "Do not copy earlier blocks verbatim. Keep narrative continuity through shared world and emotion, not through recycled lines. "
+    )
+
+
+def _audio_lyrics_block_system_prompt(plan: dict, block: dict) -> str:
+    lang = str(plan.get("language", "")).strip().lower()
+    lang_name = {"ja": "Japanese", "ko": "Korean", "en": "English"}.get(lang, "the requested language")
+    label = str(block.get("label", "")).strip()
+    line_count = int(block.get("line_count", 1))
+    return (
+        f"Write only the {line_count} lyric lines for [{label}]. "
+        f"Write every line in natural {lang_name}. "
+        "Do not output the section header. Do not output any prose outside the lyric lines. "
+        "Keep each line concise, singable, image-rich, and easy to remember on first listen. "
+        "Avoid writing two lines that say the same thing with only tiny wording changes. "
+        "Do not merge two lines into one. Do not exceed the requested line count. "
+    )
+
+
+def _parse_audio_lyrics_block_lines(block: dict, text: str) -> list[str]:
+    lines = [line.strip() for line in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    out = [line for line in lines if line]
+    if any(line.startswith("[") and line.endswith("]") for line in out):
+        raise RuntimeError("audio lyrics block output contained a forbidden header")
+    expected = int(block.get("line_count", 1))
+    if len(out) != expected:
+        raise RuntimeError(f"audio lyrics fill line count mismatch under [{str(block.get('label', '')).strip()}]")
+    return out
+
+
+def _current_block_constraints(completed: list[dict], block: dict) -> str:
+    label = str(block.get("label", "")).strip()
+    chorus = next((row for row in completed if str(row.get("label", "")).strip() == "Chorus"), None)
+    role_rules = {
+        "Intro": "Intro should set the scene with one or two clean city-night images and no chorus-style payoff. ",
+        "Verse 1": "Verse 1 should establish concrete city details, tactile objects, visible gestures, and motion. ",
+        "Pre-Chorus": "Pre-Chorus should raise anticipation and momentum without repeating the coming hook. ",
+        "Chorus": "Chorus should establish the central hook image in its clearest, most memorable, and most singable form. ",
+        "Verse 2": "Verse 2 should stay in the same world but use different objects, gestures, or observations from Verse 1 and feel slightly closer to the heart. ",
+        "Pre-Chorus 2": "Pre-Chorus 2 should feel like a lift from the first pre-chorus, not a copy. ",
+        "Bridge": "Bridge should reframe the song with a new perspective, memory, or wider city/system image. ",
+        "Final Chorus": "Final Chorus should sound like the emotional answer, clearest payoff, and most satisfying final resolution of the song. ",
+        "Outro": "Outro should leave one last residue image and avoid restating the full chorus. ",
+    }
+    base = role_rules.get(label, "")
+    if label == "Chorus 2" and chorus:
+        chorus_lines = "; ".join(str(line).strip() for line in chorus.get("lines", []) if str(line).strip())
+        return base + (
+            "Chorus 2 must keep the same emotional center as Chorus but must not copy any Chorus line verbatim. "
+            "Use a new angle, new verbs, or wider city details while preserving the hook feeling and making the section feel more lifted than Chorus. "
+            "At least half of the lines should contain nouns or images that did not appear in Chorus 1. "
+            "Do not fall back to generic uplift lines; keep the section specific to this song's city objects and gestures. "
+            f"Forbidden verbatim Chorus lines: {chorus_lines}. "
+        )
+    if label == "Final Chorus" and chorus:
+        chorus_lines = "; ".join(str(line).strip() for line in chorus.get("lines", []) if str(line).strip())
+        return base + (
+            "Final Chorus must feel like the clearest payoff. "
+            "Reuse at most two short hook lines from Chorus and rewrite all other lines with stronger closure, warmer commitment, or wider imagery. "
+            "It should feel larger than Chorus 1 not by saying the same thing louder, but by resolving the city image, relationship, or promise more completely. "
+            "Do not end in generic hope or generic forward-motion slogans; land on this song's own images. "
+            f"Existing Chorus lines to avoid copying verbatim: {chorus_lines}. "
+        )
+    return base
+
+
+def _validate_generated_block(plan: dict, completed: list[dict], block: dict) -> None:
+    label = str(block.get("label", "")).strip()
+    chorus = next((row for row in completed if str(row.get("label", "")).strip() == "Chorus"), None)
+    lang = str(plan.get("language", "")).strip().lower()
+    if not chorus:
+        return
+    shared = _shared_lyric_line_count(chorus, block)
+    if label == "Chorus 2":
+        limit = max(0, len(chorus.get("lines", [])) - 4)
+        if lang == "en":
+            limit = max(limit, len(chorus.get("lines", [])) // 2 + 1)
+        if shared > limit:
+            raise RuntimeError("audio lyrics quality mismatch: Chorus 2 repeats Chorus too closely")
+    if label == "Final Chorus":
+        limit = max(2, len(chorus.get("lines", [])) // 2)
+        if lang == "en":
+            limit = max(limit, len(chorus.get("lines", [])) - 2)
+        if shared > limit:
+            raise RuntimeError("audio lyrics quality mismatch: Final Chorus repeats Chorus too closely")
+
+
+def _shared_lyric_line_count(left: dict, right: dict) -> int:
+    a = {_normalize_lyric_line(line) for line in left.get("lines", []) if str(line).strip()}
+    b = {_normalize_lyric_line(line) for line in right.get("lines", []) if str(line).strip()}
+    return len(a & b)
+
+
+def _normalize_lyric_line(text: object) -> str:
+    return " ".join(str(text).strip().lower().split())
 
 
 def _attach_line_indexes(blocks: list[dict]) -> list[dict]:
@@ -589,3 +804,22 @@ def _validate_ending_contract(plan: dict, normalized: dict) -> None:
         max_lines = {"tail_only": 1, "low": 2, "medium": 4}.get(density)
         if max_lines is not None and line_count > max_lines:
             raise RuntimeError(f"audio ending contract failed: outro too long for ending_vocal_density={density}")
+
+
+def _lyrics_generation_options(config: dict, plan: dict, block: dict | None = None) -> dict:
+    integrations = config.get("integrations", {}) if isinstance(config, dict) else {}
+    raw = integrations.get("ollama_lyrics_options", {}) if isinstance(integrations, dict) else {}
+    options = dict(raw) if isinstance(raw, dict) else {}
+    lang = str(plan.get("language", "")).strip().lower()
+    label = str(block.get("label", "")).strip() if isinstance(block, dict) else ""
+    if not options:
+        options = {"temperature": 0.2, "top_p": 0.85, "repeat_penalty": 1.15}
+    if lang in {"ja", "ko"}:
+        options["temperature"] = min(float(options.get("temperature", 0.2)), 0.1)
+        options["top_p"] = min(float(options.get("top_p", 0.85)), 0.8)
+        options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.18)
+    if label in {"Pre-Chorus 2", "Chorus 2", "Final Chorus"}:
+        options["temperature"] = max(float(options.get("temperature", 0.2)), 0.28)
+        options["top_p"] = max(float(options.get("top_p", 0.85)), 0.92)
+        options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.24)
+    return options

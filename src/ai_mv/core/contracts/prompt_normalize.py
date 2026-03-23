@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import string
 
 from ai_mv.core.contracts.prompt_schema import (
@@ -68,6 +69,20 @@ def validate_audio_lyrics_language(lyrics: str, language: str) -> None:
         raise RuntimeError("audio lyrics language mismatch: expected ko-dominant lyrics")
     if lang == "en" and counts["latin"] < max(8, int((counts["jp"] + counts["ko"]) * 1.5)):
         raise RuntimeError("audio lyrics language mismatch: expected en-dominant lyrics")
+
+
+def validate_audio_lyrics_quality(blocks: list[dict], language: str) -> None:
+    rows = [row for row in blocks if isinstance(row, dict)]
+    if not rows:
+        raise RuntimeError("audio lyrics blocks missing")
+    lang = str(language).strip().lower()
+    lines = _lyrics_body_lines(rows)
+    if not lines:
+        raise RuntimeError("audio lyrics body empty")
+    for line in lines:
+        _validate_line_language(line, lang)
+    _validate_duplicate_lines(rows)
+    _validate_chorus_growth(rows, lang)
 
 
 def validate_audio_genre_description_language(text: str) -> None:
@@ -462,6 +477,85 @@ def _script_counts(text: str) -> dict[str, int]:
         if _is_korean(code):
             counts["ko"] += 1
     return counts
+
+
+def _lyrics_body_lines(blocks: list[dict]) -> list[str]:
+    out: list[str] = []
+    for row in blocks:
+        for line in row.get("lines", []):
+            text = str(line).strip()
+            if text:
+                out.append(text)
+    return out
+
+
+def _validate_line_language(line: str, language: str) -> None:
+    counts = _script_counts(line)
+    latin_words = _latin_words(line)
+    if language == "ja":
+        if counts["jp"] < 2:
+            raise RuntimeError("audio lyrics quality mismatch: expected readable Japanese lines")
+        if len(latin_words) > 0:
+            raise RuntimeError("audio lyrics quality mismatch: Japanese lyrics leaked English words")
+    elif language == "ko":
+        if counts["ko"] < 2:
+            raise RuntimeError("audio lyrics quality mismatch: expected readable Korean lines")
+        if len(latin_words) > 0:
+            raise RuntimeError("audio lyrics quality mismatch: Korean lyrics leaked English words")
+    elif language == "en":
+        if counts["latin"] < max(4, counts["jp"] + counts["ko"]):
+            raise RuntimeError("audio lyrics quality mismatch: expected readable English lines")
+
+
+def _validate_duplicate_lines(blocks: list[dict]) -> None:
+    filtered: list[str] = []
+    for row in blocks:
+        label = str(row.get("label", "")).strip().lower()
+        if label in {"chorus", "chorus 2", "final chorus"}:
+            continue
+        for line in row.get("lines", []):
+            text = str(line).strip()
+            if text:
+                filtered.append(text)
+    all_lines = filtered
+    if not all_lines:
+        return
+    normalized = [re.sub(r"\s+", " ", line).strip().lower() for line in all_lines]
+    counts: dict[str, int] = {}
+    for line in normalized:
+        counts[line] = counts.get(line, 0) + 1
+    repeated = [line for line, count in counts.items() if count >= 4]
+    if repeated:
+        raise RuntimeError("audio lyrics quality mismatch: too many repeated lines")
+
+
+def _validate_chorus_growth(blocks: list[dict], language: str) -> None:
+    by_label = {str(row.get("label", "")).strip(): row for row in blocks}
+    chorus = by_label.get("Chorus")
+    chorus2 = by_label.get("Chorus 2")
+    final_chorus = by_label.get("Final Chorus")
+    if chorus and chorus2:
+        chorus2_limit = max(0, len(chorus.get("lines", [])) - 4)
+        if language == "en":
+            chorus2_limit = max(chorus2_limit, len(chorus.get("lines", [])) // 2 + 1)
+        if _shared_line_count(chorus, chorus2) > chorus2_limit:
+            raise RuntimeError("audio lyrics quality mismatch: Chorus 2 repeats Chorus too closely")
+    if chorus and final_chorus:
+        final_limit = max(2, len(chorus.get("lines", [])) // 2)
+        if language == "en":
+            final_limit = max(final_limit, len(chorus.get("lines", [])) - 2)
+        if _shared_line_count(chorus, final_chorus) > final_limit:
+            raise RuntimeError("audio lyrics quality mismatch: Final Chorus repeats Chorus too closely")
+
+
+def _shared_line_count(left: dict, right: dict) -> int:
+    a = {re.sub(r"\s+", " ", str(line).strip()).lower() for line in left.get("lines", []) if str(line).strip()}
+    b = {re.sub(r"\s+", " ", str(line).strip()).lower() for line in right.get("lines", []) if str(line).strip()}
+    return len(a & b)
+
+
+def _latin_words(text: str) -> list[str]:
+    return re.findall(r"[A-Za-z]{2,}", str(text))
 
 
 def _is_japanese(code: int) -> bool:

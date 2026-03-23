@@ -59,7 +59,12 @@ DEFAULT_CONFIG: dict = {
         "codex_model": "gpt-5.4-mini",
         "codex_timeout_structured_sec": 0,
         "ollama_base_url": "http://127.0.0.1:11434",
-        "ollama_lyrics_model": "qwen3:latest",
+        "ollama_lyrics_model": "qwen3.5:latest",
+        "ollama_lyrics_options": {
+            "temperature": 0.2,
+            "top_p": 0.85,
+            "repeat_penalty": 1.15,
+        },
         "workflows_dir": "workflows",
     },
     "runtime": {

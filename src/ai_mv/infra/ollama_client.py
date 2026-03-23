@@ -20,6 +20,8 @@ def generate_text(config: dict, prompt: str, *, system: str = "", options: dict[
         "prompt": prompt,
         "stream": False,
     }
+    if model.startswith("qwen3.5:") or model.startswith("qwen35:"):
+        payload["think"] = False
     if system.strip():
         payload["system"] = system.strip()
     if isinstance(options, dict) and options:
