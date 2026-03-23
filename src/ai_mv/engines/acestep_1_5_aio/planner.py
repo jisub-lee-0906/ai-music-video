@@ -84,6 +84,7 @@ def _audio_song_craft_brief(plan: dict) -> str:
     rules = [
         "Write a full song, not a fragment. "
         "Prefer a commercially strong but artistically polished form, not a mechanical template. "
+        "Build the song around one dominant late-night city image and at most one or two supporting objects, instead of rotating through a long list of unrelated props. "
         "Do not make Verse 2 feel like a copy-paste replay of Verse 1. "
         "Let Verse 2 act like a lifted verse: keep the structure readable but raise the detail, melodic tension, lyrical angle, or arrangement energy slightly. "
         "If you use a post-chorus, give it a real afterglow or rhythmic release function; do not insert one automatically if the chorus already resolves cleanly. "
@@ -225,6 +226,8 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Every lyric line must be valid readable text in the requested language, not mojibake, not corrupted Unicode, and not random symbol noise. "
         "Keep the exact section skeleton, exact line count, and exact header text. "
         "Favor singable, emotionally legible lines over ornate wording. "
+        "Choose one dominant song image for the chorus family and one or two supporting setup images for the verses. "
+        "Do not keep introducing brand-new unrelated objects every section; deepen the same small image system instead. "
         "Do not pad the song with generic filler or duplicate weak phrases across sections. "
         "Outside of one intentional hook line, do not repeat a full lyric line in another block. "
         "Choose one short hook nucleus for the chorus family only, but that nucleus must be a short image fragment or phrase, not a full lyric sentence. "

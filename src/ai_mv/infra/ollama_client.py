@@ -40,6 +40,7 @@ def generate_text(config: dict, prompt: str, *, system: str = "", options: dict[
         "model": model,
         "prompt": prompt,
         "stream": False,
+        "keep_alive": "0s",
     }
     if model.startswith("qwen3.5:") or model.startswith("qwen35:"):
         payload["think"] = False
