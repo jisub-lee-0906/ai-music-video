@@ -220,6 +220,7 @@ def _audio_lyrics_output_contract() -> str:
 
 def _audio_lyrics_rules_qwen(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
+    retry_clause = _audio_retry_clause(plan)
     common = (
         "Every lyric line must be valid readable text in the requested language, not mojibake, not corrupted Unicode, and not random symbol noise. "
         "Keep the exact section skeleton, exact line count, and exact header text. "
@@ -241,6 +242,7 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Chorus 2 and Final Chorus should each introduce fresh nouns, verbs, or images instead of just paraphrasing the first chorus. "
         "Bad pattern: repeating the same weak stock phrase across Verse, Chorus, and Final Chorus. "
         "Good pattern: each section keeps one city-night motif but changes the angle, object, gesture, or emotional meaning. "
+        f"{retry_clause}"
     )
     if lang == "ja":
         return common + (
@@ -425,8 +427,21 @@ def _profile_line(label: str, text: object) -> str:
 
 
 def _plan_once(config: dict, plan: dict) -> dict:
-    normalized = _normalize_and_validate(config, plan)
-    return normalized
+    last_exc: Exception | None = None
+    for attempt in range(4):
+        attempt_plan = dict(plan)
+        attempt_plan["audio_retry_attempt"] = attempt
+        if last_exc is not None:
+            attempt_plan["audio_retry_feedback"] = str(last_exc)
+        try:
+            normalized = _normalize_and_validate(config, attempt_plan)
+            return normalized
+        except RuntimeError as exc:
+            last_exc = exc
+            continue
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("audio planning failed without a captured error")
 
 
 def _normalize_and_validate(config: dict, plan: dict) -> dict:
@@ -889,6 +904,7 @@ def _lyrics_generation_options(config: dict, plan: dict, block: dict | None = No
     options = dict(raw) if isinstance(raw, dict) else {}
     lang = str(plan.get("language", "")).strip().lower()
     label = str(block.get("label", "")).strip() if isinstance(block, dict) else ""
+    retry_attempt = int(plan.get("audio_retry_attempt", 0) or 0)
     if not options:
         options = {"temperature": 0.2, "top_p": 0.85, "repeat_penalty": 1.15}
     if lang in {"ja", "ko"}:
@@ -899,4 +915,22 @@ def _lyrics_generation_options(config: dict, plan: dict, block: dict | None = No
         options["temperature"] = max(float(options.get("temperature", 0.2)), 0.28)
         options["top_p"] = max(float(options.get("top_p", 0.85)), 0.92)
         options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.24)
+    if retry_attempt > 0:
+        options["temperature"] = min(0.45, float(options.get("temperature", 0.2)) + 0.05 * retry_attempt)
+        options["top_p"] = min(0.97, float(options.get("top_p", 0.85)) + 0.03 * retry_attempt)
+        options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.24 + 0.03 * retry_attempt)
     return options
+
+
+def _audio_retry_clause(plan: dict) -> str:
+    attempt = int(plan.get("audio_retry_attempt", 0) or 0)
+    feedback = str(plan.get("audio_retry_feedback", "")).strip()
+    if attempt <= 0:
+        return ""
+    clause = (
+        f"This is rewrite attempt {attempt + 1}. "
+        "Regenerate the song from scratch with fresher section wording, less reuse, and clearer separation between setup blocks and chorus-family blocks. "
+    )
+    if feedback:
+        clause += f"Previous attempt failed with this exact issue: {feedback}. "
+    return clause
