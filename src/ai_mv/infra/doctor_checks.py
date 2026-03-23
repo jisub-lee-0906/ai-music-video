@@ -6,11 +6,13 @@ from pathlib import Path
 from ai_mv.core.contracts.errors import PipelineError
 from ai_mv.core.workflow_names import WORKFLOW_FILES
 from ai_mv.infra.comfy_local import validate_local_comfy_config
+from ai_mv.infra.ollama_client import assert_ollama_ready
 from ai_mv.utils.path_utils import resolve_project_path
 
 
 def assert_runtime_ready(config: dict) -> None:
     validate_local_comfy_config(config)
+    _assert_ollama(config)
     _assert_ff_tools()
     _assert_workflow_templates(config)
 
@@ -33,3 +35,10 @@ def _assert_workflow_templates(config: dict) -> None:
 def _assert_workflow_file(path: Path) -> None:
     if not path.exists() or not path.is_file():
         raise PipelineError(f"missing workflow template: {path.as_posix()}")
+
+
+def _assert_ollama(config: dict) -> None:
+    try:
+        assert_ollama_ready(config)
+    except RuntimeError as exc:
+        raise PipelineError(str(exc)) from exc
