@@ -226,6 +226,10 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Favor singable, emotionally legible lines over ornate wording. "
         "Do not pad the song with generic filler or duplicate weak phrases across sections. "
         "Outside of one intentional hook line, do not repeat a full lyric line in another block. "
+        "Choose one short hook nucleus for the chorus family only, but do not let the chorus blocks repeat the same full sentence around that nucleus. "
+        "If a hook nucleus returns, change the verb, surrounding object, or sentence ending so it feels like a variation rather than a copy. "
+        "Do not place the chorus hook nucleus inside Intro, Verse, or Pre-Chorus blocks. "
+        "The opening setup must evolve as the song moves forward: Intro, Verse 1, Pre-Chorus, and Chorus should not recycle the same full line. "
         "Verse lines should add concrete images, tactile objects, visible motions, or emotional detail. "
         "Pre-chorus lines should raise anticipation and momentum. "
         "Chorus lines should deliver one memorable hook image or title-worthy phrase cleanly. "
@@ -249,6 +253,10 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
             "Avoid awkward katakana transliterations when natural Japanese wording exists. "
             "A good chorus should feel instantly singable and memorable on first listen, not like plain scene description. "
             "Keep the narrator intimate and elegant; avoid generic group-pop diction such as 僕ら unless the outline clearly demands a collective voice. "
+            "Prefer one intimate narrator or scene-led gaze, not a generic collective anthem voice. "
+            "Do not end multiple sections with the same generic hope, journey, or tomorrow line. "
+            "Useful city-pop line shapes: 指先で鍵を返す, もう戻れない数を数える, 息を止めたまま一歩だけ出る, 溶けた光の輪が街を包む. "
+            "If a chorus hook returns, do not repeat the exact same sentence such as もう戻れない数を静かに数える in multiple chorus-family blocks. "
         )
     if lang == "ko":
         return common + (
@@ -261,6 +269,7 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
             "Keep the voice intimate, authored, and easy to sing. "
             "A good chorus should sound like a real hook someone would remember after one listen. "
             "Avoid idol-group filler diction like 우리를 반복해서 밀어 넣기보다, 장면을 살리는 1인칭 혹은 장면 중심 시선으로 써라. "
+            "Do not end multiple sections with the same generic tomorrow, together, or keep-going slogan. "
         )
     return common + (
         "Write fluent English lyric lines only. "
@@ -618,6 +627,7 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
         + "Do not output the header. Do not output numbering, bullets, explanations, or blank filler lines. "
         + f"Output exactly {line_count} finished lyric lines, one per line. "
         + "Do not copy earlier blocks verbatim. Keep narrative continuity through shared world and emotion, not through recycled lines. "
+        + "Before answering, silently check every line against earlier blocks and rewrite any exact match unless it is the one intentional hook nucleus. "
     )
 
 
@@ -632,6 +642,7 @@ def _audio_lyrics_block_system_prompt(plan: dict, block: dict) -> str:
         "Do not output the section header. Do not output any prose outside the lyric lines. "
         "Keep each line concise, singable, image-rich, and easy to remember on first listen. "
         "Avoid writing two lines that say the same thing with only tiny wording changes. "
+        "Before you finish, compare the lines against earlier sections in memory and rewrite any exact duplicate unless it is a single intentional hook line. "
         "Do not merge two lines into one. Do not exceed the requested line count. "
     )
 
@@ -649,6 +660,9 @@ def _parse_audio_lyrics_block_lines(block: dict, text: str) -> list[str]:
 
 def _current_block_constraints(completed: list[dict], block: dict) -> str:
     label = str(block.get("label", "")).strip()
+    intro = next((row for row in completed if str(row.get("label", "")).strip() == "Intro"), None)
+    verse_1 = next((row for row in completed if str(row.get("label", "")).strip() == "Verse 1"), None)
+    pre_1 = next((row for row in completed if str(row.get("label", "")).strip() == "Pre-Chorus"), None)
     chorus = next((row for row in completed if str(row.get("label", "")).strip() == "Chorus"), None)
     role_rules = {
         "Intro": "Intro should set the scene with one or two clean city-night images and no chorus-style payoff. ",
@@ -662,6 +676,57 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
         "Outro": "Outro should leave one last residue image and avoid restating the full chorus. ",
     }
     base = role_rules.get(label, "")
+    if label == "Verse 1" and intro:
+        intro_lines = "; ".join(str(line).strip() for line in intro.get("lines", []) if str(line).strip())
+        return base + (
+            "Do not simply expand the Intro by repeating its exact image sentence. "
+            "Keep the same night and same world, but move from the opening image into new objects, surfaces, or gestures. "
+            "Every Verse 1 line should push the camera one step deeper into the scene than Intro did. "
+            "Verse 1 must not use the future chorus hook line; it should prepare the world, not arrive at the refrain. "
+            "The first two Verse 1 lines must not repeat or lightly paraphrase the Intro lines; they should introduce different objects, actions, or surfaces immediately. "
+            f"Existing Intro lines to avoid copying verbatim: {intro_lines}. "
+        )
+    if label == "Pre-Chorus" and verse_1:
+        verse_lines = "; ".join(str(line).strip() for line in verse_1.get("lines", []) if str(line).strip())
+        return base + (
+            "Pre-Chorus must not restate Verse 1 line by line. "
+            "It should compress the scene into anticipation, breath, timing, or a small turn before the hook. "
+            "Avoid restating the same object stack from Verse 1; narrow it into tension or threshold instead. "
+            "Pre-Chorus must not state the future chorus hook sentence yet. "
+            f"Existing Verse 1 lines to avoid copying verbatim: {verse_lines}. "
+        )
+    if label == "Chorus" and pre_1:
+        pre_lines = "; ".join(str(line).strip() for line in pre_1.get("lines", []) if str(line).strip())
+        return base + (
+            "Chorus must feel like the first true arrival of the hook, not a copy of the Pre-Chorus. "
+            "Keep one hook nucleus if needed, but the section should widen the image and make it more memorable than the setup blocks. "
+            "The most memorable line of the song should appear here first, not earlier. "
+            f"Existing Pre-Chorus lines to avoid copying verbatim: {pre_lines}. "
+        )
+    if label == "Verse 2" and verse_1:
+        verse_lines = "; ".join(str(line).strip() for line in verse_1.get("lines", []) if str(line).strip())
+        return base + (
+            "Do not paraphrase Verse 1 line by line. "
+            "Keep the same city and same night, but move to different objects, gestures, surfaces, or thoughts. "
+            f"Existing Verse 1 lines to avoid copying verbatim: {verse_lines}. "
+        )
+    if label == "Pre-Chorus 2" and pre_1:
+        pre_lines = "; ".join(str(line).strip() for line in pre_1.get("lines", []) if str(line).strip())
+        return base + (
+            "Pre-Chorus 2 must not repeat Pre-Chorus 1. "
+            "It should tighten the breath, timing, or anticipation in a new way before the lift into Chorus 2. "
+            "Do not reuse the first pre-chorus threshold setup. Instead, make this block about countdown, decision, body tension, or a last-second shift before the hook opens. "
+            "Use a new body cue, a new time-pressure detail, or a new inner decision rather than the same setup lines. "
+            "Pre-Chorus 2 must still stop short of the chorus hook sentence. "
+            "Do not keep the same line order, same sentence skeleton, or same opening phrase as Pre-Chorus 1. "
+            "Make Pre-Chorus 2 feel like a second intake of breath, not a replay. "
+            "If Pre-Chorus 1 watched the scene, Pre-Chorus 2 should choose, brace, count down, or step. "
+            "Good pattern for Pre-Chorus 2: 指先で鍵を返す / もう戻れない数を数える / 息を止めたまま一歩だけ出る. "
+            "Also good: もう戻れない数を数える / 息を止めたまま一歩だけ出る / 次の駅へ向かう鼓動が静かに脈打つ. "
+            "Strong mini-example for Pre-Chorus 2 tone: 指先で鍵を返す / もう戻れない数を数える / 息を止めたまま一歩だけ出る / 次の駅へ向かう鼓動が静かに脈打つ. "
+            "Bad pattern for Pre-Chorus 2: reusing the same threshold image and same calm setup from the first pre-chorus. "
+            f"Existing Pre-Chorus lines to avoid copying verbatim: {pre_lines}. "
+        )
     if label == "Chorus 2" and chorus:
         chorus_lines = "; ".join(str(line).strip() for line in chorus.get("lines", []) if str(line).strip())
         return base + (
@@ -669,6 +734,12 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
             "Use a new angle, new verbs, or wider city details while preserving the hook feeling and making the section feel more lifted than Chorus. "
             "At least half of the lines should contain nouns or images that did not appear in Chorus 1. "
             "Do not fall back to generic uplift lines; keep the section specific to this song's city objects and gestures. "
+            "Only one short hook fragment may be echoed; the surrounding lines must be newly written. "
+            "If you echo a hook fragment, rewrite the sentence around it with a different verb or different object. "
+            "Good pattern for Chorus 2: the chorus hook returns, but the city image widens through new objects like station signs, puddle rings, sleeve wind, or umbrella bones. "
+            "Also good: 改札の向こうで明かりが揺れる / 濡れた縁石に傘骨が映る / 溶けた光の輪が街を包む. "
+            "Strong mini-example for Chorus 2 tone: 改札の向こうで明かりが揺れる / 濡れた縁石に傘骨が映る / 溶けた光の輪が街を包む / 袖の風が冷たい空気を運ぶ. "
+            "Bad pattern for Chorus 2: the same chorus lines reappear in a different order with only tiny wording changes. "
             f"Forbidden verbatim Chorus lines: {chorus_lines}. "
         )
     if label == "Final Chorus" and chorus:
@@ -678,6 +749,8 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
             "Reuse at most two short hook lines from Chorus and rewrite all other lines with stronger closure, warmer commitment, or wider imagery. "
             "It should feel larger than Chorus 1 not by saying the same thing louder, but by resolving the city image, relationship, or promise more completely. "
             "Do not end in generic hope or generic forward-motion slogans; land on this song's own images. "
+            "If Chorus 1 used one hook line, keep only that nucleus and rebuild the rest of the section around a fuller ending image. "
+            "Do not reuse the exact Chorus 2 hook sentence in Final Chorus; intensify it or resolve it into a new sentence. "
             f"Existing Chorus lines to avoid copying verbatim: {chorus_lines}. "
         )
     return base
