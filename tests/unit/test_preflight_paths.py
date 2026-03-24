@@ -78,14 +78,7 @@ def test_preflight_failure_writes_partial_artifacts_and_traceback(monkeypatch):
     )
     monkeypatch.setattr(preflight_mod, "_run_preflight_stage", _fake_stage)
     monkeypatch.setattr(preflight_mod, "save_snapshot", lambda state, _payload: snapshots.append(dict(state)))
-    monkeypatch.setattr(preflight_mod, "write_manifest", lambda _state, _payload: writes.append("manifest"))
-    monkeypatch.setattr(preflight_mod, "write_summary", lambda _state, _payload: writes.append("summary"))
-    monkeypatch.setattr(preflight_mod, "write_prompt_preview", lambda _state, _payload: writes.append("prompt_preview"))
-    monkeypatch.setattr(preflight_mod, "write_workflow_inputs_preview", lambda _state, _payload: writes.append("workflow_inputs_preview"))
-    monkeypatch.setattr(preflight_mod, "write_quality_review", lambda _state, _review: writes.append("quality_review"))
-    monkeypatch.setattr(preflight_mod, "write_run_summary", lambda _state, _summary: writes.append("run_summary"))
-    monkeypatch.setattr(preflight_mod, "build_quality_review", lambda _cfg, _payload: {})
-    monkeypatch.setattr(preflight_mod, "build_run_summary", lambda state, _payload, _review: {"status": state["status"]})
+    monkeypatch.setattr(preflight_mod, "write_pipeline_artifacts", lambda _state, _payload, _cfg: writes.append("artifacts"))
 
     with pytest.raises(RuntimeError, match="boom"):
         preflight_mod.run_preflight({"profile": "demo"}, "pf-fail")
@@ -93,14 +86,7 @@ def test_preflight_failure_writes_partial_artifacts_and_traceback(monkeypatch):
     assert snapshots[-1]["status"] == "failed"
     assert snapshots[-1]["failure_reason"] == "acestep_music: boom"
     assert "RuntimeError: boom" in snapshots[-1]["failure_traceback"]
-    assert writes == [
-        "manifest",
-        "summary",
-        "prompt_preview",
-        "workflow_inputs_preview",
-        "quality_review",
-        "run_summary",
-    ]
+    assert writes == ["artifacts"]
 
 
 def test_preflight_stage_validates_input(monkeypatch):

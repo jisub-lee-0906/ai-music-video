@@ -20,11 +20,9 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     shutil.rmtree(Path("artifacts/runs_state/test-failed-run"), ignore_errors=True)
     shutil.rmtree(Path("artifacts/runs/test-failed-run"), ignore_errors=True)
     for path in (
-        Path("artifacts/runs/test-failed-run/summary.json"),
         Path("artifacts/runs/test-failed-run/manifest.json"),
         Path("artifacts/runs/test-failed-run/run_summary.json"),
         Path("artifacts/runs/test-failed-run/quality_review.json"),
-        Path("artifacts/latest/summary.json"),
         Path("artifacts/latest/manifest.json"),
         Path("artifacts/latest/run_summary.json"),
         Path("artifacts/latest/quality_review.json"),
@@ -37,12 +35,10 @@ def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
     assert snapshot["status"] == "failed"
     assert snapshot["failure_reason"] == "boom_stage: planned failure"
 
-    summary = read_json(Path(f"artifacts/runs/{run_id}/summary.json"))
     manifest = read_json(Path(f"artifacts/runs/{run_id}/manifest.json"))
     run_summary = read_json(Path(f"artifacts/runs/{run_id}/run_summary.json"))
     quality_review = read_json(Path(f"artifacts/runs/{run_id}/quality_review.json"))
 
-    assert summary["failure_reason"] == "boom_stage: planned failure"
     assert manifest["status"] == "failed"
     assert run_summary["failure_reason"] == "boom_stage: planned failure"
     assert isinstance(quality_review, dict)

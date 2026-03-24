@@ -2,14 +2,8 @@ from __future__ import annotations
 
 import traceback
 
-from ai_mv.core.artifacts.manifest import write_manifest
-from ai_mv.core.artifacts.prompt_preview import write_prompt_preview
-from ai_mv.core.artifacts.quality_review import write_quality_review
-from ai_mv.core.artifacts.run_summary import write_run_summary
-from ai_mv.core.artifacts.summary import write_summary
-from ai_mv.core.artifacts.workflow_inputs_preview import write_workflow_inputs_preview
+from ai_mv.core.artifacts.publish import write_pipeline_artifacts
 from ai_mv.core.contracts.errors import StageFailure
-from ai_mv.core.quality_review import build_quality_review, build_run_summary
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.scheduler import schedule
@@ -65,13 +59,7 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
 
     state["status"] = "done" if state["status"] != "failed" else "failed"
     save_snapshot(state, stage_input.payload)
-    write_manifest(state, stage_input.payload)
-    write_summary(state, stage_input.payload)
-    write_prompt_preview(state, stage_input.payload)
-    write_workflow_inputs_preview(state, stage_input.payload)
-    quality_review = build_quality_review(cfg, stage_input.payload)
-    write_quality_review(state, quality_review)
-    write_run_summary(state, build_run_summary(state, stage_input.payload, quality_review))
+    write_pipeline_artifacts(state, stage_input.payload, cfg)
     return state["run_id"]
 
 

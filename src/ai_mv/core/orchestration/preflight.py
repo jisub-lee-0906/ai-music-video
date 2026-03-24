@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import traceback
 
-from ai_mv.core.artifacts.manifest import write_manifest
-from ai_mv.core.artifacts.prompt_preview import write_prompt_preview
-from ai_mv.core.artifacts.quality_review import write_quality_review
-from ai_mv.core.artifacts.run_summary import write_run_summary
-from ai_mv.core.artifacts.summary import write_summary
-from ai_mv.core.artifacts.workflow_inputs_preview import write_workflow_inputs_preview
+from ai_mv.core.artifacts.publish import write_pipeline_artifacts
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.contracts.stage_io import StageInput
-from ai_mv.core.quality_review import build_quality_review, build_run_summary
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 from ai_mv.core.stages.acestep_music import build_audio_preview_payload
@@ -119,10 +113,4 @@ def _merge(payload: dict, key: str, value: dict) -> dict:
 
 
 def _write_preflight_artifacts(state: dict, payload: dict, config: dict) -> None:
-    write_manifest(state, payload)
-    write_summary(state, payload)
-    write_prompt_preview(state, payload)
-    write_workflow_inputs_preview(state, payload)
-    quality_review = build_quality_review(config, payload)
-    write_quality_review(state, quality_review)
-    write_run_summary(state, build_run_summary(state, payload, quality_review))
+    write_pipeline_artifacts(state, payload, config)

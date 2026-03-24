@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+
+def lyric_metrics(payload: dict) -> dict:
+    timeline = payload.get("lyrics_timeline", {})
+    shot_timeline = payload.get("shot_timeline", {})
+    sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
+    shot_rows = [row for row in shot_timeline.get("shots", []) if isinstance(row, dict)]
+    shot_beat_ids = {str(row.get("lyric_beat_id", "")).strip() for row in shot_rows if str(row.get("lyric_beat_id", "")).strip()}
+    all_beat_ids: set[str] = set()
+    total_lines = 0
+    mapped_lines: set[tuple[str, int]] = set()
+    repeated_groups: dict[tuple[int, ...], list[dict]] = {}
+    for section_idx, section in enumerate(sections, start=1):
+        lines = [row for row in section.get("lines", []) if isinstance(row, dict)]
+        total_lines += len(lines)
+        for beat in section.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            beat_id = str(beat.get("beat_id", "")).strip()
+            if beat_id:
+                all_beat_ids.add(beat_id)
+            refs = tuple(positive_int_refs(beat.get("line_refs", [])))
+            repeated_groups.setdefault(refs, []).append(beat)
+            if beat_id in shot_beat_ids:
+                for ref in refs:
+                    mapped_lines.add((section_idx, ref))
+    variation_scores = []
+    for refs, beats in repeated_groups.items():
+        if len(refs) == 0 or len(beats) <= 1:
+            continue
+        signatures = {
+            (
+                str(beat.get("visible_action", "")).strip().lower(),
+                str(beat.get("payoff_role", "")).strip().lower(),
+            )
+            for beat in beats
+        }
+        variation_scores.append(len(signatures) / float(len(beats)))
+    repeated_variation = sum(variation_scores) / len(variation_scores) if variation_scores else 1.0
+    return {
+        "lyric_beat_count": len(all_beat_ids),
+        "covered_beat_count": len(all_beat_ids & shot_beat_ids),
+        "shot_to_lyric_coverage": round((len(all_beat_ids & shot_beat_ids) / len(all_beat_ids)) if all_beat_ids else 1.0, 3),
+        "repeated_hook_variation": round(repeated_variation, 3),
+        "unmapped_lyric_lines": max(0, total_lines - len(mapped_lines)),
+    }
+
+
+def positive_int_refs(raw_values: object) -> list[int]:
+    if not isinstance(raw_values, list):
+        return []
+    out: list[int] = []
+    for item in raw_values:
+        try:
+            value = int(item)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            out.append(value)
+    return out
+
+
+def route_stats(routes: list[dict], payload: dict) -> dict:
+    beat_to_section = beat_to_section_label(payload)
+    total = 0
+    ref_assisted = 0
+    per_section: dict[str, dict[str, int]] = {}
+    for row in routes:
+        if not isinstance(row, dict):
+            continue
+        total += 1
+        use_ref = bool(row.get("use_ref", False))
+        if use_ref:
+            ref_assisted += 1
+        label = route_section_label(row, beat_to_section)
+        bucket = per_section.setdefault(label, {"total": 0, "ref": 0})
+        bucket["total"] += 1
+        if use_ref:
+            bucket["ref"] += 1
+    ratios = {
+        label: round((vals["ref"] / vals["total"]) if vals["total"] else 0.0, 3)
+        for label, vals in per_section.items()
+    }
+    return {
+        "total_count": total,
+        "tti_only_count": max(0, total - ref_assisted),
+        "ref_assisted_count": ref_assisted,
+        "ref_ratio_by_section": ratios,
+    }
+
+
+def beat_to_section_label(payload: dict) -> dict[str, str]:
+    timeline = payload.get("lyrics_timeline", {}) if isinstance(payload, dict) else {}
+    out: dict[str, str] = {}
+    for section in timeline.get("sections", []):
+        if not isinstance(section, dict):
+            continue
+        label = str(section.get("section_label", section.get("section_name", "section"))).strip() or "section"
+        for beat in section.get("lyric_beats", []):
+            if not isinstance(beat, dict):
+                continue
+            beat_id = str(beat.get("beat_id", "")).strip()
+            if beat_id:
+                out[beat_id] = label
+    return out
+
+
+def route_section_label(row: dict, beat_to_section: dict[str, str]) -> str:
+    beat_id = str(row.get("lyric_beat_id", "")).strip()
+    mapped = canonical_section_label("", beat_id, beat_to_section)
+    if mapped:
+        return mapped
+    label = str(row.get("section_label", row.get("section_name", "section"))).strip()
+    if "[" in label and "]" in label:
+        label = str(row.get("section_name", "section")).strip()
+    return canonical_section_label(label, beat_id, beat_to_section) or "section"
+
+
+def canonical_section_label(raw_label: str, beat_id: str, beat_to_section: dict[str, str]) -> str:
+    mapped = beat_to_section.get(beat_id, "").strip()
+    if mapped:
+        return mapped
+    label = str(raw_label).strip()
+    if not label:
+        return ""
+    norm = label.lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "intro": "Intro",
+        "verse_1": "Verse 1",
+        "verse1": "Verse 1",
+        "verse_2": "Verse 2",
+        "verse2": "Verse 2",
+        "pre_chorus": "Pre-Chorus",
+        "prechorus": "Pre-Chorus",
+        "chorus": "Chorus",
+        "bridge": "Bridge",
+        "final_chorus": "Final Chorus",
+        "finalchorus": "Final Chorus",
+        "outro": "Outro",
+    }
+    return aliases.get(norm, label)
