@@ -4,7 +4,6 @@ from ai_mv.core.orchestration.config_defaults import default_config
 from ai_mv.infra.comfy_client import ping_comfy
 from ai_mv.infra.codex_cli_client import assert_codex_ready, ping_codex
 from ai_mv.infra.doctor_checks import assert_runtime_ready
-from ai_mv.infra.ollama_client import ping_ollama
 
 
 def run_doctor(cfg: dict | None = None) -> int:
@@ -13,6 +12,5 @@ def run_doctor(cfg: dict | None = None) -> int:
     assert_codex_ready(cfg)
     comfy_ok = ping_comfy(cfg["integrations"]["comfyui_base_url"])
     codex_ok = ping_codex(cfg)
-    ollama_ok = ping_ollama(cfg)
-    print(f"comfyui={comfy_ok} codex={codex_ok} ollama={ollama_ok}")
-    return 0 if comfy_ok and codex_ok and ollama_ok else 1
+    print(f"comfyui={comfy_ok} codex={codex_ok}")
+    return 0 if comfy_ok and codex_ok else 1

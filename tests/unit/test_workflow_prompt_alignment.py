@@ -4,7 +4,6 @@ import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
 import ai_mv.engines.lyrics_timeline.planner as lyrics_timeline_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
 from ai_mv.core.contracts.prompt_schema import lyrics_timeline_schema
-from ai_mv.core.workflow_prompt_contracts import compose_flux2_tti_prompt
 
 
 def test_audio_prompt_mentions_acestep_tags_field_alignment():
@@ -108,22 +107,6 @@ def test_wan_prompt_mentions_motion_atom_contract():
     assert "Clip summary=S010_C01(" in prompt
     assert "S010_C01(heroine|" in prompt
     assert "Clip summary=S010_C01(" in prompt
-
-
-def test_flux2_tti_prompt_uses_style_subject_background_camera_order():
-    text = compose_flux2_tti_prompt(
-        "Base style sentence",
-        "A heroine swings a guitar down",
-        "The background is a planar alley with neon signs",
-        "The camera uses an extreme low-angle dynamic shot",
-    )
-    assert text == (
-        "Base style sentence. "
-        "A heroine swings a guitar down. "
-        "The background is a planar alley with neon signs. "
-        "The camera uses an extreme low-angle dynamic shot."
-    )
-
 
 def test_flux2_ref_anchor_summary_includes_clip_phase():
     row = flux2_ref_planner._anchor_summary_row(

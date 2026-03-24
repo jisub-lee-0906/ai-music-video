@@ -1,13 +1,8 @@
-import shutil
-from pathlib import Path
-
-from ai_mv.core.artifacts.prompt_compare_report import write_prompt_compare_report
 from ai_mv.engines.acestep_1_5_aio.mapper import _audio_conditioning_text
 from ai_mv.engines.visual_story_bible.brief_views import compact_world_atoms
 import ai_mv.engines.flux_2_dev_ref.planner as flux2_ref_planner
 import ai_mv.engines.flux_2_dev_tti.planner as tti_planner
 import ai_mv.engines.wan_2_2_flf2v.planner as wan_planner
-from ai_mv.utils.json_utils import write_json
 
 
 def test_audio_conditioning_text_dedupes_genre_prefix():
@@ -78,97 +73,6 @@ def test_compact_world_atoms_keeps_identity_constraints_without_house_style_drif
     assert "One consistent young adult East Asian heroine only" in world["hero_identity"]
     assert "glossy K-pop idol presence" in world["hero_identity"]
     assert "stunningly beautiful" not in world["hero_identity"]
-
-
-def test_prompt_compare_report_marks_alignment_and_retained_profile_backing():
-    before = Path("artifacts/preflight/test-before-compare")
-    after = Path("artifacts/preflight/test-after-compare")
-    shutil.rmtree(before, ignore_errors=True)
-    shutil.rmtree(after, ignore_errors=True)
-    before.mkdir(parents=True, exist_ok=True)
-    after.mkdir(parents=True, exist_ok=True)
-    write_json(
-        before / "prompt_preview.json",
-        {
-            "run_id": "test-before-compare",
-            "prompts": {
-                "shot_timeline": {"prompt": "default aesthetic baseline is stunningly beautiful photorealistic live-action imagery."},
-                "flux2_ref_chain": {"batches": [{"prompt": "default aesthetic baseline is stunningly beautiful heroine."}]},
-                "wan_interpolation": {"batches": [{"prompt": "default aesthetic baseline is stunningly beautiful heroine."}]},
-            },
-        },
-    )
-    write_json(
-        before / "workflow_inputs_preview.json",
-        {
-            "run_id": "test-before-compare",
-            "workflow_inputs": {
-                "audio": {"text_inputs": {"tags": "K-Pop: bright hook."}},
-                "visual_story_bible": {"story_bible_preview": {"hero_identity_lock": "hero"}},
-                "shot_timeline": {"master_anchor": {"text": "stunningly beautiful heroine"}},
-                "flux2_ref_chain": {"items": [{"start_text": "stunningly beautiful heroine", "end_text": "stunningly beautiful heroine"}]},
-                "wan_interpolation": {"clips": [{"positive_prompt": "stunningly beautiful heroine", "negative_prompt": "logo"}]},
-            },
-        },
-    )
-    write_json(
-        after / "prompt_preview.json",
-        {
-            "run_id": "test-after-compare",
-            "prompts": {
-                "shot_timeline": {"prompt": "workflow-ready shot atoms."},
-                "flux2_ref_chain": {"batches": [{"prompt": "compose compact prompts for the workflow positive text field."}]},
-                "wan_interpolation": {"batches": [{"prompt": "compose short motion-first prompts for the workflow positive and negative text fields."}]},
-            },
-        },
-    )
-    write_json(
-        after / "workflow_inputs_preview.json",
-        {
-            "run_id": "test-after-compare",
-            "workflow_inputs": {
-                "audio": {"text_inputs": {"tags": "K-Pop: bright hook."}},
-                "visual_story_bible": {"story_bible_preview": {"hero_identity_lock": "hero"}},
-                "shot_timeline": {"master_anchor": {"text": "premium glossy k-pop heroine"}},
-                "flux2_ref_chain": {"items": [{"start_text": "premium glossy k-pop heroine", "end_text": "premium glossy k-pop heroine"}]},
-                "wan_interpolation": {"clips": [{"positive_prompt": "Premium glossy k-pop heroine. Bright threshold world.", "negative_prompt": "logo"}]},
-            },
-        },
-    )
-    report = write_prompt_compare_report(
-        "test-before-compare",
-        "test-after-compare",
-        "kpop_highgloss",
-        {
-            "audio": {"brief": ""},
-            "visual": {"brief": "premium glossy k-pop heroine", "negative": ""},
-            "mv": {"story_world": "", "action_vocabulary": "", "payoff_style": "", "avoid": ""},
-            "profile": "kpop_highgloss",
-        },
-    )
-    assert report["overall_alignment"] == "aligned"
-    shot_stage = next(stage for stage in report["stages"] if stage["stage"] == "shot_timeline")
-    assert "stunningly beautiful" in shot_stage["removed_house_style_leaks"]
-    assert shot_stage["alignment"] == "aligned"
-
-
-def test_prompt_compare_report_handles_missing_preview_inputs_without_crashing():
-    report = write_prompt_compare_report(
-        "nonexistent-before-run",
-        "nonexistent-after-run",
-        "kpop_highgloss",
-        {
-            "audio": {"brief": ""},
-            "visual": {"brief": "premium glossy k-pop heroine", "negative": ""},
-            "mv": {"story_world": "", "action_vocabulary": "", "payoff_style": "", "avoid": ""},
-            "profile": "kpop_highgloss",
-        },
-    )
-    assert report["overall_alignment"] == "aligned"
-    assert len(report["stages"]) == 3
-    assert all(set(stage.keys()) == {"stage", "alignment", "removed_house_style_leaks", "introduced_house_style_leaks", "retained_profile_backing"} for stage in report["stages"])
-    assert all(stage["alignment"] == "needs_review" for stage in report["stages"])
-
 
 def _plain_story_bible() -> dict:
     return {

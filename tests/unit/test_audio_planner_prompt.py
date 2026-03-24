@@ -50,27 +50,29 @@ def test_audio_outline_prompt_keeps_language_direction():
     assert "canonical English section labels exactly as provided in the outline" in prompt
 
 
-def test_audio_lyrics_prompt_locks_outline_and_requests_lines_only():
-    prompt = audio_planner._audio_lyrics_prompt(
+def test_audio_lyrics_block_prompt_requests_exact_lines_only():
+    outline = {
+        "genre_description": "Japanese city pop: glossy electric piano",
+        "bpm": 108,
+        "keyscale": "A major",
+        "seed": 31,
+        "duration": 200,
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "lift", "line_count": 4},
+            {"section": "chorus", "label": "Final Chorus", "style": "peak", "line_count": 5},
+        ],
+    }
+    prompt = audio_planner._audio_lyrics_block_prompt(
         _prompt_plan(),
-        {
-            "genre_description": "Japanese city pop: glossy electric piano",
-            "bpm": 108,
-            "keyscale": "A major",
-            "seed": 31,
-            "duration": 200,
-            "lyrics_blocks": [
-                {"section": "verse_1", "label": "Verse 1", "style": "lift", "line_count": 4},
-                {"section": "chorus", "label": "Final Chorus", "style": "peak", "line_count": 5},
-            ],
-        },
+        outline,
+        [],
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "line_count": 5},
     )
-    assert "Locked outline:" in prompt
-    assert "[Verse 1] section=verse_1 style=lift line_count=4" in prompt
-    assert "Allowed headers only: [Verse 1] | [Final Chorus]." in prompt
-    assert "Write plain text only. Do not output JSON." in prompt
-    assert "Do not leave any Latin alphabet words" in prompt
+    assert "Current block=[Final Chorus]" in prompt
+    assert "Output exactly 5 finished lyric lines" in prompt
+    assert "Do not copy earlier blocks verbatim" in prompt
     assert "Final Chorus must keep at most two reused lines" in prompt
+    assert "Do not leave any Latin alphabet words" in prompt
 
 
 def test_audio_prompt_does_not_force_songform_metadata_when_not_requested():
@@ -102,10 +104,10 @@ def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
     assert normalized["keyscale"] == "F# minor"
 
 
-def test_plan_lyrics_with_llm_uses_ollama_text_generation(monkeypatch):
+def test_plan_lyrics_with_llm_uses_codex_text_generation(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
-        "generate_ollama_text",
+        "generate_text",
         lambda _config, _prompt, **_kwargs: "a\nb\nc\nd",
     )
     merged = audio_planner._plan_lyrics_with_llm(
@@ -131,18 +133,3 @@ def test_parse_audio_lyrics_block_lines_requires_exact_count():
         "first\nsecond\nthird",
     )
     assert lines == ["first", "second", "third"]
-
-
-def test_lyrics_generation_options_uses_defaults_and_cjk_repeat_penalty():
-    options = audio_planner._lyrics_generation_options({}, _prompt_plan(language="ja"))
-    assert options["temperature"] == 0.1
-    assert options["top_p"] == 0.8
-    assert options["repeat_penalty"] == 1.18
-
-
-def test_lyrics_generation_options_allows_config_override():
-    options = audio_planner._lyrics_generation_options(
-        {"integrations": {"ollama_lyrics_options": {"temperature": 0.3, "top_p": 0.9, "repeat_penalty": 1.25}}},
-        _prompt_plan(language="en"),
-    )
-    assert options == {"temperature": 0.3, "top_p": 0.9, "repeat_penalty": 1.25}

@@ -10,8 +10,7 @@ from ai_mv.core.contracts.prompt_normalize import (
 )
 from ai_mv.core.contracts.prompt_schema import audio_outline_schema
 from ai_mv.engines.acestep_1_5_aio.policy import audio_policy, preferred_songform_rows
-from ai_mv.infra.codex_cli_client import generate_structured
-from ai_mv.infra.ollama_client import generate_text as generate_ollama_text
+from ai_mv.infra.codex_cli_client import generate_structured, generate_text
 
 
 def build_audio_plan(config: dict, payload: dict) -> dict:
@@ -179,46 +178,6 @@ def _outline_label_clause_qwen(plan: dict) -> str:
     )
 
 
-def _audio_lyrics_prompt(plan: dict, outline: dict) -> str:
-    language_clause = _language_clause(plan)
-    intent_clause = _intent_clause(plan)
-    outline_text = _outline_text(outline)
-    output_template = _outline_fill_template(outline)
-    line_contract = _outline_line_contract(outline)
-    chorus_contract = _chorus_rewrite_contract(outline)
-    allowed_headers = " | ".join(
-        f"[{str(block.get('label', '')).strip()}]"
-        for block in outline.get("lyrics_blocks", [])
-        if isinstance(block, dict) and str(block.get("label", "")).strip()
-    )
-    return (
-        _audio_lyrics_output_contract()
-        + _audio_lyrics_rules_qwen(plan)
-        + f"{language_clause}{intent_clause}"
-        + f"Locked outline:\n{outline_text}\n"
-        + line_contract
-        + chorus_contract
-        + f"Output skeleton:\n{output_template}\n"
-        + (f"Allowed headers only: {allowed_headers}. " if allowed_headers else "")
-        +
-        "Write plain text only. Do not output JSON. "
-        "For each block, write the label in square brackets on its own line, then write exactly the required number of lyric lines, then a blank line. "
-        "Replace every placeholder line in the output skeleton with one finished lyric line and preserve the exact total line count. "
-        "Do not copy placeholder tokens such as <line 1> into the final answer. "
-        "Keep the block order exactly the same as the outline. "
-        "Copy each header verbatim from the locked outline. Do not invent or rename headers. "
-        "Do not translate headers even when the lyric body is Japanese or Korean. "
-        "Do not add commentary, numbering, bullets, code fences, or prose outside the lyrics. "
-    )
-
-
-def _audio_lyrics_output_contract() -> str:
-    return (
-        "Write finished sung lyrics for the locked song outline. "
-        "Do not add or remove blocks. Do not rename labels. Do not change styles. "
-    )
-
-
 def _audio_lyrics_rules_qwen(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
     retry_clause = _audio_retry_clause(plan)
@@ -287,28 +246,6 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Good pattern: station glass catches the blue, wet pavement folds the neon back, a ticket warms inside my hand. "
         "Avoid overly literal scene description and avoid generic filler choruses. "
     )
-
-
-def _audio_lyrics_system_prompt(plan: dict) -> str:
-    lang = str(plan.get("language", "")).strip().lower()
-    lang_name = {"ja": "Japanese", "ko": "Korean", "en": "English"}.get(lang, "the requested language")
-    return (
-        "You are a precise lyric block writer. "
-        "Follow the supplied block order and exact line counts without deviation. "
-        "Return only the requested block headers and lyric lines. "
-        "Do not add explanations, bullets, numbering, code fences, markdown, or notes. "
-        "Do not omit blocks. Do not add extra lines. Header text must match the locked outline exactly. "
-        "Headers stay in canonical English exactly as provided. Never translate a header. "
-        "Count the required lyric lines silently before answering. "
-        "Never output placeholder markers like <line 1>; replace them with real lyric lines. "
-        f"Write every lyric line in natural {lang_name}. "
-        "Make section functions clearly different from each other. "
-        "If two lines feel too similar, rewrite the later line with a new image or action. "
-        "Do not copy Chorus 1 into Chorus 2 or Final Chorus verbatim. "
-        "Chorus 2 must feel like a lift. Final Chorus must feel like the emotional and lyrical culmination of the song. "
-    )
-
-
 def _outline_text(outline: dict) -> str:
     rows: list[str] = []
     for block in outline.get("lyrics_blocks", []):
@@ -318,38 +255,6 @@ def _outline_text(outline: dict) -> str:
             f"[{str(block.get('label', '')).strip()}] section={str(block.get('section', '')).strip()} style={str(block.get('style', '')).strip()} line_count={int(block.get('line_count', 1))}"
         )
     return "\n".join(rows)
-
-
-def _outline_fill_template(outline: dict) -> str:
-    rows: list[str] = []
-    for block in outline.get("lyrics_blocks", []):
-        if not isinstance(block, dict):
-            continue
-        label = str(block.get("label", "")).strip()
-        if not label:
-            continue
-        rows.append(f"[{label}]")
-        line_count = max(1, int(block.get("line_count", 1)))
-        for idx in range(1, line_count + 1):
-            rows.append(f"<line {idx}>")
-        rows.append("")
-    return "\n".join(rows).strip()
-
-
-def _outline_line_contract(outline: dict) -> str:
-    specs: list[str] = []
-    for block in outline.get("lyrics_blocks", []):
-        if not isinstance(block, dict):
-            continue
-        label = str(block.get("label", "")).strip()
-        if not label:
-            continue
-        specs.append(f"[{label}]={int(block.get('line_count', 1))} lines")
-    if not specs:
-        return ""
-    return "Exact line count contract: " + ", ".join(specs) + ". "
-
-
 def _chorus_rewrite_contract(outline: dict) -> str:
     labels = [
         str(block.get("label", "")).strip()
@@ -556,58 +461,15 @@ def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:
         "duration": outline["duration"],
         "lyrics_blocks": blocks,
     }
-
-
-def _parse_audio_lyrics_text(outline: dict, text: str) -> dict:
-    expected = [block for block in outline.get("lyrics_blocks", []) if isinstance(block, dict)]
-    lines = [line.rstrip() for line in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")]
-    idx = 0
-    parsed: list[dict] = []
-    for block in expected:
-        label = str(block.get("label", "")).strip()
-        header = f"[{label}]"
-        while idx < len(lines) and not lines[idx].strip():
-            idx += 1
-        if idx >= len(lines) or lines[idx].strip() != header:
-            raise RuntimeError(f"audio lyrics fill missing header: {header}")
-        idx += 1
-        block_lines: list[str] = []
-        while idx < len(lines) and len(block_lines) < int(block.get("line_count", 1)):
-            cur = lines[idx].strip()
-            idx += 1
-            if not cur:
-                continue
-            if cur.startswith("[") and cur.endswith("]"):
-                raise RuntimeError(f"audio lyrics fill line count mismatch under {header}")
-            block_lines.append(cur)
-        if len(block_lines) != int(block.get("line_count", 1)):
-            raise RuntimeError(f"audio lyrics fill line count mismatch under {header}")
-        parsed.append(
-            {
-                "section": str(block.get("section", "")).strip(),
-                "label": label,
-                "style": str(block.get("style", "")).strip(),
-                "lines": block_lines,
-            }
-        )
-    while idx < len(lines) and not lines[idx].strip():
-        idx += 1
-    if idx < len(lines):
-        raise RuntimeError("audio lyrics fill produced extra trailing content")
-    return {"lyrics_blocks": parsed}
-
-
 def _generate_lyrics_block(config: dict, plan: dict, outline: dict, completed: list[dict], block: dict) -> dict:
     prompt = _audio_lyrics_block_prompt(plan, outline, completed, block)
     last_exc: Exception | None = None
     attempt_prompt = prompt
     for _ in range(4):
         filled = ""
-        filled = generate_ollama_text(
+        filled = generate_text(
             config,
-            attempt_prompt,
-            system=_audio_lyrics_block_system_prompt(plan, block),
-            options=_lyrics_generation_options(config, plan, block),
+            _audio_lyrics_block_system_prompt(plan, block) + "\n\n" + attempt_prompt,
         )
         try:
             lines = _parse_audio_lyrics_block_lines(block, filled)
@@ -899,30 +761,6 @@ def _validate_ending_contract(plan: dict, normalized: dict) -> None:
         max_lines = {"tail_only": 1, "low": 2, "medium": 4}.get(density)
         if max_lines is not None and line_count > max_lines:
             raise RuntimeError(f"audio ending contract failed: outro too long for ending_vocal_density={density}")
-
-
-def _lyrics_generation_options(config: dict, plan: dict, block: dict | None = None) -> dict:
-    integrations = config.get("integrations", {}) if isinstance(config, dict) else {}
-    raw = integrations.get("ollama_lyrics_options", {}) if isinstance(integrations, dict) else {}
-    options = dict(raw) if isinstance(raw, dict) else {}
-    lang = str(plan.get("language", "")).strip().lower()
-    label = str(block.get("label", "")).strip() if isinstance(block, dict) else ""
-    retry_attempt = int(plan.get("audio_retry_attempt", 0) or 0)
-    if not options:
-        options = {"temperature": 0.2, "top_p": 0.85, "repeat_penalty": 1.15}
-    if lang in {"ja", "ko"}:
-        options["temperature"] = min(float(options.get("temperature", 0.2)), 0.1)
-        options["top_p"] = min(float(options.get("top_p", 0.85)), 0.8)
-        options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.18)
-    if label in {"Pre-Chorus 2", "Chorus 2", "Final Chorus"}:
-        options["temperature"] = max(float(options.get("temperature", 0.2)), 0.28)
-        options["top_p"] = max(float(options.get("top_p", 0.85)), 0.92)
-        options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.24)
-    if retry_attempt > 0:
-        options["temperature"] = min(0.45, float(options.get("temperature", 0.2)) + 0.05 * retry_attempt)
-        options["top_p"] = min(0.97, float(options.get("top_p", 0.85)) + 0.03 * retry_attempt)
-        options["repeat_penalty"] = max(float(options.get("repeat_penalty", 1.15)), 1.24 + 0.03 * retry_attempt)
-    return options
 
 
 def _audio_retry_clause(plan: dict) -> str:
