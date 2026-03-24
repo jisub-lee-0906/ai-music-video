@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_preview
 from ai_mv.engines.lyrics_timeline.planner import _planner_prompt, build_lyrics_timeline
 
 
@@ -12,8 +13,8 @@ def run_lyrics_timeline(stage_input: StageInput) -> StageOutput:
         {
             "lyrics_timeline": timeline,
             "render_inputs": dict(stage_input.payload.get("render_inputs", {}), lyrics_timeline=timeline),
-            "planner_prompts": _merge(stage_input.payload, "lyrics_timeline", {"prompt": _planner_prompt(stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])}),
-            "workflow_inputs_preview": _merge(stage_input.payload, "lyrics_timeline", {"sections": _timeline_preview(timeline)}),
+            "planner_prompts": merge_preview(stage_input.payload, "lyrics_timeline", {"prompt": _planner_prompt(stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])}),
+            "workflow_inputs_preview": merge_preview(stage_input.payload, "lyrics_timeline", {"sections": _timeline_preview(timeline)}),
         },
         [],
     )
@@ -44,8 +45,3 @@ def _timeline_preview(timeline: dict) -> list[dict]:
     return out
 
 
-def _merge(payload: dict, key: str, value: dict) -> dict:
-    root = "planner_prompts" if "prompt" in value or "batches" in value else "workflow_inputs_preview"
-    out = dict(payload.get(root, {}))
-    out[key] = value
-    return out

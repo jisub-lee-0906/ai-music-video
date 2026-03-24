@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_preview
 from ai_mv.engines.visual_story_bible.planner import _planner_prompt, build_visual_story_bible
 
 
@@ -12,8 +13,8 @@ def run_visual_story_bible(stage_input: StageInput) -> StageOutput:
         {
             "visual_story_bible": story_bible,
             "render_inputs": dict(stage_input.payload.get("render_inputs", {}), visual_story_bible=story_bible),
-            "planner_prompts": _merge(stage_input.payload, "visual_story_bible", {"prompt": _planner_prompt(stage_input.config, stage_input.payload)}),
-            "workflow_inputs_preview": _merge(stage_input.payload, "visual_story_bible", {"story_bible_preview": _preview(story_bible)}),
+            "planner_prompts": merge_preview(stage_input.payload, "visual_story_bible", {"prompt": _planner_prompt(stage_input.config, stage_input.payload)}),
+            "workflow_inputs_preview": merge_preview(stage_input.payload, "visual_story_bible", {"story_bible_preview": _preview(story_bible)}),
         },
         [],
     )
@@ -42,8 +43,3 @@ def _preview(story_bible: dict) -> dict:
     }
 
 
-def _merge(payload: dict, key: str, value: dict) -> dict:
-    root = "planner_prompts" if "prompt" in value or "batches" in value else "workflow_inputs_preview"
-    out = dict(payload.get(root, {}))
-    out[key] = value
-    return out

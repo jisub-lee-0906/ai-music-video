@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
 from ai_mv.engines.flux_2_dev_ref.mapper import FLUX2_REF_TEXT_POS, map_flux2_ref_workflow
 from ai_mv.engines.flux_2_dev_ref.planner import _planner_prompt, _flux2_ref_planner_batch_size, build_flux2_ref_plan
 from ai_mv.engines.flux_2_dev_ref.runner import run_flux2_ref
@@ -15,12 +16,12 @@ def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
         {
             "flux2_ref_images": flux2_ref_images,
             "render_inputs": dict(stage_input.payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
-            "planner_prompts": _merge_prompt_preview(
+            "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "flux2_ref_chain",
                 {"batches": _flux2_ref_prompt_batches(stage_input, plan)},
             ),
-            "workflow_inputs_preview": _merge_workflow_preview(
+            "workflow_inputs_preview": merge_workflow_preview(
                 stage_input.payload,
                 "flux2_ref_chain",
                 {"items": _flux2_ref_workflow_inputs(stage_input.config, plan["items"])},
@@ -84,18 +85,6 @@ def _flux2_ref_text_input(config: dict, item: dict, frame_name: str, frame_idx: 
     return str(wf["node.inputs"][FLUX2_REF_TEXT_POS]["text"])
 
 
-def _merge_prompt_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("planner_prompts", {}))
-    out[key] = value
-    return out
-
-
-def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("workflow_inputs_preview", {}))
-    out[key] = value
-    return out
-
-
 def _flux2_ref_atom_view(item: dict) -> dict:
     return {
         "prompt_text": str(item.get("prompt_text", "")),
@@ -119,7 +108,7 @@ def build_flux2_ref_preview_payload(config: dict, payload: dict) -> dict:
     return {
         "flux2_ref_images": flux2_ref_images,
         "render_inputs": dict(payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
-        "planner_prompts": _merge_prompt_preview(payload, "flux2_ref_chain", {"batches": _flux2_ref_prompt_batches(stage_input, plan)}),
-        "workflow_inputs_preview": _merge_workflow_preview(payload, "flux2_ref_chain", {"items": _flux2_ref_workflow_inputs(config, plan["items"])}),
+        "planner_prompts": merge_planner_prompt(payload, "flux2_ref_chain", {"batches": _flux2_ref_prompt_batches(stage_input, plan)}),
+        "workflow_inputs_preview": merge_workflow_preview(payload, "flux2_ref_chain", {"items": _flux2_ref_workflow_inputs(config, plan["items"])}),
     }
 

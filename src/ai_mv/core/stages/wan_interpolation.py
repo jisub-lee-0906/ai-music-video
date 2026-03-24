@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
 from ai_mv.engines.wan_2_2_flf2v.mapper import WAN_TEXT_NEG, WAN_TEXT_POS, map_wan_workflow
 from ai_mv.engines.wan_2_2_flf2v.planner import _planner_prompt, _wan_planner_batch_size, build_wan_plan
 from ai_mv.engines.wan_2_2_flf2v.runner import run_wan
@@ -15,12 +16,12 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
         {
             "clips": clips,
             "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clips=clips),
-            "planner_prompts": _merge_prompt_preview(
+            "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "wan_interpolation",
                 {"batches": _wan_prompt_batches(stage_input, plan)},
             ),
-            "workflow_inputs_preview": _merge_workflow_preview(
+            "workflow_inputs_preview": merge_workflow_preview(
                 stage_input.payload,
                 "wan_interpolation",
                 {"clips": _wan_workflow_inputs(stage_input.config, plan["clips"])},
@@ -77,18 +78,6 @@ def _wan_workflow_inputs(config: dict, clips: list[dict]) -> list[dict]:
     return out
 
 
-def _merge_prompt_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("planner_prompts", {}))
-    out[key] = value
-    return out
-
-
-def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("workflow_inputs_preview", {}))
-    out[key] = value
-    return out
-
-
 def _wan_atom_view(clip: dict) -> dict:
     return {
         "subject_motion": str(clip.get("subject_motion", "")),
@@ -103,7 +92,7 @@ def build_wan_preview_payload(config: dict, payload: dict) -> dict:
     return {
         "clips": list(plan["clips"]),
         "render_inputs": dict(payload.get("render_inputs", {}), clips=list(plan["clips"])),
-        "planner_prompts": _merge_prompt_preview(payload, "wan_interpolation", {"batches": _wan_prompt_batches(stage_input, plan)}),
-        "workflow_inputs_preview": _merge_workflow_preview(payload, "wan_interpolation", {"clips": _wan_workflow_inputs(config, plan["clips"])}),
+        "planner_prompts": merge_planner_prompt(payload, "wan_interpolation", {"batches": _wan_prompt_batches(stage_input, plan)}),
+        "workflow_inputs_preview": merge_workflow_preview(payload, "wan_interpolation", {"clips": _wan_workflow_inputs(config, plan["clips"])}),
     }
 

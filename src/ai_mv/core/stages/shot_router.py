@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
 from ai_mv.core.visual_pipeline import build_clip_routes, route_summary, visual_pipeline_settings
 
 
@@ -12,12 +13,12 @@ def run_shot_router(stage_input: StageInput) -> StageOutput:
         {
             "clip_routes": routes,
             "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clip_routes=routes),
-            "planner_prompts": _merge_prompt_preview(
+            "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "shot_router",
                 {"prompt": _route_policy_summary(stage_input.config)},
             ),
-            "workflow_inputs_preview": _merge_workflow_preview(
+            "workflow_inputs_preview": merge_workflow_preview(
                 stage_input.payload,
                 "shot_router",
                 {"decisions": _route_preview(routes)},
@@ -48,23 +49,11 @@ def _route_preview(routes: list[dict]) -> list[dict]:
     return route_summary(routes)
 
 
-def _merge_prompt_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("planner_prompts", {}))
-    out[key] = value
-    return out
-
-
-def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("workflow_inputs_preview", {}))
-    out[key] = value
-    return out
-
-
 def build_shot_router_preview_payload(config: dict, payload: dict) -> dict:
     routes = build_shot_routes(config, payload)
     return {
         "clip_routes": routes,
         "render_inputs": dict(payload.get("render_inputs", {}), clip_routes=routes),
-        "planner_prompts": _merge_prompt_preview(payload, "shot_router", {"prompt": _route_policy_summary(config)}),
-        "workflow_inputs_preview": _merge_workflow_preview(payload, "shot_router", {"decisions": _route_preview(routes)}),
+        "planner_prompts": merge_planner_prompt(payload, "shot_router", {"prompt": _route_policy_summary(config)}),
+        "workflow_inputs_preview": merge_workflow_preview(payload, "shot_router", {"decisions": _route_preview(routes)}),
     }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
 from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
 from ai_mv.engines.acestep_1_5_aio.mapper import AUDIO_TEXT, map_audio_workflow
 from ai_mv.engines.acestep_1_5_aio.planner import build_audio_plan, build_audio_preview_prompt
@@ -23,12 +24,12 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
             "audio_map": audio_map,
             "music_file": music_file,
             "selected_profile": str(stage_input.config.get("profile", "")).strip(),
-            "planner_prompts": _merge_prompt_preview(
+            "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "audio",
                 {"prompt": build_audio_preview_prompt(plan)},
             ),
-            "workflow_inputs_preview": _merge_workflow_preview(
+            "workflow_inputs_preview": merge_workflow_preview(
                 stage_input.payload,
                 "audio",
                 {"text_inputs": _audio_text_inputs(stage_input.config, plan)},
@@ -56,18 +57,6 @@ def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
     }
 
 
-def _merge_prompt_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("planner_prompts", {}))
-    out[key] = value
-    return out
-
-
-def _merge_workflow_preview(payload: dict, key: str, value: dict) -> dict:
-    out = dict(payload.get("workflow_inputs_preview", {}))
-    out[key] = value
-    return out
-
-
 def _audio_text_inputs(config: dict, plan: dict) -> dict:
     wf = map_audio_workflow(config, plan)
     return dict(wf["node.inputs"][AUDIO_TEXT])
@@ -82,8 +71,8 @@ def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dic
         "audio_plan": dict(plan),
         "audio_map": audio_map,
         "music_file": "",
-        "planner_prompts": _merge_prompt_preview(payload, "audio", {"prompt": build_audio_preview_prompt(plan)}),
-        "workflow_inputs_preview": _merge_workflow_preview(payload, "audio", {"text_inputs": _audio_text_inputs(config, plan)}),
+        "planner_prompts": merge_planner_prompt(payload, "audio", {"prompt": build_audio_preview_prompt(plan)}),
+        "workflow_inputs_preview": merge_workflow_preview(payload, "audio", {"text_inputs": _audio_text_inputs(config, plan)}),
     }
 
 
