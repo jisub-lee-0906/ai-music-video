@@ -12,6 +12,7 @@ from ai_mv.core.orchestration.preflight_steps import add_shot_router
 from ai_mv.core.orchestration.preflight_steps import add_shot_timeline
 from ai_mv.core.orchestration.preflight_steps import add_story_bible
 from ai_mv.core.orchestration.preflight_steps import add_wan
+from ai_mv.core.orchestration.stage_runs import run_preview_stage
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 
@@ -45,12 +46,14 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
 
 
 def _run_preflight_stage(state: dict, stage_input: StageInput, name: str, fn) -> None:
-    state["current_stage"] = name
-    save_snapshot(state, stage_input.payload)
-    validate_stage_input(name, stage_input.payload)
-    fn(stage_input)
-    state["completed_stages"].append(name)
-    save_snapshot(state, stage_input.payload)
+    run_preview_stage(
+        state,
+        stage_input,
+        name,
+        fn,
+        save_snapshot=save_snapshot,
+        validate_stage_input=validate_stage_input,
+    )
 
 
 def _write_preflight_artifacts(state: dict, payload: dict, config: dict) -> None:

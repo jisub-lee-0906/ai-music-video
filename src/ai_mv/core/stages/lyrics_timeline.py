@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.payload_views import merge_preview
+from ai_mv.core.stages.payload_views import build_stage_payload
 from ai_mv.engines.lyrics_timeline.planner import _planner_prompt, build_lyrics_timeline
+from ai_mv.engines.lyrics_timeline.planner import build_lyrics_timeline_preview_prompt
 
 
 def run_lyrics_timeline(stage_input: StageInput) -> StageOutput:
@@ -10,12 +11,15 @@ def run_lyrics_timeline(stage_input: StageInput) -> StageOutput:
     return StageOutput(
         "lyrics_timeline",
         "done",
-        {
-            "lyrics_timeline": timeline,
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), lyrics_timeline=timeline),
-            "planner_prompts": merge_preview(stage_input.payload, "lyrics_timeline", {"prompt": _planner_prompt(stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])}),
-            "workflow_inputs_preview": merge_preview(stage_input.payload, "lyrics_timeline", {"sections": _timeline_preview(timeline)}),
-        },
+        build_stage_payload(
+            stage_input.payload,
+            planner_key="lyrics_timeline",
+            planner_value={"prompt": _planner_prompt(stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])},
+            workflow_key="lyrics_timeline",
+            workflow_value={"sections": _timeline_preview(timeline)},
+            render_updates={"lyrics_timeline": timeline},
+            lyrics_timeline=timeline,
+        ),
         [],
     )
 
@@ -43,5 +47,18 @@ def _timeline_preview(timeline: dict) -> list[dict]:
             }
         )
     return out
+
+
+def build_lyrics_timeline_preview_payload(config: dict, payload: dict) -> dict:
+    timeline = build_lyrics_timeline(config, payload)
+    return build_stage_payload(
+        payload,
+        planner_key="lyrics_timeline",
+        planner_value={"prompt": build_lyrics_timeline_preview_prompt(payload["audio_plan"], payload["audio_map"]["sections"])},
+        workflow_key="lyrics_timeline",
+        workflow_value={"sections": list(timeline.get("sections", []))},
+        render_updates={"lyrics_timeline": timeline},
+        lyrics_timeline=timeline,
+    )
 
 

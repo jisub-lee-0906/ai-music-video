@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
+from ai_mv.core.stages.payload_views import build_stage_payload
 from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
 from ai_mv.engines.acestep_1_5_aio.mapper import AUDIO_TEXT, map_audio_workflow
 from ai_mv.engines.acestep_1_5_aio.planner import build_audio_plan, build_audio_preview_prompt
@@ -18,23 +18,18 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
     return StageOutput(
         "acestep_music",
         "done",
-        {
-            "profile_intent": dict(plan.get("profile_intent", {})),
-            "audio_plan": dict(plan),
-            "audio_map": audio_map,
-            "music_file": music_file,
-            "selected_profile": str(stage_input.config.get("profile", "")).strip(),
-            "planner_prompts": merge_planner_prompt(
-                stage_input.payload,
-                "audio",
-                {"prompt": build_audio_preview_prompt(plan)},
-            ),
-            "workflow_inputs_preview": merge_workflow_preview(
-                stage_input.payload,
-                "audio",
-                {"text_inputs": _audio_text_inputs(stage_input.config, plan)},
-            ),
-        },
+        build_stage_payload(
+            stage_input.payload,
+            planner_key="audio",
+            planner_value={"prompt": build_audio_preview_prompt(plan)},
+            workflow_key="audio",
+            workflow_value={"text_inputs": _audio_text_inputs(stage_input.config, plan)},
+            profile_intent=dict(plan.get("profile_intent", {})),
+            audio_plan=dict(plan),
+            audio_map=audio_map,
+            music_file=music_file,
+            selected_profile=str(stage_input.config.get("profile", "")).strip(),
+        ),
         [],
     )
 
@@ -66,14 +61,17 @@ def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dic
     plan = build_audio_plan(config, dict(payload, run_id=run_id))
     audio_map = build_audio_preview_map(plan)
     audio_map.update(_audio_context(config, audio_map, plan))
-    return {
-        "profile_intent": dict(plan.get("profile_intent", {})),
-        "audio_plan": dict(plan),
-        "audio_map": audio_map,
-        "music_file": "",
-        "planner_prompts": merge_planner_prompt(payload, "audio", {"prompt": build_audio_preview_prompt(plan)}),
-        "workflow_inputs_preview": merge_workflow_preview(payload, "audio", {"text_inputs": _audio_text_inputs(config, plan)}),
-    }
+    return build_stage_payload(
+        payload,
+        planner_key="audio",
+        planner_value={"prompt": build_audio_preview_prompt(plan)},
+        workflow_key="audio",
+        workflow_value={"text_inputs": _audio_text_inputs(config, plan)},
+        profile_intent=dict(plan.get("profile_intent", {})),
+        audio_plan=dict(plan),
+        audio_map=audio_map,
+        music_file="",
+    )
 
 
 def build_audio_preview_map(plan: dict) -> dict:

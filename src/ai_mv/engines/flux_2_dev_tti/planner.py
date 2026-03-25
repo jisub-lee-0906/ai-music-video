@@ -6,6 +6,13 @@ from ai_mv.core.contracts.prompt_normalize import normalize_shot_timeline
 from ai_mv.core.contracts.prompt_schema import KINETIC_INTENSITIES, KINETIC_TRANSITIONS, SHOT_TYPES, shot_timeline_schema
 from ai_mv.core.profile_policy import resolve_profile_policy
 from ai_mv.core.visual_pipeline import attach_tti_metadata
+from ai_mv.engines.flux_2_dev_tti.prompting import (
+    _policy_digest,
+    _story_bible_digest,
+    _timeline_digest,
+    _tti_beat_manifest,
+    _tti_beat_rows,
+)
 from ai_mv.infra.codex_cli_client import generate_structured
 
 
@@ -43,23 +50,23 @@ def _planner_prompt(config: dict, payload: dict) -> str:
         "master_anchor prompt_text should be exactly four short sentences and should establish a definitive anime character anchor, not a photo-real portrait. "
         "master_anchor is not an event shot. It is a clean character master reference image for downstream ref generation. "
         "master_anchor should show the heroine as a clear full-body or strong three-quarter figure with a stable silhouette and a very readable character design. "
-        "Prioritize a high-quality graphic anime character design with a strong silhouette, simplified facial features, thick clean outlines, and flat confident color blocking. "
-        "Treat master_anchor like a poster-friendly symbolic character design, not a realistic anime portrait and not a plain model sheet. "
-        "The heroine should read as iconic, detached, and immediately recognizable at first glance. "
-        "Prefer a simplified deadpan face, flat sleepy eyes, a clean fringe or long ponytail silhouette, and one memorable outfit accent. "
-        "Even though the pose is grounded and neutral, the character should still feel deliberately designed, slightly stiff, and strongly graphic rather than generic. "
-        "Aim for a striking graphic poster character rather than a bubbly mascot or a severe fashion illustration. "
-        "Allow slightly stylized proportions such as a slightly larger head and a compact readable body if that helps the character feel more iconic and poster-like. "
+        "Prioritize a high-quality Japanese manga and anime character design with a charming face, clean line art, expressive but readable eyes, and a memorable silhouette. "
+        "Treat master_anchor like a polished manga-anime heroine illustration, not a symbolic poster mascot and not a realistic portrait. "
+        "The heroine should read as immediately appealing, characterful, and recognizably manga-inspired at first glance. "
+        "Prefer clean anime eyes, a cute but balanced face, readable bangs or a long ponytail silhouette, and one memorable outfit accent. "
+        "Even though the pose is grounded and neutral, the character should still feel like a drawn heroine from a strong Japanese comic or anime key visual rather than a generic template. "
+        "Aim for an appealing manga-anime character illustration rather than a bubbly mascot, a deadpan symbol character, or a severe fashion illustration. "
+        "Allow slightly stylized anime proportions if that helps the character feel more charming and readable, but keep the body believable and not chibi. "
         "Avoid generic gymwear, blank hoodie-sweats silhouettes, plain mannequin posture, or a dull default station snapshot. "
         "Keep the pose grounded and neutral, usually full-body or strong three-quarter, and keep the background simple and supportive rather than dramatic. "
         "For master_anchor, strongly prefer a clean white or very pale off-white non-photographic backdrop with minimal floor shadow or a faint graphic grounding line. "
         "Do not use a realistic station, street, room, or environmental background in master_anchor. "
         "The background should feel like a clean graphic character presentation sheet, not a real photographed location. "
         "Do not let the master anchor become realistic, live-action, painterly, doll-like, or a chaotic action frame. "
-        "Do not make the character too detailed, over-rendered, glossy, or fashion-editorial. "
-        "Avoid sparkly moe styling, overly cheerful expressions, highly rendered eyelashes, or polished mobile-game glamour. "
-        "Good master_anchor example: 'A 2D graphic anime character illustration with flat cel shading, thick clean outlines, and bold simple color blocks. The heroine stands in a clear full-body pose with a deadpan simplified face, flat dark eyes, a long dark ponytail, and an orange-and-cream outfit with one strong black accent. The background is a clean white non-photographic backdrop with only a faint grounding shadow. Full-body graphic character reference shot.' "
-        "Another good master_anchor example: 'A 2D symbolic anime character illustration with flat colors, chunky outlines, and a poster-like silhouette. The heroine holds a calm full-body pose with a blunt fringe, a long dark ponytail, a quiet unreadable expression, and a simple memorable outfit built from two or three dominant colors. The background is a pale off-white presentation backdrop with no environmental scene detail. Full-body anchor shot.' "
+        "Do not make the character too glossy, photo-real, fashion-editorial, or mobile-game rendered. "
+        "Avoid mascot simplification, deadpan symbol-face styling, exaggerated chibi proportions, or over-sparkly idol glamour. "
+        "Good master_anchor example: 'A 2D manga-anime character illustration with clean cel shading, crisp line art, and clear readable colors. The heroine stands in a clear full-body pose with large expressive anime eyes, a long dark ponytail, a neat fringe, and a stylish orange-and-cream outfit with one strong black accent. The background is a clean white non-photographic backdrop with only a faint grounding shadow. Full-body character reference shot.' "
+        "Another good master_anchor example: 'A 2D Japanese anime heroine illustration with clean outlines, soft cel shading, and a memorable silhouette. The heroine holds a calm full-body pose with a cute balanced face, clear dark eyes, a long ponytail, and a simple but distinctive city-pop outfit. The background is a pale off-white presentation backdrop with no environmental scene detail. Full-body anchor shot.' "
         "Bad master_anchor example: 'A realistic young woman stands in a cinematic station portrait with soft skin and camera depth. The background is a real city at night. Moody portrait shot.' "
         "Another bad master_anchor example: 'A plain anime girl in generic dark sweats stands stiffly in front of a blank station wall. The background is empty and the design has no memorable accent. Full-body reference shot.' "
         "Every shot must include lyric_beat_id,shot_type,prompt_text,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count,start_frame,end_frame,kinetic_transition,lighting_fx,kinetic_intensity. "
@@ -198,44 +205,6 @@ def _expected_lyric_beat_ids(story_bible: dict) -> list[str]:
     ]
 
 
-def _tti_beat_manifest(story_bible: dict) -> list[str]:
-    out: list[str] = []
-    for beat in story_bible.get("lyric_beats", []):
-        if not isinstance(beat, dict):
-            continue
-        beat_id = str(beat.get("beat_id", "")).strip()
-        if not beat_id:
-            continue
-        section = str(beat.get("section_label", beat.get("section_name", ""))).strip()
-        payoff = str(beat.get("payoff_role", "")).strip()
-        out.append(f"{beat_id}|{section}|{payoff}")
-    return out
-
-
-def _tti_beat_rows(story_bible: dict) -> list[dict]:
-    rows: list[dict] = []
-    for beat in story_bible.get("lyric_beats", []):
-        if not isinstance(beat, dict):
-            continue
-        beat_id = str(beat.get("beat_id", "")).strip()
-        if not beat_id:
-            continue
-        rows.append(
-            {
-                "beat_id": beat_id,
-                "section_name": str(beat.get("section_name", "")).strip(),
-                "section_label": str(beat.get("section_label", beat.get("section_name", ""))).strip(),
-                "literal_image": str(beat.get("literal_image", "")).strip(),
-                "visible_action": str(beat.get("visible_action", "")).strip(),
-                "payoff_role": str(beat.get("payoff_role", "")).strip(),
-                "prompt_focus": str(beat.get("prompt_focus", "")).strip(),
-                "space_event": str(beat.get("space_event", "")).strip(),
-                "composition_shape": str(beat.get("composition_shape", "")).strip(),
-            }
-        )
-    return rows
-
-
 def _assign_story_metadata(shots: list[dict], timeline: dict, story_bible: dict) -> list[dict]:
     policy = story_bible.get("resolved_profile_policy", resolve_profile_policy({})) if isinstance(story_bible, dict) else resolve_profile_policy({})
     face_defaults = policy.get("face_exposure_defaults", {}) if isinstance(policy, dict) else {}
@@ -358,32 +327,6 @@ def _section_bounds(timeline: dict) -> dict[str, dict]:
     return out
 
 
-def _story_bible_digest(story_bible: dict) -> str:
-    beats = story_bible.get("lyric_beats", [])
-    return (
-        f"hero={story_bible.get('hero_identity_lock', '')}; world={story_bible.get('world_rules', '')}; "
-        + "beats="
-        + ", ".join(
-            f"{beat.get('beat_id', '')}|{beat.get('section_label', beat.get('section_name', ''))}|"
-            f"{beat.get('literal_image', '')}|{beat.get('symbolic_image', '')}|{beat.get('prompt_focus', '')}|{beat.get('edit_device', '')}|{beat.get('composition_shape', '')}|{beat.get('palette_mode', '')}|{beat.get('payoff_role', '')}"
-            for beat in beats
-            if isinstance(beat, dict)
-        )
-    )
-
-
-def _timeline_digest(timeline: dict) -> str:
-    rows: list[str] = []
-    for section in timeline.get("sections", []):
-        if not isinstance(section, dict):
-            continue
-        rows.append(
-            f"{section.get('section_label', section.get('section_name', 'section'))}="
-            + ",".join(str(beat.get("beat_id", "")) for beat in section.get("lyric_beats", []) if isinstance(beat, dict))
-        )
-    return "; ".join(rows)
-
-
 def _mv_function(edit_role: str) -> str:
     role = str(edit_role).strip().lower()
     mapping = {
@@ -408,27 +351,6 @@ def _transition_role(edit_role: str) -> str:
     return "carry"
 
 
-def _policy_digest(policy: dict) -> str:
-    if not isinstance(policy, dict):
-        return ""
-    distribution = policy.get("shot_distribution", {})
-    mix = ",".join(f"{key}:{distribution[key]:.2f}" for key in SHOT_TYPES if key in distribution)
-    direct_sections = ",".join(str(x).strip() for x in policy.get("direct_face_sections", []) if str(x).strip())
-    return (
-        f"visual_mode={policy.get('visual_mode', '')}; "
-        f"visual_mv_mode={policy.get('visual_mv_mode', '')}; "
-        f"continuity_mode={policy.get('continuity_mode', '')}; "
-        f"face_policy={policy.get('face_policy', '')}; "
-        f"shot_bias={policy.get('shot_bias', '')}; "
-        f"subject_exposure={policy.get('subject_exposure', '')}; "
-        f"motif_density={policy.get('motif_density', '')}; "
-        f"graphic_event_density={policy.get('graphic_event_density', '')}; "
-        f"environment_event_density={policy.get('environment_event_density', '')}; "
-        f"visual_payoff_mode={policy.get('visual_payoff_mode', '')}; "
-        f"ref_policy={policy.get('ref_policy', '')}; "
-        f"shot_mix={mix}; "
-        f"direct_face_sections={direct_sections}"
-    )
 
 
 def _canonical_edit_role(raw_edit_role: object, payoff_role: object) -> str:

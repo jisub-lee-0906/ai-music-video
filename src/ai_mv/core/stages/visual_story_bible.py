@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.payload_views import merge_preview
+from ai_mv.core.stages.payload_views import build_stage_payload
 from ai_mv.engines.visual_story_bible.planner import _planner_prompt, build_visual_story_bible
+from ai_mv.engines.visual_story_bible.planner import build_visual_story_bible_preview_prompt
 
 
 def run_visual_story_bible(stage_input: StageInput) -> StageOutput:
@@ -10,12 +11,15 @@ def run_visual_story_bible(stage_input: StageInput) -> StageOutput:
     return StageOutput(
         "visual_story_bible",
         "done",
-        {
-            "visual_story_bible": story_bible,
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), visual_story_bible=story_bible),
-            "planner_prompts": merge_preview(stage_input.payload, "visual_story_bible", {"prompt": _planner_prompt(stage_input.config, stage_input.payload)}),
-            "workflow_inputs_preview": merge_preview(stage_input.payload, "visual_story_bible", {"story_bible_preview": _preview(story_bible)}),
-        },
+        build_stage_payload(
+            stage_input.payload,
+            planner_key="visual_story_bible",
+            planner_value={"prompt": _planner_prompt(stage_input.config, stage_input.payload)},
+            workflow_key="visual_story_bible",
+            workflow_value={"story_bible_preview": _preview(story_bible)},
+            render_updates={"visual_story_bible": story_bible},
+            visual_story_bible=story_bible,
+        ),
         [],
     )
 
@@ -41,5 +45,18 @@ def _preview(story_bible: dict) -> dict:
             if isinstance(beat, dict)
         ],
     }
+
+
+def build_visual_story_bible_preview_payload(config: dict, payload: dict) -> dict:
+    story_bible = build_visual_story_bible(config, payload)
+    return build_stage_payload(
+        payload,
+        planner_key="visual_story_bible",
+        planner_value={"prompt": build_visual_story_bible_preview_prompt(config, payload)},
+        workflow_key="visual_story_bible",
+        workflow_value={"story_bible_preview": story_bible},
+        render_updates={"visual_story_bible": story_bible},
+        visual_story_bible=story_bible,
+    )
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
+from ai_mv.core.stages.payload_views import build_stage_payload
 from ai_mv.core.visual_pipeline import build_clip_routes, route_summary, visual_pipeline_settings
 
 
@@ -10,20 +10,15 @@ def run_shot_router(stage_input: StageInput) -> StageOutput:
     return StageOutput(
         "shot_router",
         "done",
-        {
-            "clip_routes": routes,
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), clip_routes=routes),
-            "planner_prompts": merge_planner_prompt(
-                stage_input.payload,
-                "shot_router",
-                {"prompt": _route_policy_summary(stage_input.config)},
-            ),
-            "workflow_inputs_preview": merge_workflow_preview(
-                stage_input.payload,
-                "shot_router",
-                {"decisions": _route_preview(routes)},
-            ),
-        },
+        build_stage_payload(
+            stage_input.payload,
+            planner_key="shot_router",
+            planner_value={"prompt": _route_policy_summary(stage_input.config)},
+            workflow_key="shot_router",
+            workflow_value={"decisions": _route_preview(routes)},
+            render_updates={"clip_routes": routes},
+            clip_routes=routes,
+        ),
         [],
     )
 
@@ -51,9 +46,12 @@ def _route_preview(routes: list[dict]) -> list[dict]:
 
 def build_shot_router_preview_payload(config: dict, payload: dict) -> dict:
     routes = build_shot_routes(config, payload)
-    return {
-        "clip_routes": routes,
-        "render_inputs": dict(payload.get("render_inputs", {}), clip_routes=routes),
-        "planner_prompts": merge_planner_prompt(payload, "shot_router", {"prompt": _route_policy_summary(config)}),
-        "workflow_inputs_preview": merge_workflow_preview(payload, "shot_router", {"decisions": _route_preview(routes)}),
-    }
+    return build_stage_payload(
+        payload,
+        planner_key="shot_router",
+        planner_value={"prompt": _route_policy_summary(config)},
+        workflow_key="shot_router",
+        workflow_value={"decisions": _route_preview(routes)},
+        render_updates={"clip_routes": routes},
+        clip_routes=routes,
+    )

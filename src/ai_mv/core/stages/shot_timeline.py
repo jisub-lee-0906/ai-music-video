@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.payload_views import merge_preview
+from ai_mv.core.stages.payload_views import build_stage_payload
 from ai_mv.engines.flux_2_dev_tti.mapper import TTI_TEXT, map_tti_workflow
 from ai_mv.engines.flux_2_dev_tti.planner import build_tti_plan, build_tti_preview_prompt
 from ai_mv.engines.flux_2_dev_tti.runner import run_tti
@@ -10,16 +10,20 @@ from ai_mv.engines.flux_2_dev_tti.runner import run_tti
 def run_shot_timeline(stage_input: StageInput) -> StageOutput:
     plan = build_tti_plan(stage_input.config, stage_input.payload)
     anchors = run_tti(stage_input.config, plan)
+    shot_timeline = {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}
     return StageOutput(
         "shot_timeline",
         "done",
-        {
-            "anchors": anchors,
-            "shot_timeline": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), shot_timeline={"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}),
-            "planner_prompts": merge_preview(stage_input.payload, "shot_timeline", {"prompt": build_tti_preview_prompt(stage_input.config, stage_input.payload)}),
-            "workflow_inputs_preview": merge_preview(stage_input.payload, "shot_timeline", {"master_anchor": _tti_workflow_input(stage_input.config, plan["master_anchor"]), "shots": _shot_preview(plan["shots"])}),
-        },
+        build_stage_payload(
+            stage_input.payload,
+            planner_key="shot_timeline",
+            planner_value={"prompt": build_tti_preview_prompt(stage_input.config, stage_input.payload)},
+            workflow_key="shot_timeline",
+            workflow_value={"master_anchor": _tti_workflow_input(stage_input.config, plan["master_anchor"]), "shots": _shot_preview(plan["shots"])},
+            render_updates={"shot_timeline": shot_timeline},
+            anchors=anchors,
+            shot_timeline=shot_timeline,
+        ),
         [],
     )
 
@@ -56,6 +60,7 @@ def build_shot_timeline_preview_payload(config: dict, payload: dict) -> dict:
     from ai_mv.engines.flux_2_dev_tti.runner import _pack_anchor
 
     plan = build_tti_plan(config, payload)
+    shot_timeline = {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}
     anchors = [
         _pack_anchor(
             shot,
@@ -63,14 +68,13 @@ def build_shot_timeline_preview_payload(config: dict, payload: dict) -> dict:
         )
         for shot in plan["shots"]
     ]
-    return {
-        "anchors": anchors,
-        "shot_timeline": {"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])},
-        "render_inputs": dict(payload.get("render_inputs", {}), shot_timeline={"master_anchor": dict(plan["master_anchor"]), "shots": list(plan["shots"])}),
-        "planner_prompts": merge_preview(payload, "shot_timeline", {"prompt": build_tti_preview_prompt(config, payload)}),
-        "workflow_inputs_preview": merge_preview(
-            payload,
-            "shot_timeline",
-            {"master_anchor": _tti_workflow_input(config, plan["master_anchor"]), "shots": _shot_preview(plan["shots"])},
-        ),
-    }
+    return build_stage_payload(
+        payload,
+        planner_key="shot_timeline",
+        planner_value={"prompt": build_tti_preview_prompt(config, payload)},
+        workflow_key="shot_timeline",
+        workflow_value={"master_anchor": _tti_workflow_input(config, plan["master_anchor"]), "shots": _shot_preview(plan["shots"])},
+        render_updates={"shot_timeline": shot_timeline},
+        anchors=anchors,
+        shot_timeline=shot_timeline,
+    )

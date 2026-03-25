@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.payload_views import merge_planner_prompt, merge_workflow_preview
+from ai_mv.core.stages.payload_views import build_stage_payload
 from ai_mv.engines.flux_2_dev_ref.mapper import FLUX2_REF_TEXT_POS, map_flux2_ref_workflow
 from ai_mv.engines.flux_2_dev_ref.planner import _planner_prompt, _flux2_ref_planner_batch_size, build_flux2_ref_plan
 from ai_mv.engines.flux_2_dev_ref.runner import run_flux2_ref
@@ -13,20 +13,15 @@ def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
     return StageOutput(
         "flux2_ref_chain",
         "done",
-        {
-            "flux2_ref_images": flux2_ref_images,
-            "render_inputs": dict(stage_input.payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
-            "planner_prompts": merge_planner_prompt(
-                stage_input.payload,
-                "flux2_ref_chain",
-                {"batches": _flux2_ref_prompt_batches(stage_input, plan)},
-            ),
-            "workflow_inputs_preview": merge_workflow_preview(
-                stage_input.payload,
-                "flux2_ref_chain",
-                {"items": _flux2_ref_workflow_inputs(stage_input.config, plan["items"])},
-            ),
-        },
+        build_stage_payload(
+            stage_input.payload,
+            planner_key="flux2_ref_chain",
+            planner_value={"batches": _flux2_ref_prompt_batches(stage_input, plan)},
+            workflow_key="flux2_ref_chain",
+            workflow_value={"items": _flux2_ref_workflow_inputs(stage_input.config, plan["items"])},
+            render_updates={"flux2_ref_images": flux2_ref_images},
+            flux2_ref_images=flux2_ref_images,
+        ),
         [],
     )
 
@@ -105,10 +100,13 @@ def build_flux2_ref_preview_payload(config: dict, payload: dict) -> dict:
         row["end"] = f"preflight://flux2_ref/{sid}_end.png"
         flux2_ref_images.append(row)
     stage_input = StageInput(run_id="preflight", config=config, payload=payload)
-    return {
-        "flux2_ref_images": flux2_ref_images,
-        "render_inputs": dict(payload.get("render_inputs", {}), flux2_ref_images=flux2_ref_images),
-        "planner_prompts": merge_planner_prompt(payload, "flux2_ref_chain", {"batches": _flux2_ref_prompt_batches(stage_input, plan)}),
-        "workflow_inputs_preview": merge_workflow_preview(payload, "flux2_ref_chain", {"items": _flux2_ref_workflow_inputs(config, plan["items"])}),
-    }
+    return build_stage_payload(
+        payload,
+        planner_key="flux2_ref_chain",
+        planner_value={"batches": _flux2_ref_prompt_batches(stage_input, plan)},
+        workflow_key="flux2_ref_chain",
+        workflow_value={"items": _flux2_ref_workflow_inputs(config, plan["items"])},
+        render_updates={"flux2_ref_images": flux2_ref_images},
+        flux2_ref_images=flux2_ref_images,
+    )
 
