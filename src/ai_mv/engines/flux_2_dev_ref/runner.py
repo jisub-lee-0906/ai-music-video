@@ -14,25 +14,29 @@ def run_flux2_ref(config: dict, plan: dict) -> list[dict]:
     if not items:
         return out
     for item in items:
-        start = _use_tti_start(config, item)
-        start_source = "tti_start"
+        start = _render_start(config, item)
+        start_source = "rendered_start"
         end = _render_end(config, item)
         out.append(_pack_item(item, start, end, start_source, None))
     return out
 
 
-def _use_tti_start(config: dict, item: dict) -> str:
-    return stage_image_for_comfy(config, item["ref"])
+def _render_start(config: dict, item: dict) -> str:
+    return _render_frame(config, item, frame_name="start", frame_idx=0)
 
 
 def _render_end(config: dict, item: dict) -> str:
+    return _render_frame(config, item, frame_name="end", frame_idx=1)
+
+
+def _render_frame(config: dict, item: dict, *, frame_name: str, frame_idx: int) -> str:
     payload = dict(item)
-    payload["frame_name"] = "end"
-    payload["frame_idx"] = 1
+    payload["frame_name"] = frame_name
+    payload["frame_idx"] = frame_idx
     payload["ref"] = stage_image_for_comfy(config, payload["ref"])
-    payload["filename_prefix"] = flux2_ref_frame_prefix(item["shot_id"], "end")
+    payload["filename_prefix"] = flux2_ref_frame_prefix(item["shot_id"], frame_name)
     result = _run_shot_flux2_ref(config, payload)
-    return pick_image_file(result["files"], f"Flux2 reference {item['shot_id']}/end")
+    return pick_image_file(result["files"], f"Flux2 reference {item['shot_id']}/{frame_name}")
 
 
 def _run_shot_flux2_ref(config: dict, item: dict) -> dict:

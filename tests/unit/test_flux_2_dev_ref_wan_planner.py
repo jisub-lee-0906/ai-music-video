@@ -213,7 +213,7 @@ def test_wan_plan_breaks_chain_on_explicit_reset(monkeypatch):
     }
     out = build_wan_plan({"video": {"target": "1920x1080@24"}, "render": {"wan_max_clip_sec": 10.0}}, payload)
     assert out["clips"][1]["start"] == "b_s.png"
-    assert out["clips"][1]["start_source"] == "rendered_start"
+    assert out["clips"][1]["start_source"] == "ref_start"
 
 
 def _flux2_ref(shot_id: str, duration: float, start: str = "s.png", end: str = "e.png") -> dict:

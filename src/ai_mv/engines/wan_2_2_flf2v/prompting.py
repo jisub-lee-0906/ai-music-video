@@ -58,8 +58,6 @@ def _chain_break(clip: dict, prev_clip: dict | None) -> bool:
         return True
     if str(clip.get("scene_change_level", "")).strip().lower() == "reset":
         return True
-    if str(clip.get("anchor_strategy", "")).strip().lower() == "new_anchor":
-        return True
     return False
 
 

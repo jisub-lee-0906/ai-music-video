@@ -133,7 +133,7 @@ def _chain_clip_starts(clips: list[dict]) -> list[dict]:
             item["start_source"] = "previous_end"
             item["prev_chain_key"] = str(prev_clip.get("chain_key", "")) if isinstance(prev_clip, dict) else ""
         else:
-            item["start_source"] = "rendered_start"
+            item["start_source"] = "ref_start"
             item["prev_chain_key"] = ""
         prev_end_path = str(item["end"])
         prev_clip = item
@@ -182,4 +182,3 @@ def _sentence(text: str) -> str:
 
 def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
-

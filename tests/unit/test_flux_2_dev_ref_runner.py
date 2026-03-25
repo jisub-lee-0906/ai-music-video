@@ -1,7 +1,7 @@
 import ai_mv.engines.flux_2_dev_ref.runner as ref_runner
 
 
-def test_run_flux2_ref_uses_master_anchor_for_every_item(monkeypatch):
+def test_run_flux2_ref_renders_scene_specific_start_and_end_from_master_reference(monkeypatch):
     calls = []
 
     def fake_stage(_config, path):
@@ -46,11 +46,15 @@ def test_run_flux2_ref_uses_master_anchor_for_every_item(monkeypatch):
 
     assert calls[0] == "staged::master.png"
     assert calls[1] == "staged::master.png"
-    assert out[0]["start_source"] == "tti_start"
-    assert out[1]["start_source"] == "tti_start"
+    assert calls[2] == "staged::master.png"
+    assert calls[3] == "staged::master.png"
+    assert out[0]["start_source"] == "rendered_start"
+    assert out[1]["start_source"] == "rendered_start"
+    assert out[0]["start"].endswith("start.png")
+    assert out[0]["end"].endswith("end.png")
 
 
-def test_run_flux2_ref_keeps_master_anchor_across_sections(monkeypatch):
+def test_run_flux2_ref_keeps_master_reference_across_sections_but_never_uses_it_as_start(monkeypatch):
     calls = []
 
     def fake_stage(_config, path):
@@ -95,4 +99,8 @@ def test_run_flux2_ref_keeps_master_anchor_across_sections(monkeypatch):
 
     assert calls[0] == "staged::master.png"
     assert calls[1] == "staged::master.png"
-    assert out[1]["start_source"] == "tti_start"
+    assert calls[2] == "staged::master.png"
+    assert calls[3] == "staged::master.png"
+    assert out[0]["start"] != "master.png"
+    assert out[1]["start"] != "master.png"
+    assert out[1]["start_source"] == "rendered_start"
