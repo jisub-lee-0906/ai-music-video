@@ -54,6 +54,8 @@ def test_tti_prompt_mentions_direct_text_encoder_alignment():
     assert "Write a shot timeline for downstream Flux and video workflows" in prompt
     assert "master_anchor prompt_text must be the final render-facing master character anchor prompt" in prompt
     assert "master_anchor should show the heroine as a clear full-body or strong three-quarter figure" in prompt
+    assert "identity core" in prompt.lower()
+    assert "neutral flat lighting" in prompt.lower()
     assert "Every shot must include lyric_beat_id,shot_type,prompt_text,camera_language,pose_delta,emotion,scene_detail,motion_hint,workflow_motion_clause,space_relation,edit_role,continuity_lock,scene_change_level,anchor_strategy,continuity_basis,clip_count" in prompt
     assert "workflow_motion_clause should be a full WAN action clause beginning with a finite verb phrase" in prompt
     assert "Profile policy=" in prompt
@@ -94,6 +96,8 @@ def test_flux2_ref_prompt_mentions_atom_generation_contract():
     assert "Shot manifest=S010(" in prompt
     assert "|heroine|" in prompt
     assert "S010(" in prompt
+    assert "identity core" in prompt.lower()
+    assert "layered anime scenery" in prompt.lower()
 
 
 def test_wan_prompt_mentions_motion_atom_contract():
@@ -107,6 +111,8 @@ def test_wan_prompt_mentions_motion_atom_contract():
     assert "Clip summary=S010_C01(" in prompt
     assert "S010_C01(heroine|" in prompt
     assert "Clip summary=S010_C01(" in prompt
+    assert "stable 2d anime motion" in prompt.lower()
+    assert "realistic human physics" in prompt.lower()
 
 def test_flux2_ref_anchor_summary_includes_clip_phase():
     row = flux2_ref_planner._anchor_summary_row(
