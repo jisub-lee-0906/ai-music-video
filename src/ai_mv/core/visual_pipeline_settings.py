@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from ai_mv.core.profile_policy import resolve_profile_policy
-
-
 def visual_pipeline_settings(config: dict) -> dict:
     node = config.get("visual_pipeline", {}) if isinstance(config, dict) else {}
     node = node if isinstance(node, dict) else {}
-    policy = resolve_profile_policy(config)
+    policy = node.get("visual_policy", {}) if isinstance(node.get("visual_policy", {}), dict) else {}
     mode = str(node.get("visual_pipeline_mode", "tti_selective_ref")).strip().lower()
     if mode not in {"tti_only", "tti_selective_ref", "tti_ref_all"}:
         mode = "tti_selective_ref"
@@ -26,7 +23,7 @@ def visual_pipeline_settings(config: dict) -> dict:
         "visual_pipeline_mode": mode,
         "consistency_mode": consistency,
         "kinetic_ref_mode": kinetic_ref_mode,
-        "resolved_profile_policy": dict(policy),
+        "resolved_visual_policy": dict(policy),
         "hero_shot_types": [str(x).strip().upper() for x in hero_types if str(x).strip()],
         "reference_priority_sections": [str(x).strip().lower() for x in sections if str(x).strip()],
         "allow_face_drift_in_nonhero": bool(node.get("allow_face_drift_in_nonhero", True)),

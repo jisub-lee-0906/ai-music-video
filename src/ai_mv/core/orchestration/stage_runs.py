@@ -8,15 +8,18 @@ from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.contracts.stage_io import StageOutput
 
 PROTECTED_PAYLOAD_KEYS = {
-    "selected_profile",
-    "profile_intent",
+    "selected_brief",
+    "director_brief_intent",
     "audio_plan",
     "audio_map",
     "music_file",
     "lyrics_timeline",
-    "visual_story_bible",
+    "scene_plan_v2",
+    "director_plan_v2",
+    "render_plan_v2",
+    "backend_preview_v2",
+    "director_cards_preview",
     "anchors",
-    "shot_timeline",
     "clip_routes",
     "flux2_ref_images",
     "clips",

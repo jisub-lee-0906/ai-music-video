@@ -7,15 +7,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ai-mv")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    start = sub.add_parser("start")
-    start.add_argument("--run-id", default=None)
-    start.add_argument("--profile", default=None)
+    start_v2 = sub.add_parser("start-v2")
+    start_v2.add_argument("--run-id", default=None)
+    start_v2.add_argument("--brief", default=None)
 
     sub.add_parser("doctor")
 
-    preflight = sub.add_parser("preflight")
-    preflight.add_argument("--run-id", default=None)
-    preflight.add_argument("--profile", default=None)
+    preflight_v2 = sub.add_parser("preflight-v2")
+    preflight_v2.add_argument("--run-id", default=None)
+    preflight_v2.add_argument("--brief", default=None)
 
     status = sub.add_parser("status")
     status.add_argument("--run-id", required=True)

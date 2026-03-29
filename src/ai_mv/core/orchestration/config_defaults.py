@@ -7,7 +7,7 @@ DEFAULT_CONFIG: dict = {
         "language": "en",
         "beats_per_bar": 4,
     },
-    "profile": "",
+    "brief": "",
     "video": {"target": "1920x1080@24"},
     "render": {
         "tti_size": "1280x720",

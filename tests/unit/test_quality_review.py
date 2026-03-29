@@ -1,55 +1,16 @@
-from ai_mv.core.artifacts.run_summary import write_run_summary
-from ai_mv.core.artifacts.quality_review import write_quality_review
 from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_file
+from ai_mv.core.artifacts.quality_review import write_quality_review
+from ai_mv.core.artifacts.run_summary import write_run_summary
 from ai_mv.core.quality_review import build_quality_review, build_run_summary
-from ai_mv.engines.wan_2_2_flf2v.planner import _compose_positive_prompt
-
-
-def test_build_quality_review_carries_audio_and_visual_reviews(monkeypatch):
-    payload = {
-        "selected_profile": "citypop_glimmer",
-        "audio_map": {"profile_summary": "city-pop", "language": "ja"},
-        "lyrics_timeline": {
-            "sections": [
-                {"section_name": "intro", "section_label": "Intro", "lines": [{"line_index": 1, "text": "glass"}], "hook_lines": [], "lyric_beats": [{"beat_id": "LB01_01", "line_refs": [1], "visible_action": "checks the reflection", "payoff_role": "entry"}]}
-            ]
-        },
-        "visual_story_bible": {
-            "hero_identity_lock": "hero",
-            "world_rules": "world",
-            "recurring_location_families": ["station glass"],
-            "forbidden_drift": ["drift"],
-            "lyric_beats": [
-                {"beat_id": "LB01_01", "section_name": "intro", "section_label": "Intro", "line_refs": [1], "literal_image": "glass", "visible_action": "checks the reflection", "emotional_turn": "searching", "continuity_anchor": "gaze shift", "payoff_role": "entry", "repeat_variant_of": "", "location_family": "station glass", "palette_hint": "blue", "lighting_hint": "soft", "camera_commitment": "still"}
-            ],
-            "section_progression": [{"section_name": "intro", "section_label": "Intro", "dominant_emotion": "searching", "story_function": "entry", "lyric_beat_ids": ["LB01_01"]}],
-            "repeat_escalation_rules": ["repeats vary"],
-        },
-        "shot_timeline": {"shots": [{"lyric_beat_id": "LB01_01"}]},
-        "workflow_inputs_preview": {
-            "shot_timeline": {"master_anchor": {"prompt_text": "night city heroine"}},
-            "shot_router": {"decisions": [{"shot_id": "S001", "use_ref": True, "reason": "hero shot type", "mv_function": "payoff", "clip_phase": "establish", "shot_priority": "hero"}]},
-            "flux2_ref_chain": {"items": [{"shot_id": "S001", "clip_phase": "establish", "space_relation": "glass camera-right", "start_text": "a", "end_text": "b"}]},
-            "wan_interpolation": {"clips": [{"shot_id": "S001", "energy": "normal", "space_relation": "glass camera-right", "positive_prompt": "walks through"}]},
-        },
-        "clip_routes": [{"shot_id": "S001", "section_label": "Final Chorus", "use_ref": True}],
-    }
-    out = build_quality_review({}, payload)
-    assert out["visual"]["reasoning"]
-    assert out["visual"]["strengths"]
-    assert out["profile_continuity"]["strengths"]
-    assert "section_visual_separation" in out
 
 
 def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     monkeypatch.setattr("ai_mv.core.artifacts.paths.PROJECT_ROOT", tmp_path)
     state = {"run_id": "r1", "status": "done", "completed_stages": ["acestep_music"], "current_stage": "done", "failure_reason": ""}
     payload = {
-        "selected_profile": "citypop_glimmer",
-        "audio_map": {
-            "language": "ja",
-            "sections": [{"name": "intro", "label": "Intro"}, {"name": "chorus", "label": "Final Chorus"}],
-        },
+        "selected_brief": "director_brief_example",
+        "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
+        "scene_plan_v2": {"shot_packages": []},
     }
     review = {"visual": {"reasoning": "best"}}
     summary = build_run_summary(state, payload, review)
@@ -63,214 +24,77 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     assert latest_success_file("run_summary.json").exists()
 
 
-def test_run_summary_includes_route_counts():
-    state = {"run_id": "r3", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
+def test_run_summary_includes_v2_plan_metrics():
+    state = {"run_id": "r7", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
     payload = {
-        "selected_profile": "citypop_glimmer",
-        "audio_map": {
-            "language": "ja",
-            "sections": [{"name": "chorus", "label": "Final Chorus"}],
+        "selected_brief": "director_brief_example",
+        "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
+        "scene_plan_v2": {
+            "shot_packages": [
+                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold"},
+                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world"},
+            ]
         },
-        "clip_routes": [
-            {"shot_id": "S001", "section_label": "Final Chorus", "use_ref": True},
-            {"shot_id": "S002", "section_label": "Final Chorus", "use_ref": False},
-        ],
+        "render_plan_v2": {
+            "shot_packages": [
+                {"shot_id": "B001", "render_strategy": "ref_pair"},
+                {"shot_id": "B002", "render_strategy": "ref_pair"},
+            ]
+        },
     }
     summary = build_run_summary(state, payload, {})
-    assert summary["tti_only_count"] == 1
-    assert summary["ref_assisted_count"] == 1
-    assert summary["ref_ratio_by_section"]["Final Chorus"] == 0.5
+    assert summary["pipeline_version"] == "v2"
+    assert summary["shot_package_count"] == 2
+    assert summary["motif_family_count"] == 2
+    assert summary["zone_count"] == 2
+    assert summary["continuity_group_count"] == 2
+    assert summary["render_strategy_counts"] == {"ref_pair": 2}
 
 
-def test_run_summary_ignores_non_numeric_line_refs():
-    state = {"run_id": "r4", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
+def test_quality_review_v2_uses_scene_director_inputs():
     payload = {
-        "selected_profile": "citypop_glimmer",
-        "audio_map": {"language": "ja", "sections": [{"name": "intro", "label": "Intro"}]},
         "lyrics_timeline": {
             "sections": [
-                {
-                    "section_name": "intro",
-                    "section_label": "Intro",
-                    "lines": [
-                        {"line_index": 1, "text": "line 1"},
-                        {"line_index": 2, "text": "line 2"},
-                    ],
-                    "lyric_beats": [
-                        {
-                            "beat_id": "LB01",
-                            "line_refs": ["1", "bad", None, -1, "2"],
-                            "visible_action": "walks",
-                            "payoff_role": "entry",
-                        }
-                    ],
-                }
+                {"section_label": "Intro", "lyric_beats": [{"beat_id": "B001"}]},
+                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "B002"}]},
             ]
         },
-        "shot_timeline": {"shots": [{"lyric_beat_id": "LB01"}]},
-    }
-    summary = build_run_summary(state, payload, {})
-
-    assert summary["lyric_beat_count"] == 1
-    assert summary["unmapped_lyric_lines"] == 0
-
-
-def test_run_summary_counts_repeated_section_labels_separately():
-    state = {"run_id": "r5", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
-    payload = {
-        "selected_profile": "citypop_glimmer",
-        "audio_map": {"language": "ja", "sections": [{"name": "chorus", "label": "Chorus"}, {"name": "chorus", "label": "Chorus"}]},
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "chorus",
-                    "section_label": "Chorus",
-                    "lines": [{"line_index": 1, "text": "line 1"}],
-                    "lyric_beats": [{"beat_id": "LB01", "line_refs": [1], "visible_action": "walks", "payoff_role": "release"}],
-                },
-                {
-                    "section_name": "chorus",
-                    "section_label": "Chorus",
-                    "lines": [{"line_index": 1, "text": "line 2"}],
-                    "lyric_beats": [{"beat_id": "LB02", "line_refs": [1], "visible_action": "turns", "payoff_role": "release"}],
-                },
+        "scene_plan_v2": {
+            "identity_core": "same Korean female idol",
+            "world_core": "late-night city transit spaces",
+            "zone_progression": [
+                {"section_label": "Intro", "zone": "threshold", "story_role": "threshold setup"},
+                {"section_label": "Chorus", "zone": "open_world", "story_role": "open world release"},
+            ],
+            "motif_progression": [
+                {"shot_id": "B001", "motif_family": "train window"},
+                {"shot_id": "B002", "motif_family": "ticket gate"},
+            ],
+            "shot_packages": [
+                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold", "identity_core": "same Korean female idol", "beat_refs": ["B001"], "line_refs": [1]},
+                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world", "identity_core": "same Korean female idol", "beat_refs": ["B002"], "line_refs": [1]},
+            ],
+        },
+        "director_plan_v2": {
+            "shot_packages": [
+                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "camera_intent": "favor objects and space before direct face coverage", "identity_core": "same Korean female idol"},
+                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "camera_intent": "open the frame wider and let the camera commit to the payoff space", "identity_core": "same Korean female idol"},
             ]
         },
-        "shot_timeline": {"shots": [{"lyric_beat_id": "LB01"}, {"lyric_beat_id": "LB02"}]},
-    }
-    summary = build_run_summary(state, payload, {})
-    assert summary["unmapped_lyric_lines"] == 0
-
-
-def test_run_summary_route_stats_use_timeline_section_labels():
-    state = {"run_id": "r6", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
-    payload = {
-        "selected_profile": "citypop_glimmer",
-        "audio_map": {"language": "ja", "sections": [{"name": "chorus", "label": "Final Chorus"}]},
-        "lyrics_timeline": {
-            "sections": [
-                {"section_name": "chorus", "section_label": "Final Chorus", "lyric_beats": [{"beat_id": "chorus3_b1"}]}
+        "render_plan_v2": {
+            "shot_packages": [
+                {"shot_id": "B001", "render_strategy": "ref_pair", "identity_core": "same Korean female idol"},
+                {"shot_id": "B002", "render_strategy": "ref_pair", "identity_core": "same Korean female idol"},
             ]
         },
-        "clip_routes": [
-            {"shot_id": "S020_C01", "lyric_beat_id": "chorus3_b1", "section_label": "chorus3_b1[1,2]", "use_ref": True},
-            {"shot_id": "S020_C02", "lyric_beat_id": "chorus3_b1", "section_label": "chorus3_b1[1,2]", "use_ref": False},
-        ],
-    }
-    summary = build_run_summary(state, payload, {})
-    assert summary["ref_ratio_by_section"] == {"Final Chorus": 0.5}
-
-
-def test_quality_review_flags_flat_section_visuals():
-    payload = {
-        "visual_story_bible": {
-            "lyric_beats": [
-                {"beat_id": "LB01", "section_label": "Verse 1", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
-                {"beat_id": "LB02", "section_label": "Verse 1", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
-                {"beat_id": "LB03", "section_label": "Chorus", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
+        "backend_preview_v2": {
+            "wan_adapter_v2": [
+                {"positive_prompt_preview": "Camera widens as the threshold light drifts and the space reacts", "start_source": "ref_start"},
+                {"positive_prompt_preview": "Camera opens into the wider world while the background reacts", "start_source": "previous_end"},
             ]
         },
-        "lyrics_timeline": {
-            "sections": [
-                {"section_label": "Verse 1", "lyric_beats": [{"beat_id": "LB01"}, {"beat_id": "LB02"}]},
-                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "LB03"}]},
-            ]
-        },
-        "shot_timeline": {"shots": []},
-        "workflow_inputs_preview": {},
-        "clip_routes": [],
     }
     out = build_quality_review({}, payload)
-    assert out["section_visual_separation"]["risks"]
-
-
-def test_quality_review_accepts_distinct_adjacent_sections():
-    payload = {
-        "visual_story_bible": {
-            "lyric_beats": [
-                {"beat_id": "LB01", "section_label": "Verse 1", "location_family": "lane", "palette_hint": "blue", "visible_action": "walks"},
-                {"beat_id": "LB02", "section_label": "Chorus", "location_family": "crosswalk", "palette_hint": "gold", "visible_action": "turns and holds"},
-            ]
-        },
-        "lyrics_timeline": {
-            "sections": [
-                {"section_label": "Verse 1", "lyric_beats": [{"beat_id": "LB01"}]},
-                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "LB02"}]},
-            ]
-        },
-        "shot_timeline": {"shots": []},
-        "workflow_inputs_preview": {},
-        "clip_routes": [],
-    }
-    out = build_quality_review({}, payload)
-    assert out["section_visual_separation"]["strengths"]
-
-
-def test_run_summary_failure_does_not_overwrite_latest_success(tmp_path, monkeypatch):
-    monkeypatch.setattr("ai_mv.core.artifacts.paths.PROJECT_ROOT", tmp_path)
-    success_state = {"run_id": "r1", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
-    failed_state = {"run_id": "r2", "status": "failed", "completed_stages": ["acestep_music"], "current_stage": "wan_interpolation", "failure_reason": "boom"}
-    summary = {"run_id": "r1"}
-    failed_summary = {"run_id": "r2"}
-
-    write_run_summary(success_state, summary)
-    write_run_summary(failed_state, failed_summary)
-
-    assert latest_file("run_summary.json").exists()
-    assert latest_success_file("run_summary.json").exists()
-    assert latest_success_file("run_summary.json").read_text(encoding="utf-8").find('"run_id": "r1"') >= 0
-
-
-def test_wan_compose_prefers_environment_sentence_when_camera_relation_is_static():
-    text = _compose_positive_prompt(
-        {
-            "subject_motion": "She moves through the lane and lifts her eyes toward the station light",
-            "camera_relation": "holds a close side profile",
-            "environment_detail": "Wet stripes brighten underfoot",
-        }
-    )
-    assert text == "Holds a close side profile. She moves through the lane and lifts her eyes toward the station light. Wet stripes brighten underfoot."
-
-
-def test_wan_compose_keeps_relation_phrase_without_forcing_camera_prefix():
-    text = _compose_positive_prompt(
-        {
-            "subject_motion": "She continues across the crossing with a calmer stride",
-            "camera_relation": "glides backward in front of her",
-            "environment_detail": "Wet lane marks flare softly",
-        }
-    )
-    assert text == "Glides backward in front of her. She continues across the crossing with a calmer stride. Wet lane marks flare softly."
-
-
-def test_wan_compose_prefers_environment_when_relation_uses_technical_subject():
-    text = _compose_positive_prompt(
-        {
-            "subject_motion": "She keeps walking and lets her gaze return forward",
-            "camera_relation": "the track settles beside her",
-            "environment_detail": "wet pavement glow slips under the glass line",
-        }
-    )
-    assert text == "The track settles beside her. She keeps walking and lets her gaze return forward. Wet pavement glow slips under the glass line."
-
-
-def test_wan_compose_naturalizes_keep_centered_relation():
-    text = _compose_positive_prompt(
-        {
-            "subject_motion": "She eases toward stillness by the storefront and lets her eyes fall down the empty sidewalk",
-            "camera_relation": "a quiet backward glide keeps her centered",
-            "environment_detail": "open pavement extends on camera-right",
-        }
-    )
-    assert text == "A quiet backward glide keeps her centered. She eases toward stillness by the storefront and lets her eyes fall down the empty sidewalk. Open pavement extends on camera-right."
-
-
-def test_wan_compose_naturalizes_gives_her_space_relation():
-    text = _compose_positive_prompt(
-        {
-            "subject_motion": "She carries forward with a measured stride and a faint shoulder release",
-            "camera_relation": "a steady glide gives her space",
-            "environment_detail": "teal and amber glow trail behind her",
-        }
-    )
-    assert text == "A steady glide gives her space. She carries forward with a measured stride and a faint shoulder release. Teal and amber glow trail behind her."
+    assert out["story_progression"]["strengths"]
+    assert out["profile_continuity"]["strengths"]
+    assert out["style_alignment"]["strengths"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.artifacts.director_cards_preview import write_director_cards_preview
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.prompt_preview import write_prompt_preview
 from ai_mv.core.artifacts.quality_review import write_quality_review
@@ -12,6 +13,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     write_manifest(state, payload)
     write_prompt_preview(state, payload)
     write_workflow_inputs_preview(state, payload)
+    write_director_cards_preview(state, payload)
     quality_review = build_quality_review(config, payload)
     write_quality_review(state, quality_review)
     write_run_summary(state, build_run_summary(state, payload, quality_review))

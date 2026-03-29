@@ -179,20 +179,17 @@ def _language_clause(plan: dict) -> str:
 
 
 def _intent_clause(plan: dict) -> str:
-    intent = plan.get("profile_intent", {}) if isinstance(plan.get("profile_intent", {}), dict) else {}
-    audio = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
-    world = intent.get("world_intent", {}) if isinstance(intent, dict) else {}
-    negative = intent.get("negative_intent", {}) if isinstance(intent, dict) else {}
-    escalation = intent.get("escalation_intent", {}) if isinstance(intent, dict) else {}
+    intent = plan.get("director_brief_intent", {}) if isinstance(plan.get("director_brief_intent", {}), dict) else {}
     parts = [
-        _profile_line("Audio intent", audio.get("brief", "")),
-        _profile_line("Hook intent", audio.get("hook_brief", "")),
-        _profile_line("World intent", world.get("visual_intent", "")),
-        _profile_line("Story world", world.get("story_world", "")),
-        _profile_line("Payoff style", world.get("payoff_style", "")),
-        _profile_line("Outro feel", escalation.get("outro_residue", "")),
-        _profile_line("Audio ending policy", _ending_policy_digest(audio.get("ending_policy", {}))),
-        _profile_line("Avoid", " ".join([str(negative.get("visual_negative", "")).strip(), str(negative.get("mv_avoid", "")).strip()]).strip()),
+        _profile_line("Audio intent", intent.get("audio_brief", "")),
+        _profile_line("Hook intent", intent.get("audio_hook_brief", "")),
+        _profile_line("Visual intent", intent.get("visual_brief", "")),
+        _profile_line("Story world", intent.get("story_world", "")),
+        _profile_line("World core", intent.get("world_core", "")),
+        _profile_line("Payoff style", intent.get("payoff_style", "")),
+        _profile_line("Outro feel", intent.get("outro_feel", "")),
+        _profile_line("Character identity", intent.get("identity_core", "")),
+        _profile_line("Avoid", " ".join([str(intent.get("visual_negative", "")).strip(), str(intent.get("avoid", "")).strip()]).strip()),
     ]
     return "".join(parts)
 
@@ -203,10 +200,7 @@ def _profile_line(label: str, text: object) -> str:
 
 
 def _ending_policy(plan: dict) -> dict:
-    intent = plan.get("profile_intent", {}) if isinstance(plan.get("profile_intent", {}), dict) else {}
-    audio = intent.get("audio_intent", {}) if isinstance(intent, dict) else {}
-    policy = audio.get("ending_policy", {}) if isinstance(audio, dict) else {}
-    return policy if isinstance(policy, dict) else {}
+    return {}
 
 
 def _ending_mode_rule(mode: str) -> str:

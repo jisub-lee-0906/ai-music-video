@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.payload_views import merge_planner_prompt
+from ai_mv.engines.seedance_v2_render_plan.planner import build_render_plan_v2, build_render_plan_v2_preview_prompt
+
+
+def run_render_plan_v2(stage_input: StageInput) -> StageOutput:
+    plan = build_render_plan_v2(stage_input.config, stage_input.payload)
+    return StageOutput("render_plan_v2", "done", _build_payload(stage_input.payload, plan, stage_input.config), [])
+
+
+def build_render_plan_v2_preview_payload(config: dict, payload: dict) -> dict:
+    plan = build_render_plan_v2(config, payload)
+    return _build_payload(payload, plan, config)
+
+
+def _build_payload(payload: dict, plan: dict, config: dict) -> dict:
+    workflow_v2 = dict(payload.get("workflow_inputs_v2", {}))
+    workflow_v2["render_plan_v2"] = {
+        "master_anchor": dict(plan.get("master_anchor", {})),
+        "shot_packages": list(plan.get("shot_packages", [])),
+        "wan_chain": list(plan.get("wan_chain", [])),
+    }
+    return {
+        "render_plan_v2": plan,
+        "workflow_inputs_v2": workflow_v2,
+        "planner_prompts": merge_planner_prompt(
+            payload,
+            "render_plan_v2",
+            {"prompt": build_render_plan_v2_preview_prompt(config, payload)},
+        ),
+    }

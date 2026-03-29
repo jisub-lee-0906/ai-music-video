@@ -3,33 +3,30 @@ from __future__ import annotations
 import hashlib
 
 from ai_mv.core.contracts.errors import PipelineError
-from ai_mv.core.profile_brief import validate_profile_brief_config
+from ai_mv.core.director_brief import validate_director_brief_config
 from ai_mv.core.workflow_names import WORKFLOW_FILES
 from ai_mv.utils.path_utils import resolve_project_path
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import ensure_16_9, ensure_positive_size, parse_size, parse_target
 
-
-def apply_profile(config: dict) -> None:
-    name = str(config["profile"]).strip()
-    if not name:
-        return
+def apply_director_brief(config: dict) -> None:
+    name = str(config.get("brief", "")).strip() or "director_brief_example"
     fname = name if name.endswith(".yaml") else f"{name}.yaml"
     profiles_root = resolve_project_path("profiles")
     path = (profiles_root / fname).resolve()
     if profiles_root not in path.parents:
-        raise PipelineError("profile path escapes profiles directory")
+        raise PipelineError("brief path escapes profiles directory")
     if not path.exists():
-        raise PipelineError(f"missing profile config: {path.as_posix()}")
+        raise PipelineError(f"missing director brief config: {path.as_posix()}")
     import yaml
 
-    profile = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(profile, dict):
-        raise PipelineError(f"invalid profile config: {path.as_posix()}")
-    _deep_merge(config, profile)
-    config["profile"] = name
+    brief = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(brief, dict):
+        raise PipelineError(f"invalid director brief config: {path.as_posix()}")
+    _deep_merge(config, brief)
+    config["brief"] = name
     try:
-        validate_profile_brief_config(config)
+        validate_director_brief_config(config)
     except ValueError as exc:
         raise PipelineError(str(exc)) from exc
 

@@ -3,9 +3,18 @@ from __future__ import annotations
 
 def lyric_metrics(payload: dict) -> dict:
     timeline = payload.get("lyrics_timeline", {})
-    shot_timeline = payload.get("shot_timeline", {})
     sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
-    shot_rows = [row for row in shot_timeline.get("shots", []) if isinstance(row, dict)]
+    shot_rows = [
+        {
+            "lyric_beat_id": refs[0] if refs else "",
+            "line_refs": list(row.get("line_refs", [])),
+            "visible_action": "",
+            "payoff_role": "",
+        }
+        for row in payload.get("scene_plan_v2", {}).get("shot_packages", [])
+        if isinstance(row, dict)
+        for refs in [[str(x).strip() for x in row.get("beat_refs", []) if str(x).strip()]]
+    ]
     shot_beat_ids = {str(row.get("lyric_beat_id", "")).strip() for row in shot_rows if str(row.get("lyric_beat_id", "")).strip()}
     all_beat_ids: set[str] = set()
     total_lines = 0
@@ -87,6 +96,34 @@ def route_stats(routes: list[dict], payload: dict) -> dict:
         "tti_only_count": max(0, total - ref_assisted),
         "ref_assisted_count": ref_assisted,
         "ref_ratio_by_section": ratios,
+    }
+
+
+def v2_plan_metrics(payload: dict) -> dict:
+    scene_plan = payload.get("scene_plan_v2", {}) if isinstance(payload, dict) else {}
+    director_plan = payload.get("director_plan_v2", {}) if isinstance(payload, dict) else {}
+    render_plan = payload.get("render_plan_v2", {}) if isinstance(payload, dict) else {}
+    scene_shots = [row for row in scene_plan.get("shot_packages", []) if isinstance(row, dict)]
+    director_shots = [row for row in director_plan.get("shot_packages", []) if isinstance(row, dict)]
+    render_shots = [row for row in render_plan.get("shot_packages", []) if isinstance(row, dict)]
+    shot_rows = render_shots or director_shots or scene_shots
+    motifs = {str(row.get("motif_family", "")).strip() for row in scene_shots if str(row.get("motif_family", "")).strip()}
+    zones = {str(row.get("zone", "")).strip() for row in scene_shots if str(row.get("zone", "")).strip()}
+    continuity_groups = {
+        str(row.get("continuity_group", "")).strip()
+        for row in scene_shots
+        if str(row.get("continuity_group", "")).strip()
+    }
+    render_strategy_counts: dict[str, int] = {}
+    for row in shot_rows:
+        strategy = str(row.get("render_strategy", "")).strip() or "ref_pair"
+        render_strategy_counts[strategy] = render_strategy_counts.get(strategy, 0) + 1
+    return {
+        "shot_package_count": len(shot_rows),
+        "motif_family_count": len(motifs),
+        "zone_count": len(zones),
+        "continuity_group_count": len(continuity_groups),
+        "render_strategy_counts": render_strategy_counts,
     }
 
 

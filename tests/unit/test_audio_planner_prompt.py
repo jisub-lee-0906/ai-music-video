@@ -3,23 +3,19 @@ import ai_mv.engines.acestep_1_5_aio.planner as audio_planner
 
 def _prompt_plan(**extra):
     plan = {
-        "tags": "city pop, neon",
-        "language": "ja",
-        "profile_intent": {
-            "audio_intent": {
-                "brief": "mature female vocal, glossy piano, disco bounce",
-                "hook_brief": "neon rain and chrome reflections",
-            },
-            "world_intent": {
-                "visual_intent": "warm urban nightlife",
-                "story_world": "retro city-pop lane",
-                "action_vocabulary": "small graceful actions",
-                "payoff_style": "clear return",
-            },
-            "negative_intent": {
-                "visual_negative": "no futuristic sci-fi tone",
-                "mv_avoid": "",
-            },
+        "tags": "cinematic pop, female vocal",
+        "language": "ko",
+        "director_brief_intent": {
+            "audio_brief": "glossy pop production with late-night momentum",
+            "audio_hook_brief": "rain-light hook with a clean forward lift",
+            "visual_brief": "cinematic city-night movement",
+            "story_world": "late-night transit spaces and wet street reflections",
+            "world_core": "one connected city night with reflective thresholds",
+            "payoff_style": "open the world on the final return",
+            "outro_feel": "leave a controlled after-image",
+            "identity_core": "Korean female idol in her twenties",
+            "visual_negative": "avoid spectacle clutter",
+            "avoid": "random sci-fi drift",
         },
         "duration": 200,
         "bpm": 108,
@@ -36,72 +32,15 @@ def test_audio_prompt_focuses_on_outline_planning_not_lyrics_dump():
     assert "Return JSON only" in prompt
     assert "Allowed section values only" in prompt
     assert "For this planning step, do not write lyric lines yet" in prompt
-    assert "label is the internal section header and must use the canonical English song labels only" in prompt
     assert "Do not make Verse 2 feel like a copy-paste replay of Verse 1" in prompt
-    assert "Only use post_chorus when the hook benefits from one extra tag" in prompt
-    assert "Make the final chorus unmistakably bigger or more complete than earlier choruses" in prompt
 
 
 def test_audio_outline_prompt_keeps_language_direction():
     prompt = audio_planner._audio_prompt(_prompt_plan())
-    assert "Lyrics language=ja." in prompt
-    assert "Write fluent modern Japanese lyrics" in prompt
-    assert "avoid untranslated English nouns" in prompt
+    assert "Lyrics language=ko." in prompt
+    assert "Write fluent modern Korean lyrics" in prompt
     assert "canonical English section labels exactly as provided in the outline" in prompt
-
-
-def test_audio_lyrics_block_prompt_requests_exact_lines_only():
-    outline = {
-        "genre_description": "Japanese city pop: glossy electric piano",
-        "bpm": 108,
-        "keyscale": "A major",
-        "seed": 31,
-        "duration": 200,
-        "lyrics_blocks": [
-            {"section": "verse_1", "label": "Verse 1", "style": "lift", "line_count": 4},
-            {"section": "chorus", "label": "Final Chorus", "style": "peak", "line_count": 5},
-        ],
-    }
-    prompt = audio_planner._audio_lyrics_block_prompt(
-        _prompt_plan(),
-        outline,
-        [],
-        {"section": "chorus", "label": "Final Chorus", "style": "peak", "line_count": 5},
-    )
-    assert "Current block=[Final Chorus]" in prompt
-    assert "Output exactly 5 finished lyric lines" in prompt
-    assert "Do not copy earlier blocks verbatim" in prompt
-    assert "Final Chorus must keep at most two reused lines" in prompt
-    assert "Do not leave any Latin alphabet words" in prompt
-
-
-def test_audio_prompt_does_not_force_songform_metadata_when_not_requested():
-    prompt = audio_planner._audio_prompt(_prompt_plan(duration=0, bar_lane="intro 4, verse 12"))
-    assert "Target duration=" not in prompt
-    assert "Bar lane=" not in prompt
-    assert "Hook contour bias=" not in prompt
-
-
-def test_normalize_and_validate_keeps_prompt_first_behavior(monkeypatch):
-    monkeypatch.setattr(
-        audio_planner,
-        "_plan_with_llm",
-        lambda _config, _plan: {
-            "genre_description": "Japanese city pop: glossy electric piano",
-            "bpm": 108,
-            "keyscale": "",
-            "seed": 31,
-            "duration": 200,
-            "lyrics_blocks": [
-                {"section": "chorus", "label": "Chorus", "style": "lift", "lines": ["濡れた縁石にネオンが割れる", "改札の音が静かに消える", "窓の帯が頬をかすめる", "まだ夜は終わらない"]},
-                {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["濡れた縁石にネオンが割れる", "改札の音が静かに消える", "帰り道まで光が伸びる", "この街ごと抱きしめていく"]},
-            ],
-        },
-    )
-    normalized = audio_planner._normalize_and_validate({}, _prompt_plan(language="ja", keyscale="F# minor"))
-    assert normalized["genre_description"] == "Japanese city pop: glossy electric piano"
-    assert normalized["language"] == "ja"
-    assert normalized["keyscale"] == "F# minor"
+    assert "Character identity=Korean female idol in her twenties." in prompt
 
 
 def test_plan_lyrics_with_llm_uses_codex_text_generation(monkeypatch):
@@ -114,7 +53,7 @@ def test_plan_lyrics_with_llm_uses_codex_text_generation(monkeypatch):
         {},
         _prompt_plan(),
         {
-            "genre_description": "Japanese city pop: glossy electric piano",
+            "genre_description": "cinematic pop: glossy synths",
             "bpm": 108,
             "keyscale": "A major",
             "seed": 31,

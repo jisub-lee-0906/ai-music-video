@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.output_paths import audio_prefix
-from ai_mv.core.profile_brief import build_profile_intent
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
     validate_audio_genre_description_language,
@@ -38,10 +38,10 @@ from ai_mv.infra.codex_cli_client import generate_structured, generate_text
 def build_audio_plan(config: dict, payload: dict) -> dict:
     audio = _audio_config(config)
     tags = _audio_tags(audio)
-    intent = build_profile_intent(config)
+    intent = build_director_brief_intent(config)
     plan = {
         "tags": tags,
-        "profile_intent": intent,
+        "director_brief_intent": intent,
         "language": _audio_language(audio),
         "filename_prefix": audio_prefix(payload["run_id"]),
     }
@@ -86,7 +86,7 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["lyrics_blocks"] = _attach_line_indexes(normalized.get("lyrics_blocks", []))
     normalized["duration"] = _resolved_duration(plan, normalized)
     normalized["tags"] = plan["tags"]
-    normalized["profile_intent"] = dict(plan.get("profile_intent", {}))
+    normalized["director_brief_intent"] = dict(plan.get("director_brief_intent", {}))
     normalized["language"] = plan["language"]
     normalized["filename_prefix"] = plan["filename_prefix"]
     normalized["quality"] = plan["quality"]
@@ -268,4 +268,3 @@ def _validate_ending_contract(plan: dict, normalized: dict) -> None:
         max_lines = {"tail_only": 1, "low": 2, "medium": 4}.get(density)
         if max_lines is not None and line_count > max_lines:
             raise RuntimeError(f"audio ending contract failed: outro too long for ending_vocal_density={density}")
-

@@ -34,7 +34,7 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     settings = visual_pipeline_settings(config)
     mode = settings["visual_pipeline_mode"]
     consistency = settings["consistency_mode"]
-    policy = settings.get("resolved_profile_policy", {})
+    policy = settings.get("resolved_visual_policy", {})
     if mode == "tti_only" or consistency == "off":
         return False, "tti_only coverage-first mode"
     if mode == "tti_ref_all" or consistency == "always":

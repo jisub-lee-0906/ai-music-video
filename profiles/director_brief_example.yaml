@@ -1,0 +1,75 @@
+audio:
+  language: ko
+  tags:
+    - cinematic korean pop
+    - emotional female vocal
+    - glossy synth-pop pulse
+    - polished rhythm section
+  brief: >
+    Korean-language cinematic pop track with a strong melodic hook, emotional young adult female vocal,
+    polished drums, glossy synth lift, and a clean payoff chorus that can support a live-action music video.
+  hook_brief: >
+    The hook should be immediately singable, title-worthy, and emotionally direct after one listen.
+visual:
+  brief: >
+    Cinematic live-action music video with one consistent heroine, natural skin and fabric response,
+    grounded city-night locations, and progression built from recurring urban motifs instead of generic glamour shots.
+  negative: >
+    Avoid anime illustration, cel shading, toy-like CGI, empty studio space, random set-hopping,
+    and repetitive heroine-only coverage.
+mv:
+  story_world: >
+    One recurring late-night urban transit block built from train windows, ticket gates, curb reflections,
+    platform signs, puddle rings, and stair landings, with the same heroine moving through connected zones.
+  action_vocabulary: >
+    Favor visible actions such as stepping through gates, touching train glass, dragging an umbrella tip,
+    turning at the curb, looking back over one shoulder, and crossing reflected light.
+  payoff_style: >
+    The final return should feel like a world-system peak where repeated city motifs align into one decisive image.
+  outro_feel: >
+    End on a lingering residual image where the space keeps glowing after the heroine moves through it.
+  avoid: >
+    Avoid abrupt geography breaks, empty abstract symbolism, random extra characters, cheap CGI spectacle,
+    and fashion-shoot emptiness.
+character:
+  identity_core: >
+    same heroine, Korean female idol in her twenties, long dark ponytail with blunt bangs,
+    clear almond-shaped eyes, defined natural features, dark tailored stage-street outfit with one red accent ribbon,
+    slim readable silhouette
+  identity_hooks:
+    - red ribbon tie at the ponytail
+    - dark jacket with one red trim line
+    - clear almond-shaped eyes
+director:
+  target_style: >
+    cinematic live-action music video, photoreal image-making, natural skin response, grounded fabric detail,
+    polished editorial realism, and stable human continuity
+  world_core: >
+    layered urban transit night, readable foreground-background separation, recurring reflective surfaces,
+    open-to-compressed zone progression, and consistent heroine continuity inside one connected city block
+  camera_bias: >
+    favor readable cinematic framing, off-center compositions, occasional close-ups, and wider chorus expansion
+  lighting_bias: >
+    favor sign glow, reflected floor light, platform lamps, sodium and LED mixes, and restrained cinematic contrast
+  shadow_bias: >
+    use readable silhouette separation, grounded directional shadowing, and restrained contrast instead of stylized hard blocks
+  motion_bias: >
+    favor stable cinematic motion, reactive environment movement, hair and coat flutter, reflected light drift, and macro camera moves
+  transition_bias: >
+    move between connected zones through threshold shots, reframed reflections, and previous-end continuity instead of hard resets
+  motif_families:
+    - train window
+    - ticket gate
+    - curb reflection
+    - puddle ring
+    - platform sign glow
+    - stair landing
+  section_grammar:
+    Intro: threshold setup and motif introduction
+    Verse 1: object-led narrow world
+    Verse 2: object-led variation inside the same world
+    Pre-Chorus: threshold and anticipation
+    Chorus: open world with wider motion
+    Bridge: compressed interruption and reframing
+    Final Chorus: motif system peak
+    Outro: residual image and gentle release

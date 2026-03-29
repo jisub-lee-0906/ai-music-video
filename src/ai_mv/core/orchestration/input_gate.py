@@ -7,11 +7,13 @@ from ai_mv.core.contracts.errors import StageFailure
 
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
     "lyrics_timeline": ("audio_plan", "audio_map"),
-    "visual_story_bible": ("profile_intent", "lyrics_timeline"),
-    "shot_timeline": ("lyrics_timeline", "visual_story_bible"),
-    "shot_router": ("anchors", "audio_map", "shot_timeline"),
-    "flux2_ref_chain": ("clip_routes", "audio_map", "visual_story_bible", "shot_timeline"),
-    "wan_interpolation": ("clip_routes", "audio_map", "visual_story_bible", "shot_timeline"),
+    "scene_plan_v2": ("audio_plan", "audio_map", "lyrics_timeline"),
+    "director_plan_v2": ("scene_plan_v2",),
+    "render_plan_v2": ("director_plan_v2",),
+    "backend_preview_v2": ("render_plan_v2",),
+    "tti_anchor_v2": ("render_plan_v2",),
+    "flux2_ref_chain_v2": ("render_plan_v2", "master_anchor_v2"),
+    "wan_interpolation_v2": ("render_plan_v2", "flux2_ref_images", "clip_routes"),
     "merge_mux": ("clips", "music_file"),
 }
 
@@ -42,34 +44,8 @@ def validate_stage_input(stage: str, payload: dict) -> None:
 
 
 def _validate_stage_shape(stage: str, payload: dict) -> None:
-    if stage == "shot_router":
-        _validate_anchors(payload.get("anchors"))
-        return
-    if stage in {"flux2_ref_chain", "wan_interpolation"}:
-        _validate_clip_routes(payload.get("clip_routes"), stage)
-        return
     if stage == "merge_mux":
         _validate_merge_inputs(payload)
-
-
-def _validate_anchors(value: object) -> None:
-    rows = _require_list(value, "shot_router anchors")
-    for idx, row in enumerate(rows, start=1):
-        item = _require_dict(row, f"shot_router anchors[{idx}]")
-        _require_non_empty_str(item.get("shot_id"), f"shot_router anchors[{idx}].shot_id")
-        _require_non_empty_str(item.get("anchor"), f"shot_router anchors[{idx}].anchor")
-        _require_positive_number(item.get("duration_sec"), f"shot_router anchors[{idx}].duration_sec")
-
-
-def _validate_clip_routes(value: object, stage: str) -> None:
-    rows = _require_list(value, f"{stage} clip_routes")
-    for idx, row in enumerate(rows, start=1):
-        item: ClipRoute = _require_dict(row, f"{stage} clip_routes[{idx}]")
-        _require_non_empty_str(item.get("shot_id"), f"{stage} clip_routes[{idx}].shot_id")
-        _require_non_empty_str(item.get("anchor"), f"{stage} clip_routes[{idx}].anchor")
-        _require_positive_number(item.get("duration_sec"), f"{stage} clip_routes[{idx}].duration_sec")
-        if "use_ref" in item and not isinstance(item.get("use_ref"), bool):
-            raise StageFailure(f"{stage} clip_routes[{idx}].use_ref must be bool")
 
 
 def _validate_merge_inputs(payload: dict) -> None:
