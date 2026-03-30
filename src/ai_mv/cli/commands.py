@@ -4,11 +4,14 @@ from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.entrypoints.preflight_v2 import run_preflight_v2_entry
 from ai_mv.entrypoints.start_v2 import run_start_v2
 from ai_mv.entrypoints.status import show_status
+from ai_mv.entrypoints.tti_v2 import run_tti_v2
 
 
 def dispatch(command: str, **kwargs: str) -> int:
     if command == "start-v2":
         return run_start_v2(kwargs.get("run_id"), kwargs.get("brief"))
+    if command == "tti-v2":
+        return run_tti_v2(kwargs.get("run_id"), kwargs.get("brief"))
     if command == "doctor":
         return run_doctor()
     if command == "preflight-v2":

@@ -11,6 +11,10 @@ def build_parser() -> argparse.ArgumentParser:
     start_v2.add_argument("--run-id", default=None)
     start_v2.add_argument("--brief", default=None)
 
+    tti_v2 = sub.add_parser("tti-v2")
+    tti_v2.add_argument("--run-id", default=None)
+    tti_v2.add_argument("--brief", default=None)
+
     sub.add_parser("doctor")
 
     preflight_v2 = sub.add_parser("preflight-v2")

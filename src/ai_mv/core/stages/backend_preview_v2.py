@@ -38,21 +38,12 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
     }
     ref_preview = []
     for shot in shots:
-        action = _performance_action(shot)
         ref_preview.append(
             {
                 "shot_id": shot["shot_id"],
                 "render_strategy": "ref_pair",
-                "start_prompt_preview": (
-                    f"The same Korean female idol, now grounded inside {shot['environment_anchor']}. "
-                    f"{_sentence(shot['camera_intent'])} "
-                    "Cinematic live-action still frame, natural skin response, grounded environmental realism."
-                ),
-                "end_prompt_preview": (
-                    f"The same Korean female idol, now {action.rstrip('.')} inside {shot['environment_anchor']}. "
-                    f"{_sentence(shot['camera_intent'])} "
-                    "Cinematic live-action still frame, natural skin response, grounded environmental realism."
-                ),
+                "start_prompt_preview": _ref_start_preview(brief, shot),
+                "end_prompt_preview": _ref_end_preview(brief, shot),
             }
         )
     wan_preview = []
@@ -66,11 +57,14 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
                 "start_source": row["start_source"],
                 "previous_chain_key": row.get("previous_chain_key", ""),
                 "positive_prompt_preview": (
-                    f"Camera {row['camera_intent'].rstrip('.')} in stable cinematic motion. "
+                    f"Camera {row['camera_intent'].rstrip('.')} in {brief['wan_motion_style'].rstrip('.')} "
+                    f"{_wan_carryover_clause(row)} "
+                    f"{_wan_anchor_clause(row)} "
+                    f"{_wan_change_clause(row)} "
                     f"She {_performance_action(row)}. "
                     f"Background {row['environment_anchor'].rstrip('.')}"
                 ),
-                "negative_prompt_preview": "morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi",
+                "negative_prompt_preview": brief["wan_negative"],
             }
         )
     return {
@@ -91,3 +85,79 @@ def _performance_action(shot: dict) -> str:
         lowered = action[:1].lower() + action[1:] if action else action
         return lowered.rstrip(".")
     return "holds one readable action while the space reacts around her"
+
+
+def _ref_start_preview(brief: dict, shot: dict) -> str:
+    return (
+        f"{brief['ref_subject_intro']} at the start of the shot, {_ref_start_action(shot)} inside {shot['environment_anchor']}. "
+        f"{_sentence(_ref_carryover_clause(shot))} "
+        f"{_sentence(_ref_anchor_clause(shot))} "
+        f"{_sentence(_ref_change_clause(shot, 'start'))} "
+        f"{_sentence(shot['camera_intent'])} "
+        f"{_sentence(shot.get('lighting_intent', ''))} "
+        f"{_sentence(brief.get('ref_frame_style', ''))}"
+    )
+
+
+def _ref_end_preview(brief: dict, shot: dict) -> str:
+    return (
+        f"{brief['ref_subject_intro']} at the end of the shot, {_performance_action(shot)} inside {shot['environment_anchor']}. "
+        f"{_sentence(_ref_carryover_clause(shot))} "
+        f"{_sentence(_ref_anchor_clause(shot))} "
+        f"{_sentence(_ref_change_clause(shot, 'end'))} "
+        f"{_sentence(shot['camera_intent'])} "
+        f"{_sentence(shot.get('lighting_intent', ''))} "
+        f"{_sentence(shot.get('transition_intent', ''))} "
+        f"{_sentence(brief.get('ref_frame_style', ''))}"
+    )
+
+
+def _ref_start_action(shot: dict) -> str:
+    zone = str(shot.get("zone", "")).strip().lower()
+    if zone in {"threshold", "edge"}:
+        return "holds a poised starting stance before the movement commits"
+    if zone == "compression":
+        return "keeps the body contained and the pose tightly controlled"
+    return "holds a clear readable starting pose"
+
+
+def _wan_carryover_clause(shot: dict) -> str:
+    state = str(shot.get("carryover_state", "")).strip().rstrip(".")
+    if not state:
+        return ""
+    if state.startswith("a clean "):
+        return f"Begin from {state}."
+    return f"Carry forward {state}."
+
+
+def _wan_anchor_clause(shot: dict) -> str:
+    anchor = str(shot.get("continuity_anchor", "")).strip().rstrip(".")
+    return f"Keep continuity through {anchor}." if anchor else ""
+
+
+def _wan_change_clause(shot: dict) -> str:
+    change = str(shot.get("new_change", "")).strip().rstrip(".")
+    return f"Introduce {change}." if change else ""
+
+
+def _ref_carryover_clause(shot: dict) -> str:
+    state = str(shot.get("carryover_state", "")).strip().rstrip(".")
+    if not state:
+        return ""
+    if state.startswith("a clean "):
+        return f"Begin from {state}"
+    return f"Carry forward {state}"
+
+
+def _ref_anchor_clause(shot: dict) -> str:
+    anchor = str(shot.get("continuity_anchor", "")).strip()
+    return f"Keep continuity through {anchor}" if anchor else ""
+
+
+def _ref_change_clause(shot: dict, frame: str) -> str:
+    change = str(shot.get("new_change", "")).strip()
+    if not change:
+        return ""
+    if frame == "start":
+        return f"Introduce only {change}"
+    return f"Complete {change}"

@@ -94,13 +94,7 @@ def build_tti_anchor_v2_plan(config: dict, payload: dict) -> dict:
                 "retry": 0,
             }
         )
-    master_prompt = (
-        f"{brief['style_contract']}. "
-        f"{brief['identity_core']}. "
-        "The heroine stands in a neutral full-body presentation pose with natural human proportions and one clear signature silhouette. "
-        "The background is a pale grey presentation backdrop with soft controlled studio lighting. "
-        "Full-body cinematic key reference shot."
-    )
+    master_prompt = build_tti_anchor_v2_master_prompt(config)
     return {
         "master_anchor": {
             "prompt_text": master_prompt,
@@ -109,6 +103,27 @@ def build_tti_anchor_v2_plan(config: dict, payload: dict) -> dict:
         },
         "shots": tti_shots,
     }
+
+
+def build_tti_anchor_v2_master_prompt(config: dict) -> str:
+    brief = build_director_brief_intent(config)
+    hooks = ", ".join(brief.get("identity_hooks", []))
+    wardrobe_guidance = str(brief.get("anchor_wardrobe_guidance", "")).strip()
+    anchor_avoid = str(brief.get("anchor_avoid", "")).strip()
+    return (
+        f"{brief['style_contract']}. "
+        f"{brief['identity_core']}. "
+        f"Identity hooks: {hooks}. "
+        "A premium heroine reference image for continuity-sensitive music video production. "
+        "High-end casting and wardrobe reference, polished beauty detail, realistic skin detail, and one memorable silhouette cue. "
+        "Three-quarter full-body presentation pose with a slight body turn, calm approachable expression, direct readable face, both hands visible, full outfit visible, and unobstructed leg line. "
+        "Polished everyday idol wardrobe must read clearly with clean seam lines, premium fabric response, and one small signature accent. "
+        f"{wardrobe_guidance} "
+        f"{anchor_avoid} "
+        "Keep the hairline, bangs, jawline, shoulders, waist, shoes, and overall silhouette clearly readable for downstream reference matching. "
+        "The background is a pale grey premium studio backdrop with soft controlled lighting, gentle floor shadow, and no props or environmental clutter. "
+        "Production-ready hero reference, continuity anchor image, high-end music video casting still."
+    )
 
 
 def _beat_duration_map(payload: dict) -> dict[str, float]:

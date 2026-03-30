@@ -1,62 +1,92 @@
 audio:
   language: ko
   tags:
-    - cinematic korean pop
-    - emotional female vocal
+    - polished korean girl-group pop
+    - bright emotional female vocal
     - glossy synth-pop pulse
-    - polished rhythm section
+    - sparkling rhythm section
   brief: >
-    Korean-language cinematic pop track with a strong melodic hook, emotional young adult female vocal,
-    polished drums, glossy synth lift, and a clean payoff chorus that can support a live-action music video.
+    Korean-language polished pop track with an immediate melodic hook, bright but emotional young adult female vocal,
+    sparkling drums, glossy synth lift, and a clean euphoric chorus that can support a premium live-action music video.
   hook_brief: >
-    The hook should be immediately singable, title-worthy, and emotionally direct after one listen.
+    The hook should be immediately singable, title-worthy, youthful, emotionally direct, and memorable after one listen.
 visual:
   brief: >
-    Cinematic live-action music video with one consistent heroine, natural skin and fabric response,
-    grounded city-night locations, and progression built from recurring urban motifs instead of generic glamour shots.
+    Cinematic live-action music video with one consistent heroine, premium Korean idol beauty styling,
+    natural skin and fabric response, polished city-night locations, and progression built from recurring urban motifs
+    instead of generic fashion editorial severity.
   negative: >
     Avoid anime illustration, cel shading, toy-like CGI, empty studio space, random set-hopping,
-    and repetitive heroine-only coverage.
+    severe monochrome tailoring, harsh runway mood, and repetitive heroine-only coverage.
 mv:
   story_world: >
     One recurring late-night urban transit block built from train windows, ticket gates, curb reflections,
-    platform signs, puddle rings, and stair landings, with the same heroine moving through connected zones.
+    platform signs, puddle rings, and stair landings, with the same heroine moving through connected zones and
+    brighter polished pop-idol energy.
   action_vocabulary: >
-    Favor visible actions such as stepping through gates, touching train glass, dragging an umbrella tip,
-    turning at the curb, looking back over one shoulder, and crossing reflected light.
+    Favor visible actions such as stepping through gates, touching train glass, brushing hair back,
+    turning at the curb, looking back over one shoulder, letting sleeves and hair react to motion,
+    and crossing reflected light.
   payoff_style: >
-    The final return should feel like a world-system peak where repeated city motifs align into one decisive image.
+    The final return should feel like a world-system peak where repeated city motifs align into one bright decisive idol image.
   outro_feel: >
-    End on a lingering residual image where the space keeps glowing after the heroine moves through it.
+    End on a lingering residual image where the space keeps glowing after the heroine passes through it.
   avoid: >
     Avoid abrupt geography breaks, empty abstract symbolism, random extra characters, cheap CGI spectacle,
-    and fashion-shoot emptiness.
+    fashion-shoot emptiness, and overly stern luxury-brand stiffness.
 character:
   identity_core: >
-    same heroine, Korean female idol in her twenties, long dark ponytail with blunt bangs,
-    clear almond-shaped eyes, defined natural features, dark tailored stage-street outfit with one red accent ribbon,
+    same heroine, Korean female idol in her twenties, long dark hair with soft volume and a high ponytail,
+    airy see-through bangs, bright clear almond-shaped eyes, luminous natural makeup, balanced center-visual features,
+    softly slim oval face, clean small nose line, bright approachable smile line,
+    polished off-duty idol outfit built from a fitted light knit top, a short clean casual outer layer,
+    a soft short skirt or premium denim bottom, and premium everyday footwear in ivory, navy, and silver tones with one subtle metallic accent,
     slim readable silhouette
+  ref_subject_intro: >
+    The same Korean female idol
   identity_hooks:
-    - red ribbon tie at the ponytail
-    - dark jacket with one red trim line
-    - clear almond-shaped eyes
+    - airy see-through bangs with high ponytail
+    - soft face-framing strands around the jawline
+    - polished ivory and navy off-duty idol silhouette with a short casual outer layer
+    - subtle silver jewelry accent
+    - bright clear almond-shaped eyes
+    - softly slim oval face with balanced center-visual proportions
+  anchor_wardrobe_guidance: >
+    Favor elevated off-duty idol styling such as a refined fitted knit or sleeveless top, a short clean casual jacket
+    or soft cardigan, a soft mini skirt or premium denim bottom, premium sneakers or slim ankle boots,
+    subtle jewelry, and airport-fashion-like coordination with polished casual luxury.
+  anchor_avoid: >
+    Avoid school-uniform prep, stiff formal blazers, office tailoring, loud graphic details, and costume-like stage styling.
+  ref_continuity_guidance: >
+    Keep the same heroine identity, realistic facial structure, consistent hair silhouette,
+    and stable wardrobe continuity with clear silhouette separation and natural environmental depth.
 director:
   target_style: >
-    cinematic live-action music video, photoreal image-making, natural skin response, grounded fabric detail,
-    polished editorial realism, and stable human continuity
+    cinematic live-action Korean pop music video, premium commercial realism, natural skin response,
+    polished beauty styling, grounded fabric detail, bright idol presence, and stable human continuity
   world_core: >
     layered urban transit night, readable foreground-background separation, recurring reflective surfaces,
-    open-to-compressed zone progression, and consistent heroine continuity inside one connected city block
+    open-to-compressed zone progression, soft glamorous highlights, and consistent heroine continuity inside one connected city block
   camera_bias: >
-    favor readable cinematic framing, off-center compositions, occasional close-ups, and wider chorus expansion
+    favor readable cinematic framing, flattering three-quarter angles, polished medium shots, occasional beauty close-ups,
+    and wider chorus expansion
   lighting_bias: >
-    favor sign glow, reflected floor light, platform lamps, sodium and LED mixes, and restrained cinematic contrast
+    favor flattering beauty light, sign glow, reflected floor light, platform lamps, sodium and LED mixes,
+    and clean polished highlights
   shadow_bias: >
-    use readable silhouette separation, grounded directional shadowing, and restrained contrast instead of stylized hard blocks
+    use readable silhouette separation, soft grounded directional shadowing, and restrained contrast instead of harsh hard blocks
   motion_bias: >
-    favor stable cinematic motion, reactive environment movement, hair and coat flutter, reflected light drift, and macro camera moves
+    favor stable cinematic motion, reactive environment movement, hair and fabric flutter, reflected light drift,
+    and clean pop-video camera movement
   transition_bias: >
     move between connected zones through threshold shots, reframed reflections, and previous-end continuity instead of hard resets
+  ref_frame_style: >
+    Premium cinematic live-action still frame, grounded environmental realism, and high-end music video keyframe quality.
+  wan_motion_style: >
+    stable cinematic motion with clean subject readability, reactive fabric and hair movement,
+    and grounded environmental motion
+  wan_negative: >
+    morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi
   motif_families:
     - train window
     - ticket gate

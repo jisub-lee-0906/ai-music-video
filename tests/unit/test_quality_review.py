@@ -71,20 +71,20 @@ def test_quality_review_v2_uses_scene_director_inputs():
                 {"shot_id": "B002", "motif_family": "ticket gate"},
             ],
             "shot_packages": [
-                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold", "identity_core": "same Korean female idol", "beat_refs": ["B001"], "line_refs": [1]},
-                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world", "identity_core": "same Korean female idol", "beat_refs": ["B002"], "line_refs": [1]},
+                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold", "identity_core": "same Korean female idol", "beat_refs": ["B001"], "line_refs": [1], "visual_role": "opening_frame"},
+                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world", "identity_core": "same Korean female idol", "beat_refs": ["B002"], "line_refs": [1], "visual_role": "payoff_frame"},
             ],
         },
         "director_plan_v2": {
             "shot_packages": [
-                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "camera_intent": "favor objects and space before direct face coverage", "identity_core": "same Korean female idol"},
-                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "camera_intent": "open the frame wider and let the camera commit to the payoff space", "identity_core": "same Korean female idol"},
+                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "camera_intent": "favor objects and space before direct face coverage", "identity_core": "same Korean female idol", "visual_role": "opening_frame"},
+                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "camera_intent": "open the frame wider and let the camera commit to the payoff space", "identity_core": "same Korean female idol", "visual_role": "payoff_frame"},
             ]
         },
         "render_plan_v2": {
             "shot_packages": [
-                {"shot_id": "B001", "render_strategy": "ref_pair", "identity_core": "same Korean female idol"},
-                {"shot_id": "B002", "render_strategy": "ref_pair", "identity_core": "same Korean female idol"},
+                {"shot_id": "B001", "render_strategy": "ref_pair", "identity_core": "same Korean female idol", "visual_role": "opening_frame"},
+                {"shot_id": "B002", "render_strategy": "ref_pair", "identity_core": "same Korean female idol", "visual_role": "payoff_frame"},
             ]
         },
         "backend_preview_v2": {

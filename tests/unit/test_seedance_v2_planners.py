@@ -60,13 +60,68 @@ def test_scene_director_render_plan_v2_chain():
     scene = build_scene_plan_v2(_config(), _payload())
     assert len(scene["shot_packages"]) == 2
     assert scene["shot_packages"][0]["beat_refs"] == ["B001"]
+    assert scene["shot_packages"][0]["visual_role"] == "opening_frame"
 
     director = build_director_plan_v2(_config(), {**_payload(), "scene_plan_v2": scene})
     assert director["shot_packages"][0]["camera_intent"]
     assert director["shot_packages"][0]["motion_intent"]
+    assert director["shot_packages"][0]["visual_role"] == "opening_frame"
 
     render = build_render_plan_v2(_config(), {**_payload(), "director_plan_v2": director})
     assert render["master_anchor"]["render_strategy"] == "tti_master"
     assert render["shot_packages"][0]["render_strategy"] == "ref_pair"
     assert render["wan_chain"][0]["start_source"] == "ref_start"
     assert render["wan_chain"][1]["start_source"] == "previous_end"
+
+
+def test_scene_plan_v2_motif_assignment_is_section_local_and_stable():
+    payload_a = {
+        "lyrics_timeline": {
+            "sections": [
+                {
+                    "section_name": "Verse 1",
+                    "section_label": "Verse 1",
+                    "lyric_beats": [{"beat_id": "V1_B1", "line_refs": [1]}],
+                },
+                {
+                    "section_name": "Chorus",
+                    "section_label": "Chorus",
+                    "lyric_beats": [
+                        {"beat_id": "C_B1", "line_refs": [1]},
+                        {"beat_id": "C_B2", "line_refs": [2]},
+                        {"beat_id": "C_B3", "line_refs": [3]},
+                        {"beat_id": "C_B4", "line_refs": [4]},
+                    ],
+                },
+            ]
+        }
+    }
+    payload_b = {
+        "lyrics_timeline": {
+            "sections": [
+                {
+                    "section_name": "Verse 1",
+                    "section_label": "Verse 1",
+                    "lyric_beats": [
+                        {"beat_id": "V1_B1", "line_refs": [1]},
+                        {"beat_id": "V1_B2", "line_refs": [2]},
+                    ],
+                },
+                {
+                    "section_name": "Chorus",
+                    "section_label": "Chorus",
+                    "lyric_beats": [
+                        {"beat_id": "C_B1", "line_refs": [1]},
+                        {"beat_id": "C_B2", "line_refs": [2]},
+                        {"beat_id": "C_B3", "line_refs": [3]},
+                        {"beat_id": "C_B4", "line_refs": [4]},
+                    ],
+                },
+            ]
+        }
+    }
+    scene_a = build_scene_plan_v2(_config(), payload_a)
+    scene_b = build_scene_plan_v2(_config(), payload_b)
+    chorus_a = {row["shot_id"]: row["motif_family"] for row in scene_a["shot_packages"] if row["shot_id"].startswith("C_")}
+    chorus_b = {row["shot_id"]: row["motif_family"] for row in scene_b["shot_packages"] if row["shot_id"].startswith("C_")}
+    assert chorus_a == chorus_b

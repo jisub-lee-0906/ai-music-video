@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.wan_2_2_flf2v.runner import run_wan
 from ai_mv.utils.text_utils import parse_target
@@ -39,6 +40,7 @@ def run_wan_interpolation_v2(stage_input: StageInput) -> StageOutput:
 
 
 def build_wan_plan_v2(config: dict, payload: dict) -> dict:
+    brief = build_director_brief_intent(config)
     fps = parse_target(config["video"]["target"])[2]
     routes = [row for row in payload.get("clip_routes", []) if isinstance(row, dict)]
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in payload.get("flux2_ref_images", []) if isinstance(row, dict)}
@@ -61,7 +63,10 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
         duration_sec = float(route.get("duration_sec", 2.0))
         frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
         positive = (
-            f"Camera {str(chain.get('camera_intent', '')).strip().rstrip('.')} in stable cinematic motion. "
+            f"Camera {str(chain.get('camera_intent', '')).strip().rstrip('.')} in {str(brief.get('wan_motion_style', '')).strip().rstrip('.')}. "
+            f"{_wan_carryover_clause(chain)} "
+            f"{_wan_anchor_clause(chain)} "
+            f"{_wan_change_clause(chain)} "
             f"She {_subject_motion(chain)}. "
             f"Background {str(chain.get('environment_anchor', '')).strip().rstrip('.')}"
         )
@@ -113,10 +118,13 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
                 "start_source": "ref_start" if index == 1 else "previous_end",
                 "prev_chain_key": "" if index == 1 else prev_key,
                 "subject_motion": _subject_motion(chain),
-                "camera_relation": f"Camera {str(chain.get('camera_intent', '')).strip().rstrip('.')} in stable cinematic motion",
+                "camera_relation": f"Camera {str(chain.get('camera_intent', '')).strip().rstrip('.')} in {str(brief.get('wan_motion_style', '')).strip().rstrip('.')}",
                 "environment_detail": f"Background {str(chain.get('environment_anchor', '')).strip().rstrip('.')}",
+                "carryover_state": str(chain.get("carryover_state", "")).strip(),
+                "continuity_anchor": str(chain.get("continuity_anchor", "")).strip(),
+                "new_change": str(chain.get("new_change", "")).strip(),
                 "positive_prompt": positive,
-                "negative_prompt": "morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi",
+                "negative_prompt": str(brief.get("wan_negative", "")).strip(),
                 "energy": _energy_for_section(str(route.get('section_label', '')).strip()),
             }
         )
@@ -144,3 +152,22 @@ def _energy_for_section(section_label: str) -> str:
 
 def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
+
+
+def _wan_carryover_clause(chain: dict) -> str:
+    state = str(chain.get("carryover_state", "")).strip().rstrip(".")
+    if not state:
+        return ""
+    if state.startswith("a clean "):
+        return f"Begin from {state}."
+    return f"Carry forward {state}."
+
+
+def _wan_anchor_clause(chain: dict) -> str:
+    anchor = str(chain.get("continuity_anchor", "")).strip().rstrip(".")
+    return f"Keep continuity through {anchor}." if anchor else ""
+
+
+def _wan_change_clause(chain: dict) -> str:
+    change = str(chain.get("new_change", "")).strip().rstrip(".")
+    return f"Introduce {change}." if change else ""

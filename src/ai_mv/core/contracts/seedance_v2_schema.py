@@ -8,6 +8,7 @@ REQUIRED_SHOT_FIELDS = (
     "beat_refs",
     "line_refs",
     "story_role",
+    "visual_role",
     "zone",
     "motif_family",
     "continuity_group",
@@ -17,6 +18,7 @@ REQUIRED_SHOT_FIELDS = (
     "performance_intent",
     "lighting_intent",
     "shadow_intent",
+    "contact_intent",
     "motion_intent",
     "transition_intent",
     "render_strategy",
@@ -43,7 +45,7 @@ def assert_scene_plan_v2(plan: dict) -> None:
     for shot in plan["shot_packages"]:
         if not isinstance(shot, dict):
             raise ValueError("scene_plan_v2 shot_packages must contain objects")
-        for key in ("shot_id", "section_name", "section_label", "beat_refs", "line_refs", "story_role", "zone", "motif_family", "continuity_group", "identity_core", "environment_anchor"):
+        for key in ("shot_id", "section_name", "section_label", "beat_refs", "line_refs", "story_role", "visual_role", "zone", "motif_family", "continuity_group", "identity_core", "environment_anchor"):
             if key not in shot:
                 raise ValueError(f"scene_plan_v2 shot missing field: {key}")
 
@@ -55,6 +57,9 @@ def assert_director_plan_v2(plan: dict) -> None:
         if not isinstance(shot, dict):
             raise ValueError("director_plan_v2 shot_packages must contain objects")
         for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "motion_intent", "transition_intent"):
+            if key == "contact_intent":
+                continue
+        for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "contact_intent", "motion_intent", "transition_intent"):
             if not str(shot.get(key, "")).strip():
                 raise ValueError(f"director_plan_v2 shot missing intent: {key}")
 

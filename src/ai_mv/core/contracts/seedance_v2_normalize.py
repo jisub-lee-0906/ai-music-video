@@ -34,12 +34,13 @@ def normalize_render_plan_v2(plan: dict) -> dict:
 def _normalize_scene_shot(shot: dict) -> dict:
     shot["beat_refs"] = [str(x).strip() for x in shot.get("beat_refs", []) if str(x).strip()]
     shot["line_refs"] = [int(x) for x in shot.get("line_refs", []) if _positive_int(x)]
-    for key in ("shot_id", "section_name", "section_label", "story_role", "zone", "motif_family", "continuity_group", "identity_core", "environment_anchor"):
+    for key in ("shot_id", "section_name", "section_label", "story_role", "visual_role", "zone", "motif_family", "continuity_group", "identity_core", "environment_anchor"):
         shot[key] = str(shot.get(key, "")).strip()
     shot.setdefault("camera_intent", "")
     shot.setdefault("performance_intent", "")
     shot.setdefault("lighting_intent", "")
     shot.setdefault("shadow_intent", "")
+    shot.setdefault("contact_intent", "")
     shot.setdefault("motion_intent", "")
     shot.setdefault("transition_intent", "")
     shot.setdefault("render_strategy", "ref_pair")
@@ -48,7 +49,7 @@ def _normalize_scene_shot(shot: dict) -> dict:
 
 def _normalize_director_shot(shot: dict) -> dict:
     shot = _normalize_scene_shot(shot)
-    for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "motion_intent", "transition_intent"):
+    for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "contact_intent", "motion_intent", "transition_intent"):
         shot[key] = str(shot.get(key, "")).strip()
     return shot
 
