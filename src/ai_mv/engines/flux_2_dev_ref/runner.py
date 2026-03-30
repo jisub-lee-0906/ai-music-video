@@ -13,11 +13,23 @@ def run_flux2_ref(config: dict, plan: dict) -> list[dict]:
     items = plan["items"]
     if not items:
         return out
+    previous_item: dict | None = None
+    previous_end = ""
     for item in items:
-        start = _render_start(config, item)
-        start_source = "rendered_start"
-        end = _render_end(config, item)
-        out.append(_pack_item(item, start, end, start_source, None))
+        current = dict(item)
+        if previous_end:
+            start = previous_end
+            start_source = "previous_end"
+        else:
+            start = _render_start(config, current)
+            start_source = "rendered_start"
+        end_item = dict(current)
+        end_item["ref"] = start
+        end = _render_end(config, end_item)
+        packed = _pack_item(current, start, end, start_source, previous_item)
+        out.append(packed)
+        previous_item = packed
+        previous_end = end
     return out
 
 

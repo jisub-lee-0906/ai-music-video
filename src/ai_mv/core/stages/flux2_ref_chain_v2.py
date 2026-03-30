@@ -44,6 +44,7 @@ def build_flux2_ref_plan_v2(config: dict, payload: dict) -> dict:
     for idx, shot in enumerate(shots, start=1):
         shot_id = str(shot.get("shot_id", "")).strip()
         duration = float(durations.get(shot_id, 2.0))
+        literal_scene = _literal_scene_description(shot)
         start_prompt = _start_prompt_text(brief, shot)
         end_prompt = _end_prompt_text(brief, shot)
         items.append(
@@ -59,7 +60,7 @@ def build_flux2_ref_plan_v2(config: dict, payload: dict) -> dict:
                 "end_prompt_text": end_prompt,
                 "style_clause": "",
                 "subject_clause": str(brief.get("ref_subject_intro", "")).strip(),
-                "action_clause": f"begin from {_start_action_from_shot(shot)} and end with {_end_action_from_shot(shot)} inside {shot['environment_anchor']}",
+                "action_clause": f"begin from {_start_action_from_shot(shot)} and end with {_end_action_from_shot(shot)} inside {literal_scene}",
                 "camera_clause": str(shot.get("camera_intent", "")).strip(),
                 "environment_clause": "",
                 "continuity_clause": _continuity_clause(brief),
@@ -74,7 +75,7 @@ def build_flux2_ref_plan_v2(config: dict, payload: dict) -> dict:
                 "camera_language": str(shot.get("camera_intent", "")).strip(),
                 "pose_delta": str(shot.get("performance_intent", "")).strip(),
                 "emotion": str(shot.get("transition_intent", "")).strip(),
-                "scene_detail": str(shot.get("environment_anchor", "")).strip(),
+                "scene_detail": literal_scene,
                 "environment_family": str(shot.get("environment_family", "")).strip(),
                 "camera_distance_band": str(shot.get("camera_distance_band", "")).strip(),
                 "contact_intent": str(shot.get("contact_intent", "")).strip(),
@@ -127,41 +128,27 @@ def _clip_routes_from_v2(payload: dict, flux2_ref_images: list[dict]) -> list[di
     return routes
 
 
-def _action_from_shot(shot: dict) -> str:
-    return _end_action_from_shot(shot)
-
-
 def _start_prompt_text(brief: dict, shot: dict) -> str:
-    return (
-        f"{brief['ref_subject_intro']} at the start of the shot, {_start_action_from_shot(shot)} inside {shot['environment_anchor']}. "
-        f"{_sentence(_visual_role_clause(shot, 'start'))} "
-        f"{_sentence(_carryover_clause(shot))} "
-        f"{_sentence(_continuity_anchor_clause(shot))} "
-        f"{_sentence(_new_change_clause(shot, 'start'))} "
-        f"{_sentence(_physical_space_clause(shot))} "
-        f"{_sentence(_camera_band_clause(shot))} "
-        f"{_sentence(_contact_clause(shot))} "
-        f"{_sentence(shot['camera_intent'])} "
-        f"{_sentence(shot.get('lighting_intent', ''))} "
-        f"{_sentence(shot.get('shadow_intent', ''))} "
-        f"{_sentence(brief.get('ref_frame_style', ''))}"
+    return _join_sentences(
+        _ref_subject_clause(brief, shot, "start"),
+        _ref_state_clause(shot, "start"),
+        _ref_location_clause(shot),
+        _ref_continuity_clause(shot, "start"),
+        _ref_camera_clause(shot, "start"),
+        _ref_lighting_clause(shot),
+        brief.get("ref_frame_style", ""),
     )
 
 
 def _end_prompt_text(brief: dict, shot: dict) -> str:
-    return (
-        f"{brief['ref_subject_intro']} at the end of the shot, {_end_action_from_shot(shot)} inside {shot['environment_anchor']}. "
-        f"{_sentence(_visual_role_clause(shot, 'end'))} "
-        f"{_sentence(_carryover_clause(shot))} "
-        f"{_sentence(_continuity_anchor_clause(shot))} "
-        f"{_sentence(_new_change_clause(shot, 'end'))} "
-        f"{_sentence(_physical_space_clause(shot))} "
-        f"{_sentence(_camera_band_clause(shot))} "
-        f"{_sentence(_contact_clause(shot))} "
-        f"{_sentence(_end_camera_clause(shot))} "
-        f"{_sentence(shot.get('lighting_intent', ''))} "
-        f"{_sentence(shot.get('shadow_intent', ''))} "
-        f"{_sentence(brief.get('ref_frame_style', ''))}"
+    return _join_sentences(
+        _ref_subject_clause(brief, shot, "end"),
+        _ref_state_clause(shot, "end"),
+        _ref_location_clause(shot),
+        _ref_continuity_clause(shot, "end"),
+        _ref_camera_clause(shot, "end"),
+        _ref_lighting_clause(shot),
+        brief.get("ref_frame_style", ""),
     )
 
 
@@ -172,46 +159,46 @@ def _start_action_from_shot(shot: dict) -> str:
     visual_role = str(shot.get("visual_role", "")).strip().lower()
     if visual_role == "payoff_frame":
         if family == "stair_landing":
-            return "opens into the payoff on the stair landing with one step weighted into the depth and the body already beginning to open through the steps"
+            return "opens into the stair landing with one step already weighted into the depth while the free side is still arriving"
         if family == "wet_curb_reflection":
-            return "opens into the payoff with the leading step still tracing the wet curb and the body opening into the street depth"
+            return "moves beside the wet curb with the leading step still tracing the edge while the body is still opening unevenly"
         if family == "wet_pavement_reflection":
-            return "opens into the payoff with a broader stride while the reflected step still reads in the wet pavement"
+            return "moves across the wet pavement with the broader stride still in progress and the body not yet fully settled"
         if family == "ticket_gate_lane":
-            return "opens into the payoff through the gate lane while the body keeps moving inside the same lane direction"
+            return "clears the gate line while still moving in the same lane direction instead of settling into a centered pose"
         if family == "train_window_glass":
-            return "opens into the payoff while staying aligned with the glass line and the reflected travel"
+            return "keeps moving beside the glass line while the reflected travel continues past her"
     if visual_role == "opening_frame":
         if family == "wet_curb_reflection":
-            return "catches the first moment of a curbside step with the body already angled into the street depth"
+            return "is caught at the first curbside step with the body already angled into the street depth"
         if family == "wet_pavement_reflection":
-            return "catches the first readable movement above the wet pavement before the reflected step fully lands"
+            return "is caught before the reflected step fully lands on the wet pavement"
         if family == "ticket_gate_lane":
-            return "catches the first lane-entry moment with the shoulders already turning through the gate geometry"
+            return "is caught just entering the lane while the shoulders are already turning through the gate geometry"
         if family == "stair_landing":
-            return "catches the first step through the stair landing with the torso already angled into the stair depth"
-        return "catches the first readable movement rather than a fully settled standing pose"
+            return "is caught on the first stair step with the torso already angled into the stair depth"
+        return "is caught at the first readable movement rather than in a settled standing pose"
     if visual_role == "handoff_frame":
         if family == "stair_landing":
-            return "leans into the next stair step with weight already shifted forward through the landing depth"
+            return "keeps moving into the next stair step with weight already shifted forward"
         if family == "ticket_gate_lane":
-            return "holds a directional stance already carrying into the next lane opening"
+            return "keeps moving through the lane opening instead of settling into a held pose"
         if family in {"wet_curb_reflection", "wet_pavement_reflection"}:
-            return "holds a directional stance with the next step already pulling forward through the reflective ground"
-        return "holds a directional stance with motion already carrying into the next cut"
+            return "keeps moving through the reflective ground with the next step already pulling forward"
+        return "keeps moving in the same direction with the action still carrying into the next cut"
     if zone in {"threshold", "edge"}:
-        return "holds a poised starting stance before the movement commits"
+        return "is held just before the movement fully commits"
     if zone == "compression":
-        return "keeps the body contained and the pose tightly controlled"
+        return "stays contained inside the space without settling into a presentation pose"
     if family == "train_window_glass" or "window" in motif:
-        return "holds near the glass with the profile and hand line clearly readable"
+        return "keeps moving beside the glass with the profile line still clear"
     if family == "ticket_gate_lane" or "gate" in motif:
-        return "stands just before the gate line with the shoulders already set into the lane direction"
+        return "keeps moving just ahead of the gate line with the shoulders already set into the lane direction"
     if family == "wet_curb_reflection":
-        return "sets one step near the wet curb before the reflected movement opens beside her"
+        return "keeps one step near the wet curb before the reflected movement fully opens beside her"
     if family == "wet_pavement_reflection" or "reflection" in motif or "puddle" in motif:
-        return "sets the body above the wet pavement before the reflected step lands"
-    return "holds a clear readable starting pose"
+        return "moves above the wet pavement before the reflected step fully lands"
+    return "stays inside a readable in-between moment rather than a fixed starting pose"
 
 
 def _end_action_from_shot(shot: dict) -> str:
@@ -219,56 +206,111 @@ def _end_action_from_shot(shot: dict) -> str:
     zone = str(shot.get("zone", "")).strip().lower()
     action = str(shot.get("performance_intent", "")).strip().rstrip(".")
     if family == "wet_pavement_reflection":
-        return "finishes the step on the wet pavement and holds the reflected body line clearly"
+        return "lets the step settle onto the wet pavement while the reflected body line stays readable and the body keeps carrying forward"
     if family == "wet_curb_reflection":
-        return "completes the step near the wet curb and lets the reflected movement settle beside her"
+        return "lets the step settle near the wet curb while the reflected movement still carries beside her"
     if family == "ticket_gate_lane":
-        return "moves one lane-length forward beside the ticket barriers and settles into a readable side turn"
+        return "moves one lane-length forward beside the ticket barriers and leaves the body ready to keep traveling instead of resetting for the camera"
     if family == "train_window_glass":
-        return "carries the movement a little further along the glass and settles into a readable profile"
+        return "carries the movement a little further along the glass and leaves the profile ready to keep traveling"
     if family == "platform_signage":
-        return "finishes the movement under the platform signs and holds a readable body turn"
+        return "finishes the movement under the platform signs without collapsing into a presentation pose"
     if family == "stair_landing":
-        return "lands the next step on the stair landing and settles into a readable turn through the step depth"
+        return "lands the next step on the stair landing and keeps the body moving through the step depth instead of resolving into a balanced pose"
     if zone == "compression":
-        return "keeps the movement contained and settles into the next readable pose"
-    return action or "shifts into the next readable pose"
+        return "keeps the movement contained and leaves the body ready for the next small shift"
+    return action or "finishes one readable action without resetting into a posed still"
+
+
+def _literal_scene_description(shot: dict) -> str:
+    family = str(shot.get("environment_family", "")).strip().lower()
+    zone = str(shot.get("zone", "")).strip().lower()
+    if family == "ticket_gate_lane":
+        if zone in {"open_world", "open_world_peak"}:
+            return "an open station gate aisle with waist-high card readers, metallic barrier posts, overhead station lights, and concourse depth opening behind her"
+        if zone in {"threshold", "edge"}:
+            return "a narrow station gate entry with waist-high card readers, metallic barrier posts, and a compressed aisle just beyond the checkpoint"
+        return "a narrow station gate aisle with waist-high card readers on both sides, metallic ticket barriers, overhead station lights, and concourse depth behind her"
+    if family == "wet_curb_reflection":
+        if zone in {"open_world", "open_world_peak"}:
+            return "an open roadside lane after rain with one raised curb edge, shallow roadside water catching storefront spill light, and city traffic glow stretching behind her"
+        if zone in {"threshold", "edge"}:
+            return "a tight roadside edge after rain with one raised curb, shallow water along the gutter, storefront light spill, and a narrow lane turning away behind her"
+        return "a narrow side street after rain with one raised curb edge, shallow roadside water catching storefront spill light, and an empty lane trailing behind her"
+    if family == "wet_pavement_reflection":
+        if zone in {"open_world", "open_world_peak"}:
+            return "a broad wet roadway after rain with shallow puddles, painted lane markings, reflective asphalt, and distant traffic glow stretching behind her"
+        if zone in {"threshold", "edge"}:
+            return "a narrow wet street after rain with shallow puddles, painted road markings, reflective asphalt, and one open lane slipping away behind her"
+        return "a wet city street after rain with shallow puddles, reflective asphalt, painted lane markings, and traffic glow receding behind her"
+    if family == "platform_signage":
+        if zone in {"open_world", "open_world_peak"}:
+            return "a platform-side concourse under overhead sign boards, fluorescent station lights, side railings, and open station depth beyond her"
+        return "a platform-side walkway under overhead sign boards, fluorescent station lights, side railings, and trackside depth beyond her"
+    if family == "stair_landing":
+        if zone in {"open_world", "open_world_peak"}:
+            return "an exterior stair landing with metal railings on both sides, receding concrete steps, and open night city light spreading beyond the landing"
+        return "an exterior stair landing with metal railings on both sides, receding concrete steps, and night city light beyond the landing"
+    if family == "train_window_glass":
+        if zone in {"threshold", "edge"}:
+            return "a train-side threshold with dark carriage glass, layered interior reflections, and passing station light outside the window line"
+        return "a train-side window line with dark carriage glass, layered interior reflections, and passing station light outside"
+    anchor = str(shot.get("environment_anchor", "")).strip()
+    return anchor or "a readable city location with clear structure and depth around her"
 
 
 def _continuity_clause(brief: dict) -> str:
     return str(brief.get("ref_continuity_guidance", "")).strip()
 
 
-def _physical_space_clause(shot: dict) -> str:
+def _ref_subject_clause(brief: dict, shot: dict, frame: str) -> str:
     family = str(shot.get("environment_family", "")).strip().lower()
-    if family == "train_window_glass":
-        return "Keep the shot inside the train-window glass environment with interior reflections and passing exterior light"
+    base = str(brief.get("ref_subject_intro", "")).strip() or "The same heroine"
+    if frame == "start":
+        if family == "ticket_gate_lane":
+            return f"{base} at the start of the shot, already committed to moving through the gate space"
+        if family == "stair_landing":
+            return f"{base} at the start of the shot, already entering the stair depth instead of posing for camera"
+        return f"{base} at the start of the shot, caught in the middle of a real movement rather than a posed still"
     if family == "ticket_gate_lane":
-        return "Keep the shot inside the ticket-gate lane with waist-high ticket barriers, card readers, and entry lane posts clearly readable"
-    if family == "wet_curb_reflection":
-        return "Keep the shot at street level beside the wet curb with reflective asphalt and street depth behind her"
-    if family == "wet_pavement_reflection":
-        return "Keep the shot at street level on wet pavement with shallow puddle reflections and open city depth around her"
-    if family == "platform_signage":
-        return "Keep the shot on the platform with signage, lamps, and station depth readable behind her"
+        return f"{base} at the end of the shot, still traveling through the gate space and ready for the next beat"
     if family == "stair_landing":
-        return "Keep the shot on the stair landing with railings and receding steps readable behind her"
-    return "Keep the shot inside one consistent physical environment family"
+        return f"{base} at the end of the shot, still moving through the stair depth and not yet settled"
+    return f"{base} at the end of the shot, finishing one readable movement without resetting into a posed frame"
 
 
-def _camera_band_clause(shot: dict) -> str:
-    band = str(shot.get("camera_distance_band", "")).strip().lower()
-    if band == "tight_medium":
-        return "Keep both keyframes inside a tight-medium framing band without opening into a wide shot"
-    if band == "medium_wide":
-        return "Keep both keyframes inside a medium-wide framing band and do not jump to an extreme close-up or distant wide shot"
-    if band == "wide_full_figure":
-        return "Keep both keyframes inside a wide full-figure framing band with the heroine fully readable in the environment"
-    return "Keep both keyframes inside one stable framing band"
+def _ref_state_clause(shot: dict, frame: str) -> str:
+    return _start_action_from_shot(shot) if frame == "start" else _end_action_from_shot(shot)
 
 
-def _contact_clause(shot: dict) -> str:
-    return str(shot.get("contact_intent", "")).strip()
+def _ref_location_clause(shot: dict) -> str:
+    return f"The location is {_literal_scene_description(shot)}"
+
+
+def _ref_continuity_clause(shot: dict, frame: str) -> str:
+    parts: list[str] = []
+    carry = _carryover_clause(shot)
+    transition = _incoming_transition_clause(shot) if frame == "start" else ""
+    anchor = _continuity_anchor_clause(shot) if frame == "end" else ""
+    axis = _same_axis_clause(shot) if frame == "end" else ""
+    change = _new_change_clause(shot, frame)
+    for part in (carry, transition, anchor, axis, change):
+        cleaned = str(part).strip()
+        if cleaned:
+            parts.append(cleaned)
+    if not parts:
+        return ""
+    return " ".join(parts)
+
+
+def _ref_camera_clause(shot: dict, frame: str) -> str:
+    if frame == "end":
+        return _end_camera_clause(shot)
+    return str(shot.get("camera_intent", "")).strip()
+
+
+def _ref_lighting_clause(shot: dict) -> str:
+    return str(shot.get("lighting_intent", "")).strip()
 
 
 def _carryover_clause(shot: dict) -> str:
@@ -278,6 +320,13 @@ def _carryover_clause(shot: dict) -> str:
     if state.startswith("a clean "):
         return f"Begin from {state}"
     return f"Carry forward {state}"
+
+
+def _incoming_transition_clause(shot: dict) -> str:
+    transition = str(shot.get("incoming_transition", "")).strip()
+    if not transition:
+        return ""
+    return transition
 
 
 def _continuity_anchor_clause(shot: dict) -> str:
@@ -294,44 +343,53 @@ def _new_change_clause(shot: dict, frame: str) -> str:
     return f"By the end frame, complete {change}"
 
 
-def _visual_role_clause(shot: dict, frame: str) -> str:
-    role = str(shot.get("visual_role", "")).strip().lower()
-    if role == "opening_frame":
-        if frame == "start":
-            return "Make this feel like the first cinematic image of the beat rather than a centered catalog pose"
-        return "Let the ending frame stay cinematic and spatially tense instead of flattening into a promotional still"
-    if role == "handoff_frame":
-        return "Make the frame feel ready to hand motion and screen direction into the next cut"
-    if role == "pressure_frame":
-        return "Keep the frame pressurized and focused, with less pose presentation and more immediate scene tension"
-    if role == "payoff_frame":
-        return "Let the frame feel like a cinematic release with broader world presence, not just a clean fashion still"
-    return "Keep the frame inside a connected cinematic moment rather than a standalone posed still"
-
-
 def _end_camera_clause(shot: dict) -> str:
     family = str(shot.get("environment_family", "")).strip().lower()
     band = str(shot.get("camera_distance_band", "")).strip().lower()
     if family == "wet_pavement_reflection":
-        return "Keep the camera at the same street-level medium-wide distance and continue along the wet pavement without switching to a framed window or platform view"
+        return "Keep the camera at the same street-level medium-wide distance and continue along the wet pavement without switching to a framed window or platform view, keeping her on the same side of the frame"
     if family == "wet_curb_reflection":
-        return "Keep the camera at the same curbside medium-wide distance and continue the shot beside the reflective edge without changing geography"
+        return "Keep the camera at the same curbside medium-wide distance and continue the shot beside the reflective edge without changing geography, keeping the same offset instead of recentering her"
     if family == "ticket_gate_lane":
-        return "Keep the camera at the same medium-wide gate-lane distance with waist-high ticket barriers still readable beside her"
+        return "Keep the camera at the same medium-wide gate-lane distance with waist-high ticket barriers still readable beside her, preserving the same lane-side offset and body axis"
     if family == "train_window_glass":
-        return "Keep the camera at the same side-on medium distance with the glass and reflections still readable beside her"
+        return "Keep the camera at the same side-on medium distance with the glass and reflections still readable beside her, without rotating into a frontal hero angle or recentering her"
     if family == "platform_signage":
-        return "Keep the camera at the same medium-wide platform distance with signs and lamps still readable behind her"
+        return "Keep the camera at the same medium-wide platform distance with signs and lamps still readable behind her, preserving the same offset directional feel"
     if family == "stair_landing":
-        return "Keep the camera at the same medium-wide stair-landing distance with railings and receding steps still readable"
+        return "Keep the camera at the same medium-wide stair-landing distance with railings and receding steps still readable, preserving the same off-center side and avoiding a centered symmetrical hero frame"
     if band == "medium_wide":
         return "Keep the camera at the same medium-wide distance and continue inside the same geography"
     return str(shot.get("camera_intent", "")).strip()
 
 
+def _same_axis_clause(shot: dict) -> str:
+    role = str(shot.get("visual_role", "")).strip().lower()
+    family = str(shot.get("environment_family", "")).strip().lower()
+    if role != "payoff_frame":
+        return ""
+    if family == "stair_landing":
+        return "Keep the same stair-side offset and body axis from the start frame, and advance only one small step further into the landing"
+    if family == "wet_curb_reflection":
+        return "Keep the same curbside offset and body axis from the start frame, and advance only one small state change"
+    if family == "wet_pavement_reflection":
+        return "Keep the same street-level offset and body axis from the start frame, and advance only one small state change"
+    if family == "ticket_gate_lane":
+        return "Keep the same lane-side offset and body axis from the start frame, and advance only one small state change"
+    if family == "train_window_glass":
+        return "Keep the same side-on body axis from the start frame, and advance only one small state change along the glass line"
+    if family == "platform_signage":
+        return "Keep the same platform-side offset and body axis from the start frame, and advance only one small state change"
+    return "Keep the same screen-side offset and body axis from the start frame, and advance only one small state change"
+
+
 def _sentence(text: str) -> str:
     cleaned = " ".join(str(text).strip().rstrip(". ").split())
     return f"{cleaned}." if cleaned else ""
+
+
+def _join_sentences(*parts: object) -> str:
+    return " ".join(_sentence(part) for part in parts if _sentence(part))
 
 
 def _beat_duration_map(payload: dict) -> dict[str, float]:

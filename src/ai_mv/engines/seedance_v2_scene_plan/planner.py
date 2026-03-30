@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import zlib
 
 from ai_mv.core.contracts.seedance_v2_normalize import normalize_scene_plan_v2
@@ -23,7 +24,8 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
         zone_progression.append({"section_name": section_name, "section_label": section_label, "zone": zone, "story_role": story_role})
         section_beats = [row for row in section.get("lyric_beats", []) if isinstance(row, dict)]
         section_beat_count = len(section_beats)
-        motif_sequence = _motif_sequence_for_section(motifs, section_label)
+        motif_sequence = _motif_sequence_for_section(motifs, section_label, section_beat_count)
+        section_shots: list[dict] = []
         for beat_index, beat in enumerate(section_beats, start=1):
             if not isinstance(beat, dict):
                 continue
@@ -33,7 +35,8 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
             motif = motif_sequence[(beat_index - 1) % len(motif_sequence)]
             continuity_group = f"{section_label}:{zone}"
             environment_anchor = _environment_anchor(zone, motif, beat)
-            shot_packages.append(
+            visual_role = _visual_role(section_label, zone, beat_index, section_beat_count)
+            section_shots.append(
                 {
                     "shot_id": beat_id,
                     "section_name": section_name,
@@ -41,13 +44,13 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
                     "beat_refs": [beat_id],
                     "line_refs": [int(x) for x in beat.get("line_refs", []) if int(x) > 0],
                     "story_role": story_role,
-                    "visual_role": _visual_role(section_label, zone, beat_index, section_beat_count),
+                    "visual_role": visual_role,
                     "zone": zone,
                     "motif_family": motif,
                     "continuity_group": continuity_group,
                     "identity_core": brief["identity_core"],
                     "environment_family": _environment_family(motif),
-                    "camera_distance_band": _camera_distance_band(zone, section_label),
+                    "camera_distance_band": _camera_distance_band(zone, section_label, visual_role),
                     "environment_anchor": environment_anchor,
                     "section_beat_index": beat_index,
                     "section_beat_count": section_beat_count,
@@ -61,6 +64,8 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
                     "environment_anchor": environment_anchor,
                 }
             )
+        _apply_transition_contracts(section_shots)
+        shot_packages.extend(section_shots)
     scene_plan = {
         "brief_name": brief["brief_name"],
         "identity_core": brief["identity_core"],
@@ -174,12 +179,13 @@ def _environment_family(motif_text: str) -> str:
     return "urban_detail"
 
 
-def _camera_distance_band(zone: str, section_label: str) -> str:
+def _camera_distance_band(zone: str, section_label: str, visual_role: str) -> str:
     zone_key = zone.strip().lower()
     section = section_label.strip().lower()
+    role = visual_role.strip().lower()
     if "bridge" in section or zone_key == "compression":
         return "tight_medium"
-    if "final chorus" in section:
+    if role == "payoff_frame" and "final chorus" in section:
         return "wide_full_figure"
     if "chorus" in section:
         return "medium_wide"
@@ -194,7 +200,7 @@ def _visual_role(section_label: str, zone: str, beat_index: int, beat_count: int
     if "intro" in section or beat_index == 1:
         return "opening_frame"
     if "final chorus" in section or zone_key == "open_world_peak":
-        return "payoff_frame"
+        return _final_chorus_visual_role(beat_index, beat_count)
     if "bridge" in section or zone_key == "compression":
         return "pressure_frame"
     if beat_index >= beat_count:
@@ -202,9 +208,217 @@ def _visual_role(section_label: str, zone: str, beat_index: int, beat_count: int
     return "continuity_frame"
 
 
-def _motif_sequence_for_section(motifs: list[str], section_label: str) -> list[str]:
+def _final_chorus_visual_role(beat_index: int, beat_count: int) -> str:
+    if beat_count <= 1:
+        return "opening_frame"
+    if beat_index == 1:
+        return "opening_frame"
+    if beat_index == beat_count:
+        return "payoff_frame"
+    if beat_count >= 4 and beat_index == beat_count - 1:
+        return "handoff_frame"
+    return "continuity_frame"
+
+
+def _motif_sequence_for_section(motifs: list[str], section_label: str, beat_count: int) -> list[str]:
     motif_rows = [str(m).strip() for m in motifs if str(m).strip()]
     if not motif_rows:
         return ["world motif"]
+    if len(motif_rows) == 1:
+        return motif_rows
     offset = zlib.crc32(section_label.encode("utf-8")) % len(motif_rows)
-    return motif_rows[offset:] + motif_rows[:offset]
+    rotated = motif_rows[offset:] + motif_rows[:offset]
+    target_length = max(1, min(int(beat_count or 1), len(rotated)))
+    if target_length < len(rotated):
+        return _lowest_cost_path(rotated, motif_rows, target_length)
+    if len(rotated) <= 8:
+        return _lowest_cost_cycle(rotated, motif_rows)
+    return _greedy_low_cost_cycle(rotated, motif_rows)
+
+
+def _lowest_cost_path(rotated: list[str], profile_order: list[str], target_length: int) -> list[str]:
+    start = rotated[0]
+    remaining = rotated[1:]
+    best_sequence = [start, *remaining[: max(0, target_length - 1)]]
+    best_score: tuple[float, float] | None = None
+    for perm in itertools.permutations(remaining, max(0, target_length - 1)):
+        candidate = [start, *perm]
+        score = (_path_transition_cost(candidate), _order_penalty(candidate, profile_order, cyclic=False))
+        if best_score is None or score < best_score:
+            best_score = score
+            best_sequence = candidate
+    return best_sequence
+
+
+def _lowest_cost_cycle(rotated: list[str], profile_order: list[str]) -> list[str]:
+    start = rotated[0]
+    remaining = rotated[1:]
+    best_sequence = rotated[:]
+    best_score: tuple[float, float] | None = None
+    for perm in itertools.permutations(remaining):
+        candidate = [start, *perm]
+        score = (_cycle_transition_cost(candidate), _order_penalty(candidate, profile_order, cyclic=True))
+        if best_score is None or score < best_score:
+            best_score = score
+            best_sequence = candidate
+    return best_sequence
+
+
+def _greedy_low_cost_cycle(rotated: list[str], profile_order: list[str]) -> list[str]:
+    sequence = [rotated[0]]
+    remaining = rotated[1:]
+    while remaining:
+        current = sequence[-1]
+        next_motif = min(
+            remaining,
+            key=lambda motif: (
+                _transition_cost_between_families(_environment_family(current), _environment_family(motif)),
+                _profile_gap(profile_order, current, motif),
+                motif,
+            ),
+        )
+        sequence.append(next_motif)
+        remaining.remove(next_motif)
+    return sequence
+
+
+def _cycle_transition_cost(sequence: list[str]) -> float:
+    families = [_environment_family(motif) for motif in sequence]
+    total = 0.0
+    for index, family in enumerate(families):
+        next_family = families[(index + 1) % len(families)]
+        total += _transition_cost_between_families(family, next_family)
+    return total
+
+
+def _path_transition_cost(sequence: list[str]) -> float:
+    families = [_environment_family(motif) for motif in sequence]
+    total = 0.0
+    for index in range(len(families) - 1):
+        total += _transition_cost_between_families(families[index], families[index + 1])
+    return total
+
+
+def _order_penalty(sequence: list[str], profile_order: list[str], cyclic: bool) -> float:
+    total = 0.0
+    limit = len(sequence) if cyclic else len(sequence) - 1
+    for index in range(limit):
+        motif = sequence[index]
+        next_motif = sequence[(index + 1) % len(sequence)]
+        total += _profile_gap(profile_order, motif, next_motif)
+    return total
+
+
+def _profile_gap(profile_order: list[str], left: str, right: str) -> float:
+    if left not in profile_order or right not in profile_order:
+        return float(len(profile_order))
+    left_index = profile_order.index(left)
+    right_index = profile_order.index(right)
+    forward_gap = (right_index - left_index) % len(profile_order)
+    backward_gap = (left_index - right_index) % len(profile_order)
+    return float(min(forward_gap, backward_gap))
+
+
+def _transition_cost_between_families(left_family: str, right_family: str) -> float:
+    if left_family == right_family:
+        return 0.0
+    left = _environment_traits(left_family)
+    right = _environment_traits(right_family)
+    cost = 0.0
+    if left["space_type"] != right["space_type"]:
+        cost += _space_transition_penalty(left["space_type"], right["space_type"])
+    if left["axis_type"] != right["axis_type"]:
+        cost += 1.0
+    if left["contact_plane"] != right["contact_plane"]:
+        cost += 0.75
+    if left["transition_group"] != right["transition_group"]:
+        cost += 0.5
+    return cost
+
+
+def _space_transition_penalty(left_space: str, right_space: str) -> float:
+    pair = {left_space, right_space}
+    if pair == {"open_exterior", "contained_interior"}:
+        return 4.0
+    if pair == {"open_exterior", "threshold"}:
+        return 1.5
+    if pair == {"contained_interior", "threshold"}:
+        return 1.5
+    if pair == {"vertical_path", "contained_interior"}:
+        return 2.5
+    if pair == {"vertical_path", "open_exterior"}:
+        return 2.0
+    if pair == {"vertical_path", "threshold"}:
+        return 2.0
+    return 2.0
+
+
+def _environment_traits(family: str) -> dict[str, str]:
+    traits = {
+        "train_window_glass": {
+            "space_type": "contained_interior",
+            "axis_type": "side_glass",
+            "contact_plane": "glass_line",
+            "transition_group": "transit_enclosure",
+        },
+        "ticket_gate_lane": {
+            "space_type": "threshold",
+            "axis_type": "lane_forward",
+            "contact_plane": "barrier_lane",
+            "transition_group": "station_threshold",
+        },
+        "wet_curb_reflection": {
+            "space_type": "open_exterior",
+            "axis_type": "street_plane",
+            "contact_plane": "ground_reflection",
+            "transition_group": "street_reflection",
+        },
+        "wet_pavement_reflection": {
+            "space_type": "open_exterior",
+            "axis_type": "street_plane",
+            "contact_plane": "ground_reflection",
+            "transition_group": "street_reflection",
+        },
+        "platform_signage": {
+            "space_type": "threshold",
+            "axis_type": "station_depth",
+            "contact_plane": "platform_plane",
+            "transition_group": "station_threshold",
+        },
+        "stair_landing": {
+            "space_type": "vertical_path",
+            "axis_type": "stair_depth",
+            "contact_plane": "step_depth",
+            "transition_group": "vertical_transit",
+        },
+        "urban_detail": {
+            "space_type": "threshold",
+            "axis_type": "street_plane",
+            "contact_plane": "ground_plane",
+            "transition_group": "generic_urban",
+        },
+    }
+    return dict(traits.get(family, traits["urban_detail"]))
+
+
+def _apply_transition_contracts(section_shots: list[dict]) -> None:
+    if len(section_shots) < 2:
+        return
+    for index in range(len(section_shots) - 1):
+        current = section_shots[index]
+        following = section_shots[index + 1]
+        cost = _transition_cost_between_families(
+            str(current.get("environment_family", "")).strip().lower(),
+            str(following.get("environment_family", "")).strip().lower(),
+        )
+        if cost < 4.0:
+            continue
+        role = str(current.get("visual_role", "")).strip().lower()
+        if role in {"opening_frame", "payoff_frame", "pressure_frame"}:
+            continue
+        current["visual_role"] = "handoff_frame"
+        current["camera_distance_band"] = _camera_distance_band(
+            str(current.get("zone", "")).strip(),
+            str(current.get("section_label", "")).strip(),
+            "handoff_frame",
+        )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
+from ai_mv.core.stages.flux2_ref_chain_v2 import _literal_scene_description
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.wan_2_2_flf2v.runner import run_wan
 from ai_mv.utils.text_utils import parse_target
@@ -62,14 +63,8 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
         end = str(ref_row["end"])
         duration_sec = float(route.get("duration_sec", 2.0))
         frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
-        positive = (
-            f"Camera {str(chain.get('camera_intent', '')).strip().rstrip('.')} in {str(brief.get('wan_motion_style', '')).strip().rstrip('.')}. "
-            f"{_wan_carryover_clause(chain)} "
-            f"{_wan_anchor_clause(chain)} "
-            f"{_wan_change_clause(chain)} "
-            f"She {_subject_motion(chain)}. "
-            f"Background {str(chain.get('environment_anchor', '')).strip().rstrip('.')}"
-        )
+        positive = _wan_positive_prompt(brief, chain)
+        negative = _wan_negative_prompt(brief)
         clips.append(
             {
                 "shot_id": shot_id,
@@ -124,7 +119,7 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
                 "continuity_anchor": str(chain.get("continuity_anchor", "")).strip(),
                 "new_change": str(chain.get("new_change", "")).strip(),
                 "positive_prompt": positive,
-                "negative_prompt": str(brief.get("wan_negative", "")).strip(),
+                "negative_prompt": negative,
                 "energy": _energy_for_section(str(route.get('section_label', '')).strip()),
             }
         )
@@ -139,6 +134,35 @@ def _subject_motion(chain: dict) -> str:
         lowered = action[:1].lower() + action[1:] if action else action
         return lowered.rstrip(".")
     return "holds one readable action while the space reacts around her"
+
+
+def _wan_positive_prompt(brief: dict, chain: dict) -> str:
+    location = _literal_scene_description(chain).rstrip(".")
+    parts = [
+        f"Use the provided first and last keyframes to generate one continuous in-between shot in {str(brief.get('wan_motion_style', '')).strip().rstrip('.')}",
+        f"Preserve the same heroine, face, hair, wardrobe, silhouette, and location identity across the whole clip",
+        f"Camera {str(chain.get('camera_intent', '')).strip().rstrip('.')}",
+        _wan_carryover_clause(chain),
+        _wan_anchor_clause(chain),
+        _wan_change_clause(chain),
+        f"Subject motion: {_subject_motion(chain)}",
+        f"Location: {location}",
+        "Motion should read as one natural continuous action between the two keyframes, not as a pose reset or a new composition",
+        "Keep environmental lighting, reflections, and structure stable while allowing small natural body, fabric, hair, and perspective changes",
+    ]
+    return " ".join(str(part).strip() for part in parts if str(part).strip())
+
+
+def _wan_negative_prompt(brief: dict) -> str:
+    base = str(brief.get("wan_negative", "")).strip().rstrip(".")
+    extra = (
+        "identity drift, face change, hairstyle change, wardrobe change, pose reset, new composition, "
+        "extra limbs, broken hands, warped legs, duplicated body parts, floating feet, sliding body, "
+        "flickering background, collapsing perspective, abrupt camera jump, hard morph, heavy smear, frozen stillness"
+    )
+    if base:
+        return f"{base}, {extra}"
+    return extra
 
 
 def _energy_for_section(section_label: str) -> str:

@@ -110,19 +110,22 @@ def build_tti_anchor_v2_master_prompt(config: dict) -> str:
     hooks = ", ".join(brief.get("identity_hooks", []))
     wardrobe_guidance = str(brief.get("anchor_wardrobe_guidance", "")).strip()
     anchor_avoid = str(brief.get("anchor_avoid", "")).strip()
-    return (
-        f"{brief['style_contract']}. "
-        f"{brief['identity_core']}. "
-        f"Identity hooks: {hooks}. "
-        "A premium heroine reference image for continuity-sensitive music video production. "
-        "High-end casting and wardrobe reference, polished beauty detail, realistic skin detail, and one memorable silhouette cue. "
-        "Three-quarter full-body presentation pose with a slight body turn, calm approachable expression, direct readable face, both hands visible, full outfit visible, and unobstructed leg line. "
-        "Polished everyday idol wardrobe must read clearly with clean seam lines, premium fabric response, and one small signature accent. "
-        f"{wardrobe_guidance} "
-        f"{anchor_avoid} "
-        "Keep the hairline, bangs, jawline, shoulders, waist, shoes, and overall silhouette clearly readable for downstream reference matching. "
-        "The background is a pale grey premium studio backdrop with soft controlled lighting, gentle floor shadow, and no props or environmental clutter. "
-        "Production-ready hero reference, continuity anchor image, high-end music video casting still."
+    return " ".join(
+        part
+        for part in [
+            f"{brief['style_contract']}.",
+            f"{brief['identity_core']}.",
+            f"Identity hooks: {hooks}." if hooks else "",
+            "Create a production-ready master anchor for downstream reference matching.",
+            "Three-quarter full-body hero reference with a slight body turn, calm approachable expression, direct readable face, both hands visible, and the full outfit clearly visible from hair to shoes.",
+            "Prioritize stable identity read: hairline, bangs, jawline, shoulders, waistline, footwear, and overall silhouette must stay clean and easy to match in later shots.",
+            "Use a pale grey premium studio backdrop with soft controlled lighting, gentle floor shadow, and no props or environmental clutter.",
+            "Wardrobe should read as polished everyday idol styling rather than a costume.",
+            wardrobe_guidance,
+            anchor_avoid,
+            "High-end casting still, neutral continuity anchor, realistic skin detail, clean fabric response, and no dramatic scene action baked into the frame.",
+        ]
+        if str(part).strip()
     )
 
 

@@ -22,6 +22,7 @@ def build_director_plan_v2(config: dict, payload: dict) -> dict:
         }
         current["continuity_anchor"] = _continuity_anchor(current, previous_shot)
         current["carryover_state"] = _carryover_state(current, previous_shot)
+        current["incoming_transition"] = _incoming_transition(current, previous_shot)
         current["new_change"] = _new_change(current, previous_shot)
         shot_packages.append(current)
         previous_shot = current
@@ -90,7 +91,7 @@ def _camera_intent(shot: dict, brief: dict, index: int) -> str:
 def _camera_for_motif(motif: str, family: str, band: str, phase: str) -> str:
     if family == "wet_pavement_reflection" or "puddle" in motif:
         if phase == "payoff":
-            return "open into a medium-wide street-level frame, keep the heroine full-figure near the wet curb, and let reflective pavement stretch behind and below her"
+            return "open into a slightly wider street-level frame, keep the heroine offset rather than centered near the wet curb, and let reflective pavement stretch behind and below her"
         if phase == "entry":
             return "shift into a medium-wide street-level frame with the heroine near the wet curb and reflective pavement opening beside her"
         if phase == "exit":
@@ -98,7 +99,7 @@ def _camera_for_motif(motif: str, family: str, band: str, phase: str) -> str:
         return "hold a medium-wide curbside frame with the heroine clearly separated from the reflective pavement and city depth behind her"
     if family == "wet_curb_reflection" or "curb reflection" in motif:
         if phase == "payoff":
-            return "open into a wider curbside frame, keep the heroine full-figure near the reflective edge, and let the street depth expand behind her"
+            return "open into a slightly wider curbside frame, keep the heroine offset near the reflective edge, and let the street depth expand behind her without turning it into a centered hero pose"
         if phase == "entry":
             return "shift into a medium-wide curbside frame with reflective asphalt reading clearly beside her"
         if phase == "exit":
@@ -110,15 +111,15 @@ def _camera_for_motif(motif: str, family: str, band: str, phase: str) -> str:
         if phase == "exit":
             return "commit to a side-on medium frame with more exterior travel visible beyond the glass"
         if phase == "payoff":
-            return "open into a wider side-on window frame, keep the heroine full-figure against the glass, and let the city travel outside the train"
+            return "open into a wider side-on window frame, keep the heroine offset against the glass, and let the city travel outside the train without squaring her to camera"
         return "hold a side-on medium window frame with profile, glass, and reflected motion clearly readable"
     if family == "ticket_gate_lane" or "ticket gate" in motif:
         if phase == "entry":
-            return "shift into a medium-wide gate-lane frame with the heroine just beside waist-high ticket barriers and the entry lane posts"
+            return "shift into a medium-wide gate-lane frame with the heroine offset inside the barrier geometry so the station depth reads before direct portrait coverage"
         if phase == "exit":
             return "commit to a medium-wide gate-lane frame with more station depth opening behind her while keeping the ticket barriers readable"
         if phase == "payoff":
-            return "open into a wider station-gate frame, keep the heroine full-figure against the lane geometry, and let the space deepen behind her"
+            return "open into a slightly wider station-gate frame, keep the heroine offset inside the lane geometry, and let the space deepen behind her without collapsing into a centered poster frame"
         return "hold a medium-wide gate-lane frame with waist-high ticket barriers, card readers, and entry lane posts clearly readable beside her"
     if family == "platform_signage" or "platform sign glow" in motif:
         if phase == "entry":
@@ -126,11 +127,11 @@ def _camera_for_motif(motif: str, family: str, band: str, phase: str) -> str:
         if phase == "exit":
             return "commit to a wider platform frame with more sign glow and station depth behind her"
         if phase == "payoff":
-            return "open into a wider platform frame, keep the heroine full-figure under the sign glow, and let the station depth bloom behind her"
+            return "open into a slightly wider platform frame, keep the heroine offset under the sign glow, and let the station depth bloom behind her without flattening into a centered still"
         return "hold a medium-wide platform frame with readable signage, lamps, and environmental depth"
     if family == "stair_landing" or "stair landing" in motif:
         if phase == "entry":
-            return "shift into a medium-wide stair-landing frame with the heroine beside the rail and receding steps behind her"
+            return "start on a medium-wide stair-landing frame with the heroine offset against the rail and receding steps so the space reads first"
         if phase == "exit":
             return "commit to a wider stair-landing frame with more rail depth and descending steps behind her"
         if phase == "payoff":
@@ -165,7 +166,7 @@ def _pressure_camera_for_family(motif: str, family: str, band: str) -> str:
 
 def _handoff_camera_for_family(motif: str, family: str, band: str) -> str:
     if family == "wet_pavement_reflection":
-        return "keep the same medium-wide street-level distance but angle the body and street plane so the motion feels carried forward into the next cut"
+        return "hold the same medium-wide street-level distance but angle the body and street plane so the motion feels carried forward into the next cut"
     if family == "wet_curb_reflection":
         return "hold the same curbside distance and leave more open street depth in the direction of motion so the next cut can inherit it"
     if family == "ticket_gate_lane":
@@ -181,40 +182,40 @@ def _performance_intent(shot: dict) -> str:
     visual_role = str(shot.get("visual_role", "")).strip().lower()
     phase = _section_phase(shot)
     if visual_role == "opening_frame":
-        return "hold an already-living in-between state, with weight settled more on one side than the other before the movement fully begins"
+        return "caught in an in-between moment, with weight settled more on one side before the movement fully begins"
     if visual_role == "handoff_frame":
-        return "complete one readable body change while leaving enough directional carry that the next cut can inherit it cleanly"
+        return "one readable body change finishes while the direction of motion still carries into the next cut"
     if visual_role == "pressure_frame":
-        return "keep the body restrained but let one small off-center change in the head, shoulders, or hands read clearly inside the tighter frame"
+        return "the body stays restrained, but one small off-center change in the head, shoulders, or hands reads clearly"
     if visual_role == "payoff_frame":
-        return "let the body open one step wider than before while still feeling like the same continuous moment rather than a posed hero still"
+        return "the body opens one step wider than before, but the free side still arrives a beat later so the moment feels lived-in rather than posed"
     if zone == "threshold":
-        return "holds one measured breath and shifts weight onto one leg without fully crossing yet"
+        return "one measured breath and a weight shift onto one leg, without fully crossing yet"
     if zone == "edge":
-        return "slows at the edge, steadies one shoulder line, and lets one deliberate step start to form before the other side catches up"
+        return "slowing at the edge, with one shoulder line steadier than the other and one deliberate step beginning to form"
     if zone == "compression":
-        return "keeps the body nearly still, narrows the movement to one shoulder, one hand, or one head turn, and locks the gaze into one tense pocket"
+        return "the body nearly still, with movement narrowed to one shoulder, one hand, or one head turn inside one tense pocket"
     if zone == "open_world":
         if phase == "entry":
-            return "steps into the wider space with one shoulder turning ahead of the hips and a stronger forward intention"
+            return "stepping into the wider space, one shoulder turning ahead of the hips with a stronger forward intention"
         if phase == "exit":
-            return "finishes the phrase with one side of the body already released into the next direction so the motion stays open into the next cut"
-        return "moves through the wider space with controlled forward momentum, one-sided weight transfer, and a readable upper-body turn"
+            return "one side of the body already released into the next direction so the motion stays open into the next cut"
+        return "moving through the wider space with controlled forward momentum, one-sided weight transfer, and a readable upper-body turn"
     if zone == "open_world_peak":
-        return "commits to a broader opening of the stride and torso while staying grounded inside the same space"
+        return "a broader opening of the stride and torso while still staying grounded inside the same space and not settling into a finished pose"
     if zone == "residue":
-        return "lets the movement fall away, slows the breathing, and holds the last after-image in place"
+        return "the movement falling away, breathing slowing, and the last after-image still hanging in place"
     if zone == "transit_lane":
         if "stair" in motif:
-            return "takes the next step with measured pace, one foot clearly loaded before the other, and a clean rise through the torso"
-        return "continues through the lane with measured pace, asymmetrical weight, and restrained body language"
+            return "the next step taken at measured pace, one foot clearly loaded before the other, with one hip and shoulder arriving before the other"
+        return "continuing through the lane with measured pace, asymmetrical weight, and restrained body language"
     if "window" in motif:
-        return "keeps the body oriented along one clear side-facing direction so the profile shift reads cleanly"
+        return "the body staying oriented along one clear side-facing direction so the profile shift reads cleanly"
     if "gate" in motif:
-        return "moves through the lane with one clear shoulder-led turn while staying inside the same directional flow"
+        return "moving through the lane with one clear shoulder-led turn while staying inside the same directional flow"
     if "reflection" in motif or "puddle" in motif:
-        return "lets one step land clearly before the other side settles so the reflected movement reads in the ground"
-    return "moves through the close space with one readable, uneven body-led action"
+        return "one step landing clearly before the other side settles so the reflected movement reads in the ground"
+    return "moving through the close space with one readable, uneven body-led action"
 
 
 def _lighting_intent(shot: dict, brief: dict) -> str:
@@ -330,6 +331,10 @@ def _continuity_anchor(shot: dict, previous_shot: dict | None) -> str:
 def _carryover_state(shot: dict, previous_shot: dict | None) -> str:
     if not previous_shot:
         return "a clean but already alive cinematic state rather than a flat reset pose"
+    previous_family = str(previous_shot.get("environment_family", "")).strip().lower()
+    current_family = str(shot.get("environment_family", "")).strip().lower()
+    if previous_family != current_family:
+        return _generic_continuity_state(previous_shot)
     prev_change = str(previous_shot.get("new_change", "")).strip()
     prev_perf = str(previous_shot.get("performance_intent", "")).strip()
     if prev_change:
@@ -340,6 +345,38 @@ def _carryover_state(shot: dict, previous_shot: dict | None) -> str:
     return "the last readable body orientation and direction of motion"
 
 
+def _incoming_transition(shot: dict, previous_shot: dict | None) -> str:
+    if not previous_shot:
+        return ""
+    previous_family = str(previous_shot.get("environment_family", "")).strip().lower()
+    current_family = str(shot.get("environment_family", "")).strip().lower()
+    if previous_family == current_family:
+        return ""
+    previous_band = str(previous_shot.get("camera_distance_band", "")).strip().lower()
+    current_band = str(shot.get("camera_distance_band", "")).strip().lower()
+    if previous_band == current_band:
+        return "preserve the same off-center screen direction and body axis from the previous frame while the environment shifts into the new space"
+    return "preserve the previous frame's directional body flow and off-center staging while the environment changes"
+
+
+def _generic_continuity_state(previous_shot: dict) -> str:
+    role = str(previous_shot.get("visual_role", "")).strip().lower()
+    family = str(previous_shot.get("environment_family", "")).strip().lower()
+    if role == "payoff_frame":
+        return "the same off-center release, lower-body weight shift, and directional body axis from the last frame"
+    if role == "handoff_frame":
+        return "the same carry-through direction and uneven body weight from the last frame"
+    if family in {"wet_curb_reflection", "wet_pavement_reflection"}:
+        return "the same street-level weight transfer and off-center body axis from the last frame"
+    if family == "ticket_gate_lane":
+        return "the same lane-driven body direction and off-center staging from the last frame"
+    if family == "train_window_glass":
+        return "the same side-on body axis and directional travel from the last frame"
+    if family == "stair_landing":
+        return "the same step-loaded body axis and uneven lower-body balance from the last frame"
+    return "the same off-center body axis and directional motion from the last frame"
+
+
 def _new_change(shot: dict, previous_shot: dict | None) -> str:
     role = str(shot.get("visual_role", "")).strip().lower()
     family = str(shot.get("environment_family", "")).strip().lower()
@@ -347,12 +384,12 @@ def _new_change(shot: dict, previous_shot: dict | None) -> str:
         if family in {"wet_curb_reflection", "wet_pavement_reflection"}:
             return "the first step entering the reflective street plane before the body fully settles"
         if family == "ticket_gate_lane":
-            return "the first shoulder-led move into the gate lane before the body fully settles into the lane"
+            return "the first shoulder-led move into the gate lane before the body fully settles"
         if family == "stair_landing":
-            return "the first loaded stair step and torso angle that opens the stair depth"
+            return "the first loaded stair step and torso angle that opens the stair depth before the body fully balances"
         return "the first readable movement that turns the shot into a live moment"
     if role == "handoff_frame":
-        return "the last body carry-through that points directly into the next cut"
+        return "the last body carry-through still pointing directly into the next cut"
     if role == "pressure_frame":
         return "one sharper head, shoulder, or hand change inside the compressed frame"
     if role == "payoff_frame":
@@ -368,7 +405,7 @@ def _new_change(shot: dict, previous_shot: dict | None) -> str:
     if family == "platform_signage":
         return "one body turn under the platform light"
     if family == "stair_landing":
-        return "one measured stair-step change through the landing depth"
+        return "one measured stair-step change beside the rail with one hip and shoulder arriving before the other"
     return "one small readable body change while the surrounding space stays continuous"
 
 
@@ -386,13 +423,13 @@ def _section_phase(shot: dict) -> str:
 
 def _payoff_change_for_family(family: str) -> str:
     if family == "stair_landing":
-        return "a broader torso opening and weighted step that still stays inside the stair depth"
+        return "a broader torso opening and weighted step that still stays tied to the rail and stair depth, with the free side arriving later"
     if family == "wet_curb_reflection":
-        return "a broader body opening with the leading step still tracing the curb edge"
+        return "a broader body opening with the leading step still tracing the curb edge and one side arriving later than the other"
     if family == "wet_pavement_reflection":
-        return "a broader stride with the reflected lower-body movement still readable in the wet pavement"
+        return "a broader stride with the reflected lower-body movement still readable and the body not yet fully settled"
     if family == "ticket_gate_lane":
-        return "a broader body opening that still stays inside the gate lane"
+        return "a broader body opening that still stays inside the gate lane and keeps the lane direction alive"
     if family == "train_window_glass":
         return "a broader release that still keeps the body tied to the glass line and reflected travel"
     if family == "platform_signage":

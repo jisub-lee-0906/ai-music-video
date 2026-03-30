@@ -1,8 +1,9 @@
 import ai_mv.engines.flux_2_dev_ref.runner as flux2_ref_runner
 from ai_mv.core.output_paths import ANCHOR_DIR, flux2_ref_frame_prefix
+from ai_mv.core.stages.flux2_ref_chain_v2 import build_flux2_ref_plan_v2
 
 
-def test_flux2_ref_reanchors_every_shot_from_master_reference_but_renders_scene_specific_starts(monkeypatch):
+def test_flux2_ref_uses_first_start_then_chains_previous_end_across_shots(monkeypatch):
     trace: list[tuple[str, str, str]] = []
 
     def _fake_render_frame(_config, item, *, frame_name, frame_idx):
@@ -22,20 +23,79 @@ def test_flux2_ref_reanchors_every_shot_from_master_reference_but_renders_scene_
     out = flux2_ref_runner.run_flux2_ref({}, plan)
 
     assert out[0]["start"] == f"{flux2_ref_frame_prefix('S001', 'start')}.png"
-    assert out[1]["start"] == f"{flux2_ref_frame_prefix('S002', 'start')}.png"
-    assert out[2]["start"] == f"{flux2_ref_frame_prefix('S003', 'start')}.png"
-    assert out[3]["start"] == f"{flux2_ref_frame_prefix('S004', 'start')}.png"
+    assert out[1]["start"] == out[0]["end"]
+    assert out[2]["start"] == out[1]["end"]
+    assert out[3]["start"] == out[2]["end"]
     assert out[0]["start_source"] == "rendered_start"
-    assert out[1]["start_source"] == "rendered_start"
-    assert out[2]["start_source"] == "rendered_start"
-    assert out[3]["start_source"] == "rendered_start"
+    assert out[1]["start_source"] == "previous_end"
+    assert out[2]["start_source"] == "previous_end"
+    assert out[3]["start_source"] == "previous_end"
     assert trace == [
         ("S001", f"{ANCHOR_DIR}/master.png", "start"),
-        ("S001", f"{ANCHOR_DIR}/master.png", "end"),
-        ("S002", f"{ANCHOR_DIR}/master.png", "start"),
-        ("S002", f"{ANCHOR_DIR}/master.png", "end"),
-        ("S003", f"{ANCHOR_DIR}/master.png", "start"),
-        ("S003", f"{ANCHOR_DIR}/master.png", "end"),
-        ("S004", f"{ANCHOR_DIR}/master.png", "start"),
-        ("S004", f"{ANCHOR_DIR}/master.png", "end"),
+        ("S001", f"{flux2_ref_frame_prefix('S001', 'start')}.png", "end"),
+        ("S002", f"{flux2_ref_frame_prefix('S001', 'end')}.png", "end"),
+        ("S003", f"{flux2_ref_frame_prefix('S002', 'end')}.png", "end"),
+        ("S004", f"{flux2_ref_frame_prefix('S003', 'end')}.png", "end"),
     ]
+
+
+def test_flux2_ref_plan_v2_uses_literal_scene_description_for_ref_prompts():
+    config = {
+        "brief": "director_brief_example",
+        "audio": {"brief": "Audio brief", "hook_brief": "Hook brief"},
+        "visual": {"brief": "Visual brief", "negative": "Visual negative"},
+        "mv": {
+            "story_world": "Night city transit world",
+            "payoff_style": "Cinematic release",
+            "outro_feel": "Lingering after-image",
+            "avoid": "Avoid list",
+        },
+        "character": {"identity_core": "same heroine"},
+        "director": {
+            "target_style": "cinematic live-action music video",
+            "world_core": "night city",
+            "camera_bias": "cinematic framing",
+            "lighting_bias": "city-night lighting",
+            "shadow_bias": "grounded shadows",
+            "motion_bias": "natural motion",
+            "transition_bias": "continuity",
+            "motif_families": ["curb reflection", "puddle ring"],
+            "ref_frame_style": "high-end music video keyframe quality",
+        },
+    }
+    payload = {
+        "master_anchor_v2": f"{ANCHOR_DIR}/master.png",
+        "render_plan_v2": {
+            "shot_packages": [
+                {
+                    "shot_id": "S001",
+                    "environment_family": "wet_curb_reflection",
+                    "environment_anchor": "a close urban pocket around a wet curb edge with reflective asphalt and passing street light",
+                    "zone": "narrow_world",
+                    "camera_intent": "medium-wide curbside frame",
+                    "lighting_intent": "clean city-night spill",
+                    "section_name": "Verse 1",
+                    "section_label": "Verse 1",
+                    "visual_role": "continuity_frame",
+                },
+                {
+                    "shot_id": "S002",
+                    "environment_family": "wet_pavement_reflection",
+                    "environment_anchor": "a close urban pocket around wet pavement, shallow puddle reflections, and a curb-adjacent street surface",
+                    "zone": "open_world",
+                    "camera_intent": "street-level moving frame",
+                    "lighting_intent": "clean city-night spill",
+                    "section_name": "Verse 1",
+                    "section_label": "Verse 1",
+                    "visual_role": "continuity_frame",
+                },
+            ]
+        },
+        "lyrics_timeline": {"sections": []},
+    }
+
+    plan = build_flux2_ref_plan_v2(config, payload)
+
+    assert "narrow side street after rain" in plan["items"][0]["start_prompt_text"]
+    assert "broad wet roadway after rain" in plan["items"][1]["end_prompt_text"]
+    assert "close urban pocket around" not in plan["items"][0]["start_prompt_text"]

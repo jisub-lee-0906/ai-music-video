@@ -45,13 +45,14 @@ def test_run_flux2_ref_renders_scene_specific_start_and_end_from_master_referenc
     out = ref_runner.run_flux2_ref({"render": {"ref_size": "1024x576"}, "video": {"target": "1920x1080@24"}}, plan)
 
     assert calls[0] == "staged::master.png"
-    assert calls[1] == "staged::master.png"
-    assert calls[2] == "staged::master.png"
-    assert calls[3] == "staged::master.png"
+    assert calls[1].endswith("start.png")
+    assert calls[2].endswith("end.png")
     assert out[0]["start_source"] == "rendered_start"
-    assert out[1]["start_source"] == "rendered_start"
+    assert out[1]["start_source"] == "previous_end"
     assert out[0]["start"].endswith("start.png")
     assert out[0]["end"].endswith("end.png")
+    assert out[1]["start"] == out[0]["end"]
+    assert out[1]["end"].endswith("end.png")
 
 
 def test_run_flux2_ref_keeps_master_reference_across_sections_but_never_uses_it_as_start(monkeypatch):
@@ -98,9 +99,8 @@ def test_run_flux2_ref_keeps_master_reference_across_sections_but_never_uses_it_
     out = ref_runner.run_flux2_ref({"render": {"ref_size": "1024x576"}, "video": {"target": "1920x1080@24"}}, plan)
 
     assert calls[0] == "staged::master.png"
-    assert calls[1] == "staged::master.png"
-    assert calls[2] == "staged::master.png"
-    assert calls[3] == "staged::master.png"
+    assert calls[1].endswith("start.png")
+    assert calls[2].endswith("end.png")
     assert out[0]["start"] != "master.png"
-    assert out[1]["start"] != "master.png"
-    assert out[1]["start_source"] == "rendered_start"
+    assert out[1]["start"] == out[0]["end"]
+    assert out[1]["start_source"] == "previous_end"
