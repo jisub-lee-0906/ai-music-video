@@ -172,15 +172,15 @@ def _start_action_from_shot(shot: dict) -> str:
     visual_role = str(shot.get("visual_role", "")).strip().lower()
     if visual_role == "payoff_frame":
         if family == "stair_landing":
-            return "opens into the payoff on the stair landing with one step weighted into the depth and a hand or shoulder still tied to the rail"
+            return "opens into the payoff on the stair landing with one step weighted into the depth and the body already beginning to open through the steps"
         if family == "wet_curb_reflection":
             return "opens into the payoff with the leading step still tracing the wet curb and the body opening into the street depth"
         if family == "wet_pavement_reflection":
             return "opens into the payoff with a broader stride while the reflected step still reads in the wet pavement"
         if family == "ticket_gate_lane":
-            return "opens into the payoff through the gate lane while one shoulder still acknowledges the barrier line"
+            return "opens into the payoff through the gate lane while the body keeps moving inside the same lane direction"
         if family == "train_window_glass":
-            return "opens into the payoff while keeping the body still tied to the glass line and reflected travel"
+            return "opens into the payoff while staying aligned with the glass line and the reflected travel"
     if visual_role == "opening_frame":
         if family == "wet_curb_reflection":
             return "catches the first moment of a curbside step with the body already angled into the street depth"
@@ -189,11 +189,11 @@ def _start_action_from_shot(shot: dict) -> str:
         if family == "ticket_gate_lane":
             return "catches the first lane-entry moment with the shoulders already turning through the gate geometry"
         if family == "stair_landing":
-            return "catches the first step beside the rail with the torso already angled into the stair depth"
+            return "catches the first step through the stair landing with the torso already angled into the stair depth"
         return "catches the first readable movement rather than a fully settled standing pose"
     if visual_role == "handoff_frame":
         if family == "stair_landing":
-            return "leans into the next stair step with weight already shifted forward and one hand ready at the rail"
+            return "leans into the next stair step with weight already shifted forward through the landing depth"
         if family == "ticket_gate_lane":
             return "holds a directional stance already carrying into the next lane opening"
         if family in {"wet_curb_reflection", "wet_pavement_reflection"}:
@@ -206,7 +206,7 @@ def _start_action_from_shot(shot: dict) -> str:
     if family == "train_window_glass" or "window" in motif:
         return "holds near the glass with the profile and hand line clearly readable"
     if family == "ticket_gate_lane" or "gate" in motif:
-        return "stands just before the gate line with the shoulders still"
+        return "stands just before the gate line with the shoulders already set into the lane direction"
     if family == "wet_curb_reflection":
         return "sets one step near the wet curb before the reflected movement opens beside her"
     if family == "wet_pavement_reflection" or "reflection" in motif or "puddle" in motif:
@@ -229,7 +229,7 @@ def _end_action_from_shot(shot: dict) -> str:
     if family == "platform_signage":
         return "finishes the movement under the platform signs and holds a readable body turn"
     if family == "stair_landing":
-        return "lands the next step on the stair landing and settles into a readable turn beside the rail"
+        return "lands the next step on the stair landing and settles into a readable turn through the step depth"
     if zone == "compression":
         return "keeps the movement contained and settles into the next readable pose"
     return action or "shifts into the next readable pose"

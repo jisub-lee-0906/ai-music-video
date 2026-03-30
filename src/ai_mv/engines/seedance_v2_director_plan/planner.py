@@ -179,43 +179,42 @@ def _performance_intent(shot: dict) -> str:
     zone = str(shot.get("zone", "")).strip().lower()
     motif = str(shot.get("motif_family", "")).strip().lower()
     visual_role = str(shot.get("visual_role", "")).strip().lower()
-    family = str(shot.get("environment_family", "")).strip().lower()
     phase = _section_phase(shot)
     if visual_role == "opening_frame":
-        return "catch her in a poised in-between moment, with one readable shift already starting rather than a fully settled standing pose"
+        return "hold an already-living in-between state, with weight settled more on one side than the other before the movement fully begins"
     if visual_role == "handoff_frame":
-        return "finish the phrase with a clearly completed body change that still leaves directional energy carrying into the next cut"
+        return "complete one readable body change while leaving enough directional carry that the next cut can inherit it cleanly"
     if visual_role == "pressure_frame":
-        return "keep the body restrained but make one head, shoulder, or hand change read sharply inside the tighter frame"
+        return "keep the body restrained but let one small off-center change in the head, shoulders, or hands read clearly inside the tighter frame"
     if visual_role == "payoff_frame":
-        return _payoff_performance_intent(family)
+        return "let the body open one step wider than before while still feeling like the same continuous moment rather than a posed hero still"
     if zone == "threshold":
-        return "holds one measured breath and shifts her weight forward without fully crossing yet"
+        return "holds one measured breath and shifts weight onto one leg without fully crossing yet"
     if zone == "edge":
-        return "slows at the edge, steadies her shoulders, and lets one deliberate step start to form"
+        return "slows at the edge, steadies one shoulder line, and lets one deliberate step start to form before the other side catches up"
     if zone == "compression":
-        return "keeps the body nearly still, narrows the movement to the head and shoulders, and locks the gaze into one tense pocket"
+        return "keeps the body nearly still, narrows the movement to one shoulder, one hand, or one head turn, and locks the gaze into one tense pocket"
     if zone == "open_world":
         if phase == "entry":
-            return "steps into the wider space with a readable turn of the shoulders and a stronger forward intention"
+            return "steps into the wider space with one shoulder turning ahead of the hips and a stronger forward intention"
         if phase == "exit":
-            return "finishes the phrase with a clear body turn that leaves the motion open into the next cut"
-        return "moves through the wider space with controlled forward momentum and a readable upper-body turn"
+            return "finishes the phrase with one side of the body already released into the next direction so the motion stays open into the next cut"
+        return "moves through the wider space with controlled forward momentum, one-sided weight transfer, and a readable upper-body turn"
     if zone == "open_world_peak":
-        return "commits fully to the forward motion, opening the chest and stride as the world blooms around her"
+        return "commits to a broader opening of the stride and torso while staying grounded inside the same space"
     if zone == "residue":
         return "lets the movement fall away, slows the breathing, and holds the last after-image in place"
     if zone == "transit_lane":
         if "stair" in motif:
-            return "takes the next step with measured pace and a clean rise through the torso"
-        return "continues through the lane with measured pace and restrained body language"
+            return "takes the next step with measured pace, one foot clearly loaded before the other, and a clean rise through the torso"
+        return "continues through the lane with measured pace, asymmetrical weight, and restrained body language"
     if "window" in motif:
-        return "angles her body toward the glass and lets the profile and hand line read clearly"
+        return "keeps the body oriented along one clear side-facing direction so the profile shift reads cleanly"
     if "gate" in motif:
-        return "threads past the gate line with one clear shoulder-led turn"
+        return "moves through the lane with one clear shoulder-led turn while staying inside the same directional flow"
     if "reflection" in motif or "puddle" in motif:
-        return "lets one step land clearly so the reflected movement reads in the wet ground"
-    return "moves through the close space with one readable body-led action"
+        return "lets one step land clearly before the other side settles so the reflected movement reads in the ground"
+    return "moves through the close space with one readable, uneven body-led action"
 
 
 def _lighting_intent(shot: dict, brief: dict) -> str:
@@ -270,28 +269,28 @@ def _contact_intent(shot: dict) -> str:
     role = str(shot.get("visual_role", "")).strip().lower()
     if family == "wet_pavement_reflection":
         if role == "payoff_frame":
-            return "keep one leg clearly weighted into the wet pavement, let the reflected step spread under her, and make the lower body read as part of the same street plane"
-        return "make the shoes sit into the wet pavement, keep a readable reflection close to her feet, and let nearby light spill across the lower legs"
+            return "keep the lower body grounded in the wet pavement, let the reflected step spread under her, and make the body read as part of the same street plane"
+        return "keep the shoes grounded in the wet pavement, keep a readable reflection close to her feet, and let nearby light spill across the lower legs"
     if family == "wet_curb_reflection":
         if role == "payoff_frame":
-            return "keep the leading foot tracking the curb edge, let the reflective asphalt hold the lower-body line, and make the body open through the street depth instead of just posing on top of it"
+            return "keep the leading step readable against the curb edge, let the reflective asphalt hold the lower-body line, and make the body open through the street depth instead of posing on top of it"
         return "keep one foot near the curb edge, let the wet asphalt reflect the legs, and make the body feel anchored to the street plane"
     if family == "ticket_gate_lane":
         if role == "payoff_frame":
-            return "keep the body opened through the gate lane while one shoulder or hand still acknowledges the barrier geometry so the lane remains shared space"
-        return "keep the body physically aligned with the waist-high gate barriers so the lane geometry feels shared with her movement"
+            return "keep the body opened through the gate lane while the lane geometry still feels shared around her rather than flattened behind her"
+        return "keep the body physically aligned with the waist-high gate barriers and make the lane geometry feel shared with her movement"
     if family == "train_window_glass":
         if role == "payoff_frame":
-            return "keep part of the body or hand near the glass so the payoff still feels bound to the reflected surface rather than detached from it"
-        return "keep the hand and profile pressed into the glass environment so reflections and skin proximity read as one shared surface"
+            return "keep the body close enough to the glass line that reflections and profile direction still feel tied to the same surface"
+        return "keep the profile and body close enough to the glass line that reflections and skin proximity read as one shared surface instead of a pasted figure"
     if family == "platform_signage":
         if role == "payoff_frame":
-            return "let the station light spill across the face and shoulders while the feet stay locked into the platform plane and the body opens under the signage"
+            return "let station light spill across the face and shoulders while the feet stay locked into the platform plane and the body opens under the signage"
         return "let platform light spill onto the face and jacket while the feet stay locked to the station ground plane"
     if family == "stair_landing":
         if role == "payoff_frame":
-            return "keep one foot clearly weighted on the step and let one hand or shoulder acknowledge the rail so the stair depth and body opening read together"
-        return "keep one foot planted on the landing, align the body with the rail, and make the step depth read around her"
+            return "keep one foot clearly weighted on the step and make the stair depth read around the body as it opens"
+        return "keep one foot planted on the landing and make the step depth read around her"
     if zone == "compression":
         return "anchor the body tightly into one small pocket of space so the frame does not feel composited"
     return "make the feet, body shadow, and nearby surfaces feel physically connected inside the same shot"
@@ -346,11 +345,11 @@ def _new_change(shot: dict, previous_shot: dict | None) -> str:
     family = str(shot.get("environment_family", "")).strip().lower()
     if role == "opening_frame":
         if family in {"wet_curb_reflection", "wet_pavement_reflection"}:
-            return "the first curbside step and body angle entering the reflective street plane"
+            return "the first step entering the reflective street plane before the body fully settles"
         if family == "ticket_gate_lane":
-            return "the first shoulder-led move into the gate lane"
+            return "the first shoulder-led move into the gate lane before the body fully settles into the lane"
         if family == "stair_landing":
-            return "the first step and torso angle that opens the stair depth"
+            return "the first loaded stair step and torso angle that opens the stair depth"
         return "the first readable movement that turns the shot into a live moment"
     if role == "handoff_frame":
         return "the last body carry-through that points directly into the next cut"
@@ -369,7 +368,7 @@ def _new_change(shot: dict, previous_shot: dict | None) -> str:
     if family == "platform_signage":
         return "one body turn under the platform light"
     if family == "stair_landing":
-        return "one measured stair-step change beside the rail"
+        return "one measured stair-step change through the landing depth"
     return "one small readable body change while the surrounding space stays continuous"
 
 
@@ -385,31 +384,15 @@ def _section_phase(shot: dict) -> str:
     return "middle"
 
 
-def _payoff_performance_intent(family: str) -> str:
-    if family == "stair_landing":
-        return "open through the torso and step depth while one hand or shoulder still acknowledges the rail so the release feels lived-in"
-    if family == "wet_curb_reflection":
-        return "open the body into the street while the leading step still tracks the curb edge and reflected ground"
-    if family == "wet_pavement_reflection":
-        return "open the stride and torso while the reflected lower-body movement stays readable in the wet pavement"
-    if family == "ticket_gate_lane":
-        return "open the body through the lane while keeping one shoulder-led relation to the barrier geometry"
-    if family == "train_window_glass":
-        return "open the body into the wider release while still keeping the profile or hand relation tied to the glass line"
-    if family == "platform_signage":
-        return "open the body under the signs so the payoff feels integrated with the platform light and depth"
-    return "commit to the widest readable body opening of the section so the frame feels like a release rather than a static full-body still"
-
-
 def _payoff_change_for_family(family: str) -> str:
     if family == "stair_landing":
-        return "a broader torso opening and weighted step that still stays tied to the rail and stair depth"
+        return "a broader torso opening and weighted step that still stays inside the stair depth"
     if family == "wet_curb_reflection":
         return "a broader body opening with the leading step still tracing the curb edge"
     if family == "wet_pavement_reflection":
         return "a broader stride with the reflected lower-body movement still readable in the wet pavement"
     if family == "ticket_gate_lane":
-        return "a broader body opening that still keeps one shoulder-led relation to the gate lane"
+        return "a broader body opening that still stays inside the gate lane"
     if family == "train_window_glass":
         return "a broader release that still keeps the body tied to the glass line and reflected travel"
     if family == "platform_signage":
