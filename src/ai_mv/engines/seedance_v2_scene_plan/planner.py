@@ -106,7 +106,7 @@ def build_scene_plan_v2_preview_prompt(config: dict, payload: dict) -> str:
         f"World core={brief['world_core']}. "
         f"Motif families={', '.join(brief.get('motif_families', []))}. "
         f"Section grammar={'; '.join(f'{k}:{v}' for k, v in brief.get('section_grammar', {}).items())}. "
-        "Map each lyric beat into a zone progression and one object-or-space-led scene anchor."
+        "Map each lyric beat into a zone progression and one concrete place that supports one heroine-centered visible action."
     )
 
 
@@ -210,11 +210,15 @@ def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, s
     }
     prompt = (
         "Rewrite each shot into one concrete English location sentence for image and video prompts. "
-        "Keep it as a real place, not a camera note. "
-        "Do not mention frame, shot, prompt, continuity, video, or composition. "
-        "Stay faithful to the base location, motif, literal image, and subject action. "
+        "The output must read like a real place that can hold the heroine's action, not like a caption or production note. "
+        "Keep it visual, physical, and specific. "
+        "Do not mention frame, shot, prompt, continuity, video, composition, camera, or viewer. "
+        "Do not mention the heroine, body parts, breath, heartbeat, feelings, memories, relationships, or any action. "
+        "Do not describe the place with person-like verbs such as stands, waits, watches, remembers, or reaches. "
+        "Do not use poetic metaphor that weakens the place into abstract mood. "
+        "Stay faithful to the base location, motif, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
         "Do not invent new props or move to a different world. "
-        "Return only a concrete place description that can support the described action.\n\n"
+        "Return only a concrete place description that can naturally support the described action.\n\n"
         f"Shots={rows}"
     )
     raw = generate_structured(config, prompt, schema, attempts=1)
@@ -294,12 +298,25 @@ def _translate_beat_render_phrases(config: dict, sections: list[dict]) -> dict[s
             )
     if not beats:
         return {}
-    if not any(_needs_translation(row) for row in beats):
-        return {}
     try:
         if not ping_codex(config):
             return {}
     except Exception:
+        return {}
+    translated = _request_translated_beat_render_phrases(config, beats)
+    missing_ids = [
+        str(row.get("beat_id", "")).strip()
+        for row in beats
+        if str(row.get("beat_id", "")).strip() and str(row.get("beat_id", "")).strip() not in translated
+    ]
+    if missing_ids:
+        retry_beats = [row for row in beats if str(row.get("beat_id", "")).strip() in set(missing_ids)]
+        translated.update(_request_translated_beat_render_phrases(config, retry_beats))
+    return translated
+
+
+def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> dict[str, dict]:
+    if not beats:
         return {}
     schema = {
         "type": "object",
@@ -308,14 +325,14 @@ def _translate_beat_render_phrases(config: dict, sections: list[dict]) -> dict[s
                 "type": "array",
                 "items": {
                     "type": "object",
-                        "properties": {
-                            "beat_id": {"type": "string"},
-                            "literal_image_en": {"type": "string"},
-                            "visible_action_en": {"type": "string"},
-                            "subject_action_en": {"type": "string"},
-                            "continuity_anchor_en": {"type": "string"},
-                            "payoff_role_en": {"type": "string"},
-                        },
+                    "properties": {
+                        "beat_id": {"type": "string"},
+                        "literal_image_en": {"type": "string"},
+                        "visible_action_en": {"type": "string"},
+                        "subject_action_en": {"type": "string"},
+                        "continuity_anchor_en": {"type": "string"},
+                        "payoff_role_en": {"type": "string"},
+                    },
                     "required": ["beat_id", "literal_image_en", "visible_action_en", "subject_action_en", "continuity_anchor_en", "payoff_role_en"],
                 },
             }
@@ -323,13 +340,45 @@ def _translate_beat_render_phrases(config: dict, sections: list[dict]) -> dict[s
         "required": ["beats"],
     }
     prompt = (
-        "Translate the following music-video beat fields into short natural English render prose for image/video prompting. "
-        "Stay faithful to the original meaning. Do not add new locations or props. "
-        "literal_image_en should be a concise concrete scene phrase. "
-        "visible_action_en should be a concise screen-readable action sentence fragment in present tense. "
-        "subject_action_en should rewrite visible_action into a short heroine-centered action fragment in present tense, suitable for prompts that begin with 'She ...'. "
-        "If the original mentions camera, frame, shot, cut, or filming, rewrite only the on-screen event and never mention filming language in English. "
-        "continuity_anchor_en should be a short continuity/state phrase. "
+        "Rewrite the following music-video beat fields into short natural English render prose for image and video prompting. "
+        "Always rewrite them, even if the source is already in English, so that the result fits cinematic live-action prompt writing. "
+        "Stay faithful to the original meaning. Do not add new locations, props, characters, or symbolic story ideas. "
+        "Default to a single-heroine scene. If the source does not explicitly include another person, do not introduce one. "
+        "This pipeline is single-subject by default. Even if a lyric implies someone remembered, addressed, awaited, or loved, keep the frame centered on one visible heroine unless the source unmistakably requires two visible bodies in one shot. "
+        "For this project, assume the intended visual language is a single visible heroine moving through one connected world, not a duet, reunion, hug, or partner scene. "
+        "Treat second-person address, implied romance, remembered closeness, or emotional togetherness as non-visible unless the source clearly describes another body physically present in the frame. "
+        "Never introduce viewer-facing second-person language such as you or your. "
+        "Do not introduce he, him, they, them, or another figure unless the source explicitly names or clearly requires another person. "
+        "If the source only implies emotional closeness or shared feeling without literally showing another visible person, keep it single-subject and express that feeling through the heroine's movement in the space. "
+        "A lyric addressee or emotional partner is not automatically a visible second character. "
+        "Do not use figure, person, silhouette, embrace, arms, together, them, or their unless the source unmistakably requires two visible bodies in one frame. "
+        "Write direct visual prose, not production notes and not poetic paraphrase. "
+        "Every returned field must be natural English prose. Never leave Korean text, mixed-language text, or untranslated fragments in the output. "
+        "literal_image_en should be a concise concrete scene phrase built from place, surfaces, structures, weather, and local light. "
+        "literal_image_en must not mention body parts, breath, heartbeat, emotions, memories, hesitation, loneliness, relationships, or camera language. "
+        "If the original beat uses an inner feeling, memory, hesitation, heartbeat, loneliness, or fear to describe the scene, convert that into a visible environmental trace in the same place instead of naming the feeling. "
+        "visible_action_en should be a concise screen-readable present-tense action fragment that describes what is visibly happening in the scene. "
+        "visible_action_en should prefer body-grounded motion or contact over abstract mood. "
+        "subject_action_en should rewrite visible_action into a heroine-centered present-tense action fragment suitable for prompts that begin with 'She ...'. "
+        "subject_action_en should prefer clear physical actions that read in a keyframe, such as walking, turning, leaning, touching, stepping, passing, pausing at a surface, lifting a hand, descending, or changing direction. "
+        "subject_action_en should avoid body-part fixation, decorative metaphor, relationship language, viewer-facing language, and vague emotion-only verbs. "
+        "Avoid phrasing that leaves her frozen in place, such as 'stays', 'remains', or 'holds still', unless the original beat explicitly requires stillness as the main visible event. "
+        "Avoid weak keyframe verbs such as watches, looks, gazes, waits, breathes, exhales, smiles softly, or lets the scene happen around her when a clearer visible action is possible. "
+        "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, or lets a smile rise when a more readable visible action can carry the beat. "
+        "Do not use heartbeat, hesitation, memory, loneliness, or pause as the main visible event unless there is no other faithful physical reading. "
+        "If the source suggests a static feeling, convert it into a small but visible physical action in the same place. "
+        "If the source says she stands still, pauses, waits, only breathes, or only watches something, rewrite it into a subtle but readable movement such as shifting her weight, taking a step, turning, touching a surface, tracing a rail or glass edge, crossing a threshold, or lifting a hand while staying in the same space. "
+        "If breath, hesitation, heartbeat, or memory is important, show it through her hand, shoulders, step, or contact with a nearby surface instead of naming that internal state directly. "
+        "If fog, condensation, or cold air matters, prefer the effect on glass, metal, fabric, or light rather than stating breath directly. "
+        "If the source implies reunion, recognition, holding hands, embrace, or togetherness but does not clearly show another visible body, convert that into a single-heroine action such as opening her hand, stepping into light, turning into the space, meeting her own reflection, or moving toward an opening. "
+        "If the source implies a person ahead, behind, beside, or turning away without a clearly visible second body, rewrite it as a trace in the space, a direction of movement, a doorway, a reflection, or a changed patch of light. "
+        "Never output another woman, another man, the other woman, the other person, two women, two people, embrace, hug, clasp hands, or holding hands unless the source literally requires two visible bodies in the frame. "
+        "If the beat lands on a smile or soft release, show it through reaching the edge, opening her posture, lifting her face, or stepping into open space rather than describing the smile as a held pose. "
+        "If the original mentions camera, frame, shot, cut, filming, shake, zoom, or viewpoint, rewrite only the visible on-screen event and never mention filming language in English. "
+        "For example, camera shake should become a visible movement in the space, the heroine, the light, or nearby surfaces, not camera wording. "
+        "If the original is metaphorical, convert it into the nearest believable visual event in the same place. "
+        "When choosing between an inner-state word and a small physical action, always choose the physical action. "
+        "continuity_anchor_en should be a short visual state phrase for continuity checking. "
         "payoff_role_en should be a short payoff-role phrase. "
         "Return JSON only.\n\n"
         f"Beats={beats}"
@@ -345,14 +394,25 @@ def _translate_beat_render_phrases(config: dict, sections: list[dict]) -> dict[s
         beat_id = str(row.get("beat_id", "")).strip()
         if not beat_id:
             continue
-        cleaned = dict(row)
-        for key in ("literal_image_en", "visible_action_en", "subject_action_en", "continuity_anchor_en", "payoff_role_en"):
-            value = " ".join(str(cleaned.get(key, "")).strip().rstrip(".").split())
-            if _contains_render_meta(value):
-                value = ""
-            cleaned[key] = value
-        out[beat_id] = cleaned
+        cleaned = _clean_translated_beat_row(row)
+        if cleaned:
+            out[beat_id] = cleaned
     return out
+
+
+def _clean_translated_beat_row(row: dict) -> dict | None:
+    cleaned = dict(row)
+    required = ("literal_image_en", "visible_action_en", "subject_action_en", "continuity_anchor_en", "payoff_role_en")
+    for key in required:
+        value = " ".join(str(cleaned.get(key, "")).strip().rstrip(".").split())
+        if not value or _contains_render_meta(value) or not _looks_english(value):
+            return None
+        cleaned[key] = value
+    beat_id = str(cleaned.get("beat_id", "")).strip()
+    if not beat_id:
+        return None
+    cleaned["beat_id"] = beat_id
+    return cleaned
 
 
 def _needs_translation(row: dict) -> bool:

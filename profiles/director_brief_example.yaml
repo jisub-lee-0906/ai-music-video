@@ -12,28 +12,25 @@ audio:
     The hook should be immediately singable, title-worthy, youthful, emotionally direct, and memorable after one listen.
 visual:
   brief: >
-    Cinematic live-action music video with one consistent heroine, premium Korean idol beauty styling,
-    natural skin and fabric response, polished city-night locations, and progression built from recurring urban motifs
-    instead of generic fashion editorial severity.
+    A cinematic live-action music video centered on one consistent Korean female idol heroine,
+    with natural skin response, grounded fabric detail, and a connected late-night station-side city atmosphere.
   negative: >
     Avoid anime illustration, cel shading, toy-like CGI, empty studio space, random set-hopping,
-    severe monochrome tailoring, harsh runway mood, and repetitive heroine-only coverage.
+    severe monochrome tailoring, harsh runway mood, and repetitive staging that disconnects the heroine from the environment.
 mv:
   story_world: >
-    One recurring late-night station-front city block built from ticket gates, platform signs, stair landings,
-    curb reflections, and puddle rings, with the same heroine moving through visibly connected zones and
-    brighter polished pop-idol energy.
+    One connected late-night station-side city block where the same heroine moves through thresholds,
+    passages, stairs, wet pavement, reflected light, windows, gates, and platform edges.
   action_vocabulary: >
-    Favor visible actions such as stepping through gates, brushing hair back,
-    turning at the curb, looking back over one shoulder, descending stairs, letting sleeves and hair react to motion,
-    and crossing reflected light.
+    Favor natural visible actions that can read clearly in a music-video keyframe, such as walking, turning,
+    pausing, crossing light, touching rails or glass, and shifting direction inside the space.
   payoff_style: >
-    The final return should feel like a world-system peak where repeated city motifs align into one bright decisive idol image.
+    The final return should feel bright, emotionally open, and decisive, with the heroine fully belonging to the world around her.
   outro_feel: >
-    End on a lingering residual image where the space keeps glowing after the heroine passes through it.
+    End on a lingering after-image where the space still carries her presence after she passes through.
   avoid: >
     Avoid abrupt geography breaks, empty abstract symbolism, random extra characters, cheap CGI spectacle,
-    fashion-shoot emptiness, and overly stern luxury-brand stiffness.
+    fashion-shoot emptiness, on-screen companion staging, and overly stern luxury-brand stiffness.
 character:
   identity_core: >
     same heroine, Korean female idol in her twenties, long dark hair with soft volume and a high ponytail,
@@ -59,46 +56,30 @@ character:
     Avoid school-uniform prep, stiff formal blazers, office tailoring, loud graphic details, and costume-like stage styling.
   ref_continuity_guidance: >
     Keep the same heroine identity, realistic facial structure, consistent hair silhouette,
-    and stable wardrobe continuity with clear silhouette separation and natural environmental depth.
+    stable wardrobe continuity, and single-subject on-screen continuity.
 director:
   target_style: >
-    cinematic live-action Korean pop music video, premium commercial realism, natural skin response,
-    polished beauty styling, grounded fabric detail, bright idol presence, and stable human continuity
+    cinematic live-action Korean pop music video with premium realism, bright idol presence, and stable human continuity
   world_core: >
-    layered urban transit night, readable foreground-background separation, recurring reflective surfaces,
-    open-to-compressed zone progression, soft glamorous highlights, and consistent heroine continuity inside one connected city block
-  camera_bias: >
-    favor readable cinematic framing, flattering three-quarter angles, polished medium shots, occasional beauty close-ups,
-    and wider chorus expansion
-  lighting_bias: >
-    favor flattering beauty light, sign glow, reflected floor light, platform lamps, sodium and LED mixes,
-    and clean polished highlights
-  shadow_bias: >
-    use readable silhouette separation, soft grounded directional shadowing, and restrained contrast instead of harsh hard blocks
-  motion_bias: >
-    favor stable cinematic motion, reactive environment movement, hair and fabric flutter, reflected light drift,
-    and clean pop-video camera movement
-  transition_bias: >
-    move between connected zones through threshold shots, reframed reflections, and previous-end continuity instead of hard resets
+    one connected late-night station-side world with reflective surfaces, urban depth, and consistent heroine continuity
   ref_frame_style: >
-    Premium cinematic live-action still frame, grounded environmental realism, and high-end music video keyframe quality.
+    natural cinematic music-video keyframe with grounded environmental realism
   wan_motion_style: >
-    stable cinematic motion with clean subject readability, reactive fabric and hair movement,
-    and grounded environmental motion
+    natural motion that stays connected between the two keyframes
   wan_negative: >
     morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi
   motif_families:
-    - platform sign glow
-    - ticket gate
-    - stair landing
-    - curb reflection
-    - puddle ring
+    - station threshold and entry point
+    - wet pavement and reflected light
+    - stair rail and platform stairs
+    - station window and passing reflections
+    - gate line and platform edge
   section_grammar:
-    Intro: threshold setup and motif introduction
-    Verse 1: object-led narrow world
-    Verse 2: object-led variation inside the same world
-    Pre-Chorus: threshold and anticipation
-    Chorus: open world with wider motion
-    Bridge: compressed interruption and reframing
-    Final Chorus: motif system peak
-    Outro: residual image and gentle release
+    Intro: first entry into the connected world
+    Verse 1: moving deeper into the same world
+    Verse 2: variation inside the same world
+    Pre-Chorus: hesitation before a wider opening
+    Chorus: release inside the same world
+    Bridge: brief compression or uncertainty
+    Final Chorus: widest emotional opening in the same world
+    Outro: lingering after-image after she passes through

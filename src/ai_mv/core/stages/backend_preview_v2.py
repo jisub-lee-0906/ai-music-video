@@ -42,10 +42,18 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
     }
     ref_preview = []
     for shot in shots:
+        clauses = dict(shot.get("ref_prompt_clauses", {}))
         ref_preview.append(
             {
                 "shot_id": shot["shot_id"],
                 "render_strategy": "ref_pair",
+                "raw_prompt_clauses": {
+                    "subject_intro": str(clauses.get("subject_intro", "")).strip(),
+                    "location": str(clauses.get("location", "")).strip(),
+                    "start_state": str(clauses.get("start_state", "")).strip(),
+                    "end_state": str(clauses.get("end_state", "")).strip(),
+                    "lighting": str(clauses.get("lighting", "")).strip(),
+                },
                 "start_prompt_preview": _ref_start_preview(brief, shot),
                 "end_prompt_preview": _ref_end_preview(brief, shot),
             }
@@ -54,12 +62,19 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
     for row in render_plan.get("wan_chain", []):
         if not isinstance(row, dict):
             continue
+        clauses = dict(row.get("wan_prompt_clauses", {}))
         wan_preview.append(
             {
                 "shot_id": row["shot_id"],
                 "render_strategy": "wan_chain",
                 "start_source": row["start_source"],
                 "previous_chain_key": row.get("previous_chain_key", ""),
+                "raw_prompt_clauses": {
+                    "subject_intro": str(clauses.get("subject_intro", "")).strip(),
+                    "location": str(clauses.get("location", "")).strip(),
+                    "bridge_action": str(clauses.get("bridge_action", "")).strip(),
+                    "lighting": str(clauses.get("lighting", "")).strip(),
+                },
                 "positive_prompt_preview": _wan_positive_prompt(brief, row),
                 "negative_prompt_preview": _wan_negative_prompt(brief),
             }
@@ -94,6 +109,9 @@ def _performance_action(shot: dict) -> str:
 
 
 def _ref_start_preview(brief: dict, shot: dict) -> str:
+    verbalized = str(shot.get("ref_start_prompt_text", "")).strip()
+    if verbalized:
+        return verbalized
     return _join_sentences(
         f"In {_literal_scene_description(shot)}",
         f"{brief['ref_subject_intro']}",
@@ -103,6 +121,9 @@ def _ref_start_preview(brief: dict, shot: dict) -> str:
 
 
 def _ref_end_preview(brief: dict, shot: dict) -> str:
+    verbalized = str(shot.get("ref_end_prompt_text", "")).strip()
+    if verbalized:
+        return verbalized
     return _join_sentences(
         f"In {_literal_scene_description(shot)}",
         f"{brief['ref_subject_intro']}",

@@ -125,6 +125,9 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
         prev_key = str(chain.get("chain_key", f"{shot_id}:{index}")).strip()
     return {"clips": clips}
 def _wan_positive_prompt(brief: dict, chain: dict) -> str:
+    verbalized = str(chain.get("wan_positive_prompt_text", "")).strip()
+    if verbalized:
+        return verbalized
     location = _literal_scene_description(chain).rstrip(".")
     subject = str(brief.get("ref_subject_intro", "")).strip().rstrip(".") or "The same Korean female idol"
     parts = [

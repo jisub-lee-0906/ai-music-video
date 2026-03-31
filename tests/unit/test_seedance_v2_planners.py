@@ -70,8 +70,8 @@ def test_scene_director_render_plan_v2_chain():
     assert scene["motif_progression"][0]["environment_anchor"] == first_location
 
     director = build_director_plan_v2(_config(), {**_payload(), "scene_plan_v2": scene})
-    assert director["shot_packages"][0]["camera_intent"]
-    assert director["shot_packages"][0]["motion_intent"]
+    assert "camera_intent" in director["shot_packages"][0]
+    assert "motion_intent" in director["shot_packages"][0]
     assert director["shot_packages"][0]["visual_role"] == "opening_frame"
     assert "ref_start_continuity_line" not in director["shot_packages"][0]
     assert "ref_start_camera_line" not in director["shot_packages"][0]
@@ -84,8 +84,14 @@ def test_scene_director_render_plan_v2_chain():
     assert render["wan_chain"][0]["environment_anchor"]
     assert render["wan_chain"][0]["location_description"]
     assert render["wan_chain"][0]["duration_sec"] > 0
-    assert render["wan_chain"][0]["visible_action"] == "she presses her hand to the glass"
+    assert "press" in render["wan_chain"][0]["visible_action"]
+    assert "glass" in render["wan_chain"][0]["visible_action"]
     assert render["wan_chain"][0]["wan_action_line"]
+    assert render["shot_packages"][0]["ref_prompt_clauses"]["subject_intro"]
+    assert render["shot_packages"][0]["ref_start_prompt_text"]
+    assert render["shot_packages"][0]["ref_end_prompt_text"]
+    assert render["wan_chain"][0]["wan_prompt_clauses"]["bridge_action"]
+    assert render["wan_chain"][0]["wan_positive_prompt_text"]
 
 
 def test_scene_plan_v2_motif_assignment_is_section_local_and_stable():

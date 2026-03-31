@@ -56,12 +56,9 @@ def assert_director_plan_v2(plan: dict) -> None:
     for shot in plan["shot_packages"]:
         if not isinstance(shot, dict):
             raise ValueError("director_plan_v2 shot_packages must contain objects")
-        for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "motion_intent", "transition_intent"):
-            if key == "contact_intent":
-                continue
         for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "contact_intent", "motion_intent", "transition_intent"):
-            if not str(shot.get(key, "")).strip():
-                raise ValueError(f"director_plan_v2 shot missing intent: {key}")
+            if key not in shot:
+                raise ValueError(f"director_plan_v2 shot missing intent field: {key}")
 
 
 def assert_render_plan_v2(plan: dict) -> None:

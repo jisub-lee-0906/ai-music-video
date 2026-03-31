@@ -128,6 +128,9 @@ def _clip_routes_from_v2(payload: dict, flux2_ref_images: list[dict]) -> list[di
 
 
 def _start_prompt_text(brief: dict, shot: dict) -> str:
+    verbalized = str(shot.get("ref_start_prompt_text", "")).strip()
+    if verbalized:
+        return verbalized
     return _join_sentences(
         _ref_subject_clause(brief, shot, "start"),
         _ref_location_clause(shot),
@@ -137,6 +140,9 @@ def _start_prompt_text(brief: dict, shot: dict) -> str:
 
 
 def _end_prompt_text(brief: dict, shot: dict) -> str:
+    verbalized = str(shot.get("ref_end_prompt_text", "")).strip()
+    if verbalized:
+        return verbalized
     return _join_sentences(
         _ref_subject_clause(brief, shot, "end"),
         _ref_location_clause(shot),

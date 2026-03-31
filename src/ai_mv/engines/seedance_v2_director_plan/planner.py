@@ -46,146 +46,37 @@ def build_director_plan_v2(config: dict, payload: dict) -> dict:
 def build_director_plan_v2_preview_prompt(config: dict, payload: dict) -> str:
     brief = build_director_brief_intent(config)
     return (
-        "Create a director-first shot plan with camera, performance, lighting, shadow, contact, motion, and transition intents. "
-        f"Camera bias={brief['camera_bias']}. Lighting bias={brief['lighting_bias']}. "
-        f"Shadow bias={brief['shadow_bias']}. Motion bias={brief['motion_bias']}. "
-        "Keep the heroine identity fixed and move the world through connected zones."
+        "Create a director-first shot plan that turns the brief into character-centered keyframe actions. "
+        f"Style={brief['style_contract']}. World={brief['world_core']}. "
+        "Keep the same heroine readable, single-subject by default, and physically grounded in one connected world."
     )
 
 
 def _camera_intent(shot: dict, brief: dict, index: int) -> str:
-    zone = str(shot.get("zone", "")).strip().lower()
-    section = str(shot.get("section_label", "")).strip().lower()
-    visual_role = str(shot.get("visual_role", "")).strip().lower()
-    phase = _section_phase(shot)
-    location = _literal_scene_description(shot)
-    if visual_role == "opening_frame":
-        return f"the place reads clearly first, with her arriving inside {location}"
-    if visual_role == "pressure_frame":
-        return "the space feels tighter around her without losing depth"
-    if visual_role == "payoff_frame":
-        return "the place opens one step wider while still feeling lived-in"
-    if visual_role == "handoff_frame":
-        return "the place leaves a clear direction for the next moment to follow"
-    if "final chorus" in section:
-        return "the place widens naturally while her movement keeps going through it"
-    if "chorus" in section:
-        if phase == "entry":
-            return "the place opens a little wider and keeps her movement readable inside it"
-        if phase == "exit":
-            return "the space stays open in the direction her movement is already heading"
-        return "the place stays readable while her movement carries through it"
-    if "pre" in section:
-        return "the place feels tighter and more anticipatory without turning static"
-    if "bridge" in section:
-        return "the place compresses into one tense pocket without losing depth"
-    if zone in {"threshold", "edge"}:
-        return "the crossing stays readable as a place she is entering or leaving"
-    return "the place stays readable through its objects, surfaces, and depth"
+    return ""
 
 def _performance_intent(shot: dict) -> str:
-    zone = str(shot.get("zone", "")).strip().lower()
-    visual_role = str(shot.get("visual_role", "")).strip().lower()
-    phase = _section_phase(shot)
-    if visual_role == "opening_frame":
-        return "caught in an in-between moment, with weight settled more on one side before the movement fully begins"
-    if visual_role == "handoff_frame":
-        return "one readable body change finishes while the direction of motion still carries into the next cut"
-    if visual_role == "pressure_frame":
-        return "the body stays restrained, but one small off-center change in the head, shoulders, or hands reads clearly"
-    if visual_role == "payoff_frame":
-        return "the body opens one step wider than before, but the free side still arrives a beat later so the moment feels lived-in rather than posed"
-    if zone == "threshold":
-        return "one measured breath and a weight shift onto one leg, without fully crossing yet"
-    if zone == "edge":
-        return "slowing at the edge, with one shoulder line steadier than the other and one deliberate step beginning to form"
-    if zone == "compression":
-        return "the body nearly still, with movement narrowed to one shoulder, one hand, or one head turn inside one tense pocket"
-    if zone == "open_world":
-        if phase == "entry":
-            return "stepping into the wider space, one shoulder turning ahead of the hips with a stronger forward intention"
-        if phase == "exit":
-            return "one side of the body already released into the next direction so the motion stays open into the next cut"
-        return "moving through the wider space with controlled forward momentum, one-sided weight transfer, and a readable upper-body turn"
-    if zone == "open_world_peak":
-        return "a broader opening of the stride and torso while still staying grounded inside the same space and not settling into a finished pose"
-    if zone == "residue":
-        return "the movement falling away, breathing slowing, and the last after-image still hanging in place"
-    if zone == "transit_lane":
-        return "continuing through the lane with measured pace, asymmetrical weight, and restrained body language"
-    return "moving through the close space with one readable, uneven body-led action"
+    return ""
 
 
 def _lighting_intent(shot: dict, brief: dict) -> str:
-    zone = str(shot.get("zone", "")).strip().lower()
-    location = _literal_scene_description(shot).lower()
-    if zone == "open_world_peak":
-        return "Bright city light gathers across the wet ground and stays clear on her skin, clothes, and the nearby metal"
-    if any(token in location for token in ("window", "glass", "storefront")):
-        return "Window glow and soft reflected floor light stay clear on her, the glass, and the ground around her"
-    if any(token in location for token in ("vending machine", "vending", "machine")):
-        return "Vending-machine glow and wet pavement reflections stay clean on her and the ground beside her"
-    if any(token in location for token in ("platform", "concourse", "sign", "track")):
-        return "Platform light and sign glow stay clean on her and the surrounding floor and rail surfaces"
-    if any(token in location for token in ("stair", "step", "landing", "rail")):
-        return "City night light catches on the steps, railings, and the edges of her clothes without flattening the depth"
-    if any(token in location for token in ("road", "street", "pavement", "curb", "crosswalk", "alley")):
-        return "Streetlight and wet-ground reflections stay grounded on her skin, clothes, and the road surface"
-    if zone in {"threshold", "edge"}:
-        return "Gate light and reflected floor light stay sharp on her and the crossing surfaces around her"
-    if zone == "compression":
-        return "A tighter directional pool of light holds on her and the nearby station surfaces"
-    if zone == "residue":
-        return "The last pools of city light linger on the wet ground and fade slowly across her"
-    if any(token in location for token in ("gate", "barrier", "card reader", "checkpoint", "station")):
-        return "Station light and reflected floor light stay clear on her skin, clothes, and the metal around her"
-    lighting_bias = " ".join(str(brief.get("lighting_bias", "")).strip().rstrip(".").split())
-    if lighting_bias:
-        return _naturalize_lighting_bias(lighting_bias)
-    return "Natural city-night light stays grounded across her and the space around her"
+    return ""
 
 
 def _shadow_intent(shot: dict, brief: dict) -> str:
-    zone = str(shot.get("zone", "")).strip().lower()
-    if zone == "compression":
-        return "the shadows gather into a tighter directional pocket around her"
-    return "the shadows stay readable and grounded without turning harsh or graphic"
+    return ""
 
 
 def _motion_intent(shot: dict, brief: dict) -> str:
-    section = str(shot.get("section_label", "")).strip().lower()
-    visual_role = str(shot.get("visual_role", "")).strip().lower()
-    phase = _section_phase(shot)
-    if visual_role == "opening_frame":
-        return "the motion is already lightly underway instead of starting from a posed stop"
-    if visual_role == "handoff_frame":
-        return "the motion carries through cleanly enough for the next moment to pick it up"
-    if visual_role == "pressure_frame":
-        return "the motion stays restrained and focused into small body shifts"
-    if "chorus" in section:
-        if phase == "exit":
-            return "the motion resolves with stronger carry-through in her body and the surrounding space"
-        return "the motion opens out with stronger body carry and a more reactive space around her"
-    if "bridge" in section:
-        return "the motion stays tighter and more pressurized, with less movement in the space around her"
-    if "pre" in section:
-        return "the motion builds through small forward pressure and restrained reactions in hair, fabric, and space"
-    return "the motion stays stable, readable, and physically grounded inside the place"
+    return ""
 
 
 def _contact_intent(shot: dict) -> str:
-    role = str(shot.get("visual_role", "")).strip().lower()
-    if role == "payoff_frame":
-        return "keep the body physically grounded in the place so the space still feels shared around her as it opens"
-    return "make the feet, body shadow, and nearby surfaces feel physically connected inside the same shot"
+    return ""
 
 
 def _transition_intent(shot: dict, index: int) -> str:
-    if index <= 1:
-        return "establish the first connected zone without forcing a hard reset"
-    if "open_world_peak" in str(shot.get("zone", "")):
-        return "escalate through previous-end continuity into the largest payoff zone"
-    return "advance through previous-end continuity and keep the cut feeling absorbed"
+    return ""
 
 
 def _section_phase(shot: dict) -> str:
@@ -228,10 +119,13 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
         rows.append(
             {
                 "shot_id": str(shot.get("shot_id", "")).strip(),
+                "section_label": str(shot.get("section_label", "")).strip(),
+                "zone": str(shot.get("zone", "")).strip(),
                 "location": _literal_scene_description(shot),
                 "literal_image": str(shot.get("literal_image", "")).strip(),
                 "subject_action": str(shot.get("subject_action", "")).strip(),
                 "visible_action": str(shot.get("visible_action", "")).strip(),
+                "continuity_anchor": str(shot.get("beat_continuity_anchor", "")).strip(),
                 "visual_role": str(shot.get("visual_role", "")).strip(),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
             }
@@ -278,15 +172,48 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "required": ["shots"],
     }
     prompt = (
-        "Rewrite each shot into natural English action lines for image/video prompts. "
+        "Rewrite each shot into natural English action lines for image and video prompts. "
+        "Write like a music-video director describing what the same heroine is visibly doing inside one real place. "
         "Each line must be heroine-centered, start with 'She', and stay faithful to the provided action and place. "
+        "Subject and action should be clear immediately. "
         "Do not mention camera, frame, shot, cut, continuity, prompt, image, reset, carry, or video. "
-        "Do not invent new props or locations. "
+        "Do not invent new props, new characters, or new locations. "
+        "Do not rely on decorative metaphor, symbolic narration, or viewer-facing language. "
+        "Default to a single-heroine scene. Never introduce you, your, he, him, they, them, or another figure unless the source explicitly names or clearly requires another person. "
+        "This visual pipeline should stay single-subject by default. Even if the lyric implies an addressee, reunion, longing, or mutual feeling, keep only one visible heroine in frame unless the source unmistakably requires two visible bodies in one shot. "
+        "For this project, prefer one visible heroine moving through one connected world over any duet, reunion, embrace, or partner staging. "
+        "Treat a lyric addressee, implied romance, remembered closeness, or emotional togetherness as non-visible unless the source clearly shows another body physically present in the same frame. "
+        "If the source only implies emotional connection or shared feeling without a clearly visible second person, keep the shot single-subject and express the feeling through the heroine's body, direction, and contact with the space. "
+        "Do not turn reunion, recognition, or togetherness into a literal second character unless the source plainly requires two visible bodies in frame. "
+        "Do not use figure, person, silhouette, embrace, arms, together, them, or their unless the source unmistakably requires two visible bodies in one frame. "
+        "Never output another woman, another man, the other woman, the other person, two women, two people, embrace, hug, clasp hands, or holding hands unless the source literally requires two visible bodies in the frame. "
+        "Do not fixate on isolated body parts unless the original action truly depends on them. "
+        "Avoid weak static phrasing such as merely standing still, waiting, feeling, remembering, or watching from a distance unless the beat absolutely requires it. "
+        "Also avoid fallback-feeling verbs such as stays, remains, keeps her place, or holds still when a clearer visible progression is possible. "
+        "Also avoid weak mood-led verbs such as watches, looks toward, gazes at, breathes out, smiles faintly, or lets the space act on her when a more readable physical action is available. "
+        "Also avoid static reflective phrasing such as studies her reflection, lets the reflection settle, holds the smile, or lets a small smile rise when a more readable physical progression is possible. "
+        "Prefer visible physical actions that read in a keyframe: walking, turning, stepping, leaning, touching, passing, climbing, descending, pausing at a surface, lifting a hand, pushing through, or changing direction. "
+        "If the source action is static, convert it into the smallest believable visible progression in the same place. "
+        "Do not use breath, hesitation, heartbeat, memory, loneliness, or pause as the main event when a faithful visible action can carry the same beat. "
+        "If the source mentions breath, hesitation, memory, heartbeat, pause, or stillness, express it through a visible body action in the same space rather than breath-only or gaze-only wording. "
+        "Prefer hands, shoulders, steps, and contact with nearby surfaces over pause-only or breath-only phrasing. "
+        "When the beat is emotionally suspended, show that suspension through a turn, slowed step, hand on glass or rail, shift at a threshold, or another readable physical hold in the same place. "
+        "If the source does not explicitly include another person, do not introduce one; keep the action strictly single-subject. "
+        "If the source suggests hand-clasping, reunion, or facing someone without an explicitly visible second body, rewrite that beat as a single-subject action through opening hands, stepping forward, lifting her face, turning into the light, or moving into an opening in the same place. "
+        "If the source suggests a hug or embrace without an explicitly visible second body, rewrite it as entering a pool of light, settling into open space, or opening her posture while remaining alone in frame. "
+        "If the source implies someone turning away, waiting ahead, or receiving her movement without a clearly visible second body, rewrite that as her moving toward a doorway, reflection, threshold, lit opening, or changed direction in the same space. "
+        "If the beat releases into a smile, express that release through movement into open space, lifted posture, or a brightened direction of travel rather than holding the smile as the main event. "
+        "If section_label is Bridge or zone is compression, do not make stillness the main event. "
+        "For Bridge/compression shots, avoid stand, hold, wait, remain, linger, or stay as the main verb. "
+        "Instead, express compression through a small physical progression such as edging forward, shifting along the edge, bracing at a surface, tightening her step, leaning into wind or light, or turning toward an opening. "
         "The action must stay physically compatible with the given location. "
-        "ref_start_action_line should describe what she is doing in the first keyframe. "
-        "ref_end_action_line should describe the same action one natural step later, scaled to the shot duration. "
-        "wan_action_line should describe the motion between those keyframes as one natural sentence. "
-        "Keep the language concrete and screen-readable.\n\n"
+        "The environment should support the heroine's movement instead of overpowering it. "
+        "ref_start_action_line should describe a strong readable first keyframe state. "
+        "ref_end_action_line should describe the same action one natural beat later, still in the same place and scaled to the shot duration. "
+        "ref_start_action_line and ref_end_action_line should feel like adjacent states in one continuous performance, not two unrelated poses. "
+        "wan_action_line should describe the visible transition between those keyframes in one compact natural sentence with motion or directional change. "
+        "wan_action_line should never reduce the bridge to only pausing, only breathing, or only watching. "
+        "Keep the language concrete, visual, and screen-readable for a cinematic live-action music video.\n\n"
         f"Shots={rows}"
     )
     raw = generate_structured(config, prompt, schema, attempts=1)
@@ -318,18 +245,4 @@ def _shot_duration_map(payload: dict) -> dict[str, float]:
     return out
 def _ref_lighting_line(shot: dict) -> str:
     lighting = " ".join(str(shot.get("lighting_intent", "")).strip().rstrip(".").split())
-    if lighting:
-        return lighting[:1].upper() + lighting[1:]
-    return "Ground the light naturally across her and the space around her"
-
-
-def _naturalize_lighting_bias(text: str) -> str:
-    cleaned = " ".join(str(text).strip().rstrip(".").split())
-    if not cleaned:
-        return ""
-    lower = cleaned.lower()
-    if "sign glow" in lower or "platform" in lower or "station" in lower:
-        return "Station sign glow and reflected floor light stay clean on her and the nearby surfaces"
-    if "street" in lower or "wet" in lower or "reflection" in lower:
-        return "Streetlight and reflected wet-ground light stay clear on her and the surrounding surfaces"
-    return "City light stays clean and grounded on her and the nearby surfaces"
+    return lighting

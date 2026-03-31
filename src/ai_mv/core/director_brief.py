@@ -15,20 +15,17 @@ _REQUIRED_FIELDS = (
     ("character", "identity_core"),
     ("director", "target_style"),
     ("director", "world_core"),
-    ("director", "camera_bias"),
-    ("director", "lighting_bias"),
-    ("director", "motion_bias"),
 )
 
 _DEFAULT_SECTION_GRAMMAR = {
-    "Intro": "threshold setup and motif introduction",
-    "Verse 1": "object-led narrow world",
-    "Verse 2": "object-led world variation",
-    "Pre-Chorus": "threshold and anticipation",
-    "Chorus": "open world with wider motion",
-    "Bridge": "compressed or reframed interruption",
-    "Final Chorus": "motif system peak",
-    "Outro": "residual world after-image",
+    "Intro": "first entry into the world",
+    "Verse 1": "moving deeper into the connected world",
+    "Verse 2": "variation inside the same world",
+    "Pre-Chorus": "hesitation before a wider opening",
+    "Chorus": "release into the same world",
+    "Bridge": "brief compression or uncertainty",
+    "Final Chorus": "widest emotional opening in the same world",
+    "Outro": "lingering after-image after she passes through",
 }
 
 

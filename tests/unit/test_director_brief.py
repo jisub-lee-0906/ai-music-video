@@ -33,6 +33,14 @@ def test_validate_director_brief_requires_explicit_fields():
         validate_director_brief_config({"audio": {"brief": "x"}})
 
 
+def test_validate_director_brief_allows_optional_director_bias_fields():
+    brief = _brief()
+    brief["director"].pop("camera_bias", None)
+    brief["director"].pop("lighting_bias", None)
+    brief["director"].pop("motion_bias", None)
+    validate_director_brief_config(brief)
+
+
 def test_build_director_brief_intent_returns_identity_and_section_grammar():
     intent = build_director_brief_intent(_brief())
     assert intent["identity_core"] == "same heroine"

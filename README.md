@@ -28,6 +28,9 @@ The planners are now strictly `brief-first`.
 - old tag/guidance inference is not used in the runtime path anymore
 - profiles define the world and artistic boundaries, while planners reinterpret them into per-run workflow payloads
 
+Prompting reference:
+- `docs/seedance_v2_prompting_reference.md`: working rules for `FLUX.2 [dev]` TTI / REF and `Wan 2.2 FLF2V` prompting
+
 Codex CLI expands those inputs into:
 - AceStep audio plan
 - Lyric timeline planning
