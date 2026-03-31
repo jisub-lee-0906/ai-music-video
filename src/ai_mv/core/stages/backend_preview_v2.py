@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.stages.flux2_ref_chain_v2 import _literal_scene_description
+from ai_mv.core.stages.flux2_ref_chain_v2 import (
+    _literal_scene_description,
+)
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.core.stages.wan_interpolation_v2 import _wan_negative_prompt, _wan_positive_prompt
 
@@ -93,66 +95,17 @@ def _performance_action(shot: dict) -> str:
 
 def _ref_start_preview(brief: dict, shot: dict) -> str:
     return _join_sentences(
-        f"{brief['ref_subject_intro']} at the start of the shot, caught in the middle of a real movement rather than a posed still",
-        f"{_ref_start_action(shot)}",
-        f"The location is {_literal_scene_description(shot)}",
-        _ref_carryover_clause(shot),
-        _ref_transition_clause(shot),
-        _ref_change_clause(shot, "start"),
-        shot["camera_intent"],
-        shot.get("lighting_intent", ""),
-        brief.get("ref_frame_style", ""),
+        f"In {_literal_scene_description(shot)}",
+        f"{brief['ref_subject_intro']}",
+        str(shot.get("ref_start_action_line", "")).strip() or str(shot.get("subject_action", "")).strip() or str(shot.get("visible_action", "")).strip(),
+        str(shot.get("ref_lighting_line", "")).strip() or str(shot.get("lighting_intent", "")).strip(),
     )
 
 
 def _ref_end_preview(brief: dict, shot: dict) -> str:
     return _join_sentences(
-        f"{brief['ref_subject_intro']} at the end of the shot, finishing one readable movement without resetting into a posed frame",
-        f"{_performance_action(shot)}",
-        f"The location is {_literal_scene_description(shot)}",
-        _ref_carryover_clause(shot),
-        _ref_anchor_clause(shot),
-        _ref_change_clause(shot, "end"),
-        shot["camera_intent"],
-        shot.get("lighting_intent", ""),
-        brief.get("ref_frame_style", ""),
+        f"In {_literal_scene_description(shot)}",
+        f"{brief['ref_subject_intro']}",
+        str(shot.get("ref_end_action_line", "")).strip() or str(shot.get("subject_action", "")).strip() or str(shot.get("visible_action", "")).strip(),
+        str(shot.get("ref_lighting_line", "")).strip() or str(shot.get("lighting_intent", "")).strip(),
     )
-
-
-def _ref_start_action(shot: dict) -> str:
-    zone = str(shot.get("zone", "")).strip().lower()
-    if zone in {"threshold", "edge"}:
-        return "holds a poised starting stance before the movement commits"
-    if zone == "compression":
-        return "keeps the body contained and the pose tightly controlled"
-    return "holds a clear readable starting pose"
-
-
-
-
-def _ref_carryover_clause(shot: dict) -> str:
-    state = str(shot.get("carryover_state", "")).strip().rstrip(".")
-    if not state:
-        return ""
-    if state.startswith("a clean "):
-        return f"Begin from {state}"
-    return f"Carry forward {state}"
-
-
-def _ref_anchor_clause(shot: dict) -> str:
-    anchor = str(shot.get("continuity_anchor", "")).strip()
-    return f"Keep continuity through {anchor}" if anchor else ""
-
-
-def _ref_transition_clause(shot: dict) -> str:
-    transition = str(shot.get("incoming_transition", "")).strip()
-    return transition
-
-
-def _ref_change_clause(shot: dict, frame: str) -> str:
-    change = str(shot.get("new_change", "")).strip()
-    if not change:
-        return ""
-    if frame == "start":
-        return f"Introduce only {change}"
-    return f"Complete {change}"

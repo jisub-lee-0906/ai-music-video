@@ -23,14 +23,14 @@ def build_render_plan_v2(config: dict, payload: dict) -> dict:
                 "previous_chain_key": previous_chain_key,
                 "chain_key": chain_key,
                 "end_source": f"ref_end:{shot_row['shot_id']}",
-                "motion_intent": shot_row["motion_intent"],
-                "contact_intent": shot_row["contact_intent"],
-                "camera_intent": shot_row["camera_intent"],
                 "environment_anchor": shot_row["environment_anchor"],
-                "carryover_state": str(shot_row.get("carryover_state", "")).strip(),
-                "continuity_anchor": str(shot_row.get("continuity_anchor", "")).strip(),
-                "new_change": str(shot_row.get("new_change", "")).strip(),
-                "performance_intent": str(shot_row.get("performance_intent", "")).strip(),
+                "location_description": str(shot_row.get("location_description", "")).strip(),
+                "lighting_intent": str(shot_row.get("lighting_intent", "")).strip(),
+                "duration_sec": float(shot_row.get("duration_sec", 2.0) or 2.0),
+                "literal_image": str(shot_row.get("literal_image", "")).strip(),
+                "visible_action": str(shot_row.get("visible_action", "")).strip(),
+                "subject_action": str(shot_row.get("subject_action", "")).strip(),
+                "wan_action_line": str(shot_row.get("wan_action_line", "")).strip(),
             }
         )
         previous_chain_key = chain_key

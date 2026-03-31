@@ -20,12 +20,12 @@ visual:
     severe monochrome tailoring, harsh runway mood, and repetitive heroine-only coverage.
 mv:
   story_world: >
-    One recurring late-night urban transit block built from train windows, ticket gates, curb reflections,
-    platform signs, puddle rings, and stair landings, with the same heroine moving through connected zones and
+    One recurring late-night station-front city block built from ticket gates, platform signs, stair landings,
+    curb reflections, and puddle rings, with the same heroine moving through visibly connected zones and
     brighter polished pop-idol energy.
   action_vocabulary: >
-    Favor visible actions such as stepping through gates, touching train glass, brushing hair back,
-    turning at the curb, looking back over one shoulder, letting sleeves and hair react to motion,
+    Favor visible actions such as stepping through gates, brushing hair back,
+    turning at the curb, looking back over one shoulder, descending stairs, letting sleeves and hair react to motion,
     and crossing reflected light.
   payoff_style: >
     The final return should feel like a world-system peak where repeated city motifs align into one bright decisive idol image.
@@ -88,12 +88,11 @@ director:
   wan_negative: >
     morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi
   motif_families:
-    - train window
+    - platform sign glow
     - ticket gate
+    - stair landing
     - curb reflection
     - puddle ring
-    - platform sign glow
-    - stair landing
   section_grammar:
     Intro: threshold setup and motif introduction
     Verse 1: object-led narrow world
