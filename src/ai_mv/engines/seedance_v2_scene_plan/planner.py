@@ -213,10 +213,13 @@ def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, s
         "The output must read like a real place that can hold the heroine's action, not like a caption or production note. "
         "Keep it visual, physical, and specific. "
         "Do not mention frame, shot, prompt, continuity, video, composition, camera, or viewer. "
+        "Do not use the word frame anywhere in the output, even for a physical object; use window edge, rail, border, or casing instead. "
         "Do not mention the heroine, body parts, breath, heartbeat, feelings, memories, relationships, or any action. "
         "Do not describe the place with person-like verbs such as stands, waits, watches, remembers, or reaches. "
         "Do not use poetic metaphor that weakens the place into abstract mood. "
         "Stay faithful to the base location, motif, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
+        "Prefer the nearest playable surface, path, or threshold around the heroine over a distant symbolic object. "
+        "Do not choose a clock, sign, or distant skyline as the main place anchor unless the source clearly makes it the physical center of her visible action. "
         "Do not invent new props or move to a different world. "
         "Return only a concrete place description that can naturally support the described action.\n\n"
         f"Shots={rows}"
@@ -253,11 +256,11 @@ def _zone_environment_phrase(zone: str, motif: str) -> str:
 def _zone_seed_place(zone: str) -> str:
     zone_key = zone.strip().lower()
     phrases = {
-        "threshold": "a station threshold at night",
-        "edge": "a station edge where the next crossing is about to happen",
-        "compression": "a tight station pocket at night",
+        "threshold": "a station entrance at night",
+        "edge": "a station gate edge at night",
+        "compression": "a narrow station-side passage at night",
         "open_world": "a street-level station frontage at night",
-        "open_world_peak": "the brightest station-side opening at night",
+        "open_world_peak": "a bright station-side opening at night",
         "residue": "the last station-side space after the main movement has passed",
         "narrow_world": "a narrow station-side passage at night",
         "transit_lane": "a station-side lane that keeps the movement going",
@@ -353,30 +356,47 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "A lyric addressee or emotional partner is not automatically a visible second character. "
         "Do not use figure, person, silhouette, embrace, arms, together, them, or their unless the source unmistakably requires two visible bodies in one frame. "
         "Write direct visual prose, not production notes and not poetic paraphrase. "
+        "Prefer one clear place anchor over a stack of station symbols. "
+        "If one doorway, gate, sign, window, rail, or reflection can carry the place, do not pile on several more environment nouns. "
+        "Do not turn the beat into a location hero shot; the place should support one heroine-centered visible action. "
+        "When choosing the place anchor, prefer the nearest playable surface or path around the heroine, such as a window, rail, gate edge, stair, passage, or wet platform, over a distant symbolic object. "
+        "Do not pick a clock, sign, or distant city marker as the main place anchor unless the source literally centers the heroine's visible action on that object. "
+        "For opening or payoff beats, prefer the doorway, threshold, gate rail, exit line, or immediate platform path she can physically cross right now over a distant bright point farther ahead. "
         "Every returned field must be natural English prose. Never leave Korean text, mixed-language text, or untranslated fragments in the output. "
-        "literal_image_en should be a concise concrete scene phrase built from place, surfaces, structures, weather, and local light. "
+        "Do not use the word frame anywhere in the output, even for a physical object; use window edge, rail, border, or casing instead. "
+        "literal_image_en should be a concise concrete scene phrase built from one place anchor plus only the surfaces, structures, weather, or local light needed to make that place believable. "
+        "Keep literal_image_en compact enough that the heroine can still dominate the image. "
         "literal_image_en must not mention body parts, breath, heartbeat, emotions, memories, hesitation, loneliness, relationships, or camera language. "
         "If the original beat uses an inner feeling, memory, hesitation, heartbeat, loneliness, or fear to describe the scene, convert that into a visible environmental trace in the same place instead of naming the feeling. "
         "visible_action_en should be a concise screen-readable present-tense action fragment that describes what is visibly happening in the scene. "
         "visible_action_en should prefer body-grounded motion or contact over abstract mood. "
+        "Prefer actions that read clearly in torso, legs, hands, direction, or contact at a glance. "
         "subject_action_en should rewrite visible_action into a heroine-centered present-tense action fragment suitable for prompts that begin with 'She ...'. "
         "subject_action_en should prefer clear physical actions that read in a keyframe, such as walking, turning, leaning, touching, stepping, passing, pausing at a surface, lifting a hand, descending, or changing direction. "
         "subject_action_en should avoid body-part fixation, decorative metaphor, relationship language, viewer-facing language, and vague emotion-only verbs. "
+        "Choose actions that keep the heroine readable and present rather than actions that naturally push her tiny into the distance. "
+        "If the beat supports it, prefer actions with one readable contact detail such as a hand on glass, a hand along a rail, or a step through an opening, because those tend to hold the heroine and place together more clearly. "
         "Avoid phrasing that leaves her frozen in place, such as 'stays', 'remains', or 'holds still', unless the original beat explicitly requires stillness as the main visible event. "
         "Avoid weak keyframe verbs such as watches, looks, gazes, waits, breathes, exhales, smiles softly, or lets the scene happen around her when a clearer visible action is possible. "
-        "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, or lets a smile rise when a more readable visible action can carry the beat. "
+        "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, lets a smile rise, lets the motion settle, or lets the floor steady when a more readable visible action can carry the beat. "
         "Do not use heartbeat, hesitation, memory, loneliness, or pause as the main visible event unless there is no other faithful physical reading. "
         "If the source suggests a static feeling, convert it into a small but visible physical action in the same place. "
         "If the source says she stands still, pauses, waits, only breathes, or only watches something, rewrite it into a subtle but readable movement such as shifting her weight, taking a step, turning, touching a surface, tracing a rail or glass edge, crossing a threshold, or lifting a hand while staying in the same space. "
         "If breath, hesitation, heartbeat, or memory is important, show it through her hand, shoulders, step, or contact with a nearby surface instead of naming that internal state directly. "
         "If fog, condensation, or cold air matters, prefer the effect on glass, metal, fabric, or light rather than stating breath directly. "
-        "If the source implies reunion, recognition, holding hands, embrace, or togetherness but does not clearly show another visible body, convert that into a single-heroine action such as opening her hand, stepping into light, turning into the space, meeting her own reflection, or moving toward an opening. "
-        "If the source implies a person ahead, behind, beside, or turning away without a clearly visible second body, rewrite it as a trace in the space, a direction of movement, a doorway, a reflection, or a changed patch of light. "
+        "If the source offers both a distant symbolic target and a nearby surface or path, prefer the nearby surface or path for visible_action_en and subject_action_en. "
+        "For opening or release beats, prefer crossing actions such as stepping through, clearing the gate, passing the rail, crossing the exit line, or moving into the doorway over merely approaching a bright place from afar. "
+        "For final opening or release beats, do not make smiling, reflection, reflections brightening behind her, a glowing window, warm light ahead, pale dawn light, light gathering in front of her, a bright sign, a clearing path, lifted face toward light, or settling/steadying motion the main event when a forward crossing action in the same place can carry the beat. "
+        "In final opening or release beats, prefer gate, threshold, exit, street entry, platform edge crossing, stair-top crossing, or doorway crossing over lingering by a window, holding at the edge, moving toward a vague glow, leaving a reflection behind, or opening her fingers toward space. "
+        "If the source implies reunion, recognition, holding hands, embrace, or togetherness but does not clearly show another visible body, convert that into a single-heroine action such as opening her hand, stepping into light, turning into the space, meeting her own reflection, or moving toward a clearer direction in the same place. "
+        "If the source implies a person ahead, behind, beside, or turning away without a clearly visible second body, rewrite it as a trace in the space, a direction of movement, or a changed patch of light in the same place. "
         "Never output another woman, another man, the other woman, the other person, two women, two people, embrace, hug, clasp hands, or holding hands unless the source literally requires two visible bodies in the frame. "
-        "If the beat lands on a smile or soft release, show it through reaching the edge, opening her posture, lifting her face, or stepping into open space rather than describing the smile as a held pose. "
+        "If the beat lands on a smile or soft release, show it through crossing a threshold, clearing a gate, reaching the far side of a street or platform edge, or stepping through a doorway rather than describing the smile as a held pose. "
+        "Do not use generic release phrases such as one steady rhythm, open space, brighter direction, or path clearing when a specific crossing action is available in the same place. "
         "If the original mentions camera, frame, shot, cut, filming, shake, zoom, or viewpoint, rewrite only the visible on-screen event and never mention filming language in English. "
         "For example, camera shake should become a visible movement in the space, the heroine, the light, or nearby surfaces, not camera wording. "
         "If the original is metaphorical, convert it into the nearest believable visual event in the same place. "
+        "Avoid abstract environment phrases such as pocket, glow-map, quiet light, trembling glass light, brighter edge of town, last strip of night, platform glow spreading, or end of the night when a more literal place and light description can carry the same beat. "
         "When choosing between an inner-state word and a small physical action, always choose the physical action. "
         "continuity_anchor_en should be a short visual state phrase for continuity checking. "
         "payoff_role_en should be a short payoff-role phrase. "
