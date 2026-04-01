@@ -231,6 +231,8 @@ def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, s
         "Stay faithful to the base location, motif, primary_surface, support_detail, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
         "If primary_surface is present, use it as the main place anchor unless the source plainly makes another nearby playable surface more central. "
         "Keep support_detail secondary to the primary_surface. "
+        "If primary_surface is stair, stairwell, handrail, platform edge, threshold, gate line, turnstile lane, curb, crosswalk, sidewalk, street edge, or passage, do not let glass, signage, a ticket, a clock, or a light effect become the head noun of the place. "
+        "If primary_surface is window edge or glass edge, keep the place on the edge or path beside it, not on reflection, signage, or vague neon mood. "
         "Prefer the nearest playable surface, path, or threshold around the heroine over a distant symbolic object. "
         "Do not choose a clock, sign, or distant skyline as the main place anchor unless the source clearly makes it the physical center of her visible action. "
         "If zone is open_world_peak or the shot is a release/payoff beat, prefer exit line, turnstile lane, gate rail, stair top, curb crossing, street edge, or platform edge over train window reflection, station clock, signboard, skyline, vague glow, or dawn color. "
