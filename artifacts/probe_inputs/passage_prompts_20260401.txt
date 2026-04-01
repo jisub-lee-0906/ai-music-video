@@ -1,0 +1,6 @@
+# label|prompt
+v01|The same Korean female idol with a high ponytail moves through the narrow station-side passage at night, one hand sliding along the metal edge.
+v02|The same Korean female idol with a high ponytail leans into the narrow station-side passage at night, one hand sliding along the wall rail.
+v03|The same Korean female idol with a high ponytail threads through the tight station passage at night, one hand brushing the metal rail.
+v04|The same Korean female idol with a high ponytail keeps close to the passage wall at night, one hand trailing the rail as she moves forward.
+v05|The same Korean female idol with a high ponytail clears the narrow passage at night, one hand leaving the metal edge behind her.

@@ -2,14 +2,30 @@
 .pytest_cache/
 __pycache__/
 *.pyc
+.ruff_cache/
+.uv-cache/
+dist/
 
 src/*.egg-info/
 *.egg-info/
 
-/artifacts/
+/artifacts/*
+!/artifacts/reports/
+/artifacts/reports/*
+!/artifacts/reports/*.md
+!/artifacts/probe_inputs/
+/artifacts/probe_inputs/*
+!/artifacts/probe_inputs/*.txt
 /artifacts/latest/
+/artifacts/latest_success/
+/artifacts/preflight/
+/artifacts/preflight_state/
+/artifacts/ref_probe/
+/artifacts/ref_probe_batch/
 /artifacts/runs/
 /artifacts/runs_state/
-/artifacts/reports/
+/artifacts/scratch/
+/artifacts/smoke/
+/artifacts/tti_probe/
 /artifacts/**/__pycache__/
 

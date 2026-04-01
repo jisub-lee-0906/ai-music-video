@@ -1,0 +1,6 @@
+# label|prompt
+v01|The same Korean female idol with a high ponytail sits on the wet bench at night, one hand resting on the seat beside her.
+v02|The same Korean female idol with a high ponytail sits at the end of the wet bench at night, one foot still planted as if she could rise again.
+v03|The same Korean female idol with a high ponytail settles onto the wet bench at night, one hand braced lightly on the bench edge.
+v04|The same Korean female idol with a high ponytail rests on the narrow bench at night, her body still angled forward as if movement has not fully stopped.
+v05|The same Korean female idol with a high ponytail sits on the station-side bench at night, one hand holding the bench edge while her next step feels delayed.

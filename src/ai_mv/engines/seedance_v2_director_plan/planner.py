@@ -210,6 +210,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "Subject and action should be clear immediately. "
         "Keep the heroine as the main subject of the image, not the architecture around her. "
         "Use dominant_scene_grammar, primary_surface, and support_detail as a meaning hierarchy: action first, surface second, support detail last. "
+        "support_detail is optional guidance, not required wording. If it distracts from the primary surface or makes the shot more symbolic than physical, leave it out of the action lines. "
         "Honor the ref_archetype_contract unless the source clearly requires a different nearby physical action. "
         "If ref_archetype_contract suggests source surface to destination surface, continuous handrail contact, wall proximity, curb-at-feet proximity, destination space beyond, over-shoulder look-back, or a small continuation hint, prefer that structure over a generic caption. "
         "If ref_archetype is stair_descent, keep the action on stairs, stair run, handrail, or landing progression; do not make glass, reflection, or window mood the action nucleus. "
@@ -259,6 +260,11 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "If lit windows are only nearby, keep the action and place on the platform end, passage line, rail, curb, gate lane, threshold, or wet pavement rather than on the windows. "
         "If a ticket, card, or small object appears with a stopped clock, keep that object as a hand movement inside a larger step, pass, or threshold action rather than turning the shot into a still life under the clock. "
         "If a ticket or card appears with a clock, do not make her fix her gaze on the clock; keep her stride, turn, pass, or threshold movement primary while the hand action stays secondary. "
+        "If a gate lane or turnstile lane appears with a clock, do not let the start state become looking up at the clock; make the lane crossing, slowdown, poised lean, or threshold-ready body shift the readable action instead. "
+        "If a handrail, rail, or platform edge appears with a clock, do not let the shot become gaze-up-at-clock. Keep her hand, shoulders, and next step on the rail or edge primary while the clock stays only overhead timing. "
+        "If a window, glass, or lit opening appears with a readable forward path, do not make looking toward the light or window the action. Keep the action on passing the edge, brushing the wall, tightening the step, or turning back once while still moving. "
+        "If lit windows are present, they must remain background support. Do not build a still subject around lit windows, and do not let them replace the body's forward continuation. "
+        "If support_detail is a clock, stopped clock, sign, lit windows, signboard light, or other symbolic timing/light cue, it is acceptable to omit that detail entirely from dominant_action, start_state, end_state, and wan_action_line when the primary surface already gives a clearer readable beat. "
         "For doorway, gate, and final-opening shots, prefer step-through or cross-through actions with one hand guiding past a rail, gate, or edge instead of treating the bright opening itself as the main subject. "
         "If a doorway or opening is present, write it as a practical threshold crossing with a door edge, hinge side, threshold strip, or first step through it, not as a portal image or symbolic opening. "
         "When ending a doorway or gate action, land on threshold, gate line, curb, pavement, street edge, or passage beyond it; avoid awkward destination nouns such as frame or abstract opening space. "
@@ -356,6 +362,10 @@ def _infer_ref_archetype(shot: dict) -> str:
         return "bench_rest"
     if any(token in text for token in ("over one shoulder", "looks back", "looks back once", "glances back", "turns back", "turns her head back")):
         return "turn_back_once"
+    if any(token in primary_surface for token in ("handrail", "rail", "railing")) and not any(token in primary_surface for token in ("stair", "stairs", "stairwell")):
+        return "brace_pause"
+    if any(token in primary_surface for token in ("escalator", "escalator steps")):
+        return "stair_descent"
     if any(token in primary_surface for token in ("underpass ramp", "ramp", "sloped passage", "slope")):
         return "ramp_descent"
     if any(token in primary_surface for token in ("corridor", "hall")) and "indoor" in text:

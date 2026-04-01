@@ -1,0 +1,6 @@
+# label|prompt
+v01|The same Korean female idol with a high ponytail walks down the wet ramp at night, one hand sliding along the side rail.
+v02|The same Korean female idol with a high ponytail moves lower along the underpass ramp at night, one hand trailing the metal rail.
+v03|The same Korean female idol with a high ponytail follows the wet ramp downward at night, the rail staying close at her side.
+v04|The same Korean female idol with a high ponytail descends the wet underpass ramp at night, one hand brushing the concrete wall rail.
+v05|The same Korean female idol with a high ponytail steps down the sloped passage at night, one hand leaving the metal rail behind her.

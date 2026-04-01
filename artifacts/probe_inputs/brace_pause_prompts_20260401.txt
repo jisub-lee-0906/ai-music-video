@@ -1,0 +1,6 @@
+# label|prompt
+v01|The same Korean female idol with a high ponytail pauses at the wet rail at night, one hand braced on the metal bar.
+v02|The same Korean female idol with a high ponytail steadies herself beside the wet rail at night, one hand braced on the metal bar and her next step still held back.
+v03|The same Korean female idol with a high ponytail keeps close to the wet rail at night and holds for a beat, one hand braced on the metal bar.
+v04|The same Korean female idol with a high ponytail leans into the wet rail at night, one hand braced on the metal bar as she holds her step.
+v05|The same Korean female idol with a high ponytail braces at the wet rail at night, one hand fixed on the metal bar while the next step waits.
