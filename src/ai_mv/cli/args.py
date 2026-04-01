@@ -15,6 +15,22 @@ def build_parser() -> argparse.ArgumentParser:
     tti_v2.add_argument("--run-id", default=None)
     tti_v2.add_argument("--brief", default=None)
 
+    ref_v2_probe = sub.add_parser("ref-v2-probe")
+    ref_v2_probe.add_argument("--run-id", default=None)
+    ref_v2_probe.add_argument("--brief", default=None)
+    ref_v2_probe.add_argument("--ref", required=True)
+    ref_v2_probe.add_argument("--prompt", required=True)
+    ref_v2_probe.add_argument("--shot-id", default="ref_probe")
+    ref_v2_probe.add_argument("--frame-name", default="end")
+
+    ref_v2_probe_batch = sub.add_parser("ref-v2-probe-batch")
+    ref_v2_probe_batch.add_argument("--run-id", default=None)
+    ref_v2_probe_batch.add_argument("--brief", default=None)
+    ref_v2_probe_batch.add_argument("--ref", required=True)
+    ref_v2_probe_batch.add_argument("--prompts-file", required=True)
+    ref_v2_probe_batch.add_argument("--shot-id-prefix", default="ref_batch")
+    ref_v2_probe_batch.add_argument("--frame-name", default="end")
+
     sub.add_parser("doctor")
 
     preflight_v2 = sub.add_parser("preflight-v2")

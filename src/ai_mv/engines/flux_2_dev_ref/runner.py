@@ -33,6 +33,27 @@ def run_flux2_ref(config: dict, plan: dict) -> list[dict]:
     return out
 
 
+def run_flux2_ref_probe(
+    config: dict,
+    *,
+    ref: str,
+    prompt_text: str,
+    shot_id: str = "ref_probe",
+    frame_name: str = "end",
+) -> str:
+    payload = {
+        "shot_id": str(shot_id).strip() or "ref_probe",
+        "ref": str(ref).strip(),
+        "prompt_text": str(prompt_text).strip(),
+        "start_prompt_text": str(prompt_text).strip(),
+        "end_prompt_text": str(prompt_text).strip(),
+        "kinetic_transition": "probe",
+    }
+    clean_frame_name = str(frame_name).strip().lower() or "end"
+    frame_idx = 0 if clean_frame_name == "start" else 1
+    return _render_frame(config, payload, frame_name=clean_frame_name, frame_idx=frame_idx)
+
+
 def _render_start(config: dict, item: dict) -> str:
     return _render_frame(config, item, frame_name="start", frame_idx=0)
 

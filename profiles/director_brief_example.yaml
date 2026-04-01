@@ -25,7 +25,7 @@ mv:
     Favor natural visible actions that can read clearly in a music-video keyframe, such as walking, turning,
     pausing, crossing light, touching rails or glass, and shifting direction inside the space.
   payoff_style: >
-    The final return should feel bright, emotionally open, and decisive, with the heroine fully belonging to the world around her.
+    The final return should feel decisive and physically open, with the heroine clearly crossing into the wider world she already belongs to.
   outro_feel: >
     End on a lingering after-image where the space still carries her presence after she passes through.
   avoid: >
@@ -72,7 +72,7 @@ director:
     - station threshold and entry point
     - wet pavement and reflected light
     - stair rail and platform stairs
-    - station window and passing reflections
+    - station window and passing exterior light
     - gate line and platform edge
   section_grammar:
     Intro: first entry into the connected world
@@ -81,5 +81,5 @@ director:
     Pre-Chorus: hesitation before a wider opening
     Chorus: release inside the same world
     Bridge: brief compression or uncertainty
-    Final Chorus: widest emotional opening in the same world
+    Final Chorus: widest forward crossing through the same world
     Outro: lingering after-image after she passes through

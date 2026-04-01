@@ -72,6 +72,8 @@ def test_scene_director_render_plan_v2_chain():
     director = build_director_plan_v2(_config(), {**_payload(), "scene_plan_v2": scene})
     assert "camera_intent" in director["shot_packages"][0]
     assert "motion_intent" in director["shot_packages"][0]
+    assert director["shot_packages"][0]["ref_archetype"]
+    assert director["shot_packages"][0]["ref_archetype_contract"]
     assert director["shot_packages"][0]["visual_role"] == "opening_frame"
     assert "ref_start_continuity_line" not in director["shot_packages"][0]
     assert "ref_start_camera_line" not in director["shot_packages"][0]
@@ -88,6 +90,8 @@ def test_scene_director_render_plan_v2_chain():
     assert "glass" in render["wan_chain"][0]["visible_action"]
     assert render["wan_chain"][0]["wan_action_line"]
     assert render["shot_packages"][0]["ref_prompt_clauses"]["subject_intro"]
+    assert render["shot_packages"][0]["ref_prompt_clauses"]["ref_archetype"]
+    assert render["shot_packages"][0]["ref_prompt_clauses"]["ref_archetype_contract"]
     assert render["shot_packages"][0]["ref_start_prompt_text"]
     assert render["shot_packages"][0]["ref_end_prompt_text"]
     assert render["wan_chain"][0]["wan_prompt_clauses"]["bridge_action"]

@@ -12,9 +12,9 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     timeline = payload["lyrics_timeline"]
     sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
-    translations = _translate_beat_render_phrases(config, sections)
     motifs = brief.get("motif_families", []) or ["world motif"]
     grammar = brief.get("section_grammar", {})
+    translations = _translate_beat_render_phrases(config, sections, grammar)
     shot_packages: list[dict] = []
     zone_progression: list[dict] = []
     motif_progression: list[dict] = []
@@ -58,6 +58,9 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
                     "literal_image": _translated_phrase(beat, translated, "literal_image"),
                     "visible_action": _translated_phrase(beat, translated, "visible_action"),
                     "subject_action": _translated_phrase(beat, translated, "subject_action"),
+                    "dominant_scene_grammar": _translated_phrase(beat, translated, "dominant_scene_grammar"),
+                    "primary_surface": _translated_phrase(beat, translated, "primary_surface"),
+                    "support_detail": _translated_phrase(beat, translated, "support_detail"),
                     "beat_continuity_anchor": _translated_phrase(beat, translated, "continuity_anchor"),
                     "payoff_role_hint": _translated_phrase(beat, translated, "payoff_role"),
                     "section_beat_index": beat_index,
@@ -146,8 +149,12 @@ def _fallback_story_role(section_label: str) -> str:
 
 def _environment_anchor(zone: str, motif: str, beat: dict, translated: dict) -> str:
     zone_seed = _zone_seed_place(zone)
+    primary_surface = _translated_phrase(beat, translated, "primary_surface")
+    support_detail = _translated_phrase(beat, translated, "support_detail")
     literal = _translated_phrase(beat, translated, "literal_image")
     continuity = _translated_phrase(beat, translated, "continuity_anchor")
+    if primary_surface:
+        return _anchor_from_surface(zone_seed, primary_surface, support_detail)
     detail = literal or continuity or _motif_space(motif.strip().lower() or "city detail")
     detail_clean = " ".join(str(detail).strip().rstrip(".").split())
     if not detail_clean:
@@ -164,8 +171,12 @@ def _rewrite_location_descriptions(config: dict, shot_packages: list[dict]) -> N
         {
             "shot_id": str(shot.get("shot_id", "")).strip(),
             "zone": str(shot.get("zone", "")).strip(),
+            "visual_role": str(shot.get("visual_role", "")).strip(),
             "motif_family": str(shot.get("motif_family", "")).strip(),
             "base_location": str(shot.get("environment_anchor", "")).strip(),
+            "dominant_scene_grammar": str(shot.get("dominant_scene_grammar", "")).strip(),
+            "primary_surface": str(shot.get("primary_surface", "")).strip(),
+            "support_detail": str(shot.get("support_detail", "")).strip(),
             "literal_image": str(shot.get("literal_image", "")).strip(),
             "subject_action": str(shot.get("subject_action", "")).strip(),
             "beat_continuity_anchor": str(shot.get("beat_continuity_anchor", "")).strip(),
@@ -217,9 +228,13 @@ def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, s
         "Do not mention the heroine, body parts, breath, heartbeat, feelings, memories, relationships, or any action. "
         "Do not describe the place with person-like verbs such as stands, waits, watches, remembers, or reaches. "
         "Do not use poetic metaphor that weakens the place into abstract mood. "
-        "Stay faithful to the base location, motif, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
+        "Stay faithful to the base location, motif, primary_surface, support_detail, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
+        "If primary_surface is present, use it as the main place anchor unless the source plainly makes another nearby playable surface more central. "
+        "Keep support_detail secondary to the primary_surface. "
         "Prefer the nearest playable surface, path, or threshold around the heroine over a distant symbolic object. "
         "Do not choose a clock, sign, or distant skyline as the main place anchor unless the source clearly makes it the physical center of her visible action. "
+        "If zone is open_world_peak or the shot is a release/payoff beat, prefer exit line, turnstile lane, gate rail, stair top, curb crossing, street edge, or platform edge over train window reflection, station clock, signboard, skyline, vague glow, or dawn color. "
+        "If zone is open_world_peak or the shot is a release/payoff beat, keep dawn, morning, brighter air, or wider light only as supporting local light, not as the place anchor. "
         "Do not invent new props or move to a different world. "
         "Return only a concrete place description that can naturally support the described action.\n\n"
         f"Shots={rows}"
@@ -234,6 +249,51 @@ def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, s
         if shot_id and location:
             out[shot_id] = location
     return out
+
+
+def _anchor_from_surface(zone_seed: str, primary_surface: str, support_detail: str) -> str:
+    surface = " ".join(str(primary_surface).strip().rstrip(".").split())
+    if not surface:
+        return zone_seed
+    support = " ".join(str(support_detail).strip().rstrip(".").split())
+    base = _surface_location_phrase(zone_seed, surface)
+    if not support or _support_detail_is_symbolic(support):
+        return base
+    return f"{base}, with {support}"
+
+
+def _surface_location_phrase(zone_seed: str, surface: str) -> str:
+    lowered = surface.lower()
+    if any(token in lowered for token in ("threshold", "door edge", "doorway", "gate line", "gate rail", "gate lane", "exit line", "turnstile lane")):
+        return f"{zone_seed} at the {surface}"
+    if any(token in lowered for token in ("platform edge", "crosswalk", "curb", "street edge", "sidewalk", "pavement", "path", "passage", "corridor", "stair", "stairwell", "ramp", "landing")):
+        return f"{zone_seed} along the {surface}"
+    if any(token in lowered for token in ("window", "glass", "rail")):
+        return f"{zone_seed} by the {surface}"
+    return f"{zone_seed} around the {surface}"
+
+
+def _support_detail_is_symbolic(detail: str) -> bool:
+    lowered = detail.lower()
+    symbolic_tokens = (
+        "clock",
+        "sign",
+        "reflection",
+        "reflections",
+        "glow",
+        "dawn",
+        "window light",
+        "thin light",
+        "lingering light",
+        "soft light",
+        "bright light",
+        "station light",
+        "ticket",
+        "footprint",
+        "flyers",
+        "hair tie",
+    )
+    return any(token in lowered for token in symbolic_tokens)
 
 
 def _zone_environment_phrase(zone: str, motif: str) -> str:
@@ -260,7 +320,7 @@ def _zone_seed_place(zone: str) -> str:
         "edge": "a station gate edge at night",
         "compression": "a narrow station-side passage at night",
         "open_world": "a street-level station frontage at night",
-        "open_world_peak": "a bright station-side opening at night",
+        "open_world_peak": "a station-side exit line at night",
         "residue": "the last station-side space after the main movement has passed",
         "narrow_world": "a narrow station-side passage at night",
         "transit_lane": "a station-side lane that keeps the movement going",
@@ -279,12 +339,18 @@ def _translated_phrase(beat: dict, translated: dict, key: str) -> str:
     return _beat_phrase(beat, key)
 
 
-def _translate_beat_render_phrases(config: dict, sections: list[dict]) -> dict[str, dict]:
+def _translate_beat_render_phrases(config: dict, sections: list[dict], grammar: dict[str, str] | None = None) -> dict[str, dict]:
     beats: list[dict] = []
+    grammar_map = grammar or {}
     for section in sections:
         if not isinstance(section, dict):
             continue
-        for beat in section.get("lyric_beats", []):
+        section_name = str(section.get("section_name", "")).strip()
+        section_label = str(section.get("section_label", section_name)).strip() or section_name
+        story_role = str(grammar_map.get(section_label) or grammar_map.get(section_name) or _fallback_story_role(section_label)).strip()
+        section_beats = [row for row in section.get("lyric_beats", []) if isinstance(row, dict)]
+        beat_count = len(section_beats)
+        for beat_index, beat in enumerate(section_beats, start=1):
             if not isinstance(beat, dict):
                 continue
             beat_id = str(beat.get("beat_id", "")).strip()
@@ -293,6 +359,9 @@ def _translate_beat_render_phrases(config: dict, sections: list[dict]) -> dict[s
             beats.append(
                 {
                     "beat_id": beat_id,
+                    "section_label": section_label,
+                    "story_role": story_role,
+                    "visual_role": _visual_role(section_label, _zone_for_section(section_label, 1), beat_index, beat_count),
                     "literal_image": _beat_phrase(beat, "literal_image"),
                     "visible_action": _beat_phrase(beat, "visible_action"),
                     "continuity_anchor": _beat_phrase(beat, "continuity_anchor"),
@@ -333,10 +402,13 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
                         "literal_image_en": {"type": "string"},
                         "visible_action_en": {"type": "string"},
                         "subject_action_en": {"type": "string"},
+                        "dominant_scene_grammar_en": {"type": "string"},
+                        "primary_surface_en": {"type": "string"},
+                        "support_detail_en": {"type": "string"},
                         "continuity_anchor_en": {"type": "string"},
                         "payoff_role_en": {"type": "string"},
                     },
-                    "required": ["beat_id", "literal_image_en", "visible_action_en", "subject_action_en", "continuity_anchor_en", "payoff_role_en"],
+                    "required": ["beat_id", "literal_image_en", "visible_action_en", "subject_action_en", "dominant_scene_grammar_en", "primary_surface_en", "support_detail_en", "continuity_anchor_en", "payoff_role_en"],
                 },
             }
         },
@@ -346,6 +418,16 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "Rewrite the following music-video beat fields into short natural English render prose for image and video prompting. "
         "Always rewrite them, even if the source is already in English, so that the result fits cinematic live-action prompt writing. "
         "Stay faithful to the original meaning. Do not add new locations, props, characters, or symbolic story ideas. "
+        "Use section_label, story_role, and visual_role as hidden dramatic guidance for why this shot exists in the chain, but do not repeat those labels in the output. "
+        "Make each beat feel like a necessary music-video keyframe, not just a nice sentence about a place. "
+        "Before writing prose, decide the beat's dominant scene grammar: body-led, crossing-led, or surface-led. "
+        "Also decide the primary playable surface or path she is using, and one optional supporting detail that stays secondary. "
+        "The dominant scene grammar should control the sentence. The support detail must never be the reason the shot exists. "
+        "opening_frame should establish the heroine's presence and direction in the world immediately. "
+        "continuity_frame should visibly carry the same movement or intention forward one step. "
+        "pressure_frame should show a compressed or tightened version of the movement in the same place. "
+        "handoff_frame should clearly prepare the next shot by ending on a readable direction, crossing, or body shift. "
+        "payoff_frame should land a decisive visible change, not just prettier atmosphere. "
         "Default to a single-heroine scene. If the source does not explicitly include another person, do not introduce one. "
         "This pipeline is single-subject by default. Even if a lyric implies someone remembered, addressed, awaited, or loved, keep the frame centered on one visible heroine unless the source unmistakably requires two visible bodies in one shot. "
         "For this project, assume the intended visual language is a single visible heroine moving through one connected world, not a duet, reunion, hug, or partner scene. "
@@ -361,11 +443,24 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "Do not turn the beat into a location hero shot; the place should support one heroine-centered visible action. "
         "When choosing the place anchor, prefer the nearest playable surface or path around the heroine, such as a window, rail, gate edge, stair, passage, or wet platform, over a distant symbolic object. "
         "Do not pick a clock, sign, or distant city marker as the main place anchor unless the source literally centers the heroine's visible action on that object. "
+        "If the source mentions a reflection, anchor the place on the glass, window edge, umbrella surface, wet pavement, or other physical surface first; reflection should stay secondary unless she is directly tracing or touching it. "
+        "Do not use reflection itself as the event. If glass is present, keep the place on the glass edge, door edge, window edge, threshold, or the path beside it, and keep the heroine's movement more important than the reflected image. "
+        "If the source mentions a clock or sign together with a doorway, gate, rail, street edge, or platform path, prefer the crossing surface or path as the literal place anchor and treat the clock or sign as background timing only. "
+        "If the same beat already has a glass wall, passage line, platform path, gate light, rail, sidewalk, threshold, or curb carrying the heroine's movement, do not mention the stopped clock at all unless her hand or body is directly touching or reading it. "
+        "If a platform edge, platform path, threshold, gate line, doorway edge, or passage already carries the action, omit ticking clock, slow clock, station clock, or clock light entirely unless the source literally requires clock contact. "
+        "If the source mentions glow or brighter light, anchor the literal place on the object or surface carrying that light, such as wet pavement, a gate lane, a stair, or a doorway, rather than on glow itself. "
+        "If a blinking light, call light, sign light, or small illuminated indicator appears beside a stronger surface such as a lane, doorway edge, threshold, gate line, or wall, keep that light as a small side detail and anchor the place on the stronger surface. "
+        "If a doorway or door edge is present, keep the place on the threshold, door edge, passage, frontage, sidewalk, or platform side; do not rename it as a room or interior stage unless the source literally enters a room. "
+        "Avoid vague place anchors such as open lane, city margin, city line, widening night, blue morning light, or bright glass edge when a more playable surface exists in the same beat. Prefer platform path, gate lane, curb, street edge, exit line, outer sidewalk, stair top, doorway threshold, or wet pavement. "
+        "Also avoid making lit windows, glowing displays, glass doors, or stopped clocks the main place anchor when rail, platform edge, turnstile lane, stair, threshold, crosswalk, sidewalk, curb, or gate line is already present in the same beat. "
+        "If lit windows are only nearby, anchor the place on the platform end, passage line, rail, curb, gate lane, threshold, or wet pavement instead of on the windows. "
+        "If an old ticket appears with a stopped clock, anchor the place on the hand, passage line, gate edge, threshold, or nearby walking surface rather than on the stopped clock. "
         "For opening or payoff beats, prefer the doorway, threshold, gate rail, exit line, or immediate platform path she can physically cross right now over a distant bright point farther ahead. "
         "Every returned field must be natural English prose. Never leave Korean text, mixed-language text, or untranslated fragments in the output. "
         "Do not use the word frame anywhere in the output, even for a physical object; use window edge, rail, border, or casing instead. "
         "literal_image_en should be a concise concrete scene phrase built from one place anchor plus only the surfaces, structures, weather, or local light needed to make that place believable. "
         "Keep literal_image_en compact enough that the heroine can still dominate the image. "
+        "literal_image_en should support the beat's dramatic function, so the place feels playable for the action that must happen now, not merely atmospheric. "
         "literal_image_en must not mention body parts, breath, heartbeat, emotions, memories, hesitation, loneliness, relationships, or camera language. "
         "If the original beat uses an inner feeling, memory, hesitation, heartbeat, loneliness, or fear to describe the scene, convert that into a visible environmental trace in the same place instead of naming the feeling. "
         "visible_action_en should be a concise screen-readable present-tense action fragment that describes what is visibly happening in the scene. "
@@ -373,33 +468,64 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "Prefer actions that read clearly in torso, legs, hands, direction, or contact at a glance. "
         "subject_action_en should rewrite visible_action into a heroine-centered present-tense action fragment suitable for prompts that begin with 'She ...'. "
         "subject_action_en should prefer clear physical actions that read in a keyframe, such as walking, turning, leaning, touching, stepping, passing, pausing at a surface, lifting a hand, descending, or changing direction. "
+        "subject_action_en should make the beat's role in the chain legible: establish, carry forward, compress, hand off, or land a payoff through visible action. "
+        "Keep that progression concrete: prefer step, pass, clear, cross, turn, lean, brace, touch, climb, descend, or lengthen her stride over generic dramatic verbs such as drives, claims, opens the night, breaks free, or pushes destiny forward. "
         "subject_action_en should avoid body-part fixation, decorative metaphor, relationship language, viewer-facing language, and vague emotion-only verbs. "
         "Choose actions that keep the heroine readable and present rather than actions that naturally push her tiny into the distance. "
         "If the beat supports it, prefer actions with one readable contact detail such as a hand on glass, a hand along a rail, or a step through an opening, because those tend to hold the heroine and place together more clearly. "
+        "If glass is present, prefer passing the glass, tracing the edge, pushing past the door edge, or clearing the threshold over checking the reflection, facing the reflection, or letting reflected light become the action. "
+        "If she passes through a doorway, gate, or opening, end on threshold, gate line, doorway edge, passage, curb, pavement, or street edge; do not use awkward meta-like nouns such as frame as the destination. "
         "Avoid phrasing that leaves her frozen in place, such as 'stays', 'remains', or 'holds still', unless the original beat explicitly requires stillness as the main visible event. "
         "Avoid weak keyframe verbs such as watches, looks, gazes, waits, breathes, exhales, smiles softly, or lets the scene happen around her when a clearer visible action is possible. "
+        "Do not use spreading fingers, opening hands, breathing out, or looking across space as the main visible action in payoff or release beats when a clearer forward step, pass, clear, or crossing action is available in the same place. "
+        "Do not use looking toward lit windows, looking through glass, watching a display, or keeping time with a clock as the main visible action when a step, turn, rail contact, curb crossing, gate pass, stair descent, or threshold crossing is available in the same beat. "
+        "If a ticket, card, or other small object is present, keep it as a hand action inside a larger movement through the place, not as a still life under a clock, sign, or display. "
+        "If a ticket or card appears with a clock, do not make her gaze lock onto the clock; keep her movement on the platform edge, gate line, curb, threshold, or path while the hand action with the ticket stays secondary. "
+        "Do not build literal_image_en as a still life of a ticket and a clock together when the same beat already has a playable surface or lane she can move through. "
         "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, lets a smile rise, lets the motion settle, or lets the floor steady when a more readable visible action can carry the beat. "
         "Do not use heartbeat, hesitation, memory, loneliness, or pause as the main visible event unless there is no other faithful physical reading. "
         "If the source suggests a static feeling, convert it into a small but visible physical action in the same place. "
         "If the source says she stands still, pauses, waits, only breathes, or only watches something, rewrite it into a subtle but readable movement such as shifting her weight, taking a step, turning, touching a surface, tracing a rail or glass edge, crossing a threshold, or lifting a hand while staying in the same space. "
+        "If a doorway or opening appears, describe the threshold crossing itself, the hinge side, the door edge, or the first step through it; do not turn the beat into a symbolic portal or a theatrical opening image. "
         "If breath, hesitation, heartbeat, or memory is important, show it through her hand, shoulders, step, or contact with a nearby surface instead of naming that internal state directly. "
         "If fog, condensation, or cold air matters, prefer the effect on glass, metal, fabric, or light rather than stating breath directly. "
         "If the source offers both a distant symbolic target and a nearby surface or path, prefer the nearby surface or path for visible_action_en and subject_action_en. "
+        "If the source mentions reflection, clock, sign, or glow together with a readable body movement, keep the body movement and nearby surface primary and demote the symbolic element to background support. "
+        "When a stopped clock appears next to glass, a passage, a gate, or a sidewalk, keep the action on crossing that surface and omit the clock from subject_action_en unless the source literally makes the clock-contact the event. "
+        "If a stair, rail, tread, stair top, or stairwell appears, keep the heroine on that stair geometry; do not flatten the shot into a generic road walk, wide crosswalk, or open boulevard. "
         "For opening or release beats, prefer crossing actions such as stepping through, clearing the gate, passing the rail, crossing the exit line, or moving into the doorway over merely approaching a bright place from afar. "
+        "For payoff or release beats, express arrival through a concrete surface reached or crossed, such as the far curb, the road edge, the last step, the gate line, or the platform exit, rather than abstract triumph language. "
+        "In handoff or payoff beats, do not finish the action by describing a reflection, glass surface, or light lingering behind her when a concrete next surface such as pavement, curb, street edge, exit line, or sidewalk is available ahead of her. "
         "Treat final release as continued forward crossing inside the same world, not as a symbolic tableau of light or aftermath. "
-        "For final opening or release beats, do not make smiling, reflection, reflections brightening behind her, a glowing window, a glass storefront reflection, warm light ahead, pale dawn light, light gathering in front of her, a bright sign, a clearing path, a lane of light ahead, lifted face toward light, settling/steadying motion, a folded ticket, fading light in her hand, or lingering light after the last train the main event when a forward crossing action in the same place can carry the beat. "
+        "For Final Chorus beats, keep the heroine outward-facing and locomotor. Prefer walking, crossing, stepping through, clearing, passing, or continuing forward over inward emotional release. "
+        "For final opening or release beats, do not make smiling, reflection, reflections brightening behind her, a train window reflection, a glowing window, a glass storefront reflection, a clock outside, warm light ahead, pale dawn light, light gathering in front of her, a bright sign, a clearing path, a lane of light ahead, lifted face toward light, settling/steadying motion, a folded ticket, fading light in her hand, or lingering light after the last train the main event when a forward crossing action in the same place can carry the beat. "
         "In final opening or release beats, prefer gate, threshold, exit, street entry, platform edge crossing, stair-top crossing, crosswalk crossing, or doorway crossing over lingering by a window, holding at the edge, moving toward a vague glow, leaving a reflection behind, opening her fingers toward space, using a small hand gesture as the main event, or dwelling on the last train aftermath. "
-        "If the source implies reunion, recognition, holding hands, embrace, or togetherness but does not clearly show another visible body, convert that into a single-heroine action such as opening her hand, stepping into light, turning into the space, meeting her own reflection, or moving toward a clearer direction in the same place. "
-        "If the source implies a person ahead, behind, beside, or turning away without a clearly visible second body, rewrite it as a trace in the space, a direction of movement, or a changed patch of light in the same place. "
+        "If daybreak, morning, or brighter air is present in a release beat, keep it as background light only; do not use dawn, morning, sunrise, or brighter sky as the place anchor or the event itself. "
+        "If a release beat involves a street crossing, platform exit, or curb entry, anchor the literal place on the curb, crosswalk, street edge, platform exit line, or threshold surface first, not on glass frontage or surrounding skyline. "
+        "If the source implies reunion, recognition, holding hands, embrace, or togetherness but does not clearly show another visible body, convert that into a single-heroine action such as crossing a gate, passing a rail, stepping through a doorway, clearing a platform edge, or reaching the far side of a street in the same place. "
+        "If the source implies a person ahead, behind, beside, or turning away without a clearly visible second body, rewrite it as her changed direction, a crossed threshold, or a cleared exit line in the same place. "
         "Never output another woman, another man, the other woman, the other person, two women, two people, embrace, hug, clasp hands, or holding hands unless the source literally requires two visible bodies in the frame. "
         "If the beat lands on a smile or soft release, show it through crossing a threshold, clearing a gate, reaching the far side of a street or platform edge, or stepping through a doorway rather than describing the smile as a held pose. "
         "Do not use generic release phrases such as one steady rhythm, calm steady pace, open space, brighter direction, or path clearing when a specific crossing action is available in the same place. "
+        "In Final Chorus or other release beats, keep light only as supporting local illumination on a surface or threshold; do not let light, glow, dawn, sign, or reflection become the event itself. "
+        "In Final Chorus or other release beats, prefer exit line, turnstile lane, gate rail, stair top, curb crossing, street edge, or platform edge as the literal place anchor over window reflection, clock, signboard, skyline, or vague opening. "
+        "In Final Chorus or other release beats, avoid generic alley end or alley mouth wording when curb, crosswalk, street edge, exit line, sidewalk, or station frontage can carry the same movement more clearly. "
+        "In Final Chorus or other release beats, do not keep lit windows in the place anchor when outer sidewalk, curb, street edge, exit line, or frontage already carries the movement. "
+        "In open-world or release beats, avoid city margin, city line, widening night, open lane, blue morning light, or bright glass edge as the place anchor when pavement, platform path, curb, gate lane, exit line, or outer sidewalk is available in the same beat. "
+        "In Final Chorus or other release beats, do not make train window, lit windows, or window line the place anchor when platform edge, exit line, crosswalk, doorway, outer sidewalk, or street edge can carry the same movement more directly. "
+        "In Final Chorus or other release beats, do not make cold glass, window touch, or reflection touch the main action when the same beat can instead land on the exit line, gate opening, platform edge, crosswalk, or street edge. "
+        "Avoid late poetic light phrases such as last bright strip of the day, last light, lingering strip of light, or living neon path when exit line, pavement, platform end, curb, or doorway threshold can carry the same beat more concretely. "
         "If the original mentions camera, frame, shot, cut, filming, shake, zoom, or viewpoint, rewrite only the visible on-screen event and never mention filming language in English. "
         "For example, camera shake should become a visible movement in the space, the heroine, the light, or nearby surfaces, not camera wording. "
         "If the original is metaphorical, convert it into the nearest believable visual event in the same place. "
         "Avoid abstract environment phrases such as pocket, glow-map, quiet light, trembling glass light, brighter edge of town, last strip of night, platform glow spreading, or end of the night when a more literal place and light description can carry the same beat. "
         "When choosing between an inner-state word and a small physical action, always choose the physical action. "
+        "dominant_scene_grammar_en must be exactly one short phrase chosen from: body-led, crossing-led, or surface-led. "
+        "primary_surface_en should name the one playable surface, path, edge, threshold, rail, curb, stair, lane, or pavement that actually carries the action. "
+        "support_detail_en should be one short optional secondary detail, such as supporting light, rain on glass, or a nearby sign, and it must stay subordinate to the primary surface and action. "
+        "If removing the support detail would break the scene's core meaning, then it is not a support detail and you must choose a more physical primary surface instead. "
         "continuity_anchor_en should be a short visual state phrase for continuity checking. "
+        "The continuity anchor must track the heroine's body relation to the primary surface or path, not the motion of a reflection, light effect, or other support detail. "
         "payoff_role_en should be a short payoff-role phrase. "
         "Return JSON only.\n\n"
         f"Beats={beats}"
@@ -433,7 +559,60 @@ def _clean_translated_beat_row(row: dict) -> dict | None:
     if not beat_id:
         return None
     cleaned["beat_id"] = beat_id
+    grammar = " ".join(str(cleaned.get("dominant_scene_grammar_en", "")).strip().rstrip(".").split()).lower()
+    if grammar not in {"body-led", "crossing-led", "surface-led"}:
+        grammar = _infer_scene_grammar(
+            " ".join(str(cleaned.get("subject_action_en", "")).strip().split()),
+            " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
+        )
+    cleaned["dominant_scene_grammar_en"] = grammar
+    primary_surface = " ".join(str(cleaned.get("primary_surface_en", "")).strip().rstrip(".").split())
+    if not primary_surface or _contains_render_meta(primary_surface):
+        primary_surface = _infer_primary_surface(
+            " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
+            " ".join(str(cleaned.get("subject_action_en", "")).strip().split()),
+        )
+    cleaned["primary_surface_en"] = primary_surface
+    support_detail = " ".join(str(cleaned.get("support_detail_en", "")).strip().rstrip(".").split())
+    cleaned["support_detail_en"] = "" if _contains_render_meta(support_detail) else support_detail
     return cleaned
+
+
+def _infer_scene_grammar(action: str, literal: str) -> str:
+    text = f"{action} {literal}".lower()
+    if any(token in text for token in ("cross", "clear", "through", "threshold", "gate", "doorway", "exit", "curb", "crosswalk")):
+        return "crossing-led"
+    if any(token in text for token in ("rail", "glass", "window", "edge", "stair", "pavement", "sidewalk", "platform")):
+        return "surface-led"
+    return "body-led"
+
+
+def _infer_primary_surface(literal: str, action: str) -> str:
+    text = f"{literal} {action}".lower()
+    candidates = (
+        "platform edge",
+        "platform path",
+        "wet pavement",
+        "sidewalk",
+        "curb",
+        "crosswalk",
+        "gate line",
+        "gate lane",
+        "threshold",
+        "door edge",
+        "passage",
+        "glass edge",
+        "window edge",
+        "rail",
+        "handrail",
+        "stairwell",
+        "stairs",
+        "street edge",
+    )
+    for candidate in candidates:
+        if candidate in text:
+            return candidate
+    return "path through the place"
 
 
 def _needs_translation(row: dict) -> bool:
