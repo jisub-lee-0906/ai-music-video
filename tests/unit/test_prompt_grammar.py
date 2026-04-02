@@ -1,4 +1,5 @@
 from ai_mv.core.prompt_grammar import (
+    golden_shot_guidance,
     load_ref_archetype_grammars,
     load_tti_grammars,
     load_wan_grammars,
@@ -47,6 +48,12 @@ def test_ref_archetype_contract_data_is_structured():
     assert grammar["contract"]
     assert grammar["good_pattern"]
     assert "threshold" in " ".join(grammar["surface_priority"]).lower()
+
+
+def test_golden_shot_guidance_loads_priority_probe_shapes():
+    guidance = golden_shot_guidance("bridge_b1")
+    assert guidance["preferred_surface"] == "wet platform"
+    assert "footprints" in guidance["preferred_pattern"].lower()
 
 
 def test_tti_master_prompt_uses_grammar_memory():

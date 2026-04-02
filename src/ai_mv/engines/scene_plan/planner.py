@@ -375,7 +375,6 @@ def _support_detail_is_symbolic(detail: str) -> bool:
         "wet neon",
         "neon",
         "ticket",
-        "footprint",
         "flyers",
         "hair tie",
     )
@@ -394,6 +393,12 @@ def _support_detail_is_material(detail: str, primary_surface: str = "") -> bool:
         "drizzle",
         "puddle",
         "wet",
+        "footprint",
+        "footprints",
+        "footprint trail",
+        "wet footprints",
+        "ground trail",
+        "trail on the ground",
         "mist",
         "fogged",
         "fog",
@@ -647,6 +652,9 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "If the beat is on a platform edge or doorway gap and she is not visibly bracing into the wind, omit crosswind and platform wind entirely and keep the beat on turning, stepping through, or continuing along the edge. "
         "If the primary movement is on steps, stairs, stairwell, landing, or escalator and she is not visibly bracing into the wind, omit wind entirely and keep the beat on the climb, descent, or continued step. "
         "If she is already clearing a doorway, threshold, or exit line, do not add 'into the wind' unless the source clearly requires the wind as the obstacle of the beat. "
+        "If the beat implies wet footprints, a trail on the ground, or marks spreading behind her, keep that as a material ground trace rather than deleting it as abstract mood. "
+        "In Bridge or other compression beats, a wet-footprint trail can survive as support_detail_en or continuity_anchor_en when it strengthens the same playable surface she is moving on. "
+        "If wet footprints or a track on the floor are present, keep the action on the same platform, pavement, or floor while the footprints remain a secondary trace of motion behind her. "
         "Do not build literal_image_en as a still life of a ticket and a clock together when the same beat already has a playable surface or lane she can move through. "
         "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, lets a smile rise, lets the motion settle, or lets the floor steady when a more readable visible action can carry the beat. "
         "Do not use heartbeat, hesitation, memory, loneliness, or pause as the main visible event unless there is no other faithful physical reading. "
@@ -710,6 +718,7 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "support_detail_en may be empty. If the only available detail is a clock, sign, lit window, stopped clock, display, or symbolic light cue that does not materially strengthen the playable surface, leave support_detail_en blank instead of forcing it in. "
         "If a clock, lit windows, sign, or window light only repeats atmosphere already implied by the place, omit it from support_detail_en and keep the beat cleaner. "
         "Prefer support_detail_en values like rain, puddles, handle, rail, door movement, or wet ground over wind, clock light, lit windows, sign glow, speaker detail, vending machine light, or symbolic glass light. "
+        "Wet footprints, footprint trails, or dark tracks on wet ground count as material support details when they directly belong to the same surface she is using. "
         "Also prefer rail contact, doorway movement, and wet ground over wind, ad board edge, glass wall, speaker detail, or fixed signal light when those elements are only adjacent background structures. "
         "If removing the support detail would break the scene's core meaning, then it is not a support detail and you must choose a more physical primary surface instead. "
         "continuity_anchor_en should be a short visual state phrase for continuity checking. "
@@ -860,6 +869,7 @@ def _normalize_primary_surface(primary_surface: str, action: str, literal: str) 
     if not surface:
         return surface
     replacements = {
+        "train window": "window edge",
         "train window edge": "window edge",
         "last-train window edge": "window edge",
         "last-train window": "window edge",
@@ -868,6 +878,7 @@ def _normalize_primary_surface(primary_surface: str, action: str, literal: str) 
         "train window line": "window edge",
         "train windows": "window edge",
         "lit windows": "window edge",
+        "glass window": "window edge",
         "glass window edge": "window edge",
         "glass door threshold": "doorway threshold",
         "glass doorway threshold": "doorway threshold",
@@ -941,6 +952,22 @@ def _normalize_primary_surface(primary_surface: str, action: str, literal: str) 
         )
     ):
         return "passage line"
+    if surface == "window edge" and any(
+        token in context
+        for token in (
+            "station entrance",
+            "turnstile",
+            "gate line",
+            "gate lane",
+            "threshold",
+            "platform edge",
+            "platform path",
+            "wet platform",
+        )
+    ):
+        if any(token in context for token in ("turnstile", "gate line", "gate lane", "threshold", "station entrance")):
+            return "doorway threshold"
+        return "platform edge"
     if surface == "platform rail" and any(token in context for token in ("walk", "moving past", "keeps moving", "cross", "clear")):
         return "platform edge"
     if surface == "window edge" and any(token in context for token in ("threshold", "cross", "clear", "exit", "doorway")):

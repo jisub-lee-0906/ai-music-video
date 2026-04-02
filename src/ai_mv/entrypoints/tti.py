@@ -6,7 +6,7 @@ from ai_mv.core.orchestration.bootstrap_guard import apply_director_brief, valid
 from ai_mv.core.orchestration.config_defaults import apply_defaults, default_config
 from ai_mv.core.stages.tti_anchor import build_tti_anchor_master_prompt
 from ai_mv.core.workflow_names import TTI_WORKFLOW
-from ai_mv.engines.flux_2_dev_tti.runner import run_tti
+from ai_mv.engines.flux_2_dev_tti.runner import run_tti as run_tti_engine
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 from ai_mv.utils.project_root import project_root
@@ -37,7 +37,7 @@ def run_tti(run_id: str | None = None, brief: str | None = None) -> int:
                 }
             ],
         }
-        anchors = run_tti(cfg, plan)
+        anchors = run_tti_engine(cfg, plan)
         image_path = str(anchors[0]["identity_anchor"]) if anchors else ""
         out_dir = project_root(__file__) / "artifacts" / "tti_probe" / rid
         out_dir.mkdir(parents=True, exist_ok=True)

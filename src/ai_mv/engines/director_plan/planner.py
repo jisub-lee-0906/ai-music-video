@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.visual_plan_normalize import normalize_director_plan
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.prompt_grammar import ref_archetype_grammar, ref_archetype_variant
+from ai_mv.core.prompt_grammar import golden_shot_guidance, ref_archetype_grammar, ref_archetype_variant
 from ai_mv.core.stages.flux2_ref_chain import _literal_scene_description
 from ai_mv.infra.codex_cli_client import generate_structured, ping_codex
 
@@ -20,6 +20,7 @@ def build_director_plan(config: dict, payload: dict) -> dict:
             "duration_sec": float(durations.get(shot_id, 2.0)),
             "ref_archetype": ref_archetype,
             "ref_archetype_variant": _infer_ref_archetype_variant(shot, ref_archetype),
+            "golden_shot_guidance": golden_shot_guidance(shot_id),
             "ref_archetype_contract": "",
             "camera_intent": _camera_intent(shot, brief, index),
             "performance_intent": _performance_intent(shot),
@@ -148,6 +149,7 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
                 "ref_archetype": str(shot.get("ref_archetype", "")).strip(),
                 "ref_archetype_variant": str(shot.get("ref_archetype_variant", "")).strip(),
                 "ref_archetype_contract": str(shot.get("ref_archetype_contract", "")).strip(),
+                "golden_shot_guidance": dict(shot.get("golden_shot_guidance", {})),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
             }
         )
@@ -209,8 +211,10 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "The dominant action must stay more important than any support detail. "
         "Use section_label, story_role, visual_role, and payoff_role_hint as hidden dramatic guidance for why the shot exists in the sequence, but do not repeat those labels in the output. "
         "Use ref_archetype, ref_archetype_variant, and ref_archetype_contract as hidden guidance for what prompt structure is most reliable for this shot family. "
+        "Some shots may also include golden_shot_guidance from successful probe results. When golden_shot_guidance is present, treat it as the highest-priority hidden structure for this exact shot id. Preserve its preferred surface, preferred pattern, and start/end/WAN shape unless the source clearly conflicts. "
         "Treat location, primary_surface, and literal_image as lean structural inputs, not invitations to restore decorative motifs. "
         "If support_detail is empty, do not invent a replacement optical detail. "
+        "If golden_shot_guidance exists, do not drift to a different archetype, a different route surface, or a different release structure just because another wording also sounds plausible. "
         "Each action line should feel like a necessary keyframe in a music-video chain, not just a good standalone caption. "
         "opening_frame should establish her direction and presence immediately. "
         "continuity_frame should visibly carry the same movement or intention forward. "
@@ -229,6 +233,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "If ref_archetype is platform_edge, keep the action on the edge, yellow line, or forward stride by the drop; do not make blurred glass, a train window, or a nearby sign the action nucleus. "
         "If ref_archetype is threshold_crossing or doorway_handoff, keep the action on clearing the threshold, door edge, gate line, exit line, curb, or street edge; do not make the light beyond or the opening mood the event. "
         "If ref_archetype is threshold_crossing or doorway_handoff, do not make opening a hand, opening the door, or entering a brighter corridor the event when clearing the threshold or landing beyond it is already readable. "
+        "If ref_archetype is threshold_crossing, make threshold language explicit in dominant_action, ref_start_action_line, ref_end_action_line, and wan_action_line. Use words such as threshold, exit line, curb, street edge, clear, cross, beyond, far side, or lands beyond so the crossing contract stays visible in the actual line. "
         "If ref_archetype is gate_pass, keep the gate crossing primary and any ticket or card handling secondary inside that larger movement. "
         "If a ticket, card, or receipt appears, keep it incidental inside a larger crossing or forward movement; do not make turning, checking, or displaying the object the dominant action if a lane, threshold, edge, or path already carries the shot. "
         "If ref_archetype is sidewalk_continuation or curb_crossing, keep the action on stride, curb, crosswalk, pavement, or street edge; do not redirect the beat toward signage, traffic lights, windows, or surrounding glow. "
@@ -346,7 +351,10 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "Avoid abstract environment phrases such as tight pocket, quiet light, trembling glass light, map-like glow, brighter edge of town, last strip of night, platform glow spreads, or end of the night when a more literal place and body action can carry the beat. "
         "For Bridge/compression shots, prefer nearby surfaces such as window, rail, edge, wall, or gate over distant symbolic targets such as a clock or far city glow when both are possible. "
         "In Bridge/compression, favor contact or near-contact with the closest surface instead of aiming the action at a distant object. "
+        "If zone is compression, do not phrase the shot like open-world continuation. Prefer close, edge, wall, rail, passage, lane edge, or smaller line wording over neutral road-travel phrasing. "
         "For Bridge/compression shots, if glass or a clock appears, keep the step, rail, platform end, curb, or passage line primary and reduce the glass or clock to background timing or side detail. "
+        "If continuity_anchor or visible_action implies wet footprints, a trail on the floor, or marks spreading behind her, keep that as a secondary ground trace while the dominant action stays on the same platform, floor, pavement, or edge. "
+        "For Bridge/compression shots with a wet-ground trace, prefer shorter stride, braced step, tightened movement, or a small advance on the same surface over generic drift or neutral walkway continuation. "
         "If a stair, rail, tread, stair top, or stairwell is present, keep the action visibly on that stair geometry; do not let the shot flatten into a generic straight walk on an open road or broad plaza. "
         "The action must stay physically compatible with the given location. "
         "The environment should support the heroine's movement instead of overpowering it. "
@@ -381,6 +389,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
 
 
 def _infer_ref_archetype(shot: dict) -> str:
+    zone = str(shot.get("zone", "")).strip().lower()
     primary_surface = str(shot.get("primary_surface", "")).strip().lower()
     subject_action = str(shot.get("subject_action", "")).strip().lower()
     visible_action = str(shot.get("visible_action", "")).strip().lower()
@@ -429,6 +438,8 @@ def _infer_ref_archetype(shot: dict) -> str:
         return "threshold_crossing"
     if any(token in primary_surface for token in ("doorway", "door edge", "opening")):
         return "doorway_handoff"
+    if zone == "compression" and any(token in text for token in ("lane", "passage", "wall", "rail", "narrow", "close", "wet lane", "street lane")):
+        return "passage_compression"
     if any(token in primary_surface for token in ("passage", "wall")) and any(token in text for token in ("rail", "narrow", "close")):
         return "passage_compression"
     window_contact_tokens = (

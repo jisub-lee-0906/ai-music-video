@@ -1,0 +1,33 @@
+shots:
+  intro_b1:
+    archetype: threshold_crossing
+    preferred_surface: turnstile lane
+    contract: Keep the entry on the gate or turnstile crossing, then land immediately inside the station. Do not replace the crossing with train-window side movement.
+    preferred_pattern: same heroine + turnstile or gate crossing + first step inside
+    start_shape: She enters the turnstile lane with one readable forward step.
+    end_shape: She passes through the turnstile and lands just inside the station.
+    wan_shape: She steps through the turnstile lane into the station and lands on the station side.
+  bridge_b1:
+    archetype: platform_edge
+    preferred_surface: wet platform
+    contract: Keep the beat on the wet platform with a shortened stride and a visible footprint trail behind her. Do not replace the beat with glass, turn-back, or generic drift.
+    preferred_pattern: same heroine + wet platform + shortened stride + footprints widening behind
+    start_shape: She shortens her stride on the wet platform with one smaller step set forward.
+    end_shape: She keeps moving on the wet platform while her footprints widen behind her.
+    wan_shape: She keeps the same shortened stride on the wet platform and leaves a wider footprint trail behind.
+  final_chorus_b1:
+    archetype: curb_crossing
+    preferred_surface: wet crosswalk
+    contract: Keep the release on a literal crosswalk crossing toward the far side. Do not flatten it into generic walking on a platform path.
+    preferred_pattern: same heroine + crosswalk + far-side arrival + forward continuation
+    start_shape: She steps onto the wet crosswalk with her line set toward the far side.
+    end_shape: She clears the crosswalk and reaches the far side.
+    wan_shape: She keeps crossing and drives her stride to the far curb.
+  final_chorus_b3:
+    archetype: platform_edge
+    preferred_surface: platform edge
+    contract: Keep the beat on the wet platform edge with the yellow line near her feet. Do not turn it into a studio door or generic street-edge walk.
+    preferred_pattern: same heroine + wet platform edge + yellow line near feet + forward continuation
+    start_shape: She moves past the wet platform edge with the yellow line close at her feet.
+    end_shape: She keeps moving along the wet platform edge with the yellow line still close at her feet.
+    wan_shape: She keeps her stride on the wet platform edge and leaves the platform door behind.

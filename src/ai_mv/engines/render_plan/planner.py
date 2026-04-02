@@ -94,9 +94,25 @@ def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
 def _render_location_clause(row: dict) -> str:
     location = " ".join(str(row.get("location_description", "")).strip().rstrip(".").split())
     if location:
-        return f"In {location}"
+        return _location_lead_in(location)
     anchor = " ".join(str(row.get("environment_anchor", "")).strip().rstrip(".").split())
-    return f"In {anchor}" if anchor else ""
+    return _location_lead_in(anchor) if anchor else ""
+
+
+def _location_lead_in(text: str) -> str:
+    cleaned = " ".join(str(text).strip().rstrip(".").split())
+    if not cleaned:
+        return ""
+    lowered = cleaned.lower()
+    if lowered.startswith(("in ", "at ", "on ", "by ", "beside ", "near ", "under ", "inside ", "along ", "across ", "through ")):
+        return cleaned[:1].upper() + cleaned[1:]
+    if any(token in lowered for token in ("edge", "threshold", "line", "lane", "gate", "turnstile", "crosswalk", "curb", "street edge", "sidewalk", "pavement", "floor", "platform", "path")):
+        return f"At the {cleaned}"
+    if any(token in lowered for token in ("stairs", "stairwell", "ramp", "passage", "corridor", "hall")):
+        return f"Along the {cleaned}"
+    if any(token in lowered for token in ("window", "glass", "rail", "wall", "door")):
+        return f"By the {cleaned}"
+    return f"In the {cleaned}"
 
 
 def _verbalize_render_prompts(config: dict, shot_packages: list[dict], wan_chain: list[dict]) -> None:

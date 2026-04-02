@@ -129,7 +129,7 @@ def _ref_start_preview(brief: dict, shot: dict) -> str:
     if verbalized:
         return verbalized
     return _join_sentences(
-        f"In {_literal_scene_description(shot)}",
+        _preview_location_lead_in(_literal_scene_description(shot)),
         f"{brief['ref_subject_intro']}",
         str(shot.get("ref_start_action_line", "")).strip() or str(shot.get("subject_action", "")).strip() or str(shot.get("visible_action", "")).strip(),
         str(shot.get("ref_lighting_line", "")).strip() or str(shot.get("lighting_intent", "")).strip(),
@@ -141,8 +141,24 @@ def _ref_end_preview(brief: dict, shot: dict) -> str:
     if verbalized:
         return verbalized
     return _join_sentences(
-        f"In {_literal_scene_description(shot)}",
+        _preview_location_lead_in(_literal_scene_description(shot)),
         f"{brief['ref_subject_intro']}",
         str(shot.get("ref_end_action_line", "")).strip() or str(shot.get("subject_action", "")).strip() or str(shot.get("visible_action", "")).strip(),
         str(shot.get("ref_lighting_line", "")).strip() or str(shot.get("lighting_intent", "")).strip(),
     )
+
+
+def _preview_location_lead_in(text: str) -> str:
+    cleaned = " ".join(str(text).strip().rstrip(".").split())
+    if not cleaned:
+        return ""
+    lowered = cleaned.lower()
+    if lowered.startswith(("in ", "at ", "on ", "by ", "beside ", "near ", "under ", "inside ", "along ", "across ", "through ")):
+        return cleaned[:1].upper() + cleaned[1:]
+    if any(token in lowered for token in ("edge", "threshold", "line", "lane", "gate", "turnstile", "crosswalk", "curb", "street edge", "sidewalk", "pavement", "floor", "platform", "path")):
+        return f"At the {cleaned}"
+    if any(token in lowered for token in ("stairs", "stairwell", "ramp", "passage", "corridor", "hall")):
+        return f"Along the {cleaned}"
+    if any(token in lowered for token in ("window", "glass", "rail", "wall", "door")):
+        return f"By the {cleaned}"
+    return f"In the {cleaned}"

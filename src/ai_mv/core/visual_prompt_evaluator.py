@@ -32,6 +32,11 @@ _ACTION_TOKENS = (
     "descend",
     "move",
     "shift",
+    "reach",
+    "enter",
+    "follow",
+    "carry",
+    "edge",
 )
 
 _STATIC_ONLY_TOKENS = (
@@ -212,11 +217,11 @@ def _matches_ref_archetype(archetype: str, primary_surface: str, start_state: st
         return False
     text = f"{primary_surface} {start_state} {end_state}"
     if archetype == "threshold_crossing":
-        return any(token in text for token in ("threshold", "exit line", "street edge", "clear", "cross", "beyond"))
+        return any(token in text for token in ("threshold", "exit line", "street edge", "clear", "cross", "beyond", "far side", "gate side", "wet road"))
     if archetype == "stair_descent":
         return any(token in text for token in ("stairs", "stairwell", "handrail", "step", "lower"))
     if archetype == "passage_compression":
-        return any(token in text for token in ("passage", "wall", "close", "rail"))
+        return any(token in text for token in ("passage", "wall", "close", "rail", "lane", "smaller line", "tightens"))
     if archetype == "platform_edge":
         return any(token in text for token in ("platform edge", "yellow line", "platform"))
     if archetype == "gate_pass":
@@ -226,7 +231,7 @@ def _matches_ref_archetype(archetype: str, primary_surface: str, start_state: st
     if archetype == "curb_crossing":
         return any(token in text for token in ("crosswalk", "curb", "far curb"))
     if archetype == "sidewalk_continuation":
-        return any(token in text for token in ("sidewalk", "pavement", "street edge", "moves forward"))
+        return any(token in text for token in ("sidewalk", "pavement", "street edge", "moves forward", "wet lane", "keeps moving", "moves along"))
     if archetype == "doorway_handoff":
         return any(token in text for token in ("doorway", "door edge", "threshold", "beyond"))
     if archetype == "brace_pause":

@@ -38,6 +38,10 @@ def load_wan_grammars() -> dict:
     return load_prompt_grammar("wan_grammars")
 
 
+def load_golden_shots() -> dict:
+    return load_prompt_grammar("golden_shots")
+
+
 def ref_archetype_grammar(name: str) -> dict:
     raw = load_ref_archetype_grammars().get("archetypes", {})
     if not isinstance(raw, dict):
@@ -70,3 +74,11 @@ def wan_transition_family(name: str) -> dict:
         if str(row.get("name", "")).strip() == str(name).strip():
             return row
     return {}
+
+
+def golden_shot_guidance(shot_id: str) -> dict:
+    raw = load_golden_shots().get("shots", {})
+    if not isinstance(raw, dict):
+        return {}
+    node = raw.get(str(shot_id).strip(), {})
+    return dict(node) if isinstance(node, dict) else {}

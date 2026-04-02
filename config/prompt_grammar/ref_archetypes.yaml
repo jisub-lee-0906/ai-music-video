@@ -43,9 +43,9 @@ archetypes:
         note: Keep glass as side structure unless direct touch is the event.
   platform_edge:
     name: platform_edge
-    contract: Use edge proximity near her feet plus forward continuation; keep the platform edge more important than rails or skyline.
-    good_pattern: same heroine + platform edge or yellow line + forward continuation
-    avoid_pattern: train window takeover, skyline emphasis, distant sign
+    contract: Use edge proximity near her feet plus forward continuation; keep the platform edge more important than rails, doors, or skyline.
+    good_pattern: same heroine + wet platform edge or yellow line near her feet + forward continuation
+    avoid_pattern: train window takeover, closing-door event, skyline emphasis, distant sign
     surface_priority:
       - platform edge
       - yellow line
