@@ -67,6 +67,7 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
                     "section_beat_count": section_beat_count,
                 }
             )
+            _finalize_scene_shot(section_shots[-1])
             motif_progression.append(
                 {
                     "shot_id": beat_id,
@@ -172,12 +173,18 @@ def _rewrite_location_descriptions(config: dict, shot_packages: list[dict]) -> N
             "shot_id": str(shot.get("shot_id", "")).strip(),
             "zone": str(shot.get("zone", "")).strip(),
             "visual_role": str(shot.get("visual_role", "")).strip(),
-            "motif_family": str(shot.get("motif_family", "")).strip(),
-            "base_location": str(shot.get("environment_anchor", "")).strip(),
+            "base_location": _location_rewrite_base(shot),
             "dominant_scene_grammar": str(shot.get("dominant_scene_grammar", "")).strip(),
             "primary_surface": str(shot.get("primary_surface", "")).strip(),
-            "support_detail": str(shot.get("support_detail", "")).strip(),
-            "literal_image": str(shot.get("literal_image", "")).strip(),
+            "support_detail": _lean_support_detail(
+                str(shot.get("primary_surface", "")).strip(),
+                str(shot.get("support_detail", "")).strip(),
+            ),
+            "literal_image": _lean_literal_image(
+                str(shot.get("primary_surface", "")).strip(),
+                str(shot.get("support_detail", "")).strip(),
+                str(shot.get("literal_image", "")).strip(),
+            ),
             "subject_action": str(shot.get("subject_action", "")).strip(),
             "beat_continuity_anchor": str(shot.get("beat_continuity_anchor", "")).strip(),
         }
@@ -192,13 +199,16 @@ def _rewrite_location_descriptions(config: dict, shot_packages: list[dict]) -> N
                 if location:
                     shot["location_description"] = location
                     shot["environment_anchor"] = location
+                    _finalize_scene_shot(shot)
                     continue
                 shot["location_description"] = str(shot.get("environment_anchor", "")).strip()
+                _finalize_scene_shot(shot)
             return
     except Exception:
         pass
     for shot in shot_packages:
         shot["location_description"] = str(shot.get("environment_anchor", "")).strip()
+        _finalize_scene_shot(shot)
 
 
 def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, str]:
@@ -220,17 +230,24 @@ def _rewrite_locations_with_codex(config: dict, rows: list[dict]) -> dict[str, s
         "required": ["shots"],
     }
     prompt = (
-        "Rewrite each shot into one concrete English location sentence for image and video prompts. "
-        "The output must read like a real place that can hold the heroine's action, not like a caption or production note. "
+        "Rewrite each shot into one concrete English location phrase for image and video prompts. "
+        "The output must be a short noun phrase naming a real place that can hold the heroine's action, not a full sentence, caption, or production note. "
         "Keep it visual, physical, and specific. "
+        "Do not write finite verbs such as is, are, runs, opens, cuts, marks, turns, sits, holds, or waits. "
+        "Prefer concise location phrases built with along, at, by, under, beside, behind, across, or near. "
         "Do not mention frame, shot, prompt, continuity, video, composition, camera, or viewer. "
         "Do not use the word frame anywhere in the output, even for a physical object; use window edge, rail, border, or casing instead. "
         "Do not mention the heroine, body parts, breath, heartbeat, feelings, memories, relationships, or any action. "
         "Do not describe the place with person-like verbs such as stands, waits, watches, remembers, or reaches. "
         "Do not use poetic metaphor that weakens the place into abstract mood. "
-        "Stay faithful to the base location, motif, primary_surface, support_detail, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
+        "Stay faithful to the base location, primary_surface, support_detail, literal image, and subject action, but express only the place, surfaces, structures, and local light. "
         "If primary_surface is present, use it as the main place anchor unless the source plainly makes another nearby playable surface more central. "
         "Keep support_detail secondary to the primary_surface. "
+        "If base_location and literal_image are already lean, do not restore decorative nearby objects that were removed from support_detail. "
+        "If support_detail is empty, do not invent a replacement light cue, sign, window, display, clock, or atmospheric texture just to make the sentence feel richer. "
+        "If support_detail is empty, keep the location on the primary_surface and the nearest structural surface only. "
+        "Do not add morning light, thin light, warm light, storefront light, board glow, station glow, window glow, or widened air unless that exact physical light is already necessary to identify the playable surface. "
+        "Do not add lit windows, train windows, carriage windows, or window light to the location phrase unless primary_surface itself is a window edge and the heroine is physically using that edge. "
         "If primary_surface is stair, stairwell, handrail, platform edge, threshold, gate line, turnstile lane, curb, crosswalk, sidewalk, street edge, or passage, do not let glass, signage, a ticket, a clock, or a light effect become the head noun of the place. "
         "If primary_surface is window edge or glass edge, keep the place on the edge or path beside it, not on reflection, signage, or vague neon mood. "
         "Prefer the nearest playable surface, path, or threshold around the heroine over a distant symbolic object. "
@@ -259,9 +276,69 @@ def _anchor_from_surface(zone_seed: str, primary_surface: str, support_detail: s
         return zone_seed
     support = " ".join(str(support_detail).strip().rstrip(".").split())
     base = _surface_location_phrase(zone_seed, surface)
-    if not support or _support_detail_is_symbolic(support):
+    if not support or not _support_detail_is_material(support, surface):
         return base
     return f"{base}, with {support}"
+
+
+def _location_rewrite_base(shot: dict) -> str:
+    zone_seed = _zone_seed_place(str(shot.get("zone", "")).strip())
+    primary_surface = str(shot.get("primary_surface", "")).strip()
+    support_detail = str(shot.get("support_detail", "")).strip()
+    if primary_surface:
+        return _anchor_from_surface(zone_seed, primary_surface, support_detail)
+    return str(shot.get("environment_anchor", "")).strip()
+
+
+def _finalize_scene_shot(shot: dict) -> None:
+    primary_surface = _normalize_primary_surface(
+        str(shot.get("primary_surface", "")).strip(),
+        str(shot.get("subject_action", "")).strip(),
+        str(shot.get("literal_image", "")).strip(),
+    )
+    support_detail = _lean_support_detail(primary_surface, str(shot.get("support_detail", "")).strip())
+    shot["primary_surface"] = primary_surface
+    shot["support_detail"] = support_detail
+    shot["literal_image"] = _lean_literal_image(
+        primary_surface,
+        support_detail,
+        str(shot.get("literal_image", "")).strip(),
+    )
+    zone_seed = _zone_seed_place(str(shot.get("zone", "")).strip())
+    lean_anchor = _anchor_from_surface(zone_seed, primary_surface, support_detail) if primary_surface else ""
+    location = " ".join(str(shot.get("location_description", "")).strip().rstrip(".").split())
+    environment_anchor = " ".join(str(shot.get("environment_anchor", "")).strip().rstrip(".").split())
+    if _location_anchor_is_decorative(location):
+        location = lean_anchor or location
+    if _location_anchor_is_decorative(environment_anchor):
+        environment_anchor = lean_anchor or environment_anchor
+    if location:
+        shot["location_description"] = location
+    if environment_anchor:
+        shot["environment_anchor"] = environment_anchor
+
+
+def _location_anchor_is_decorative(text: str) -> bool:
+    lowered = " ".join(str(text).strip().lower().split())
+    if not lowered:
+        return False
+    decorative_tokens = (
+        "lit windows",
+        "window line",
+        "train lights",
+        "train window",
+        "glass window",
+        "glass door",
+        "speaker",
+        "signal light",
+        "vending machine light",
+        "wet neon",
+        "dimming window",
+        "wind",
+        "boundary line",
+        "across the track",
+    )
+    return any(token in lowered for token in decorative_tokens)
 
 
 def _surface_location_phrase(zone_seed: str, surface: str) -> str:
@@ -290,12 +367,80 @@ def _support_detail_is_symbolic(detail: str) -> bool:
         "soft light",
         "bright light",
         "station light",
+        "train lights",
+        "departing train lights",
+        "window line",
+        "lit window line",
+        "dimming window line",
+        "wet neon",
+        "neon",
         "ticket",
         "footprint",
         "flyers",
         "hair tie",
     )
     return any(token in lowered for token in symbolic_tokens)
+
+
+def _support_detail_is_material(detail: str, primary_surface: str = "") -> bool:
+    lowered = detail.lower()
+    surface = primary_surface.lower()
+    if not lowered:
+        return False
+    if _support_detail_is_symbolic(lowered):
+        return False
+    material_tokens = (
+        "rain",
+        "drizzle",
+        "puddle",
+        "wet",
+        "mist",
+        "fogged",
+        "fog",
+        "condensation",
+        "rail",
+        "handrail",
+        "railing",
+        "handle",
+        "door movement",
+        "door swing",
+        "hinge",
+        "threshold strip",
+        "yellow line",
+        "water on the ground",
+        "passing traffic",
+        "traffic blur",
+        "door edge",
+        "window edge",
+    )
+    if any(token in lowered for token in material_tokens):
+        return True
+    if any(token in surface for token in ("window", "glass", "car window")) and any(
+        token in lowered for token in ("fog", "fogged", "condensation", "mist")
+    ):
+        return True
+    return False
+
+
+def _lean_support_detail(primary_surface: str, support_detail: str) -> str:
+    detail = " ".join(str(support_detail).strip().rstrip(".").split())
+    surface = " ".join(str(primary_surface).strip().rstrip(".").split())
+    if not detail or not surface:
+        return ""
+    if not _support_detail_is_material(detail, surface):
+        return ""
+    return detail
+
+
+def _lean_literal_image(primary_surface: str, support_detail: str, literal_image: str) -> str:
+    surface = " ".join(str(primary_surface).strip().rstrip(".").split())
+    detail = _lean_support_detail(surface, support_detail)
+    if surface:
+        if detail:
+            return f"{surface} with {detail}"
+        return surface
+    literal = " ".join(str(literal_image).strip().rstrip(".").split())
+    return literal
 
 
 def _zone_environment_phrase(zone: str, motif: str) -> str:
@@ -318,14 +463,14 @@ def _zone_environment_phrase(zone: str, motif: str) -> str:
 def _zone_seed_place(zone: str) -> str:
     zone_key = zone.strip().lower()
     phrases = {
-        "threshold": "a station entrance at night",
-        "edge": "a station gate edge at night",
-        "compression": "a narrow station-side passage at night",
-        "open_world": "a street-level station frontage at night",
-        "open_world_peak": "a station-side exit line at night",
+        "threshold": "a station entrance",
+        "edge": "a station gate edge",
+        "compression": "a narrow station-side passage",
+        "open_world": "a street-level station frontage",
+        "open_world_peak": "a station-side exit line",
         "residue": "the last station-side space after the main movement has passed",
-        "narrow_world": "a narrow station-side passage at night",
-        "transit_lane": "a station-side lane that keeps the movement going",
+        "narrow_world": "a narrow station-side passage",
+        "transit_lane": "a station-side lane",
     }
     return phrases.get(zone_key, "a readable city place at night")
 
@@ -476,17 +621,32 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "Choose actions that keep the heroine readable and present rather than actions that naturally push her tiny into the distance. "
         "If the beat supports it, prefer actions with one readable contact detail such as a hand on glass, a hand along a rail, or a step through an opening, because those tend to hold the heroine and place together more clearly. "
         "If glass is present, prefer passing the glass, tracing the edge, pushing past the door edge, or clearing the threshold over checking the reflection, facing the reflection, or letting reflected light become the action. "
+        "If stairs, stairwell, landing, escalator, or ramp are present together with a nearby window, keep the primary movement on the stair geometry first; do not promote the window edge unless she is directly touching or bracing on that surface. "
         "If she passes through a doorway, gate, or opening, end on threshold, gate line, doorway edge, passage, curb, pavement, or street edge; do not use awkward meta-like nouns such as frame as the destination. "
+        "If a doorway is already readable as a threshold, do not write opens the doorway, opens the glass doorway, opens the last door, or enters the brighter corridor when clears the doorway, steps through the threshold, or lands beyond the door edge is more literal. "
         "Avoid phrasing that leaves her frozen in place, such as 'stays', 'remains', or 'holds still', unless the original beat explicitly requires stillness as the main visible event. "
         "Avoid weak keyframe verbs such as watches, looks, gazes, waits, breathes, exhales, smiles softly, or lets the scene happen around her when a clearer visible action is possible. "
         "Do not use spreading fingers, opening hands, breathing out, or looking across space as the main visible action in payoff or release beats when a clearer forward step, pass, clear, or crossing action is available in the same place. "
+        "Do not use opening her hand, opening her palm, or letting old light fade across her hand as the main visible action when a threshold, lane, edge, or step can carry the same beat more clearly. "
         "Do not use looking toward lit windows, looking through glass, watching a display, or keeping time with a clock as the main visible action when a step, turn, rail contact, curb crossing, gate pass, stair descent, or threshold crossing is available in the same beat. "
         "If a ticket, card, or other small object is present, keep it as a hand action inside a larger movement through the place, not as a still life under a clock, sign, or display. "
         "If a ticket or card appears with a clock, do not make her gaze lock onto the clock; keep her movement on the platform edge, gate line, curb, threshold, or path while the hand action with the ticket stays secondary. "
+        "If a ticket, card, or paper appears with a window, keep the path or threshold movement primary; do not write turning the ticket in her hand as the main event when she can keep moving past the edge beside her. "
         "If a gate lane or turnstile lane is present with a clock, do not write looking up at the clock as the visible action; rewrite the beat as slowing, leaning, or stepping into the lane while the clock remains only background timing. "
         "If a handrail, rail, or platform edge is present with a clock, do not write her gaze rising to the clock; keep the action on the handrail, edge, or next step while the clock stays overhead as background timing only. "
         "If a window, glass, or lit opening is present, do not make turning toward the light, facing the light, or watching the light the event when she can instead pass the edge, keep moving, angle forward, or turn back once while continuing on. "
         "If lit windows are present, never make them the still subject of the beat. Keep them background-only while the heroine checks the ticket, turns back once, keeps moving forward, or clears the next surface. "
+        "If the beat already has a strong primary surface such as ticket gate, turnstile lane, platform edge, rail, stair, passage, threshold, curb, sidewalk, street edge, or station floor, do not mention clock light, lit windows, sign light, or window glow in literal_image_en unless that light physically changes the surface she is using right now. "
+        "If lit windows, a sign, or a clock only sit nearby, keep them out of literal_image_en and continuity_anchor_en; let the primary surface and the heroine's movement carry the beat. "
+        "If a signal or countdown light is present, mention it only when the action is actually tied to a change in timing on the same surface, such as stepping as the signal changes. Otherwise omit it. "
+        "If a glass wall or ad board is only adjacent to the path, do not mention it in literal_image_en or support_detail_en unless she directly brushes, touches, or turns across that edge. "
+        "If primary_surface is platform edge, platform lane, station floor, sidewalk, street edge, or threshold, prefer rain, puddles, rail contact, doorway movement, or the next reachable surface over wind, glass wall, speaker detail, vending machine light, or generic signal light as the support detail. "
+        "If wind only adds atmosphere and does not materially change her balance, bracing, or crossing, omit wind from literal_image_en, visible_action_en, subject_action_en, support_detail_en, and continuity_anchor_en. "
+        "Do not describe wind pushing her coat, splitting around her, moving ahead of her, or pulling at her hair when the same beat can be carried by stride, threshold, curb, gate, stair, frontage, or sidewalk movement alone. "
+        "If wind is tied only to a passing bus, train, or vehicle and not to her actual balance on the surface, omit that bus wind or passing wind entirely and keep the beat on the step, stair, curb, or path instead. "
+        "If the beat is on a platform edge or doorway gap and she is not visibly bracing into the wind, omit crosswind and platform wind entirely and keep the beat on turning, stepping through, or continuing along the edge. "
+        "If the primary movement is on steps, stairs, stairwell, landing, or escalator and she is not visibly bracing into the wind, omit wind entirely and keep the beat on the climb, descent, or continued step. "
+        "If she is already clearing a doorway, threshold, or exit line, do not add 'into the wind' unless the source clearly requires the wind as the obstacle of the beat. "
         "Do not build literal_image_en as a still life of a ticket and a clock together when the same beat already has a playable surface or lane she can move through. "
         "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, lets a smile rise, lets the motion settle, or lets the floor steady when a more readable visible action can carry the beat. "
         "Do not use heartbeat, hesitation, memory, loneliness, or pause as the main visible event unless there is no other faithful physical reading. "
@@ -494,7 +654,23 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "If the source says she stands still, pauses, waits, only breathes, or only watches something, rewrite it into a subtle but readable movement such as shifting her weight, taking a step, turning, touching a surface, tracing a rail or glass edge, crossing a threshold, or lifting a hand while staying in the same space. "
         "If the source says she looks up at a clock, rewrite that into a slowed step, tightened hand on rail, poised lean at the gate, or forward-ready pause in the same place instead of an upward-looking beat. "
         "If the source says she looks at lit windows or light beyond the glass, rewrite that into passing the window edge, brushing the wall, turning back once while still moving, or angling her body forward in the same space. "
+        "If windows are only side structure beside a sidewalk, frontage, passage, compressed lane, gate lane, threshold path, platform edge, or stair run, omit the windows entirely from visible_action_en, subject_action_en, and continuity_anchor_en unless she is directly touching, fogging, pressing into, or turning back from that surface. "
+        "If the primary movement is on a crosswalk, curb, street edge, sidewalk, stair, stairwell, landing, escalator, or ramp, do not keep nearby windows, lit windows, or neon on the window as part of the action or continuity unless she is directly using that window surface. "
+        "If the primary movement is on a platform edge, platform lane, or platform end, do not keep blurred windows, passing train windows, a passing train window, opposite windows, or a nearby window edge in visible_action_en, subject_action_en, support_detail_en, or continuity_anchor_en unless her body is directly pressed to that moving window surface. "
+        "If the primary movement is on stairs, stairwell, landing, escalator, ramp, sidewalk, or street edge, do not let windows above her, lit windows beside her, or windows switching on become part of the action or continuity. Keep the beat on the climb, descent, or stride instead. "
+        "Do not describe a generic neon-smeared window edge or passing window light streaking by unless the heroine is directly touching, tracing, fogging, or pressing against that window surface. "
+        "If the primary movement is on a gate line, gate lane, turnstile lane, or gate pass, do not keep window light, passing window light, lit panels, or window glow in visible_action_en, subject_action_en, support_detail_en, or continuity_anchor_en. Keep the beat on clearing the gate and landing beyond it. "
+        "If the primary movement is on a landing, stair top, wet road, street edge, sidewalk, or open pavement, do not keep window light, passing window light, or light spilling from windows in visible_action_en, subject_action_en, support_detail_en, or continuity_anchor_en unless the heroine is directly using that window surface. "
+        "If a cold handle, door handle, rail handle, or pull handle appears with a carriage window or train window, make the handle or door edge the playable surface and omit the carriage window from visible_action_en, subject_action_en, and continuity_anchor_en unless she is directly pressed to the glass. "
+        "If she is already walking on a sidewalk or street edge while carrying a cup, bag, or other small object, do not make a store window or convenience-store window the action anchor; keep the beat on the sidewalk continuation and the carried object instead. "
+        "If she is already on a curb, sidewalk, or street edge, do not keep a convenience-store window, store window, or passing car window in visible_action_en, subject_action_en, or continuity_anchor_en. Keep the beat on the curb or sidewalk continuation instead. "
+        "If a beat is sidewalk_continuation, curb_crossing, or another plain locomotion shot, do not write lit windows falling behind her, windows beside her, or city light moving in the glass as the continuity anchor. Keep continuity_anchor_en on stride, curb, crosswalk, sidewalk, or the next reachable surface instead. "
+        "If a beat is true window contact, keep the continuity on her contact changing against the window edge or glass edge. Do not widen it into lit windows behind her or city light drifting across the glass unless that contact itself is still the event. "
+        "If a ticket, card, or paper action happens while she is already walking on a sidewalk, gate lane, or platform path, keep the action on the walk and the hand movement; omit nearby opposite windows entirely. "
+        "If the source suggests opening a hand, releasing a hand, or light fading over her hand, rewrite that as a step, clear, pass, or threshold move in the same place rather than a hand-only event. "
         "If a doorway or opening appears, describe the threshold crossing itself, the hinge side, the door edge, or the first step through it; do not turn the beat into a symbolic portal or a theatrical opening image. "
+        "If windows, carriage windows, or a window line appear beside a path, platform edge, sidewalk, or passage, treat the window line as side structure rather than the route itself unless her body is pressed directly to that edge. "
+        "Do not describe windows rising above her, the city opening wide beside the windows, or brighter corridor mood when a simpler path, threshold, or edge movement can carry the beat. "
         "If breath, hesitation, heartbeat, or memory is important, show it through her hand, shoulders, step, or contact with a nearby surface instead of naming that internal state directly. "
         "If fog, condensation, or cold air matters, prefer the effect on glass, metal, fabric, or light rather than stating breath directly. "
         "If the source offers both a distant symbolic target and a nearby surface or path, prefer the nearby surface or path for visible_action_en and subject_action_en. "
@@ -533,6 +709,8 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "support_detail_en should be one short optional secondary detail, such as supporting light, rain on glass, or a nearby sign, and it must stay subordinate to the primary surface and action. "
         "support_detail_en may be empty. If the only available detail is a clock, sign, lit window, stopped clock, display, or symbolic light cue that does not materially strengthen the playable surface, leave support_detail_en blank instead of forcing it in. "
         "If a clock, lit windows, sign, or window light only repeats atmosphere already implied by the place, omit it from support_detail_en and keep the beat cleaner. "
+        "Prefer support_detail_en values like rain, puddles, handle, rail, door movement, or wet ground over wind, clock light, lit windows, sign glow, speaker detail, vending machine light, or symbolic glass light. "
+        "Also prefer rail contact, doorway movement, and wet ground over wind, ad board edge, glass wall, speaker detail, or fixed signal light when those elements are only adjacent background structures. "
         "If removing the support detail would break the scene's core meaning, then it is not a support detail and you must choose a more physical primary surface instead. "
         "continuity_anchor_en should be a short visual state phrase for continuity checking. "
         "The continuity anchor must track the heroine's body relation to the primary surface or path, not the motion of a reflection, light effect, or other support detail. "
@@ -582,10 +760,61 @@ def _clean_translated_beat_row(row: dict) -> dict | None:
             " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
             " ".join(str(cleaned.get("subject_action_en", "")).strip().split()),
         )
+    primary_surface = _normalize_primary_surface(
+        primary_surface,
+        " ".join(str(cleaned.get("subject_action_en", "")).strip().split()),
+        " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
+    )
+    if _primary_surface_is_unplayable(primary_surface):
+        primary_surface = _normalize_primary_surface(
+            _infer_primary_surface(
+                " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
+                " ".join(str(cleaned.get("subject_action_en", "")).strip().split()),
+            ),
+            " ".join(str(cleaned.get("subject_action_en", "")).strip().split()),
+            " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
+        )
     cleaned["primary_surface_en"] = primary_surface
     support_detail = " ".join(str(cleaned.get("support_detail_en", "")).strip().rstrip(".").split())
-    cleaned["support_detail_en"] = "" if _contains_render_meta(support_detail) else support_detail
+    if _contains_render_meta(support_detail):
+        support_detail = ""
+    support_detail = _lean_support_detail(primary_surface, support_detail)
+    cleaned["support_detail_en"] = support_detail
+    cleaned["literal_image_en"] = _lean_literal_image(
+        primary_surface,
+        support_detail,
+        " ".join(str(cleaned.get("literal_image_en", "")).strip().split()),
+    )
+    cleaned["continuity_anchor_en"] = _lean_continuity_anchor(
+        primary_surface,
+        " ".join(str(cleaned.get("continuity_anchor_en", "")).strip().split()),
+    )
     return cleaned
+
+
+def _lean_continuity_anchor(primary_surface: str, continuity_anchor: str) -> str:
+    surface = " ".join(str(primary_surface).strip().rstrip(".").split())
+    continuity = " ".join(str(continuity_anchor).strip().rstrip(".").split())
+    if not continuity:
+        return continuity
+    lowered = continuity.lower()
+    if any(
+        token in lowered
+        for token in (
+            "clock",
+            "sign",
+            "lit windows",
+            "window light",
+            "signal light",
+            "display",
+            "glow",
+            "reflection",
+            "glass light",
+        )
+    ):
+        if surface:
+            return f"She stays on the {surface}"
+    return continuity
 
 
 def _infer_scene_grammar(action: str, literal: str) -> str:
@@ -625,6 +854,126 @@ def _infer_primary_surface(literal: str, action: str) -> str:
     return "path through the place"
 
 
+def _normalize_primary_surface(primary_surface: str, action: str, literal: str) -> str:
+    surface = " ".join(str(primary_surface).strip().rstrip(".").split()).lower()
+    context = f"{action} {literal}".lower()
+    if not surface:
+        return surface
+    replacements = {
+        "train window edge": "window edge",
+        "last-train window edge": "window edge",
+        "last-train window": "window edge",
+        "carriage window": "window edge",
+        "car window edge": "window edge",
+        "train window line": "window edge",
+        "train windows": "window edge",
+        "lit windows": "window edge",
+        "glass window edge": "window edge",
+        "glass door threshold": "doorway threshold",
+        "glass doorway threshold": "doorway threshold",
+        "automatic door threshold": "doorway threshold",
+        "wet crosswalk edge": "wet crosswalk",
+        "wet track edge": "platform edge",
+        "track-side platform edge": "platform edge",
+        "station frontage lane": "platform lane",
+        "station gate lane": "gate lane",
+        "ticket gate": "gate lane",
+        "station approach path": "sidewalk",
+        "station frontage at street level": "street frontage",
+        "carriage window line": "passage line",
+        "glass door edge": "doorway threshold",
+        "door edge": "doorway threshold",
+        "boundary line": "exit line",
+        "escalator by the train windows": "escalator steps",
+        "street": "street edge",
+        "alley lane": "passage line",
+        "old stairs": "stairs",
+        "neon road": "wet road",
+        "station edge": "station walkway",
+        "station front": "street frontage",
+    }
+    if surface in replacements:
+        surface = replacements[surface]
+    if "vending machine glass" in surface:
+        surface = "passage line"
+    if "warm cup" in surface:
+        surface = "station floor"
+    if "platform wind" in surface:
+        surface = "platform edge"
+    if "speaker" in surface:
+        surface = "street edge"
+    if "signal light" in surface:
+        surface = "street edge"
+    if "vending machine light" in surface:
+        surface = "gate lane"
+    if "train windows" in surface and "escalator" in context:
+        surface = "escalator steps"
+    if "window" in surface and any(token in context for token in ("escalator", "stairs", "stairwell", "rises", "climbs")):
+        return "escalator steps" if "escalator" in context else "stairs"
+    if any(token in surface for token in ("window edge", "glass edge", "last-train window edge", "wet window edge")):
+        contact_tokens = ("press", "pressed", "palm", "touch", "touches", "touching", "brush", "brushing", "trace", "tracing", "hand on", "shoulder against")
+        if not any(token in context for token in contact_tokens):
+            if any(token in context for token in ("stairs", "stair", "stairwell", "landing", "escalator", "ramp", "climbs", "climbing", "descends", "descending")):
+                return "escalator steps" if "escalator" in context else "stairs"
+            if any(token in context for token in ("doorway", "threshold", "exit", "opening", "gate")):
+                return "doorway threshold"
+            if any(token in context for token in ("platform", "yellow line", "tracks")):
+                return "platform edge"
+            if any(token in context for token in ("street", "curb", "crosswalk", "sidewalk", "frontage")):
+                return "street edge"
+            return "passage line"
+    if surface == "window edge" and any(
+        token in context
+        for token in (
+            "walk",
+            "walking",
+            "moving past",
+            "moves past",
+            "passes",
+            "passes the",
+            "keeps moving",
+            "walks along",
+            "keeps her direction",
+            "keeps his direction",
+            "keeps the direction",
+            "beside the window",
+            "along the window",
+        )
+    ):
+        return "passage line"
+    if surface == "platform rail" and any(token in context for token in ("walk", "moving past", "keeps moving", "cross", "clear")):
+        return "platform edge"
+    if surface == "window edge" and any(token in context for token in ("threshold", "cross", "clear", "exit", "doorway")):
+        return "doorway threshold"
+    if surface == "gate lane" and "wind" in context:
+        return "gate lane"
+    if surface == "door edge" and "threshold" in context:
+        return "doorway threshold"
+    return surface
+
+
+def _primary_surface_is_unplayable(primary_surface: str) -> bool:
+    surface = str(primary_surface).strip().lower()
+    if not surface:
+        return True
+    blocked = (
+        "cup",
+        "bag strap",
+        "display",
+        "glow",
+        "light",
+        "neon",
+        "lit windows",
+        "window line",
+        "window lights",
+        "sign",
+        "clock",
+        "vending machine glass",
+        "car-window lights",
+    )
+    return any(token in surface for token in blocked)
+
+
 def _needs_translation(row: dict) -> bool:
     for key in ("literal_image", "visible_action", "continuity_anchor", "payoff_role"):
         text = str(row.get(key, "")).strip()
@@ -662,35 +1011,35 @@ def _contains_render_meta(text: str) -> bool:
 
 def _motif_space(motif_text: str) -> str:
     if "train window" in motif_text:
-        return "train-side glass, interior reflections, and passing exterior light"
+        return "a transit-side edge and moving side structure"
     if "ticket gate" in motif_text:
-        return "ticket gate lanes, card readers, and station barriers"
+        return "a gate lane and threshold surface"
     if "curb reflection" in motif_text:
-        return "a wet curb edge with reflective asphalt and passing street light"
+        return "wet curbside pavement and ground contact"
     if "puddle" in motif_text:
-        return "wet pavement, shallow puddle reflections, and a curb-adjacent street surface"
+        return "wet ground and curb-adjacent pavement"
     if "platform sign glow" in motif_text:
-        return "platform signage, overhead lamps, and glowing station markers"
+        return "a platform path and overhead station edge"
     if "stair landing" in motif_text:
-        return "a stair landing, railings, and receding steps"
+        return "stairs, landing, and handrail geometry"
     return motif_text
 
 
 def _environment_family(motif_text: str) -> str:
     motif = motif_text.strip().lower()
     if "train window" in motif:
-        return "train_window_glass"
+        return "transit_side_edge"
     if "ticket gate" in motif:
-        return "ticket_gate_lane"
+        return "gate_threshold"
     if "curb reflection" in motif:
-        return "wet_curb_reflection"
+        return "wet_ground_path"
     if "puddle" in motif:
-        return "wet_pavement_reflection"
+        return "wet_ground_path"
     if "platform sign glow" in motif:
-        return "platform_signage"
+        return "platform_path"
     if "stair landing" in motif:
-        return "stair_landing"
-    return "urban_detail"
+        return "vertical_path"
+    return "urban_path"
 
 
 def _camera_distance_band(zone: str, section_label: str, visual_role: str) -> str:
@@ -945,50 +1294,44 @@ def _space_transition_penalty(left_space: str, right_space: str) -> float:
 
 def _environment_traits(family: str) -> dict[str, str]:
     traits = {
-        "train_window_glass": {
-            "space_type": "contained_interior",
-            "axis_type": "side_glass",
-            "contact_plane": "glass_line",
-            "transition_group": "transit_enclosure",
+        "transit_side_edge": {
+            "space_type": "threshold",
+            "axis_type": "side_path",
+            "contact_plane": "side_edge",
+            "transition_group": "transit_path",
         },
-        "ticket_gate_lane": {
+        "gate_threshold": {
             "space_type": "threshold",
             "axis_type": "lane_forward",
             "contact_plane": "barrier_lane",
             "transition_group": "station_threshold",
         },
-        "wet_curb_reflection": {
+        "wet_ground_path": {
             "space_type": "open_exterior",
             "axis_type": "street_plane",
-            "contact_plane": "ground_reflection",
-            "transition_group": "street_reflection",
+            "contact_plane": "ground_plane",
+            "transition_group": "street_path",
         },
-        "wet_pavement_reflection": {
-            "space_type": "open_exterior",
-            "axis_type": "street_plane",
-            "contact_plane": "ground_reflection",
-            "transition_group": "street_reflection",
-        },
-        "platform_signage": {
+        "platform_path": {
             "space_type": "threshold",
             "axis_type": "station_depth",
             "contact_plane": "platform_plane",
             "transition_group": "station_threshold",
         },
-        "stair_landing": {
+        "vertical_path": {
             "space_type": "vertical_path",
             "axis_type": "stair_depth",
             "contact_plane": "step_depth",
             "transition_group": "vertical_transit",
         },
-        "urban_detail": {
+        "urban_path": {
             "space_type": "threshold",
             "axis_type": "street_plane",
             "contact_plane": "ground_plane",
             "transition_group": "generic_urban",
         },
     }
-    return dict(traits.get(family, traits["urban_detail"]))
+    return dict(traits.get(family, traits["urban_path"]))
 
 
 def _apply_transition_contracts(section_shots: list[dict]) -> None:

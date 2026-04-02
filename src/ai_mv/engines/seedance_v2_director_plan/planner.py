@@ -121,17 +121,19 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
         return
     rows = []
     for shot in shot_packages:
+        primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().split())
+        support_detail = _director_support_detail(shot)
         rows.append(
             {
                 "shot_id": str(shot.get("shot_id", "")).strip(),
                 "section_label": str(shot.get("section_label", "")).strip(),
                 "story_role": str(shot.get("story_role", "")).strip(),
                 "zone": str(shot.get("zone", "")).strip(),
-                "location": _literal_scene_description(shot),
+                "location": _director_location(shot),
                 "dominant_scene_grammar": str(shot.get("dominant_scene_grammar", "")).strip(),
-                "primary_surface": str(shot.get("primary_surface", "")).strip(),
-                "support_detail": str(shot.get("support_detail", "")).strip(),
-                "literal_image": str(shot.get("literal_image", "")).strip(),
+                "primary_surface": primary_surface,
+                "support_detail": support_detail,
+                "literal_image": _director_literal_image(shot),
                 "subject_action": str(shot.get("subject_action", "")).strip(),
                 "visible_action": str(shot.get("visible_action", "")).strip(),
                 "continuity_anchor": str(shot.get("beat_continuity_anchor", "")).strip(),
@@ -200,6 +202,8 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "The dominant action must stay more important than any support detail. "
         "Use section_label, story_role, visual_role, and payoff_role_hint as hidden dramatic guidance for why the shot exists in the sequence, but do not repeat those labels in the output. "
         "Use ref_archetype and ref_archetype_contract as hidden guidance for what prompt structure is most reliable for this shot family. "
+        "Treat location, primary_surface, and literal_image as lean structural inputs, not invitations to restore decorative motifs. "
+        "If support_detail is empty, do not invent a replacement optical detail. "
         "Each action line should feel like a necessary keyframe in a music-video chain, not just a good standalone caption. "
         "opening_frame should establish her direction and presence immediately. "
         "continuity_frame should visibly carry the same movement or intention forward. "
@@ -214,11 +218,15 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "Honor the ref_archetype_contract unless the source clearly requires a different nearby physical action. "
         "If ref_archetype_contract suggests source surface to destination surface, continuous handrail contact, wall proximity, curb-at-feet proximity, destination space beyond, over-shoulder look-back, or a small continuation hint, prefer that structure over a generic caption. "
         "If ref_archetype is stair_descent, keep the action on stairs, stair run, handrail, or landing progression; do not make glass, reflection, or window mood the action nucleus. "
+        "If stairs, stairwell, landing, escalator, or ramp are present together with a nearby window, keep dominant_action, start_state, end_state, and wan_action_line on the stair geometry first; do not promote the window edge unless she is directly touching or bracing on it. "
         "If ref_archetype is platform_edge, keep the action on the edge, yellow line, or forward stride by the drop; do not make blurred glass, a train window, or a nearby sign the action nucleus. "
         "If ref_archetype is threshold_crossing or doorway_handoff, keep the action on clearing the threshold, door edge, gate line, exit line, curb, or street edge; do not make the light beyond or the opening mood the event. "
+        "If ref_archetype is threshold_crossing or doorway_handoff, do not make opening a hand, opening the door, or entering a brighter corridor the event when clearing the threshold or landing beyond it is already readable. "
         "If ref_archetype is gate_pass, keep the gate crossing primary and any ticket or card handling secondary inside that larger movement. "
+        "If a ticket, card, or receipt appears, keep it incidental inside a larger crossing or forward movement; do not make turning, checking, or displaying the object the dominant action if a lane, threshold, edge, or path already carries the shot. "
         "If ref_archetype is sidewalk_continuation or curb_crossing, keep the action on stride, curb, crosswalk, pavement, or street edge; do not redirect the beat toward signage, traffic lights, windows, or surrounding glow. "
         "If ref_archetype is window_contact, keep the action on the edge contact and forward continuation; do not let reflection, signage, or surrounding light replace the bodily passage. "
+        "If train windows, carriage windows, or a window line appear beside a walkable path, keep the action on the path, platform edge, sidewalk, or passage beside them; do not make the window line itself the heroine's route unless she is physically pressed to that edge. "
         "If the place contains a strong symbol such as a gate, doorway, clock, sign, or reflection, do not let that object become more important than her body action. "
         "If the source contains a reflection, clock, sign, or glow together with a readable nearby surface or path, keep the surface or path primary and demote the symbolic element to background support. "
         "Prefer actions that keep her readable and present rather than distant and swallowed by the environment. "
@@ -242,6 +250,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "Also avoid fallback-feeling verbs such as stays, remains, keeps her place, or holds still when a clearer visible progression is possible. "
         "Also avoid weak mood-led verbs such as watches, looks toward, gazes at, breathes out, smiles faintly, or lets the space act on her when a more readable physical action is available. "
         "In payoff or release shots, do not let spreading fingers, opening hands, breathing out, or looking across space become the main event when she can instead take a step, clear an edge, pass a gate, or carry her stride forward in the same place. "
+        "Do not let opening her hand, opening her palm, or letting old light fade across her hand become the dominant action when a threshold, lane, edge, or forward step is already available in the same place. "
         "Do not let looking toward lit windows, looking through glass, watching a display, or keeping time with a clock become the main action when she can instead step, turn, brace, pass, descend, or cross within the same place. "
         "Also avoid static reflective phrasing such as studies her reflection, lets the reflection settle, holds the smile, lets a small smile rise, laughs under the light, lifts her face to the light, lifts into the light, opens her fingers toward space, lets the motion settle, lets the floor steady, or holds her ground when a more readable physical progression is possible. "
         "Prefer visible physical actions that read in a keyframe: walking, turning, stepping, leaning, touching, passing, climbing, descending, pausing at a surface, lifting a hand, pushing through, or changing direction. "
@@ -255,16 +264,44 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "If a platform edge, threshold, gate line, doorway edge, passage, or platform path already carries the movement, omit ticking clock, station clock, slow clock, or clock light entirely unless the source literally requires clock contact. "
         "If a blinking light, call light, lit button, or small indicator appears beside a lane, doorway edge, threshold, gate line, wall, or passage, keep that light as a side detail and keep the main action on the larger surface she is crossing. "
         "If a doorway or door edge is present, keep the action on the threshold, passage, frontage, sidewalk, or platform side; do not turn it into a room-entry or bright interior set-piece unless the source literally enters a room. "
+        "If a door is already open or readable as a threshold, prefer clears the doorway, passes the threshold, steps through the door edge, or lands beyond the opening over opens the glass doorway, opens the last door, or enters the brighter corridor. "
         "Avoid vague release locations such as open lane, city margin, city line, widening night, blue morning light, or bright glass edge when the same beat already contains a more playable surface like pavement, platform path, curb, gate lane, exit line, outer sidewalk, or doorway threshold. "
         "Outside release too, do not let lit windows, glowing displays, glass doors, or stopped clocks become the main place or main event when rail, platform edge, turnstile lane, stair, threshold, crosswalk, sidewalk, curb, or gate line can carry the action more clearly. "
         "If lit windows are only nearby, keep the action and place on the platform end, passage line, rail, curb, gate lane, threshold, or wet pavement rather than on the windows. "
         "If a ticket, card, or small object appears with a stopped clock, keep that object as a hand movement inside a larger step, pass, or threshold action rather than turning the shot into a still life under the clock. "
         "If a ticket or card appears with a clock, do not make her fix her gaze on the clock; keep her stride, turn, pass, or threshold movement primary while the hand action stays secondary. "
+        "If a ticket, card, or small paper appears with a window, do not make turning the object in her hand the action nucleus when she can instead keep moving past the path, edge, or threshold beside her. "
         "If a gate lane or turnstile lane appears with a clock, do not let the start state become looking up at the clock; make the lane crossing, slowdown, poised lean, or threshold-ready body shift the readable action instead. "
         "If a handrail, rail, or platform edge appears with a clock, do not let the shot become gaze-up-at-clock. Keep her hand, shoulders, and next step on the rail or edge primary while the clock stays only overhead timing. "
         "If a window, glass, or lit opening appears with a readable forward path, do not make looking toward the light or window the action. Keep the action on passing the edge, brushing the wall, tightening the step, or turning back once while still moving. "
         "If lit windows are present, they must remain background support. Do not build a still subject around lit windows, and do not let them replace the body's forward continuation. "
+        "If windows are only side structure, say she passes the window edge or keeps moving along the path beside the windows; do not say the city opens wide, the corridor brightens, or the windows rise above her when a simpler path action is available. "
+        "If windows are only side structure beside a sidewalk, frontage, passage, compressed lane, gate lane, threshold path, platform edge, or stair run, omit the windows entirely from dominant_action, start_state, end_state, and wan_action_line unless she is directly touching, fogging, pressing into, or turning back from that surface. "
+        "If the primary movement is on a crosswalk, curb, street edge, sidewalk, stair, stairwell, landing, escalator, or ramp, do not keep nearby windows, lit windows, or neon on the window in dominant_action, start_state, end_state, or wan_action_line unless she is directly using that surface. "
+        "If the primary movement is on a platform edge, platform lane, or platform end, do not keep blurred windows, passing train windows, a passing train window, opposite windows, or a nearby window edge in dominant_action, start_state, end_state, or wan_action_line unless her body is directly pressed to that moving window surface. "
+        "If the primary movement is on stairs, stairwell, landing, escalator, ramp, sidewalk, or street edge, do not let windows above her, lit windows beside her, or windows switching on become part of dominant_action, start_state, end_state, or wan_action_line. Keep the line on the climb, descent, or stride instead. "
+        "Do not describe a generic neon-smeared window edge or passing window light streaking by unless she is directly touching, tracing, fogging, or pressing against that window surface. "
+        "If the primary movement is on a gate line, gate lane, turnstile lane, or gate pass, do not keep window light, passing window light, lit panels, or window glow in dominant_action, start_state, end_state, or wan_action_line. Keep the line on clearing the gate and landing beyond it. "
+        "If the primary movement is on a landing, stair top, wet road, street edge, sidewalk, or open pavement, do not keep window light, passing window light, or light spilling from windows in dominant_action, start_state, end_state, or wan_action_line unless she is directly using that window surface. "
+        "If a cold handle, door handle, rail handle, or pull handle appears with a carriage window or train window, make the handle or door edge the playable surface and omit the carriage window from dominant_action, start_state, end_state, and wan_action_line unless she is directly pressed to the glass. "
+        "If a ticket, card, or paper action happens while she is already walking on a sidewalk, gate lane, or platform path, keep the line on the walk and the hand movement; omit nearby opposite windows entirely. "
         "If support_detail is a clock, stopped clock, sign, lit windows, signboard light, or other symbolic timing/light cue, it is acceptable to omit that detail entirely from dominant_action, start_state, end_state, and wan_action_line when the primary surface already gives a clearer readable beat. "
+        "If the location already contains a strong physical surface such as a gate lane, platform edge, stair rail, station floor, threshold, curb, street edge, or passage, do not repeat clock light, lit windows, sign glow, or glass glow unless that detail directly changes how she moves on that surface. "
+        "If a clock, lit windows, or a sign only explains atmosphere, remove it from the action lines and keep the line on the physical surface and the body's movement. "
+        "If a signal light matters only as timing, it may stay in the location but should usually disappear from start_state, end_state, and wan_action_line unless the step happens on the signal change itself. "
+        "If a crosswalk, curb crossing, or far curb already carries the beat, omit the signal light from dominant_action, start_state, end_state, and wan_action_line unless the crossing itself depends on the signal change in that exact beat. "
+        "If a glass wall or ad board is merely beside the path, omit it from the action lines unless her hand, shoulder, or turn directly uses that edge. "
+        "If primary_surface is platform edge, platform lane, station floor, threshold, doorway, sidewalk, or street edge, prefer rain, puddles, rail contact, or the next reachable surface over wind, glass wall, ad board, speaker detail, vending machine light, or fixed signal light when choosing what to verbalize. "
+        "If wind only adds atmosphere and does not materially change her balance, bracing, or crossing, omit wind from dominant_action, start_state, end_state, and wan_action_line. "
+        "Do not describe wind pushing her coat, splitting around her, moving ahead of her, or pulling at her hair when the beat already reads through stride, threshold, curb, gate, stair, frontage, or sidewalk movement. "
+        "If wind is tied only to a passing bus, train, or vehicle and not to her actual balance on the surface, omit that bus wind or passing wind entirely and keep the beat on the step, stair, curb, or path instead. "
+        "If the beat is on a platform edge or doorway gap and she is not visibly bracing into the wind, omit crosswind and platform wind from dominant_action, start_state, end_state, and wan_action_line and keep the beat on turning, stepping through, or continuing along the edge. "
+        "If the primary movement is on steps, stairs, stairwell, landing, or escalator and she is not visibly bracing into the wind, omit wind from dominant_action, start_state, end_state, and wan_action_line and keep the line on the climb, descent, or continued step. "
+        "If she is already clearing a doorway, threshold, or exit line, do not add 'into the wind' unless the source clearly requires the wind as the obstacle of the beat. "
+        "If she is already walking on a sidewalk or street edge while carrying a cup, bag, or other small object, do not make a store window or convenience-store window the action anchor; keep the line on the sidewalk continuation and the carried object instead. "
+        "If she is already on a curb, sidewalk, or street edge, do not keep a convenience-store window, store window, or passing car window in dominant_action, start_state, end_state, or wan_action_line. Keep the line on the curb or sidewalk continuation instead. "
+        "If the beat is sidewalk_continuation, curb_crossing, or another plain locomotion shot, do not write lit windows falling behind her, windows beside her, or city light moving in the glass as continuity_delta, start_state, end_state, or wan_action_line. Keep those lines on stride, curb, crosswalk, sidewalk, or the next reachable surface instead. "
+        "If the beat is true window_contact, keep continuity_delta on her contact changing against the window edge or glass edge. Do not widen it into lit windows behind her or city light drifting across the glass unless that contact itself is still the event. "
         "For doorway, gate, and final-opening shots, prefer step-through or cross-through actions with one hand guiding past a rail, gate, or edge instead of treating the bright opening itself as the main subject. "
         "If a doorway or opening is present, write it as a practical threshold crossing with a door edge, hinge side, threshold strip, or first step through it, not as a portal image or symbolic opening. "
         "When ending a doorway or gate action, land on threshold, gate line, curb, pavement, street edge, or passage beyond it; avoid awkward destination nouns such as frame or abstract opening space. "
@@ -282,6 +319,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "If the source mentions breath, hesitation, memory, heartbeat, pause, or stillness, express it through a visible body action in the same space rather than breath-only or gaze-only wording. "
         "Prefer hands, shoulders, steps, and contact with nearby surfaces over pause-only or breath-only phrasing. "
         "When the beat is emotionally suspended, show that suspension through a turn, slowed step, hand on glass or rail, shift at a threshold, or another readable physical hold in the same place. "
+        "If the source suggests opening a hand, releasing a grip, or light fading over her hand, convert that into the nearest readable crossing, step, clear, or forward carry on the same surface rather than a hand-only beat. "
         "If the source does not explicitly include another person, do not introduce one; keep the action strictly single-subject. "
         "If the source suggests hand-clasping, reunion, or facing someone without an explicitly visible second body, rewrite that beat as a single-subject action through crossing a gate, passing a rail, stepping through a doorway, clearing a platform edge, or reaching the far side of a street in the same place. "
         "If the source suggests a hug or embrace without an explicitly visible second body, rewrite it as a continued step-through or cross-through action while remaining alone in frame. "
@@ -386,7 +424,23 @@ def _infer_ref_archetype(shot: dict) -> str:
         return "doorway_handoff"
     if any(token in primary_surface for token in ("passage", "wall")) and any(token in text for token in ("rail", "narrow", "close")):
         return "passage_compression"
-    if any(token in primary_surface for token in ("window", "glass")):
+    window_contact_tokens = (
+        "press",
+        "pressed",
+        "palm",
+        "touch",
+        "touches",
+        "touching",
+        "brush",
+        "brushing",
+        "trace",
+        "tracing",
+        "shoulder against",
+        "hand on",
+    )
+    if any(token in primary_surface for token in ("window", "glass")) and any(
+        token in text for token in window_contact_tokens
+    ):
         return "window_contact"
     if "sidewalk" in primary_surface or "pavement" in primary_surface or "street" in primary_surface:
         return "sidewalk_continuation"
@@ -397,6 +451,77 @@ def _infer_ref_archetype(shot: dict) -> str:
     if any(token in text for token in ("pause", "braces", "braced", "holds for a beat", "holds her step")):
         return "brace_pause"
     return "sidewalk_continuation"
+
+
+def _director_support_detail(shot: dict) -> str:
+    detail = " ".join(str(shot.get("support_detail", "")).strip().split())
+    primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().split()).lower()
+    lowered = detail.lower()
+    if not detail:
+        return ""
+    symbolic_tokens = (
+        "clock",
+        "sign",
+        "lit windows",
+        "window light",
+        "signal light",
+        "display",
+        "glow",
+        "reflection",
+        "glass wall",
+        "glass door",
+        "ad board",
+        "speaker",
+        "vending machine light",
+        "wind",
+    )
+    if any(token in lowered for token in symbolic_tokens):
+        return ""
+    if any(token in primary_surface for token in ("window", "glass", "car window")) and any(
+        token in lowered for token in ("fog", "fogged", "condensation", "mist")
+    ):
+        return detail
+    material_tokens = (
+        "rain",
+        "drizzle",
+        "puddle",
+        "wet",
+        "rail",
+        "handrail",
+        "handle",
+        "door movement",
+        "door swing",
+        "hinge",
+        "threshold strip",
+        "yellow line",
+        "passing traffic",
+        "traffic blur",
+        "bag strap",
+    )
+    if any(token in lowered for token in material_tokens):
+        return detail
+    return ""
+
+
+def _director_location(shot: dict) -> str:
+    primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().rstrip(".").split())
+    support_detail = _director_support_detail(shot)
+    location = " ".join(str(shot.get("location_description", "")).strip().rstrip(".").split())
+    if primary_surface:
+        if support_detail:
+            return f"{primary_surface} with {support_detail}"
+        return primary_surface
+    return location or _literal_scene_description(shot)
+
+
+def _director_literal_image(shot: dict) -> str:
+    primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().rstrip(".").split())
+    support_detail = _director_support_detail(shot)
+    if primary_surface:
+        if support_detail:
+            return f"{primary_surface} with {support_detail}"
+        return primary_surface
+    return " ".join(str(shot.get("literal_image", "")).strip().rstrip(".").split())
 
 
 def _ref_archetype_contract(archetype: str) -> str:

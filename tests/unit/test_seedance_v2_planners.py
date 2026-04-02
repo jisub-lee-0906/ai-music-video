@@ -180,9 +180,9 @@ def test_scene_plan_v2_smooths_high_cost_adjacent_family_jumps():
     scene = build_scene_plan_v2(config, payload)
     families = [row["environment_family"] for row in scene["shot_packages"]]
     adjacent_pairs = list(zip(families, families[1:]))
-    assert "train_window_glass" not in families
-    assert ("stair_landing", "train_window_glass") not in adjacent_pairs
-    assert ("train_window_glass", "stair_landing") not in adjacent_pairs
+    assert "transit_side_edge" not in families
+    assert ("vertical_path", "transit_side_edge") not in adjacent_pairs
+    assert ("transit_side_edge", "vertical_path") not in adjacent_pairs
 
 
 def test_scene_plan_v2_open_world_prefers_connected_exterior_families_over_train_window():
@@ -211,7 +211,7 @@ def test_scene_plan_v2_open_world_prefers_connected_exterior_families_over_train
     }
     scene = build_scene_plan_v2(config, payload)
     families = [row["environment_family"] for row in scene["shot_packages"]]
-    assert "train_window_glass" not in families
+    assert "transit_side_edge" not in families
 
 
 def test_director_plan_v2_abstracts_carryover_when_family_changes():

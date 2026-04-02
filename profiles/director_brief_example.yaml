@@ -20,10 +20,10 @@ visual:
 mv:
   story_world: >
     One connected late-night station-side city block where the same heroine moves through thresholds,
-    passages, stairs, wet pavement, reflected light, windows, gates, and platform edges.
+    passages, stairs, wet pavement, gates, doorways, sidewalks, and platform edges.
   action_vocabulary: >
     Favor natural visible actions that can read clearly in a music-video keyframe, such as walking, turning,
-    pausing, crossing light, touching rails or glass, and shifting direction inside the space.
+    pausing at a surface, crossing thresholds, touching rails or door edges, and shifting direction inside the space.
   payoff_style: >
     The final return should feel decisive and physically open, with the heroine clearly crossing into the wider world she already belongs to.
   outro_feel: >
@@ -61,7 +61,7 @@ director:
   target_style: >
     cinematic live-action Korean pop music video with premium realism, bright idol presence, and stable human continuity
   world_core: >
-    one connected late-night station-side world with reflective surfaces, urban depth, and consistent heroine continuity
+    one connected late-night station-side world with playable surfaces, urban depth, and consistent heroine continuity
   ref_frame_style: >
     natural cinematic music-video keyframe with grounded environmental realism
   wan_motion_style: >
@@ -70,9 +70,9 @@ director:
     morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi
   motif_families:
     - station threshold and entry point
-    - wet pavement and reflected light
+    - wet pavement and ground contact
     - stair rail and platform stairs
-    - station window and passing exterior light
+    - doorway edge and side passage
     - gate line and platform edge
   section_grammar:
     Intro: first entry into the connected world

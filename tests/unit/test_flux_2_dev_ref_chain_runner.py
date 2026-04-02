@@ -69,7 +69,7 @@ def test_flux2_ref_plan_v2_uses_literal_scene_description_for_ref_prompts():
             "shot_packages": [
                 {
                     "shot_id": "S001",
-                    "environment_family": "wet_curb_reflection",
+                    "environment_family": "wet_ground_path",
                     "environment_anchor": "a narrow side street after rain with one raised curb edge, shallow roadside water catching storefront spill light, and an empty lane trailing behind her",
                     "location_description": "a narrow side street after rain with one raised curb edge, shallow roadside water catching storefront spill light, and an empty lane trailing behind her",
                     "lighting_intent": "clean city-night spill",
@@ -79,7 +79,7 @@ def test_flux2_ref_plan_v2_uses_literal_scene_description_for_ref_prompts():
                 },
                 {
                     "shot_id": "S002",
-                    "environment_family": "wet_pavement_reflection",
+                    "environment_family": "wet_ground_path",
                     "environment_anchor": "a broad wet roadway after rain with shallow puddles, painted lane markings, reflective asphalt, and distant traffic glow stretching behind her",
                     "location_description": "a broad wet roadway after rain with shallow puddles, painted lane markings, reflective asphalt, and distant traffic glow stretching behind her",
                     "lighting_intent": "clean city-night spill",
