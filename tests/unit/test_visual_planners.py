@@ -1,5 +1,5 @@
 from ai_mv.engines.scene_plan.planner import build_scene_plan
-from ai_mv.engines.director_plan.planner import build_director_plan
+from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _planner_primary_surface, build_director_plan
 from ai_mv.engines.render_plan.planner import build_render_plan
 from ai_mv.core.stages.wan_interpolation import build_wan_plan
 
@@ -82,13 +82,15 @@ def test_scene_director_render_plan_chain():
     render = build_render_plan(_config(), {**_payload(), "director_plan": director})
     assert render["master_anchor"]["render_strategy"] == "tti_master"
     assert render["shot_packages"][0]["render_strategy"] == "ref_pair"
-    assert render["wan_chain"][0]["start_source"] == "ref_start"
-    assert render["wan_chain"][1]["start_source"] == "previous_end"
+    assert len(render["wan_chain"]) == 1
+    assert render["wan_chain"][0]["start_source"] == "previous_ref_end"
+    assert render["wan_chain"][0]["start_ref_shot_id"] == "B001"
+    assert render["wan_chain"][0]["end_ref_shot_id"] == "B002"
     assert render["wan_chain"][0]["environment_anchor"]
     assert render["wan_chain"][0]["location_description"]
     assert render["wan_chain"][0]["duration_sec"] > 0
-    assert "press" in render["wan_chain"][0]["visible_action"]
-    assert any(token in render["wan_chain"][0]["visible_action"] for token in ("window", "glass"))
+    assert "step" in render["wan_chain"][0]["visible_action"]
+    assert "gate" in render["wan_chain"][0]["visible_action"]
     assert render["wan_chain"][0]["wan_action_line"]
     assert render["shot_packages"][0]["ref_prompt_clauses"]["subject_intro"]
     assert render["shot_packages"][0]["ref_prompt_clauses"]["ref_archetype"]
@@ -292,26 +294,6 @@ def test_wan_plan_uses_duration_aware_natural_prompt_lines():
     payload = {
         **_payload(),
         "render_plan": render,
-        "clip_routes": [
-            {
-                "shot_id": "B001",
-                "duration_sec": 0.8,
-                "section_name": "Verse 1",
-                "section_label": "Verse 1",
-                "clip_index": 1,
-                "clip_count": 2,
-                "timeline_index": 1,
-            },
-            {
-                "shot_id": "B002",
-                "duration_sec": 2.4,
-                "section_name": "Verse 1",
-                "section_label": "Verse 1",
-                "clip_index": 2,
-                "clip_count": 2,
-                "timeline_index": 2,
-            },
-        ],
         "flux2_ref_images": [
             {"shot_id": "B001", "start": "start.png", "end": "end1.png"},
             {"shot_id": "B002", "start": "end1.png", "end": "end2.png"},
@@ -320,8 +302,41 @@ def test_wan_plan_uses_duration_aware_natural_prompt_lines():
     wan = build_wan_plan(config, payload)
     assert "Use the provided first and last keyframes" not in wan["clips"][0]["positive_prompt"]
     assert "same space" not in wan["clips"][0]["positive_prompt"]
-    assert "same space" not in wan["clips"][1]["positive_prompt"]
     assert "The same location light stays grounded" not in wan["clips"][0]["positive_prompt"]
+    assert len(wan["clips"]) == 1
+    assert wan["clips"][0]["start"] == "end1.png"
+    assert wan["clips"][0]["end"] == "end2.png"
+    assert wan["clips"][0]["start_source"] == "previous_ref_end"
+    assert wan["clips"][0]["start_ref_shot_id"] == "B001"
+    assert wan["clips"][0]["end_ref_shot_id"] == "B002"
+
+
+def test_director_archetype_prefers_doorway_handoff_over_threshold_when_door_surface_is_primary():
+    shot = {
+        "zone": "threshold",
+        "primary_surface": "doorway threshold",
+        "location_description": "a wet doorway threshold leading to a narrow passage",
+        "environment_anchor": "a wet doorway threshold leading to a narrow passage",
+        "subject_action": "she clears the doorway",
+        "visible_action": "she steps through the doorway",
+        "literal_image": "wet door edge and passage beyond",
+        "support_detail": "",
+        "visual_role": "handoff_frame",
+    }
+    assert _infer_ref_archetype(shot) == "doorway_handoff"
+
+
+def test_director_primary_surface_uses_archetype_priority_over_optical_noise():
+    shot = {
+        "ref_archetype": "gate_pass",
+        "primary_surface": "gate lane",
+        "location_description": "ticket gate lane with window light sliding across the floor",
+        "environment_anchor": "ticket gate lane with window light sliding across the floor",
+        "literal_image": "window light on a ticket gate lane",
+        "support_detail": "window light",
+        "golden_shot_guidance": {},
+    }
+    assert _planner_primary_surface(shot, "gate_pass") == "gate lane"
 
 
 def test_wan_negative_prompt_avoids_camera_language():

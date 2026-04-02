@@ -31,14 +31,25 @@ def build_render_plan(config: dict, payload: dict) -> dict:
             "lighting": str(shot_row.get("ref_lighting_line", "")).strip() or str(shot_row.get("lighting_intent", "")).strip(),
         }
         shot_packages.append(shot_row)
-        chain_key = f"{shot_row['shot_id']}:{index}"
+    for index, shot_row in enumerate(shot_packages[1:], start=2):
+        prev_shot = shot_packages[index - 2]
+        clip_index = index - 1
+        clip_count = max(1, len(shot_packages) - 1)
+        chain_key = f"{prev_shot['shot_id']}->{shot_row['shot_id']}"
         wan_row = {
             "shot_id": shot_row["shot_id"],
             "render_strategy": "wan_chain",
-            "start_source": "ref_start" if index == 1 else "previous_end",
+            "start_source": "previous_ref_end",
+            "start_ref_shot_id": prev_shot["shot_id"],
+            "end_ref_shot_id": shot_row["shot_id"],
             "previous_chain_key": previous_chain_key,
             "chain_key": chain_key,
             "end_source": f"ref_end:{shot_row['shot_id']}",
+            "clip_index": clip_index,
+            "clip_count": clip_count,
+            "timeline_index": clip_index,
+            "section_name": str(shot_row.get("section_name", "")).strip(),
+            "section_label": str(shot_row.get("section_label", "")).strip(),
             "environment_anchor": shot_row["environment_anchor"],
             "location_description": str(shot_row.get("location_description", "")).strip(),
             "lighting_intent": str(shot_row.get("lighting_intent", "")).strip(),
@@ -87,7 +98,7 @@ def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
     return (
         "Map each director shot into backend strategies using one global TTI master anchor, "
         "REF start/end image pairs per shot, a meaning-preserving render verbalizer for natural prompt prose, "
-        "and a WAN chain that reuses previous_end after the first clip."
+        "and a WAN chain that bridges adjacent REF keyframes as 1-2, 2-3, 3-4."
     )
 
 

@@ -36,7 +36,10 @@ def _prepare_clip(config: dict, clip: dict) -> dict:
     out["start"] = stage_image_for_comfy(config, str(out["start"]))
     out["end"] = stage_image_for_comfy(config, str(out["end"]))
     out["wan_size"] = str(config["render"]["wan_size"])
-    out["filename_prefix"] = wan_clip_prefix(clip["shot_id"])
+    out["filename_prefix"] = wan_clip_prefix(
+        str(clip.get("start_ref_shot_id", "")).strip() or str(clip["shot_id"]).strip(),
+        str(clip.get("end_ref_shot_id", "")).strip() or str(clip["shot_id"]).strip(),
+    )
     return out
 
 

@@ -130,7 +130,7 @@ def test_wan_mapper():
         "positive_prompt": "A kitten made of ice crystals wakes and transforms into a giant beast.",
         "negative_prompt": "blur",
         "wan_size": "640x640",
-        "filename_prefix": wan_clip_prefix("s_001"),
+        "filename_prefix": wan_clip_prefix("s_001", "s_002"),
     }
     out = map_wan_workflow(cfg, clip)
     nodes = out["node.inputs"]

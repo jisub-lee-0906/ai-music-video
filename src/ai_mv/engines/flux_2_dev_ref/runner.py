@@ -14,22 +14,16 @@ def run_flux2_ref(config: dict, plan: dict) -> list[dict]:
     if not items:
         return out
     previous_item: dict | None = None
-    previous_end = ""
     for item in items:
         current = dict(item)
-        if previous_end:
-            start = previous_end
-            start_source = "previous_end"
-        else:
-            start = _render_start(config, current)
-            start_source = "rendered_start"
+        start = _render_start(config, current)
+        start_source = "master_anchor"
         end_item = dict(current)
-        end_item["ref"] = start
+        end_item["ref"] = str(current.get("anchor") or current.get("ref", "")).strip()
         end = _render_end(config, end_item)
         packed = _pack_item(current, start, end, start_source, previous_item)
         out.append(packed)
         previous_item = packed
-        previous_end = end
     return out
 
 

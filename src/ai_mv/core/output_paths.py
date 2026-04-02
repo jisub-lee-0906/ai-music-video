@@ -15,8 +15,8 @@ def master_anchor_prefix() -> str:
 
 
 def flux2_ref_frame_prefix(shot_id: str, frame_name: str) -> str:
-    return f"{KEYFRAME_DIR}/{str(shot_id).strip()}_{str(frame_name).strip()}"
+    return f"{KEYFRAME_DIR}/ref_{str(shot_id).strip()}_{str(frame_name).strip()}"
 
 
-def wan_clip_prefix(shot_id: str) -> str:
-    return f"{CLIP_DIR}/{str(shot_id).strip()}"
+def wan_clip_prefix(start_shot_id: str, end_shot_id: str) -> str:
+    return f"{CLIP_DIR}/wan_{str(start_shot_id).strip()}__{str(end_shot_id).strip()}"

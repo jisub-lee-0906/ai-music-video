@@ -20,6 +20,10 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
                 "shot_id": str(clip["shot_id"]),
                 "start_source": str(clip.get("start_source", "")),
                 "prev_chain_key": str(clip.get("prev_chain_key", "")),
+                "start_ref_shot_id": str(clip.get("start_ref_shot_id", "")),
+                "end_ref_shot_id": str(clip.get("end_ref_shot_id", "")),
+                "start": str(clip.get("start", "")),
+                "end": str(clip.get("end", "")),
                 "positive_prompt": str(clip["positive_prompt"]),
             }
             for clip in plan["clips"]
@@ -34,7 +38,7 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "wan_interpolation",
-                {"prompt": "Generate WAN start/end clip prompts from the render chain using previous_end continuity after the first shot."},
+                {"prompt": "Generate WAN start/end clip prompts from adjacent REF keyframes using end-to-end chaining (1-2, 2-3, 3-4)."},
             ),
         },
         [],
@@ -44,25 +48,18 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
 def build_wan_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     fps = parse_target(config["video"]["target"])[2]
-    routes = [row for row in payload.get("clip_routes", []) if isinstance(row, dict)]
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in payload.get("flux2_ref_images", []) if isinstance(row, dict)}
-    clip_map = {
-        str(row.get("shot_id", "")).strip(): row
-        for row in payload.get("render_plan", {}).get("wan_chain", [])
-        if isinstance(row, dict)
-    }
+    chains = [row for row in payload.get("render_plan", {}).get("wan_chain", []) if isinstance(row, dict)]
     clips: list[dict] = []
-    prev_end = ""
-    prev_key = ""
-    for index, route in enumerate(routes, start=1):
-        shot_id = str(route.get("shot_id", "")).strip()
-        ref_row = ref_map[shot_id]
-        chain = {**clip_map[shot_id]}
-        start = str(ref_row["start"])
-        if index > 1 and prev_end:
-            start = prev_end
-        end = str(ref_row["end"])
-        duration_sec = float(route.get("duration_sec", 2.0))
+    for index, chain in enumerate(chains, start=1):
+        shot_id = str(chain.get("shot_id", "")).strip()
+        start_ref_shot_id = str(chain.get("start_ref_shot_id", "")).strip() or shot_id
+        end_ref_shot_id = str(chain.get("end_ref_shot_id", "")).strip() or shot_id
+        start_ref = ref_map[start_ref_shot_id]
+        end_ref = ref_map[end_ref_shot_id]
+        start = str(start_ref["end"])
+        end = str(end_ref["end"])
+        duration_sec = float(chain.get("duration_sec", 2.0))
         chain["duration_sec"] = duration_sec
         frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
         positive = _wan_positive_prompt(brief, chain)
@@ -76,19 +73,19 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "end": end,
                 "fps": fps,
                 "frames": frames,
-                "section_name": str(route.get("section_name", "")).strip(),
-                "section_label": str(route.get("section_label", "")).strip(),
+                "section_name": str(chain.get("section_name", "")).strip(),
+                "section_label": str(chain.get("section_label", "")).strip(),
                 "shot_type": "DETAIL_INSERT",
-                "is_chorus": "chorus" in str(route.get("section_label", "")).lower(),
+                "is_chorus": "chorus" in str(chain.get("section_label", "")).lower(),
                 "pose_delta": "",
                 "emotion": "",
                 "scene_detail": str(chain.get("environment_anchor", "")).strip(),
-                "space_relation": str(route.get("section_label", "")).strip(),
+                "space_relation": str(chain.get("section_label", "")).strip(),
                 "start_frame": {},
                 "end_frame": {},
                 "kinetic_transition": "carry",
                 "lighting_fx": "",
-                "kinetic_intensity": "high" if "chorus" in str(route.get("section_label", "")).lower() else "medium",
+                "kinetic_intensity": "high" if "chorus" in str(chain.get("section_label", "")).lower() else "medium",
                 "location_family": "",
                 "symbolic_image": "",
                 "motif_object": "",
@@ -97,21 +94,23 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "space_event": str(chain.get("environment_anchor", "")).strip(),
                 "palette_mode": "",
                 "character_render_mode": "",
-                "face_exposure_level": str(route.get("face_exposure_level", "")).strip(),
+                "face_exposure_level": str(chain.get("face_exposure_level", "")).strip(),
                 "heroine_visibility": "clear",
-                "continuity_priority": str(route.get("continuity_priority", "")).strip(),
+                "continuity_priority": str(chain.get("continuity_priority", "")).strip(),
                 "wardrobe_read": "high",
                 "continuity_lock": "",
-                "route_reason": str(route.get("route_reason", "")).strip(),
+                "route_reason": str(chain.get("route_reason", "")).strip(),
                 "scene_change_level": "evolve",
                 "anchor_strategy": "refine_anchor",
                 "use_ref": True,
-                "clip_index": int(route.get("clip_index", index)),
-                "clip_count": int(route.get("clip_count", len(routes))),
-                "timeline_index": int(route.get("timeline_index", index)),
+                "clip_index": int(chain.get("clip_index", index)),
+                "clip_count": int(chain.get("clip_count", len(chains))),
+                "timeline_index": int(chain.get("timeline_index", index)),
                 "chain_key": str(chain.get("chain_key", f"{shot_id}:{index}")).strip(),
-                "start_source": "ref_start" if index == 1 else "previous_end",
-                "prev_chain_key": "" if index == 1 else prev_key,
+                "start_source": str(chain.get("start_source", "previous_ref_end")).strip(),
+                "prev_chain_key": str(chain.get("previous_chain_key", "")).strip(),
+                "start_ref_shot_id": start_ref_shot_id,
+                "end_ref_shot_id": end_ref_shot_id,
                 "duration_sec": duration_sec,
                 "lighting_intent": str(chain.get("lighting_intent", "")).strip(),
                 "location_description": str(chain.get("location_description", "")).strip(),
@@ -123,11 +122,9 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "wan_transition_contract": str(transition.get("contract", "")).strip(),
                 "positive_prompt": positive,
                 "negative_prompt": negative,
-                "energy": _energy_for_section(str(route.get('section_label', '')).strip()),
+                "energy": _energy_for_section(str(chain.get('section_label', '')).strip()),
             }
         )
-        prev_end = end
-        prev_key = str(chain.get("chain_key", f"{shot_id}:{index}")).strip()
     return {"clips": clips}
 def _wan_positive_prompt(brief: dict, chain: dict) -> str:
     verbalized = str(chain.get("wan_positive_prompt_text", "")).strip()

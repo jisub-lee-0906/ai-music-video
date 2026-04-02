@@ -75,6 +75,8 @@ def build_backend_preview(config: dict, payload: dict) -> dict:
                 "render_strategy": "wan_chain",
                 "start_source": row["start_source"],
                 "previous_chain_key": row.get("previous_chain_key", ""),
+                "start_ref_shot_id": row.get("start_ref_shot_id", ""),
+                "end_ref_shot_id": row.get("end_ref_shot_id", ""),
                 "raw_prompt_clauses": {
                     "subject_intro": str(clauses.get("subject_intro", "")).strip(),
                     "location": str(clauses.get("location", "")).strip(),

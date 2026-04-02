@@ -3,7 +3,7 @@ from ai_mv.core.output_paths import ANCHOR_DIR, flux2_ref_frame_prefix
 from ai_mv.core.stages.flux2_ref_chain import build_flux2_ref_plan
 
 
-def test_flux2_ref_uses_first_start_then_chains_previous_end_across_shots(monkeypatch):
+def test_flux2_ref_uses_master_anchor_for_every_start_and_end(monkeypatch):
     trace: list[tuple[str, str, str]] = []
 
     def _fake_render_frame(_config, item, *, frame_name, frame_idx):
@@ -23,19 +23,22 @@ def test_flux2_ref_uses_first_start_then_chains_previous_end_across_shots(monkey
     out = flux2_ref_runner.run_flux2_ref({}, plan)
 
     assert out[0]["start"] == f"{flux2_ref_frame_prefix('S001', 'start')}.png"
-    assert out[1]["start"] == out[0]["end"]
-    assert out[2]["start"] == out[1]["end"]
-    assert out[3]["start"] == out[2]["end"]
-    assert out[0]["start_source"] == "rendered_start"
-    assert out[1]["start_source"] == "previous_end"
-    assert out[2]["start_source"] == "previous_end"
-    assert out[3]["start_source"] == "previous_end"
+    assert out[1]["start"] == f"{flux2_ref_frame_prefix('S002', 'start')}.png"
+    assert out[2]["start"] == f"{flux2_ref_frame_prefix('S003', 'start')}.png"
+    assert out[3]["start"] == f"{flux2_ref_frame_prefix('S004', 'start')}.png"
+    assert out[0]["start_source"] == "master_anchor"
+    assert out[1]["start_source"] == "master_anchor"
+    assert out[2]["start_source"] == "master_anchor"
+    assert out[3]["start_source"] == "master_anchor"
     assert trace == [
         ("S001", f"{ANCHOR_DIR}/master.png", "start"),
-        ("S001", f"{flux2_ref_frame_prefix('S001', 'start')}.png", "end"),
-        ("S002", f"{flux2_ref_frame_prefix('S001', 'end')}.png", "end"),
-        ("S003", f"{flux2_ref_frame_prefix('S002', 'end')}.png", "end"),
-        ("S004", f"{flux2_ref_frame_prefix('S003', 'end')}.png", "end"),
+        ("S001", f"{ANCHOR_DIR}/master.png", "end"),
+        ("S002", f"{ANCHOR_DIR}/master.png", "start"),
+        ("S002", f"{ANCHOR_DIR}/master.png", "end"),
+        ("S003", f"{ANCHOR_DIR}/master.png", "start"),
+        ("S003", f"{ANCHOR_DIR}/master.png", "end"),
+        ("S004", f"{ANCHOR_DIR}/master.png", "start"),
+        ("S004", f"{ANCHOR_DIR}/master.png", "end"),
     ]
 
 

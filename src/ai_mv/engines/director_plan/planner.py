@@ -128,7 +128,8 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
         return
     rows = []
     for shot in shot_packages:
-        primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().split())
+        archetype = str(shot.get("ref_archetype", "")).strip()
+        primary_surface = _planner_primary_surface(shot, archetype)
         support_detail = _director_support_detail(shot)
         rows.append(
             {
@@ -146,7 +147,7 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
                 "continuity_anchor": str(shot.get("beat_continuity_anchor", "")).strip(),
                 "payoff_role_hint": str(shot.get("payoff_role_hint", "")).strip(),
                 "visual_role": str(shot.get("visual_role", "")).strip(),
-                "ref_archetype": str(shot.get("ref_archetype", "")).strip(),
+                "ref_archetype": archetype,
                 "ref_archetype_variant": str(shot.get("ref_archetype_variant", "")).strip(),
                 "ref_archetype_contract": str(shot.get("ref_archetype_contract", "")).strip(),
                 "golden_shot_guidance": dict(shot.get("golden_shot_guidance", {})),
@@ -434,10 +435,10 @@ def _infer_ref_archetype(shot: dict) -> str:
         token in f"{subject_action} {visible_action} {location}" for token in ("cross", "crosses", "crossing", "far side")
     ):
         return "curb_crossing"
-    if any(token in primary_surface for token in ("threshold", "exit line", "street edge")):
-        return "threshold_crossing"
     if any(token in primary_surface for token in ("doorway", "door edge", "opening")):
         return "doorway_handoff"
+    if any(token in primary_surface for token in ("threshold", "exit line", "street edge")):
+        return "threshold_crossing"
     if zone == "compression" and any(token in text for token in ("lane", "passage", "wall", "rail", "narrow", "close", "wet lane", "street lane")):
         return "passage_compression"
     if any(token in primary_surface for token in ("passage", "wall")) and any(token in text for token in ("rail", "narrow", "close")):
@@ -544,8 +545,82 @@ def _director_support_detail(shot: dict) -> str:
     return ""
 
 
+def _planner_primary_surface(shot: dict, archetype: str) -> str:
+    guidance = dict(shot.get("golden_shot_guidance", {}))
+    preferred = " ".join(str(guidance.get("preferred_surface", "")).strip().split())
+    if preferred:
+        return preferred
+    picked = _archetype_surface_from_shot(shot, archetype)
+    if picked:
+        return picked
+    return " ".join(str(shot.get("primary_surface", "")).strip().split())
+
+
+def _archetype_surface_from_shot(shot: dict, archetype: str) -> str:
+    grammar = ref_archetype_grammar(archetype)
+    priorities = grammar.get("surface_priority", [])
+    if not isinstance(priorities, list):
+        priorities = []
+    sources = [
+        " ".join(str(shot.get("primary_surface", "")).strip().split()),
+        " ".join(str(shot.get("location_description", "")).strip().split()),
+        " ".join(str(shot.get("environment_anchor", "")).strip().split()),
+        " ".join(str(shot.get("literal_image", "")).strip().split()),
+    ]
+    lowered_sources = [src.lower() for src in sources if src]
+    for priority in [str(p).strip() for p in priorities if str(p).strip()]:
+        for source in lowered_sources:
+            phrase = _surface_phrase_for_priority(priority, source)
+            if phrase:
+                return phrase
+    return ""
+
+
+def _surface_phrase_for_priority(priority: str, source: str) -> str:
+    token = priority.lower()
+    aliases = {
+        "threshold": ["threshold", "threshold line", "door threshold"],
+        "exit line": ["exit line", "station exit line", "gate line"],
+        "curb": ["far curb", "curb", "curb line"],
+        "street edge": ["wet street edge", "street edge", "road edge"],
+        "doorway threshold": ["doorway threshold", "door threshold", "doorway"],
+        "door edge": ["door edge", "door frame", "hinge side"],
+        "passage beyond": ["passage beyond", "passage", "lane beyond"],
+        "gate lane": ["gate lane", "ticket gate lane"],
+        "turnstile lane": ["turnstile lane", "turnstile"],
+        "gate threshold": ["gate threshold", "gate line", "gate opening"],
+        "platform edge": ["wet platform edge", "platform edge", "track-side platform edge"],
+        "yellow line": ["yellow line", "platform yellow line"],
+        "platform lane": ["platform lane", "lit platform lane"],
+        "passage line": ["passage line", "narrow passage", "passage"],
+        "wall": ["wall", "side wall"],
+        "rail": ["rail", "metal rail", "handrail"],
+        "window edge": ["window edge", "carriage window edge", "glass edge"],
+        "glass edge": ["glass edge", "window edge"],
+        "crosswalk": ["wet crosswalk", "crosswalk"],
+        "sidewalk": ["wet sidewalk", "sidewalk"],
+        "pavement": ["wet pavement", "pavement"],
+        "curb line": ["curb line", "curb"],
+        "stairs": ["wet station stairs", "stairs", "station stairs"],
+        "stairwell": ["station stairwell", "stairwell"],
+        "landing": ["stair landing", "landing"],
+        "handrail": ["metal handrail", "handrail", "rail"],
+        "underpass ramp": ["underpass ramp", "ramp"],
+        "slope": ["slope", "sloped passage"],
+        "corridor": ["narrow indoor corridor", "indoor corridor", "corridor"],
+        "hall": ["hall", "hallway"],
+        "bench": ["wet bench", "bench"],
+        "seat end": ["seat end", "bench end"],
+    }
+    candidates = aliases.get(token, [token])
+    for candidate in candidates:
+        if candidate in source:
+            return candidate
+    return ""
+
+
 def _director_location(shot: dict) -> str:
-    primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().rstrip(".").split())
+    primary_surface = _planner_primary_surface(shot, str(shot.get("ref_archetype", "")).strip()).rstrip(".")
     support_detail = _director_support_detail(shot)
     location = " ".join(str(shot.get("location_description", "")).strip().rstrip(".").split())
     if primary_surface:
@@ -556,7 +631,7 @@ def _director_location(shot: dict) -> str:
 
 
 def _director_literal_image(shot: dict) -> str:
-    primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().rstrip(".").split())
+    primary_surface = _planner_primary_surface(shot, str(shot.get("ref_archetype", "")).strip()).rstrip(".")
     support_detail = _director_support_detail(shot)
     if primary_surface:
         if support_detail:
