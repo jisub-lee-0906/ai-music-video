@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
+from ai_mv.core.prompt_grammar import wan_transition_family
 from ai_mv.core.stages.flux2_ref_chain_v2 import _literal_scene_description
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.wan_2_2_flf2v.runner import run_wan
@@ -66,6 +67,8 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
         frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
         positive = _wan_positive_prompt(brief, chain)
         negative = _wan_negative_prompt(brief)
+        transition_family = str(chain.get("wan_transition_family", "")).strip()
+        transition = wan_transition_family(transition_family)
         clips.append(
             {
                 "shot_id": shot_id,
@@ -116,6 +119,8 @@ def build_wan_plan_v2(config: dict, payload: dict) -> dict:
                 "visible_action": str(chain.get("visible_action", "")).strip(),
                 "subject_action": str(chain.get("subject_action", "")).strip(),
                 "wan_action_line": str(chain.get("wan_action_line", "")).strip(),
+                "wan_transition_family": transition_family,
+                "wan_transition_contract": str(transition.get("contract", "")).strip(),
                 "positive_prompt": positive,
                 "negative_prompt": negative,
                 "energy": _energy_for_section(str(route.get('section_label', '')).strip()),

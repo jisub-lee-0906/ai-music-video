@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.seedance_v2_normalize import normalize_director_plan_v2
 from ai_mv.core.director_brief import build_director_brief_intent
+from ai_mv.core.prompt_grammar import ref_archetype_grammar, ref_archetype_variant
 from ai_mv.core.stages.flux2_ref_chain_v2 import _literal_scene_description
 from ai_mv.infra.codex_cli_client import generate_structured, ping_codex
 
@@ -18,7 +19,8 @@ def build_director_plan_v2(config: dict, payload: dict) -> dict:
             **dict(shot),
             "duration_sec": float(durations.get(shot_id, 2.0)),
             "ref_archetype": ref_archetype,
-            "ref_archetype_contract": _ref_archetype_contract(ref_archetype),
+            "ref_archetype_variant": _infer_ref_archetype_variant(shot, ref_archetype),
+            "ref_archetype_contract": "",
             "camera_intent": _camera_intent(shot, brief, index),
             "performance_intent": _performance_intent(shot),
             "lighting_intent": _lighting_intent(shot, brief),
@@ -27,6 +29,10 @@ def build_director_plan_v2(config: dict, payload: dict) -> dict:
             "motion_intent": _motion_intent(shot, brief),
             "transition_intent": _transition_intent(shot, index),
         }
+        current["ref_archetype_contract"] = _ref_archetype_contract(
+            ref_archetype,
+            str(current.get("ref_archetype_variant", "")).strip(),
+        )
         current["ref_start_action_line"] = ""
         current["ref_end_action_line"] = ""
         current["wan_action_line"] = ""
@@ -140,6 +146,7 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
                 "payoff_role_hint": str(shot.get("payoff_role_hint", "")).strip(),
                 "visual_role": str(shot.get("visual_role", "")).strip(),
                 "ref_archetype": str(shot.get("ref_archetype", "")).strip(),
+                "ref_archetype_variant": str(shot.get("ref_archetype_variant", "")).strip(),
                 "ref_archetype_contract": str(shot.get("ref_archetype_contract", "")).strip(),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
             }
@@ -201,7 +208,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "Then decide the dominant action, the primary surface or path carrying that action, one optional support detail that stays secondary, and the visible continuity delta from start to end. "
         "The dominant action must stay more important than any support detail. "
         "Use section_label, story_role, visual_role, and payoff_role_hint as hidden dramatic guidance for why the shot exists in the sequence, but do not repeat those labels in the output. "
-        "Use ref_archetype and ref_archetype_contract as hidden guidance for what prompt structure is most reliable for this shot family. "
+        "Use ref_archetype, ref_archetype_variant, and ref_archetype_contract as hidden guidance for what prompt structure is most reliable for this shot family. "
         "Treat location, primary_surface, and literal_image as lean structural inputs, not invitations to restore decorative motifs. "
         "If support_detail is empty, do not invent a replacement optical detail. "
         "Each action line should feel like a necessary keyframe in a music-video chain, not just a good standalone caption. "
@@ -453,6 +460,29 @@ def _infer_ref_archetype(shot: dict) -> str:
     return "sidewalk_continuation"
 
 
+def _infer_ref_archetype_variant(shot: dict, archetype: str) -> str:
+    text = " ".join(
+        [
+            str(shot.get("location_description", "")).strip(),
+            str(shot.get("environment_anchor", "")).strip(),
+            str(shot.get("literal_image", "")).strip(),
+            str(shot.get("visible_action", "")).strip(),
+            str(shot.get("subject_action", "")).strip(),
+            str(shot.get("primary_surface", "")).strip(),
+            str(shot.get("support_detail", "")).strip(),
+        ]
+    ).lower()
+    if archetype == "window_contact" and any(token in text for token in ("carriage", "train", "last-train", "moving vehicle")):
+        return "moving_vehicle_window"
+    if archetype == "passage_compression" and any(token in text for token in ("glass", "window")):
+        return "glass_adjacent"
+    if archetype == "platform_edge" and any(token in text for token in ("passing train", "passing vehicle", "moving light", "train-side")):
+        return "passing_motion"
+    if any(token in text for token in ("station", "platform", "gate", "turnstile", "threshold")):
+        return "station_side"
+    return ""
+
+
 def _director_support_detail(shot: dict) -> str:
     detail = " ".join(str(shot.get("support_detail", "")).strip().split())
     primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().split()).lower()
@@ -524,24 +554,15 @@ def _director_literal_image(shot: dict) -> str:
     return " ".join(str(shot.get("literal_image", "")).strip().rstrip(".").split())
 
 
-def _ref_archetype_contract(archetype: str) -> str:
-    contracts = {
-        "threshold_crossing": "Use source surface to destination surface with contact release; keep the threshold secondary to her crossing.",
-        "stair_descent": "Use continuous stepped surface with continuous handrail contact; keep stair geometry literal and avoid flattening into a generic walk.",
-        "passage_compression": "Use wall proximity plus forward movement plus trailing rail; keep the narrowness visible and avoid broad walkway staging.",
-        "platform_edge": "Use edge proximity near her feet plus forward continuation; keep the platform edge more important than rails or skyline.",
-        "gate_pass": "Use beyond-the-gate continuation plus destination space ahead; keep the gate as a crossing point, not the main subject.",
-        "window_contact": "Use present-tense surface contact plus forward continuation; keep reflection secondary to her contact with the window edge or rail.",
-        "curb_crossing": "Use plain crosswalk locomotion plus destination curb; avoid extra objects that compete with the crossing.",
-        "sidewalk_continuation": "Use plain locomotion with optional free-arm motion or curb-at-feet proximity; keep the street portable and open-world.",
-        "doorway_handoff": "Use doorway crossing plus literal destination space beyond; do not let the metal frame dominate the shot.",
-        "brace_pause": "Use simple braced contact with minimal interpretation; keep the pose natural and avoid over-staging the pause.",
-        "ramp_descent": "Use slope descent plus trailing rail; keep the ramp identity distinct from stairs and flat sidewalks.",
-        "turn_back_once": "Use over-shoulder look-back plus explicit forward continuation; preserve face readability while the body keeps moving.",
-        "indoor_corridor": "Use narrow corridor volume plus wall proximity plus forward continuation; keep indoor neutrality stronger than decorative lights.",
-        "bench_rest": "Use seated rest plus one small continuation hint; keep the seated pose natural rather than fully settled or theatrical.",
-    }
-    return contracts.get(archetype, "Use one heroine, one readable body action, one nearby surface, and one chain-friendly visible progression.")
+def _ref_archetype_contract(archetype: str, variant: str = "") -> str:
+    grammar = ref_archetype_grammar(archetype)
+    contract = str(grammar.get("contract", "")).strip()
+    variant_note = str(ref_archetype_variant(archetype, variant).get("note", "")).strip() if variant else ""
+    if contract and variant_note:
+        return f"{contract} Variant note: {variant_note}"
+    if contract:
+        return contract
+    return "Use one heroine, one readable body action, one nearby surface, and one chain-friendly visible progression."
 
 
 def _dominant_action_fallback(shot: dict) -> str:

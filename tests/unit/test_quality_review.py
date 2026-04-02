@@ -88,9 +88,29 @@ def test_quality_review_v2_uses_scene_director_inputs():
             ]
         },
         "backend_preview_v2": {
+            "ref_adapter_v2": [
+                {
+                    "raw_prompt_clauses": {
+                        "primary_surface": "threshold",
+                        "ref_archetype": "threshold_crossing",
+                        "start_state": "She crosses the threshold",
+                        "end_state": "She lands beyond the threshold",
+                    },
+                    "start_prompt_preview": "The same Korean female idol crosses the threshold into the wet street.",
+                    "end_prompt_preview": "The same Korean female idol lands beyond the threshold and keeps moving.",
+                }
+            ],
             "wan_adapter_v2": [
-                {"positive_prompt_preview": "Camera widens as the threshold light drifts and the space reacts", "start_source": "ref_start"},
-                {"positive_prompt_preview": "Camera opens into the wider world while the background reacts", "start_source": "previous_end"},
+                {
+                    "raw_prompt_clauses": {"bridge_action": "She clears the threshold and keeps going", "ref_archetype": "threshold_crossing"},
+                    "positive_prompt_preview": "The same Korean female idol clears the threshold and keeps going into the wet street.",
+                    "start_source": "ref_start",
+                },
+                {
+                    "raw_prompt_clauses": {"bridge_action": "She keeps moving across the wet street edge", "ref_archetype": "sidewalk_continuation"},
+                    "positive_prompt_preview": "The same Korean female idol keeps moving across the wet street edge.",
+                    "start_source": "previous_end",
+                },
             ]
         },
     }
@@ -98,3 +118,5 @@ def test_quality_review_v2_uses_scene_director_inputs():
     assert out["story_progression"]["strengths"]
     assert out["profile_continuity"]["strengths"]
     assert out["style_alignment"]["strengths"]
+    assert out["ref_prompt_contracts"]["metrics"]["subject_first_ratio"] > 0
+    assert out["wan_prompt_contracts"]["metrics"]["bridge_integrity_ratio"] > 0

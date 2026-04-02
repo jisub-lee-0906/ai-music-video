@@ -212,7 +212,7 @@ def style_alignment(payload: dict) -> dict:
 
 def collect_strengths(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment"):
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment", "ref_prompt_contracts", "wan_prompt_contracts"):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("strengths", []) if str(x).strip())
     return out[:8] or ["lyric-first contracts are structurally present"]
@@ -220,7 +220,7 @@ def collect_strengths(story: dict) -> list[str]:
 
 def collect_risks(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment"):
+    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment", "ref_prompt_contracts", "wan_prompt_contracts"):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("risks", []) if str(x).strip())
     return out[:8] or ["no major lyric-story structural risk detected"]

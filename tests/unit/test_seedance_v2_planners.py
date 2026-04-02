@@ -74,6 +74,7 @@ def test_scene_director_render_plan_v2_chain():
     assert "motion_intent" in director["shot_packages"][0]
     assert director["shot_packages"][0]["ref_archetype"]
     assert director["shot_packages"][0]["ref_archetype_contract"]
+    assert "Variant note" in director["shot_packages"][0]["ref_archetype_contract"] or director["shot_packages"][0]["ref_archetype_contract"]
     assert director["shot_packages"][0]["visual_role"] == "opening_frame"
     assert "ref_start_continuity_line" not in director["shot_packages"][0]
     assert "ref_start_camera_line" not in director["shot_packages"][0]
@@ -95,6 +96,8 @@ def test_scene_director_render_plan_v2_chain():
     assert render["shot_packages"][0]["ref_start_prompt_text"]
     assert render["shot_packages"][0]["ref_end_prompt_text"]
     assert render["wan_chain"][0]["wan_prompt_clauses"]["bridge_action"]
+    assert render["wan_chain"][0]["wan_prompt_clauses"]["wan_transition_family"]
+    assert render["wan_chain"][0]["wan_prompt_clauses"]["wan_transition_contract"]
     assert render["wan_chain"][0]["wan_positive_prompt_text"]
 
 

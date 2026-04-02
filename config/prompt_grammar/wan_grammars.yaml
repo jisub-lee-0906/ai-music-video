@@ -1,0 +1,26 @@
+transition_families:
+  - name: plain_continuation
+    contract: Bridge one readable step of the same motion in the same place.
+    allowed_motion_delta: stride continues, direction stays readable, same surface remains active
+    forbidden_new_scene_drift: no new place, no new subject, no symbolic mood replacement
+    continuity_wording: prefer continues, moves farther, keeps walking, carries the step
+  - name: threshold_bridge
+    contract: Connect clearing the threshold to landing on the immediate surface beyond it.
+    allowed_motion_delta: clears threshold, passes doorway, lands beyond gate or exit line
+    forbidden_new_scene_drift: no brighter world reveal, no portal symbolism, no new architecture takeover
+    continuity_wording: prefer clears, passes through, lands beyond, keeps going
+  - name: compression_bridge
+    contract: Keep pressure inside the same narrow space and move one readable beat farther.
+    allowed_motion_delta: edges forward, keeps close, slides along rail, shifts through the lane
+    forbidden_new_scene_drift: no broad open-world release, no still pose rewrite, no mood-only breath beat
+    continuity_wording: prefer edges, shifts, threads, keeps close, moves past
+  - name: descent_bridge
+    contract: Connect one lower step or one farther stair/ramp position in the same vertical path.
+    allowed_motion_delta: one step lower, farther down the stairs, lower along the ramp
+    forbidden_new_scene_drift: no flattening into sidewalk walk, no window/glass takeover
+    continuity_wording: prefer steps lower, moves lower, gains another step, descends farther
+  - name: release_crossing
+    contract: Keep final release as concrete forward crossing in the same world.
+    allowed_motion_delta: clears gate, crosses curb, passes exit line, lands on outer pavement
+    forbidden_new_scene_drift: no symbolic tableau, no glow/sign/light as event, no static emotional release
+    continuity_wording: prefer crosses, clears, steps through, keeps going, lands beyond

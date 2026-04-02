@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.seedance_v2_normalize import normalize_render_plan_v2
 from ai_mv.core.director_brief import build_director_brief_intent
+from ai_mv.core.prompt_grammar import wan_transition_family
 from ai_mv.core.stages.render_verbalizer_v2 import verbalize_ref_prompt_pairs, verbalize_wan_prompts
 
 
@@ -18,6 +19,7 @@ def build_render_plan_v2(config: dict, payload: dict) -> dict:
             "subject_intro": str(brief.get("ref_subject_intro", "")).strip() or "The same Korean female idol",
             "location": _render_location_clause(shot_row),
             "ref_archetype": str(shot_row.get("ref_archetype", "")).strip(),
+            "ref_archetype_variant": str(shot_row.get("ref_archetype_variant", "")).strip(),
             "ref_archetype_contract": str(shot_row.get("ref_archetype_contract", "")).strip(),
             "dominant_scene_grammar": str(shot_row.get("dominant_scene_grammar", "")).strip(),
             "primary_surface": str(shot_row.get("primary_surface", "")).strip(),
@@ -45,12 +47,17 @@ def build_render_plan_v2(config: dict, payload: dict) -> dict:
             "visible_action": str(shot_row.get("visible_action", "")).strip(),
             "subject_action": str(shot_row.get("subject_action", "")).strip(),
             "wan_action_line": str(shot_row.get("wan_action_line", "")).strip(),
+            "wan_transition_family": _infer_wan_transition_family(shot_row),
         }
+        wan_transition = wan_transition_family(str(wan_row.get("wan_transition_family", "")).strip())
         wan_row["wan_prompt_clauses"] = {
             "subject_intro": str(brief.get("ref_subject_intro", "")).strip() or "The same Korean female idol",
             "location": _render_location_clause(wan_row),
             "ref_archetype": str(shot_row.get("ref_archetype", "")).strip(),
+            "ref_archetype_variant": str(shot_row.get("ref_archetype_variant", "")).strip(),
             "ref_archetype_contract": str(shot_row.get("ref_archetype_contract", "")).strip(),
+            "wan_transition_family": str(wan_row.get("wan_transition_family", "")).strip(),
+            "wan_transition_contract": str(wan_transition.get("contract", "")).strip(),
             "dominant_scene_grammar": str(shot_row.get("dominant_scene_grammar", "")).strip(),
             "primary_surface": str(shot_row.get("primary_surface", "")).strip(),
             "support_detail": str(shot_row.get("support_detail", "")).strip(),
@@ -102,6 +109,7 @@ def _verbalize_render_prompts(config: dict, shot_packages: list[dict], wan_chain
                 "subject_intro": str(clauses.get("subject_intro", "")).strip(),
                 "location": str(clauses.get("location", "")).strip(),
                 "ref_archetype": str(clauses.get("ref_archetype", "")).strip(),
+                "ref_archetype_variant": str(clauses.get("ref_archetype_variant", "")).strip(),
                 "ref_archetype_contract": str(clauses.get("ref_archetype_contract", "")).strip(),
                 "dominant_scene_grammar": str(clauses.get("dominant_scene_grammar", "")).strip(),
                 "primary_surface": str(clauses.get("primary_surface", "")).strip(),
@@ -128,7 +136,10 @@ def _verbalize_render_prompts(config: dict, shot_packages: list[dict], wan_chain
                 "subject_intro": str(clauses.get("subject_intro", "")).strip(),
                 "location": str(clauses.get("location", "")).strip(),
                 "ref_archetype": str(clauses.get("ref_archetype", "")).strip(),
+                "ref_archetype_variant": str(clauses.get("ref_archetype_variant", "")).strip(),
                 "ref_archetype_contract": str(clauses.get("ref_archetype_contract", "")).strip(),
+                "wan_transition_family": str(clauses.get("wan_transition_family", "")).strip(),
+                "wan_transition_contract": str(clauses.get("wan_transition_contract", "")).strip(),
                 "dominant_scene_grammar": str(clauses.get("dominant_scene_grammar", "")).strip(),
                 "primary_surface": str(clauses.get("primary_surface", "")).strip(),
                 "support_detail": str(clauses.get("support_detail", "")).strip(),
@@ -141,3 +152,18 @@ def _verbalize_render_prompts(config: dict, shot_packages: list[dict], wan_chain
     wan_prompts = verbalize_wan_prompts(config, wan_rows)
     for row in wan_chain:
         row["wan_positive_prompt_text"] = str(wan_prompts.get(str(row.get("shot_id", "")).strip(), "")).strip()
+
+
+def _infer_wan_transition_family(shot_row: dict) -> str:
+    archetype = str(shot_row.get("ref_archetype", "")).strip()
+    visual_role = str(shot_row.get("visual_role", "")).strip().lower()
+    zone = str(shot_row.get("zone", "")).strip().lower()
+    if archetype in {"threshold_crossing", "doorway_handoff", "gate_pass"}:
+        return "threshold_bridge"
+    if archetype in {"stair_descent", "ramp_descent"}:
+        return "descent_bridge"
+    if archetype in {"passage_compression", "brace_pause"} or "pressure" in visual_role or zone == "compression":
+        return "compression_bridge"
+    if "payoff" in visual_role or zone == "open_world_peak":
+        return "release_crossing"
+    return "plain_continuation"

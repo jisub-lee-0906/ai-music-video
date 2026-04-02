@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
+from ai_mv.core.stages.tti_anchor_v2 import build_tti_anchor_v2_master_prompt
 from ai_mv.core.stages.flux2_ref_chain_v2 import (
     _literal_scene_description,
 )
@@ -35,10 +36,7 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
     shots = [row for row in render_plan.get("shot_packages", []) if isinstance(row, dict)]
     tti_preview = {
         "render_strategy": "tti_master",
-        "prompt_text": (
-            f"{brief['style_contract']}. {brief['identity_core']}. "
-            "Neutral presentation pose, pale grey backdrop, soft controlled studio lighting, clean full-body cinematic key reference."
-        ),
+        "prompt_text": build_tti_anchor_v2_master_prompt(config),
     }
     ref_preview = []
     for shot in shots:
@@ -51,6 +49,7 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
                     "subject_intro": str(clauses.get("subject_intro", "")).strip(),
                     "location": str(clauses.get("location", "")).strip(),
                     "ref_archetype": str(clauses.get("ref_archetype", "")).strip(),
+                    "ref_archetype_variant": str(clauses.get("ref_archetype_variant", "")).strip(),
                     "ref_archetype_contract": str(clauses.get("ref_archetype_contract", "")).strip(),
                     "dominant_scene_grammar": str(clauses.get("dominant_scene_grammar", "")).strip(),
                     "primary_surface": str(clauses.get("primary_surface", "")).strip(),
@@ -80,7 +79,10 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
                     "subject_intro": str(clauses.get("subject_intro", "")).strip(),
                     "location": str(clauses.get("location", "")).strip(),
                     "ref_archetype": str(clauses.get("ref_archetype", "")).strip(),
+                    "ref_archetype_variant": str(clauses.get("ref_archetype_variant", "")).strip(),
                     "ref_archetype_contract": str(clauses.get("ref_archetype_contract", "")).strip(),
+                    "wan_transition_family": str(clauses.get("wan_transition_family", "")).strip(),
+                    "wan_transition_contract": str(clauses.get("wan_transition_contract", "")).strip(),
                     "dominant_scene_grammar": str(clauses.get("dominant_scene_grammar", "")).strip(),
                     "primary_surface": str(clauses.get("primary_surface", "")).strip(),
                     "support_detail": str(clauses.get("support_detail", "")).strip(),

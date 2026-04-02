@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.quality_review_metrics import lyric_metrics, route_stats, v2_plan_metrics
 from ai_mv.core.quality_review_sections import collect_risks, collect_strengths, review_story_alignment
+from ai_mv.core.visual_prompt_evaluator import build_visual_prompt_evaluation
 
 
 def build_quality_review(config: dict, payload: dict) -> dict:
@@ -13,6 +14,9 @@ def build_quality_review(config: dict, payload: dict) -> dict:
             "risks": _v2_risks(metrics),
             "metrics": metrics,
         }
+    visual_eval = build_visual_prompt_evaluation(payload)
+    if visual_eval:
+        review.update(visual_eval)
     story = review_story_alignment(config, payload)
     if story:
         review["lyric_alignment"] = story["lyric_alignment"]
