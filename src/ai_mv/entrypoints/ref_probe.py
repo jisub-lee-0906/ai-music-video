@@ -10,7 +10,7 @@ from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 from ai_mv.utils.project_root import project_root
 
 
-def run_ref_v2_probe(
+def run_ref_probe(
     run_id: str | None = None,
     brief: str | None = None,
     ref: str | None = None,
@@ -18,8 +18,8 @@ def run_ref_v2_probe(
     shot_id: str | None = None,
     frame_name: str | None = None,
 ) -> int:
-    rid = str(run_id or "ref-v2-probe").strip() or "ref-v2-probe"
-    lock = acquire_lock("ref-v2-probe")
+    rid = str(run_id or "ref-probe").strip() or "ref-probe"
+    lock = acquire_lock("ref-probe")
     try:
         cfg = _load_prepared_config(brief)
         if run_doctor(cfg) != 0:

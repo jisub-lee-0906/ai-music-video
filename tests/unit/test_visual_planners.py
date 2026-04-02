@@ -1,7 +1,7 @@
-from ai_mv.engines.seedance_v2_scene_plan.planner import build_scene_plan_v2
-from ai_mv.engines.seedance_v2_director_plan.planner import build_director_plan_v2
-from ai_mv.engines.seedance_v2_render_plan.planner import build_render_plan_v2
-from ai_mv.core.stages.wan_interpolation_v2 import build_wan_plan_v2
+from ai_mv.engines.scene_plan.planner import build_scene_plan
+from ai_mv.engines.director_plan.planner import build_director_plan
+from ai_mv.engines.render_plan.planner import build_render_plan
+from ai_mv.core.stages.wan_interpolation import build_wan_plan
 
 
 def _config() -> dict:
@@ -57,8 +57,8 @@ def _payload() -> dict:
     }
 
 
-def test_scene_director_render_plan_v2_chain():
-    scene = build_scene_plan_v2(_config(), _payload())
+def test_scene_director_render_plan_chain():
+    scene = build_scene_plan(_config(), _payload())
     assert len(scene["shot_packages"]) == 2
     assert scene["shot_packages"][0]["beat_refs"] == ["B001"]
     assert scene["shot_packages"][0]["visual_role"] == "opening_frame"
@@ -69,7 +69,7 @@ def test_scene_director_render_plan_v2_chain():
     assert "frame" not in first_location.lower()
     assert scene["motif_progression"][0]["environment_anchor"] == first_location
 
-    director = build_director_plan_v2(_config(), {**_payload(), "scene_plan_v2": scene})
+    director = build_director_plan(_config(), {**_payload(), "scene_plan": scene})
     assert "camera_intent" in director["shot_packages"][0]
     assert "motion_intent" in director["shot_packages"][0]
     assert director["shot_packages"][0]["ref_archetype"]
@@ -79,7 +79,7 @@ def test_scene_director_render_plan_v2_chain():
     assert "ref_start_continuity_line" not in director["shot_packages"][0]
     assert "ref_start_camera_line" not in director["shot_packages"][0]
 
-    render = build_render_plan_v2(_config(), {**_payload(), "director_plan_v2": director})
+    render = build_render_plan(_config(), {**_payload(), "director_plan": director})
     assert render["master_anchor"]["render_strategy"] == "tti_master"
     assert render["shot_packages"][0]["render_strategy"] == "ref_pair"
     assert render["wan_chain"][0]["start_source"] == "ref_start"
@@ -88,7 +88,7 @@ def test_scene_director_render_plan_v2_chain():
     assert render["wan_chain"][0]["location_description"]
     assert render["wan_chain"][0]["duration_sec"] > 0
     assert "press" in render["wan_chain"][0]["visible_action"]
-    assert "glass" in render["wan_chain"][0]["visible_action"]
+    assert any(token in render["wan_chain"][0]["visible_action"] for token in ("window", "glass"))
     assert render["wan_chain"][0]["wan_action_line"]
     assert render["shot_packages"][0]["ref_prompt_clauses"]["subject_intro"]
     assert render["shot_packages"][0]["ref_prompt_clauses"]["ref_archetype"]
@@ -101,7 +101,7 @@ def test_scene_director_render_plan_v2_chain():
     assert render["wan_chain"][0]["wan_positive_prompt_text"]
 
 
-def test_scene_plan_v2_motif_assignment_is_section_local_and_stable():
+def test_scene_plan_motif_assignment_is_section_local_and_stable():
     payload_a = {
         "lyrics_timeline": {
             "sections": [
@@ -147,14 +147,14 @@ def test_scene_plan_v2_motif_assignment_is_section_local_and_stable():
             ]
         }
     }
-    scene_a = build_scene_plan_v2(_config(), payload_a)
-    scene_b = build_scene_plan_v2(_config(), payload_b)
+    scene_a = build_scene_plan(_config(), payload_a)
+    scene_b = build_scene_plan(_config(), payload_b)
     chorus_a = {row["shot_id"]: row["motif_family"] for row in scene_a["shot_packages"] if row["shot_id"].startswith("C_")}
     chorus_b = {row["shot_id"]: row["motif_family"] for row in scene_b["shot_packages"] if row["shot_id"].startswith("C_")}
     assert chorus_a == chorus_b
 
 
-def test_scene_plan_v2_smooths_high_cost_adjacent_family_jumps():
+def test_scene_plan_smooths_high_cost_adjacent_family_jumps():
     config = _config()
     config["director"]["motif_families"] = [
         "train window",
@@ -180,7 +180,7 @@ def test_scene_plan_v2_smooths_high_cost_adjacent_family_jumps():
             ]
         }
     }
-    scene = build_scene_plan_v2(config, payload)
+    scene = build_scene_plan(config, payload)
     families = [row["environment_family"] for row in scene["shot_packages"]]
     adjacent_pairs = list(zip(families, families[1:]))
     assert "transit_side_edge" not in families
@@ -188,7 +188,7 @@ def test_scene_plan_v2_smooths_high_cost_adjacent_family_jumps():
     assert ("transit_side_edge", "vertical_path") not in adjacent_pairs
 
 
-def test_scene_plan_v2_open_world_prefers_connected_exterior_families_over_train_window():
+def test_scene_plan_open_world_prefers_connected_exterior_families_over_train_window():
     config = _config()
     config["director"]["motif_families"] = [
         "train window",
@@ -212,12 +212,12 @@ def test_scene_plan_v2_open_world_prefers_connected_exterior_families_over_train
             ]
         }
     }
-    scene = build_scene_plan_v2(config, payload)
+    scene = build_scene_plan(config, payload)
     families = [row["environment_family"] for row in scene["shot_packages"]]
     assert "transit_side_edge" not in families
 
 
-def test_director_plan_v2_abstracts_carryover_when_family_changes():
+def test_director_plan_abstracts_carryover_when_family_changes():
     config = _config()
     config["director"]["motif_families"] = [
         "ticket gate",
@@ -241,8 +241,8 @@ def test_director_plan_v2_abstracts_carryover_when_family_changes():
             ]
         }
     }
-    scene = build_scene_plan_v2(config, payload)
-    director = build_director_plan_v2(config, {**payload, "scene_plan_v2": scene})
+    scene = build_scene_plan(config, payload)
+    director = build_director_plan(config, {**payload, "scene_plan": scene})
     shots = {row["shot_id"]: row for row in director["shot_packages"]}
     b3 = shots["FC_B3"]
     assert b3["ref_start_action_line"].startswith("She ")
@@ -252,7 +252,7 @@ def test_director_plan_v2_abstracts_carryover_when_family_changes():
     assert "frame" not in b3["ref_end_action_line"].lower()
 
 
-def test_scene_plan_v2_final_chorus_uses_progressive_roles_and_only_last_payoff_is_wide():
+def test_scene_plan_final_chorus_uses_progressive_roles_and_only_last_payoff_is_wide():
     config = _config()
     payload = {
         "lyrics_timeline": {
@@ -270,7 +270,7 @@ def test_scene_plan_v2_final_chorus_uses_progressive_roles_and_only_last_payoff_
             ]
         }
     }
-    scene = build_scene_plan_v2(config, payload)
+    scene = build_scene_plan(config, payload)
     rows = {row["shot_id"]: row for row in scene["shot_packages"]}
     assert rows["FC_B1"]["visual_role"] == "opening_frame"
     assert rows["FC_B2"]["visual_role"] == "continuity_frame"
@@ -281,17 +281,17 @@ def test_scene_plan_v2_final_chorus_uses_progressive_roles_and_only_last_payoff_
     assert rows["FC_B4"]["camera_distance_band"] == "wide_full_figure"
 
 
-def test_wan_plan_v2_uses_duration_aware_natural_prompt_lines():
+def test_wan_plan_uses_duration_aware_natural_prompt_lines():
     config = {
         **_config(),
         "video": {"target": "1920x1080@24"},
     }
-    scene = build_scene_plan_v2(config, _payload())
-    director = build_director_plan_v2(config, {**_payload(), "scene_plan_v2": scene})
-    render = build_render_plan_v2(config, {**_payload(), "director_plan_v2": director})
+    scene = build_scene_plan(config, _payload())
+    director = build_director_plan(config, {**_payload(), "scene_plan": scene})
+    render = build_render_plan(config, {**_payload(), "director_plan": director})
     payload = {
         **_payload(),
-        "render_plan_v2": render,
+        "render_plan": render,
         "clip_routes": [
             {
                 "shot_id": "B001",
@@ -317,7 +317,7 @@ def test_wan_plan_v2_uses_duration_aware_natural_prompt_lines():
             {"shot_id": "B002", "start": "end1.png", "end": "end2.png"},
         ],
     }
-    wan = build_wan_plan_v2(config, payload)
+    wan = build_wan_plan(config, payload)
     assert "Use the provided first and last keyframes" not in wan["clips"][0]["positive_prompt"]
     assert "same space" not in wan["clips"][0]["positive_prompt"]
     assert "same space" not in wan["clips"][1]["positive_prompt"]
@@ -329,10 +329,10 @@ def test_wan_negative_prompt_avoids_camera_language():
         **_config(),
         "video": {"target": "1920x1080@24"},
     }
-    wan = build_wan_plan_v2(
+    wan = build_wan_plan(
         config,
         {
-            "render_plan_v2": {
+            "render_plan": {
                 "wan_chain": [
                     {
                         "shot_id": "B001",

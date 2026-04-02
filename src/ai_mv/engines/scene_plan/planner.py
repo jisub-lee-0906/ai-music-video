@@ -3,12 +3,12 @@ from __future__ import annotations
 import itertools
 import zlib
 
-from ai_mv.core.contracts.seedance_v2_normalize import normalize_scene_plan_v2
+from ai_mv.core.contracts.visual_plan_normalize import normalize_scene_plan
 from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.infra.codex_cli_client import generate_structured, ping_codex
 
 
-def build_scene_plan_v2(config: dict, payload: dict) -> dict:
+def build_scene_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     timeline = payload["lyrics_timeline"]
     sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
@@ -99,13 +99,13 @@ def build_scene_plan_v2(config: dict, payload: dict) -> dict:
         "section_grammar": grammar,
         "shot_packages": shot_packages,
     }
-    return normalize_scene_plan_v2(scene_plan)
+    return normalize_scene_plan(scene_plan)
 
 
-def build_scene_plan_v2_preview_prompt(config: dict, payload: dict) -> str:
+def build_scene_plan_preview_prompt(config: dict, payload: dict) -> str:
     brief = build_director_brief_intent(config)
     return (
-        "Create a Seedance-style scene plan from the lyric timeline. "
+        "Create a cinematic music video scene plan from the lyric timeline. "
         f"Identity core={brief['identity_core']}. "
         f"World core={brief['world_core']}. "
         f"Motif families={', '.join(brief.get('motif_families', []))}. "

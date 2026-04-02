@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 from ai_mv.core.orchestration.config_defaults import default_config
-from ai_mv.core.orchestration.preflight_v2 import run_preflight_v2
+from ai_mv.core.orchestration.preflight import run_preflight
 from ai_mv.core.orchestration.bootstrap_guard import apply_director_brief, validate_sizes, validate_templates
 from ai_mv.core.state.state_store import ensure_run_dir, read_snapshot
 from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 
 
-def run_preflight_v2_entry(run_id: str | None = None, brief: str | None = None) -> int:
+def run_preflight_entry(run_id: str | None = None, brief: str | None = None) -> int:
     rid = run_id or ""
-    lock = acquire_lock("preflight-v2")
+    lock = acquire_lock("preflight")
     try:
         cfg = _load_prepared_config(brief)
         rid = _prepare_run_brief(cfg, rid)
         try:
-            run_preflight_v2(cfg, rid, allow_existing_run=True)
+            run_preflight(cfg, rid, allow_existing_run=True)
             print(f"run_id={rid}")
             print("status=done")
             return 0
@@ -34,7 +34,7 @@ def _load_prepared_config(brief: str | None) -> dict:
         cfg["brief"] = str(brief).strip()
     else:
         cfg["brief"] = "director_brief_example"
-    # apply_defaults first, then v2 brief bootstrap instead of v1 profile bootstrap
+    # apply_defaults first, then brief bootstrap instead of v1 profile bootstrap
     from ai_mv.core.orchestration.config_defaults import apply_defaults
 
     apply_defaults(cfg)

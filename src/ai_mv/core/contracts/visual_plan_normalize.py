@@ -1,33 +1,33 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.seedance_v2_schema import (
+from ai_mv.core.contracts.visual_plan_schema import (
     VALID_RENDER_STRATEGIES,
-    assert_director_plan_v2,
-    assert_render_plan_v2,
-    assert_scene_plan_v2,
+    assert_director_plan,
+    assert_render_plan,
+    assert_scene_plan,
 )
 
 
-def normalize_scene_plan_v2(plan: dict) -> dict:
+def normalize_scene_plan(plan: dict) -> dict:
     normalized = dict(plan)
     normalized["shot_packages"] = [_normalize_scene_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
-    assert_scene_plan_v2(normalized)
+    assert_scene_plan(normalized)
     return normalized
 
 
-def normalize_director_plan_v2(plan: dict) -> dict:
+def normalize_director_plan(plan: dict) -> dict:
     normalized = dict(plan)
     normalized["shot_packages"] = [_normalize_director_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
-    assert_director_plan_v2(normalized)
+    assert_director_plan(normalized)
     return normalized
 
 
-def normalize_render_plan_v2(plan: dict) -> dict:
+def normalize_render_plan(plan: dict) -> dict:
     normalized = dict(plan)
     normalized["master_anchor"] = dict(plan.get("master_anchor", {}))
     normalized["shot_packages"] = [_normalize_render_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
     normalized["wan_chain"] = [dict(row) for row in plan.get("wan_chain", []) if isinstance(row, dict)]
-    assert_render_plan_v2(normalized)
+    assert_render_plan(normalized)
     return normalized
 
 

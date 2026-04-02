@@ -3,17 +3,17 @@ from __future__ import annotations
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.prompt_grammar import wan_transition_family
-from ai_mv.core.stages.flux2_ref_chain_v2 import _literal_scene_description
+from ai_mv.core.stages.flux2_ref_chain import _literal_scene_description
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.wan_2_2_flf2v.runner import run_wan
 from ai_mv.utils.text_utils import parse_target
 
 
-def run_wan_interpolation_v2(stage_input: StageInput) -> StageOutput:
-    plan = build_wan_plan_v2(stage_input.config, stage_input.payload)
+def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
+    plan = build_wan_plan(stage_input.config, stage_input.payload)
     clips = run_wan(stage_input.config, plan)
-    workflow_v2 = dict(stage_input.payload.get("workflow_inputs_v2", {}))
-    workflow_v2["wan_interpolation_v2"] = {
+    workflow_inputs = dict(stage_input.payload.get("workflow_inputs", {}))
+    workflow_inputs["wan_interpolation"] = {
         "clip_count": len(plan["clips"]),
         "clips": [
             {
@@ -26,29 +26,29 @@ def run_wan_interpolation_v2(stage_input: StageInput) -> StageOutput:
         ],
     }
     return StageOutput(
-        "wan_interpolation_v2",
+        "wan_interpolation",
         "done",
         {
             "clips": clips,
-            "workflow_inputs_v2": workflow_v2,
+            "workflow_inputs": workflow_inputs,
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
-                "wan_interpolation_v2",
-                {"prompt": "Generate WAN start/end clip prompts from the v2 render chain using previous_end continuity after the first shot."},
+                "wan_interpolation",
+                {"prompt": "Generate WAN start/end clip prompts from the render chain using previous_end continuity after the first shot."},
             ),
         },
         [],
     )
 
 
-def build_wan_plan_v2(config: dict, payload: dict) -> dict:
+def build_wan_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     fps = parse_target(config["video"]["target"])[2]
     routes = [row for row in payload.get("clip_routes", []) if isinstance(row, dict)]
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in payload.get("flux2_ref_images", []) if isinstance(row, dict)}
     clip_map = {
         str(row.get("shot_id", "")).strip(): row
-        for row in payload.get("render_plan_v2", {}).get("wan_chain", [])
+        for row in payload.get("render_plan", {}).get("wan_chain", [])
         if isinstance(row, dict)
     }
     clips: list[dict] = []

@@ -11,7 +11,7 @@ def lyric_metrics(payload: dict) -> dict:
             "visible_action": "",
             "payoff_role": "",
         }
-        for row in payload.get("scene_plan_v2", {}).get("shot_packages", [])
+        for row in payload.get("scene_plan", {}).get("shot_packages", [])
         if isinstance(row, dict)
         for refs in [[str(x).strip() for x in row.get("beat_refs", []) if str(x).strip()]]
     ]
@@ -99,10 +99,10 @@ def route_stats(routes: list[dict], payload: dict) -> dict:
     }
 
 
-def v2_plan_metrics(payload: dict) -> dict:
-    scene_plan = payload.get("scene_plan_v2", {}) if isinstance(payload, dict) else {}
-    director_plan = payload.get("director_plan_v2", {}) if isinstance(payload, dict) else {}
-    render_plan = payload.get("render_plan_v2", {}) if isinstance(payload, dict) else {}
+def plan_metrics(payload: dict) -> dict:
+    scene_plan = payload.get("scene_plan", {}) if isinstance(payload, dict) else {}
+    director_plan = payload.get("director_plan", {}) if isinstance(payload, dict) else {}
+    render_plan = payload.get("render_plan", {}) if isinstance(payload, dict) else {}
     scene_shots = [row for row in scene_plan.get("shot_packages", []) if isinstance(row, dict)]
     director_shots = [row for row in director_plan.get("shot_packages", []) if isinstance(row, dict)]
     render_shots = [row for row in render_plan.get("shot_packages", []) if isinstance(row, dict)]

@@ -1,8 +1,8 @@
-# Seedance v2 Prompting Reference
+# Visual Prompting Reference
 
 Last updated: 2026-03-31
 
-This document is the working reference for prompt writing in the Seedance-style v2 pipeline.
+This document is the working reference for prompt writing in the visual pipeline.
 
 It is meant to be consulted continuously while improving planner outputs for:
 

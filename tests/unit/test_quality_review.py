@@ -10,7 +10,7 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     payload = {
         "selected_brief": "director_brief_example",
         "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
-        "scene_plan_v2": {"shot_packages": []},
+        "scene_plan": {"shot_packages": []},
     }
     review = {"visual": {"reasoning": "best"}}
     summary = build_run_summary(state, payload, review)
@@ -24,18 +24,18 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     assert latest_success_file("run_summary.json").exists()
 
 
-def test_run_summary_includes_v2_plan_metrics():
+def test_run_summary_includes_plan_metrics():
     state = {"run_id": "r7", "status": "done", "completed_stages": [], "current_stage": "done", "failure_reason": ""}
     payload = {
         "selected_brief": "director_brief_example",
         "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
-        "scene_plan_v2": {
+        "scene_plan": {
             "shot_packages": [
                 {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold"},
                 {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world"},
             ]
         },
-        "render_plan_v2": {
+        "render_plan": {
             "shot_packages": [
                 {"shot_id": "B001", "render_strategy": "ref_pair"},
                 {"shot_id": "B002", "render_strategy": "ref_pair"},
@@ -43,7 +43,7 @@ def test_run_summary_includes_v2_plan_metrics():
         },
     }
     summary = build_run_summary(state, payload, {})
-    assert summary["pipeline_version"] == "v2"
+    assert summary["pipeline_version"] == "visual"
     assert summary["shot_package_count"] == 2
     assert summary["motif_family_count"] == 2
     assert summary["zone_count"] == 2
@@ -51,7 +51,7 @@ def test_run_summary_includes_v2_plan_metrics():
     assert summary["render_strategy_counts"] == {"ref_pair": 2}
 
 
-def test_quality_review_v2_uses_scene_director_inputs():
+def test_quality_review_uses_scene_director_inputs():
     payload = {
         "lyrics_timeline": {
             "sections": [
@@ -59,7 +59,7 @@ def test_quality_review_v2_uses_scene_director_inputs():
                 {"section_label": "Chorus", "lyric_beats": [{"beat_id": "B002"}]},
             ]
         },
-        "scene_plan_v2": {
+        "scene_plan": {
             "identity_core": "same Korean female idol",
             "world_core": "late-night city transit spaces",
             "zone_progression": [
@@ -75,20 +75,20 @@ def test_quality_review_v2_uses_scene_director_inputs():
                 {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world", "identity_core": "same Korean female idol", "beat_refs": ["B002"], "line_refs": [1], "visual_role": "payoff_frame"},
             ],
         },
-        "director_plan_v2": {
+        "director_plan": {
             "shot_packages": [
                 {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "camera_intent": "favor objects and space before direct face coverage", "identity_core": "same Korean female idol", "visual_role": "opening_frame"},
                 {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "camera_intent": "open the frame wider and let the camera commit to the payoff space", "identity_core": "same Korean female idol", "visual_role": "payoff_frame"},
             ]
         },
-        "render_plan_v2": {
+        "render_plan": {
             "shot_packages": [
                 {"shot_id": "B001", "render_strategy": "ref_pair", "identity_core": "same Korean female idol", "visual_role": "opening_frame"},
                 {"shot_id": "B002", "render_strategy": "ref_pair", "identity_core": "same Korean female idol", "visual_role": "payoff_frame"},
             ]
         },
-        "backend_preview_v2": {
-            "ref_adapter_v2": [
+        "backend_preview": {
+            "ref_adapter": [
                 {
                     "raw_prompt_clauses": {
                         "primary_surface": "threshold",
@@ -100,7 +100,7 @@ def test_quality_review_v2_uses_scene_director_inputs():
                     "end_prompt_preview": "The same Korean female idol lands beyond the threshold and keeps moving.",
                 }
             ],
-            "wan_adapter_v2": [
+            "wan_adapter": [
                 {
                     "raw_prompt_clauses": {"bridge_action": "She clears the threshold and keeps going", "ref_archetype": "threshold_crossing"},
                     "positive_prompt_preview": "The same Korean female idol clears the threshold and keeps going into the wet street.",

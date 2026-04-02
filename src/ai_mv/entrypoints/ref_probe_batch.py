@@ -11,7 +11,7 @@ from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 from ai_mv.utils.project_root import project_root
 
 
-def run_ref_v2_probe_batch(
+def run_ref_probe_batch(
     run_id: str | None = None,
     brief: str | None = None,
     ref: str | None = None,
@@ -19,8 +19,8 @@ def run_ref_v2_probe_batch(
     shot_id_prefix: str | None = None,
     frame_name: str | None = None,
 ) -> int:
-    rid = str(run_id or "ref-v2-probe-batch").strip() or "ref-v2-probe-batch"
-    lock = acquire_lock("ref-v2-probe-batch")
+    rid = str(run_id or "ref-probe-batch").strip() or "ref-probe-batch"
+    lock = acquire_lock("ref-probe-batch")
     try:
         cfg = _load_prepared_config(brief)
         if run_doctor(cfg) != 0:

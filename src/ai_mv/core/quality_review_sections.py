@@ -5,14 +5,14 @@ from ai_mv.core.quality_review_metrics import lyric_metrics
 
 def review_story_alignment(config: dict, payload: dict) -> dict:
     timeline = payload.get("lyrics_timeline", {})
-    if not isinstance(timeline, dict) or not isinstance(payload.get("scene_plan_v2"), dict):
+    if not isinstance(timeline, dict) or not isinstance(payload.get("scene_plan"), dict):
         return {}
     metrics = lyric_metrics(payload)
     repetition = render_prompt_repetition(payload.get("workflow_inputs_preview", {}))
     progression = story_progression(payload)
     return {
         "lyric_alignment": {
-            "reasoning": "Lyric lines were checked against lyric beats and v2 shot coverage.",
+            "reasoning": "Lyric lines were checked against lyric beats and shot coverage.",
             "strengths": [f"shot coverage maps {metrics['covered_beat_count']} lyric beats"],
             "risks": [f"{metrics['unmapped_lyric_lines']} lyric lines are unmapped"] if metrics["unmapped_lyric_lines"] else [],
         },
@@ -31,9 +31,9 @@ def review_story_alignment(config: dict, payload: dict) -> dict:
 
 
 def story_progression(payload: dict) -> dict:
-    progression = [row for row in payload["scene_plan_v2"].get("zone_progression", []) if isinstance(row, dict)]
+    progression = [row for row in payload["scene_plan"].get("zone_progression", []) if isinstance(row, dict)]
     if not progression:
-        return {"reasoning": "No v2 zone progression found.", "strengths": [], "risks": ["section progression is missing"]}
+        return {"reasoning": "No zone progression found.", "strengths": [], "risks": ["section progression is missing"]}
     roles = [str(row.get("story_role", "")).strip().lower() for row in progression if str(row.get("story_role", "")).strip()]
     zones = [str(row.get("zone", "")).strip().lower() for row in progression if str(row.get("zone", "")).strip()]
     strengths = []
@@ -46,12 +46,12 @@ def story_progression(payload: dict) -> dict:
         strengths.append("zone progression meaningfully changes the staging state across sections")
     else:
         risks.append("zone progression is too shallow across sections")
-    return {"reasoning": "V2 section progression was checked for distinct story roles and zone changes.", "strengths": strengths, "risks": risks}
+    return {"reasoning": "Section progression was checked for distinct story roles and zone changes.", "strengths": strengths, "risks": risks}
 
 
 def render_prompt_repetition(workflow_inputs: dict) -> dict:
-    v2 = workflow_inputs.get("backend_preview_v2", {}) if isinstance(workflow_inputs, dict) else {}
-    clips = v2.get("wan_adapter_v2", []) if isinstance(v2, dict) else []
+    backend_preview = workflow_inputs.get("backend_preview", {}) if isinstance(workflow_inputs, dict) else {}
+    clips = backend_preview.get("wan_adapter", []) if isinstance(backend_preview, dict) else []
     prompts = [str(row.get("positive_prompt_preview", "")).strip().lower() for row in clips if isinstance(row, dict)]
     unique = len(set(prompts))
     ratio = (unique / len(prompts)) if prompts else 1.0
@@ -67,7 +67,7 @@ def render_prompt_repetition(workflow_inputs: dict) -> dict:
 
 def section_visual_separation(payload: dict) -> dict:
     sections = {}
-    for row in payload["scene_plan_v2"].get("shot_packages", []):
+    for row in payload["scene_plan"].get("shot_packages", []):
         if not isinstance(row, dict):
             continue
         label = str(row.get("section_label", "")).strip()
@@ -97,7 +97,7 @@ def section_visual_separation(payload: dict) -> dict:
     strengths = ["adjacent sections carry distinct visual treatments instead of repeating the same setup"] if ratio >= 0.6 else []
     risks = ["adjacent sections read too similarly in zone, motif, and story role"] if comparisons and ratio < 0.6 else []
     return {
-        "reasoning": "V2 section-to-section transitions were checked for differences in zone, motif family, and story role.",
+        "reasoning": "Section-to-section transitions were checked for differences in zone, motif family, and story role.",
         "strengths": strengths,
         "risks": risks,
         "separation_ratio": round(ratio, 3),
@@ -105,7 +105,7 @@ def section_visual_separation(payload: dict) -> dict:
 
 
 def profile_continuity(payload: dict) -> dict:
-    scene = payload["scene_plan_v2"]
+    scene = payload["scene_plan"]
     heroine = str(scene.get("identity_core", "")).strip()
     world = str(scene.get("world_core", "")).strip()
     motifs = [
@@ -116,22 +116,22 @@ def profile_continuity(payload: dict) -> dict:
     strengths = []
     risks = []
     if heroine:
-        strengths.append("same-heroine invariants are present in the v2 scene plan")
+        strengths.append("same-heroine invariants are present in the scene plan")
     else:
         risks.append("same-heroine invariants are missing")
     if world:
-        strengths.append("continuous world invariants are present in the v2 scene plan")
+        strengths.append("continuous world invariants are present in the scene plan")
     else:
         risks.append("continuous world invariants are missing")
     if motifs:
-        strengths.append("recurring motif families are defined in the v2 scene plan")
+        strengths.append("recurring motif families are defined in the scene plan")
     else:
         risks.append("recurring motif families are missing")
     return {"reasoning": "V2 continuity fields were checked for heroine, world, and recurring motif constraints.", "strengths": strengths, "risks": risks}
 
 
 def same_heroine_protection(config: dict, payload: dict) -> dict:
-    render_shots = [row for row in payload["render_plan_v2"].get("shot_packages", []) if isinstance(row, dict)]
+    render_shots = [row for row in payload["render_plan"].get("shot_packages", []) if isinstance(row, dict)]
     sensitive = [row for row in render_shots if str(row.get("identity_core", "")).strip()]
     protected = [row for row in render_shots if str(row.get("render_strategy", "")).strip() == "ref_pair"]
     ratio = (len(protected) / float(len(sensitive))) if sensitive else 1.0
@@ -148,16 +148,16 @@ def same_heroine_protection(config: dict, payload: dict) -> dict:
 
 
 def style_alignment(payload: dict) -> dict:
-    director = [row for row in payload["director_plan_v2"].get("shot_packages", []) if isinstance(row, dict)]
-    backend_preview = payload.get("backend_preview_v2", {}) if isinstance(payload.get("backend_preview_v2"), dict) else {}
+    director = [row for row in payload["director_plan"].get("shot_packages", []) if isinstance(row, dict)]
+    backend_preview = payload.get("backend_preview", {}) if isinstance(payload.get("backend_preview"), dict) else {}
     route_focus_ratio = (
         sum(
             1
-            for row in backend_preview.get("wan_adapter_v2", [])
+            for row in backend_preview.get("wan_adapter", [])
             if isinstance(row, dict) and str(row.get("positive_prompt_preview", "")).strip()
         )
-        / float(len(backend_preview.get("wan_adapter_v2", [])))
-        if backend_preview.get("wan_adapter_v2")
+        / float(len(backend_preview.get("wan_adapter", [])))
+        if backend_preview.get("wan_adapter")
         else 0.0
     )
     total = len(director) or 1

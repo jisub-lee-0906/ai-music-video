@@ -2,34 +2,34 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.payload_views import merge_planner_prompt
-from ai_mv.engines.seedance_v2_director_plan.planner import build_director_plan_v2, build_director_plan_v2_preview_prompt
+from ai_mv.engines.director_plan.planner import build_director_plan, build_director_plan_preview_prompt
 
 
-def run_director_plan_v2(stage_input: StageInput) -> StageOutput:
-    plan = build_director_plan_v2(stage_input.config, stage_input.payload)
-    return StageOutput("director_plan_v2", "done", _build_payload(stage_input.payload, plan, stage_input.config), [])
+def run_director_plan(stage_input: StageInput) -> StageOutput:
+    plan = build_director_plan(stage_input.config, stage_input.payload)
+    return StageOutput("director_plan", "done", _build_payload(stage_input.payload, plan, stage_input.config), [])
 
 
-def build_director_plan_v2_preview_payload(config: dict, payload: dict) -> dict:
-    plan = build_director_plan_v2(config, payload)
+def build_director_plan_preview_payload(config: dict, payload: dict) -> dict:
+    plan = build_director_plan(config, payload)
     return _build_payload(payload, plan, config)
 
 
 def _build_payload(payload: dict, plan: dict, config: dict) -> dict:
     cards = [_card_preview(row) for row in plan.get("shot_packages", [])]
-    workflow_v2 = dict(payload.get("workflow_inputs_v2", {}))
-    workflow_v2["director_plan_v2"] = {
+    workflow_inputs = dict(payload.get("workflow_inputs", {}))
+    workflow_inputs["director_plan"] = {
         "shot_packages": list(plan.get("shot_packages", [])),
         "director_cards": cards,
     }
     return {
-        "director_plan_v2": plan,
-        "workflow_inputs_v2": workflow_v2,
+        "director_plan": plan,
+        "workflow_inputs": workflow_inputs,
         "director_cards_preview": cards,
         "planner_prompts": merge_planner_prompt(
             payload,
-            "director_plan_v2",
-            {"prompt": build_director_plan_v2_preview_prompt(config, payload)},
+            "director_plan",
+            {"prompt": build_director_plan_preview_prompt(config, payload)},
         ),
     }
 

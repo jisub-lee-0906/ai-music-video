@@ -7,26 +7,26 @@ from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.flux_2_dev_tti.runner import run_tti
 
 
-def run_tti_anchor_v2(stage_input: StageInput) -> StageOutput:
-    plan = build_tti_anchor_v2_plan(stage_input.config, stage_input.payload)
+def run_tti_anchor(stage_input: StageInput) -> StageOutput:
+    plan = build_tti_anchor_plan(stage_input.config, stage_input.payload)
     anchors = run_tti(stage_input.config, plan)
     master_anchor = str(anchors[0]["identity_anchor"]) if anchors else ""
-    workflow_v2 = dict(stage_input.payload.get("workflow_inputs_v2", {}))
-    workflow_v2["tti_anchor_v2"] = {
+    workflow_inputs = dict(stage_input.payload.get("workflow_inputs", {}))
+    workflow_inputs["tti_anchor"] = {
         "master_prompt": str(plan["master_anchor"]["prompt_text"]),
         "shot_count": len(plan["shots"]),
         "master_anchor": master_anchor,
     }
     return StageOutput(
-        "tti_anchor_v2",
+        "tti_anchor",
         "done",
         {
             "anchors": anchors,
-            "master_anchor_v2": master_anchor,
-            "workflow_inputs_v2": workflow_v2,
+            "master_anchor": master_anchor,
+            "workflow_inputs": workflow_inputs,
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
-                "tti_anchor_v2",
+                "tti_anchor",
                 {"prompt": str(plan["master_anchor"]["prompt_text"])},
             ),
         },
@@ -34,9 +34,9 @@ def run_tti_anchor_v2(stage_input: StageInput) -> StageOutput:
     )
 
 
-def build_tti_anchor_v2_plan(config: dict, payload: dict) -> dict:
+def build_tti_anchor_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    shots = [row for row in payload.get("render_plan_v2", {}).get("shot_packages", []) if isinstance(row, dict)]
+    shots = [row for row in payload.get("render_plan", {}).get("shot_packages", []) if isinstance(row, dict)]
     durations = _beat_duration_map(payload)
     tti_shots: list[dict] = []
     for idx, shot in enumerate(shots, start=1):
@@ -95,7 +95,7 @@ def build_tti_anchor_v2_plan(config: dict, payload: dict) -> dict:
                 "retry": 0,
             }
         )
-    master_prompt = build_tti_anchor_v2_master_prompt(config)
+    master_prompt = build_tti_anchor_master_prompt(config)
     return {
         "master_anchor": {
             "prompt_text": master_prompt,
@@ -106,7 +106,7 @@ def build_tti_anchor_v2_plan(config: dict, payload: dict) -> dict:
     }
 
 
-def build_tti_anchor_v2_master_prompt(config: dict) -> str:
+def build_tti_anchor_master_prompt(config: dict) -> str:
     brief = build_director_brief_intent(config)
     hooks = ", ".join(brief.get("identity_hooks", []))
     wardrobe_guidance = str(brief.get("anchor_wardrobe_guidance", "")).strip()

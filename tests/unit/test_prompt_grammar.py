@@ -5,7 +5,7 @@ from ai_mv.core.prompt_grammar import (
     ref_archetype_grammar,
     ref_archetype_variant,
 )
-from ai_mv.core.stages.tti_anchor_v2 import build_tti_anchor_v2_master_prompt
+from ai_mv.core.stages.tti_anchor import build_tti_anchor_master_prompt
 
 
 def _config() -> dict:
@@ -50,7 +50,7 @@ def test_ref_archetype_contract_data_is_structured():
 
 
 def test_tti_master_prompt_uses_grammar_memory():
-    prompt = build_tti_anchor_v2_master_prompt(_config())
+    prompt = build_tti_anchor_master_prompt(_config())
     lowered = prompt.lower()
     assert "full-body" in lowered
     assert "neutral backdrop" in lowered or "pale grey" in lowered

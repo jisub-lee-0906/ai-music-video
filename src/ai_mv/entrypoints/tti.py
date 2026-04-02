@@ -4,7 +4,7 @@ import json
 
 from ai_mv.core.orchestration.bootstrap_guard import apply_director_brief, validate_sizes, validate_templates
 from ai_mv.core.orchestration.config_defaults import apply_defaults, default_config
-from ai_mv.core.stages.tti_anchor_v2 import build_tti_anchor_v2_master_prompt
+from ai_mv.core.stages.tti_anchor import build_tti_anchor_master_prompt
 from ai_mv.core.workflow_names import TTI_WORKFLOW
 from ai_mv.engines.flux_2_dev_tti.runner import run_tti
 from ai_mv.entrypoints.doctor import run_doctor
@@ -12,14 +12,14 @@ from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 from ai_mv.utils.project_root import project_root
 
 
-def run_tti_v2(run_id: str | None = None, brief: str | None = None) -> int:
-    rid = str(run_id or "tti-v2-probe").strip() or "tti-v2-probe"
-    lock = acquire_lock("tti-v2")
+def run_tti(run_id: str | None = None, brief: str | None = None) -> int:
+    rid = str(run_id or "tti-probe").strip() or "tti-probe"
+    lock = acquire_lock("tti")
     try:
         cfg = _load_prepared_config(brief)
         if run_doctor(cfg) != 0:
             return 1
-        prompt_text = build_tti_anchor_v2_master_prompt(cfg)
+        prompt_text = build_tti_anchor_master_prompt(cfg)
         plan = {
             "master_anchor": {
                 "prompt_text": prompt_text,

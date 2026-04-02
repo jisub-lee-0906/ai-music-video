@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.seedance_v2_normalize import normalize_render_plan_v2
+from ai_mv.core.contracts.visual_plan_normalize import normalize_render_plan
 from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.prompt_grammar import wan_transition_family
-from ai_mv.core.stages.render_verbalizer_v2 import verbalize_ref_prompt_pairs, verbalize_wan_prompts
+from ai_mv.core.stages.render_verbalizer import verbalize_ref_prompt_pairs, verbalize_wan_prompts
 
 
-def build_render_plan_v2(config: dict, payload: dict) -> dict:
+def build_render_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    director_plan = payload["director_plan_v2"]
+    director_plan = payload["director_plan"]
     shot_packages: list[dict] = []
     wan_chain: list[dict] = []
     previous_chain_key = ""
@@ -80,10 +80,10 @@ def build_render_plan_v2(config: dict, payload: dict) -> dict:
         "shot_packages": shot_packages,
         "wan_chain": wan_chain,
     }
-    return normalize_render_plan_v2(render_plan)
+    return normalize_render_plan(render_plan)
 
 
-def build_render_plan_v2_preview_prompt(config: dict, payload: dict) -> str:
+def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
     return (
         "Map each director shot into backend strategies using one global TTI master anchor, "
         "REF start/end image pairs per shot, a meaning-preserving render verbalizer for natural prompt prose, "

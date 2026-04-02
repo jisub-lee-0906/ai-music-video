@@ -60,11 +60,11 @@ _OPTICAL_TAKEOVER_TOKENS = (
 
 def build_visual_prompt_evaluation(payload: dict) -> dict:
     workflow_inputs = payload.get("workflow_inputs_preview", {})
-    backend = workflow_inputs.get("backend_preview_v2", {}) if isinstance(workflow_inputs, dict) else {}
-    if not backend and isinstance(payload.get("backend_preview_v2"), dict):
-        backend = payload.get("backend_preview_v2", {})
-    ref_rows = [row for row in backend.get("ref_adapter_v2", []) if isinstance(row, dict)]
-    wan_rows = [row for row in backend.get("wan_adapter_v2", []) if isinstance(row, dict)]
+    backend = workflow_inputs.get("backend_preview", {}) if isinstance(workflow_inputs, dict) else {}
+    if not backend and isinstance(payload.get("backend_preview"), dict):
+        backend = payload.get("backend_preview", {})
+    ref_rows = [row for row in backend.get("ref_adapter", []) if isinstance(row, dict)]
+    wan_rows = [row for row in backend.get("wan_adapter", []) if isinstance(row, dict)]
     if not ref_rows and not wan_rows:
         return {}
     ref_eval = _evaluate_ref_rows(ref_rows)

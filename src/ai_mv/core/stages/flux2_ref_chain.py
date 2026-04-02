@@ -6,12 +6,12 @@ from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.flux_2_dev_ref.runner import run_flux2_ref
 
 
-def run_flux2_ref_chain_v2(stage_input: StageInput) -> StageOutput:
-    plan = build_flux2_ref_plan_v2(stage_input.config, stage_input.payload)
+def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
+    plan = build_flux2_ref_plan(stage_input.config, stage_input.payload)
     flux2_ref_images = run_flux2_ref(stage_input.config, plan) if plan["items"] else []
-    clip_routes = _clip_routes_from_v2(stage_input.payload, flux2_ref_images)
-    workflow_v2 = dict(stage_input.payload.get("workflow_inputs_v2", {}))
-    workflow_v2["flux2_ref_chain_v2"] = {
+    clip_routes = _clip_routes_from_render_plan(stage_input.payload, flux2_ref_images)
+    workflow_inputs = dict(stage_input.payload.get("workflow_inputs", {}))
+    workflow_inputs["flux2_ref_chain"] = {
         "item_count": len(plan["items"]),
         "items": [
             {"shot_id": str(item["shot_id"]), "prompt_text": str(item["prompt_text"])}
@@ -19,26 +19,26 @@ def run_flux2_ref_chain_v2(stage_input: StageInput) -> StageOutput:
         ],
     }
     return StageOutput(
-        "flux2_ref_chain_v2",
+        "flux2_ref_chain",
         "done",
         {
             "flux2_ref_images": flux2_ref_images,
             "clip_routes": clip_routes,
-            "workflow_inputs_v2": workflow_v2,
+            "workflow_inputs": workflow_inputs,
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
-                "flux2_ref_chain_v2",
-                {"prompt": "Render scene-specific Flux2 reference start/end images from the v2 director plan while preserving the same heroine."},
+                "flux2_ref_chain",
+                {"prompt": "Render scene-specific Flux2 reference start/end images from the director plan while preserving the same heroine."},
             ),
         },
         [],
     )
 
 
-def build_flux2_ref_plan_v2(config: dict, payload: dict) -> dict:
+def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    shots = [row for row in payload.get("render_plan_v2", {}).get("shot_packages", []) if isinstance(row, dict)]
-    master_anchor = str(payload.get("master_anchor_v2", "")).strip()
+    shots = [row for row in payload.get("render_plan", {}).get("shot_packages", []) if isinstance(row, dict)]
+    master_anchor = str(payload.get("master_anchor", "")).strip()
     durations = _beat_duration_map(payload)
     items: list[dict] = []
     for idx, shot in enumerate(shots, start=1):
@@ -83,7 +83,7 @@ def build_flux2_ref_plan_v2(config: dict, payload: dict) -> dict:
                 "kinetic_transition": "carry",
                 "lighting_fx": str(shot.get("lighting_intent", "")).strip(),
                 "kinetic_intensity": "medium",
-                "route_reason": "v2_ref_pair",
+                "route_reason": "ref_pair",
                 "scene_change_level": "evolve",
                 "anchor_strategy": "refine_anchor",
                 "continuity_basis": "heroine",
@@ -92,8 +92,8 @@ def build_flux2_ref_plan_v2(config: dict, payload: dict) -> dict:
     return {"items": items}
 
 
-def _clip_routes_from_v2(payload: dict, flux2_ref_images: list[dict]) -> list[dict]:
-    shots = [row for row in payload.get("render_plan_v2", {}).get("shot_packages", []) if isinstance(row, dict)]
+def _clip_routes_from_render_plan(payload: dict, flux2_ref_images: list[dict]) -> list[dict]:
+    shots = [row for row in payload.get("render_plan", {}).get("shot_packages", []) if isinstance(row, dict)]
     durations = _beat_duration_map(payload)
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in flux2_ref_images if isinstance(row, dict)}
     routes: list[dict] = []
@@ -104,10 +104,10 @@ def _clip_routes_from_v2(payload: dict, flux2_ref_images: list[dict]) -> list[di
             {
                 "shot_id": shot_id,
                 "lyric_beat_id": shot_id,
-                "anchor": str(payload.get("master_anchor_v2", "")).strip(),
+                "anchor": str(payload.get("master_anchor", "")).strip(),
                 "duration_sec": float(durations.get(shot_id, 2.0)),
                 "use_ref": True,
-                "route_reason": "v2_ref_pair",
+                "route_reason": "ref_pair",
                 "mv_function": str(shot.get("story_role", "")).strip(),
                 "hero_frame_score": 2,
                 "consistency_need": "high",

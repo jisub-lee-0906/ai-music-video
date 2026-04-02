@@ -1,9 +1,9 @@
-# Seedance v2 Visual Success Criteria
+# Visual Success Criteria
 
 This document fixes the first-pass success target for the current station-side profile.
 
 Primary references:
-- `docs/seedance_v2_prompting_reference.md`
+- `docs/visual_prompting_reference.md`
 - `artifacts/reports/ref_archetype_grammar_map_20260401.md`
 
 ## Phase 1 Goal

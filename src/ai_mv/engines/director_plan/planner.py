@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.seedance_v2_normalize import normalize_director_plan_v2
+from ai_mv.core.contracts.visual_plan_normalize import normalize_director_plan
 from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.prompt_grammar import ref_archetype_grammar, ref_archetype_variant
-from ai_mv.core.stages.flux2_ref_chain_v2 import _literal_scene_description
+from ai_mv.core.stages.flux2_ref_chain import _literal_scene_description
 from ai_mv.infra.codex_cli_client import generate_structured, ping_codex
 
 
-def build_director_plan_v2(config: dict, payload: dict) -> dict:
+def build_director_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    scene_plan = payload["scene_plan_v2"]
+    scene_plan = payload["scene_plan"]
     durations = _shot_duration_map(payload)
     shot_packages: list[dict] = []
     for index, shot in enumerate(scene_plan.get("shot_packages", []), start=1):
@@ -51,10 +51,10 @@ def build_director_plan_v2(config: dict, payload: dict) -> dict:
         "transition_bias": brief["transition_bias"],
         "shot_packages": shot_packages,
     }
-    return normalize_director_plan_v2(director_plan)
+    return normalize_director_plan(director_plan)
 
 
-def build_director_plan_v2_preview_prompt(config: dict, payload: dict) -> str:
+def build_director_plan_preview_prompt(config: dict, payload: dict) -> str:
     brief = build_director_brief_intent(config)
     return (
         "Create a director-first shot plan that turns the brief into character-centered keyframe actions. "

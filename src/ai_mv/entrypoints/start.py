@@ -2,21 +2,21 @@ from __future__ import annotations
 
 from ai_mv.core.orchestration.bootstrap_guard import apply_director_brief, validate_sizes, validate_templates
 from ai_mv.core.orchestration.config_defaults import apply_defaults, default_config
-from ai_mv.core.orchestration.pipeline_v2 import run_pipeline_v2
+from ai_mv.core.orchestration.pipeline import run_pipeline
 from ai_mv.core.state.state_store import ensure_run_dir, read_snapshot
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 
 
-def run_start_v2(run_id: str | None = None, brief: str | None = None) -> int:
+def run_start(run_id: str | None = None, brief: str | None = None) -> int:
     rid = run_id or ""
-    lock = acquire_lock("start-v2")
+    lock = acquire_lock("start")
     try:
         cfg = _load_prepared_config(brief)
         if run_doctor(cfg) != 0:
             return 1
         rid = _prepare_run_brief(cfg, rid)
-        run_pipeline_v2(cfg, rid, allow_existing_run=True)
+        run_pipeline(cfg, rid, allow_existing_run=True)
         snap = read_snapshot(rid)
         print(f"run_id={rid}")
         print(f"status={snap['status']}")

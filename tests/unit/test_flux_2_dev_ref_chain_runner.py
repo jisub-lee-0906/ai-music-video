@@ -1,6 +1,6 @@
 import ai_mv.engines.flux_2_dev_ref.runner as flux2_ref_runner
 from ai_mv.core.output_paths import ANCHOR_DIR, flux2_ref_frame_prefix
-from ai_mv.core.stages.flux2_ref_chain_v2 import build_flux2_ref_plan_v2
+from ai_mv.core.stages.flux2_ref_chain import build_flux2_ref_plan
 
 
 def test_flux2_ref_uses_first_start_then_chains_previous_end_across_shots(monkeypatch):
@@ -39,7 +39,7 @@ def test_flux2_ref_uses_first_start_then_chains_previous_end_across_shots(monkey
     ]
 
 
-def test_flux2_ref_plan_v2_uses_literal_scene_description_for_ref_prompts():
+def test_flux2_ref_plan_uses_literal_scene_description_for_ref_prompts():
     config = {
         "brief": "director_brief_example",
         "audio": {"brief": "Audio brief", "hook_brief": "Hook brief"},
@@ -64,8 +64,8 @@ def test_flux2_ref_plan_v2_uses_literal_scene_description_for_ref_prompts():
         },
     }
     payload = {
-        "master_anchor_v2": f"{ANCHOR_DIR}/master.png",
-        "render_plan_v2": {
+        "master_anchor": f"{ANCHOR_DIR}/master.png",
+        "render_plan": {
             "shot_packages": [
                 {
                     "shot_id": "S001",
@@ -92,7 +92,7 @@ def test_flux2_ref_plan_v2_uses_literal_scene_description_for_ref_prompts():
         "lyrics_timeline": {"sections": []},
     }
 
-    plan = build_flux2_ref_plan_v2(config, payload)
+    plan = build_flux2_ref_plan(config, payload)
 
     assert "narrow side street after rain" in plan["items"][0]["start_prompt_text"]
     assert "broad wet roadway after rain" in plan["items"][1]["end_prompt_text"]

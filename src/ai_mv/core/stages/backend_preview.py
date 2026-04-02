@@ -2,41 +2,41 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.stages.tti_anchor_v2 import build_tti_anchor_v2_master_prompt
-from ai_mv.core.stages.flux2_ref_chain_v2 import (
+from ai_mv.core.stages.tti_anchor import build_tti_anchor_master_prompt
+from ai_mv.core.stages.flux2_ref_chain import (
     _literal_scene_description,
 )
 from ai_mv.core.stages.payload_views import merge_planner_prompt
-from ai_mv.core.stages.wan_interpolation_v2 import _wan_negative_prompt, _wan_positive_prompt
+from ai_mv.core.stages.wan_interpolation import _wan_negative_prompt, _wan_positive_prompt
 
 
-def run_backend_preview_v2(stage_input: StageInput) -> StageOutput:
-    preview = build_backend_preview_v2(stage_input.config, stage_input.payload)
-    workflow_v2 = dict(stage_input.payload.get("workflow_inputs_v2", {}))
-    workflow_v2["backend_preview_v2"] = preview
+def run_backend_preview(stage_input: StageInput) -> StageOutput:
+    preview = build_backend_preview(stage_input.config, stage_input.payload)
+    workflow_inputs = dict(stage_input.payload.get("workflow_inputs", {}))
+    workflow_inputs["backend_preview"] = preview
     return StageOutput(
-        "backend_preview_v2",
+        "backend_preview",
         "done",
         {
-            "backend_preview_v2": preview,
-            "workflow_inputs_v2": workflow_v2,
+            "backend_preview": preview,
+            "workflow_inputs": workflow_inputs,
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
-                "backend_preview_v2",
-                {"prompt": "Translate the v2 shot packages into TTI, REF, and WAN preview prompts without submitting any workflow."},
+                "backend_preview",
+                {"prompt": "Translate the shot packages into TTI, REF, and WAN preview prompts without submitting any workflow."},
             ),
         },
         [],
     )
 
 
-def build_backend_preview_v2(config: dict, payload: dict) -> dict:
+def build_backend_preview(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    render_plan = payload["render_plan_v2"]
+    render_plan = payload["render_plan"]
     shots = [row for row in render_plan.get("shot_packages", []) if isinstance(row, dict)]
     tti_preview = {
         "render_strategy": "tti_master",
-        "prompt_text": build_tti_anchor_v2_master_prompt(config),
+        "prompt_text": build_tti_anchor_master_prompt(config),
     }
     ref_preview = []
     for shot in shots:
@@ -96,9 +96,9 @@ def build_backend_preview_v2(config: dict, payload: dict) -> dict:
             }
         )
     return {
-        "tti_adapter_v2": tti_preview,
-        "ref_adapter_v2": ref_preview,
-        "wan_adapter_v2": wan_preview,
+        "tti_adapter": tti_preview,
+        "ref_adapter": ref_preview,
+        "wan_adapter": wan_preview,
     }
 
 
