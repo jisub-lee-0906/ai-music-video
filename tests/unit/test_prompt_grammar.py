@@ -1,8 +1,8 @@
 from ai_mv.core.prompt_grammar import (
-    golden_shot_guidance,
+    golden_structure_guidance,
     load_ref_archetype_grammars,
-    load_tti_grammars,
-    load_wan_grammars,
+    load_tti_families,
+    load_wan_transitions,
     ref_archetype_grammar,
     ref_archetype_variant,
 )
@@ -13,12 +13,11 @@ def _config() -> dict:
     return {
         "brief": "director_brief_example",
         "audio": {"brief": "Audio brief", "hook_brief": "Hook brief"},
-        "visual": {"brief": "Visual brief", "negative": "Visual negative"},
-        "mv": {
-            "story_world": "Night city transit world",
-            "payoff_style": "Cinematic release",
-            "outro_feel": "Lingering after-image",
-            "avoid": "Avoid list",
+        "visual": {
+            "story_premise": "A heroine moves through a connected night world.",
+            "world_rules": "The world must stay physically connected and readable.",
+            "heroine_arc": "She gains clearer direction with each section.",
+            "forbidden_story_moves": "Avoid sudden dream resets or extra characters.",
         },
         "character": {
             "identity_core": "same heroine",
@@ -26,36 +25,32 @@ def _config() -> dict:
             "anchor_wardrobe_guidance": "polished off-duty idol styling",
             "anchor_avoid": "avoid costume styling",
         },
-        "director": {
-            "target_style": "cinematic live-action music video",
-            "world_core": "night city",
-        },
     }
 
 
 def test_prompt_grammar_files_load_expected_families():
     ref = load_ref_archetype_grammars()
-    tti = load_tti_grammars()
-    wan = load_wan_grammars()
+    tti = load_tti_families()
+    wan = load_wan_transitions()
     assert "window_contact" in ref["archetypes"]
     assert ref_archetype_variant("window_contact", "moving_vehicle_window")["note"]
-    assert len(tti["anchor_families"]) >= 3
-    assert len(wan["transition_families"]) >= 4
+    assert len(tti["families"]) >= 3
+    assert len(wan["families"]) >= 4
 
 
 def test_ref_archetype_contract_data_is_structured():
     grammar = ref_archetype_grammar("threshold_crossing")
-    assert grammar["contract"]
-    assert grammar["good_pattern"]
+    assert grammar["prompt_contract"]
     assert grammar["preferred_sentence_shape"]
+    assert grammar["story_uses"]
     assert "threshold" in " ".join(grammar["surface_priority"]).lower()
 
 
-def test_golden_shot_guidance_loads_priority_probe_shapes():
-    guidance = golden_shot_guidance("bridge_b1")
+def test_golden_structure_guidance_loads_priority_shapes():
+    guidance = golden_structure_guidance("pressure", "platform_edge", "bridge_motion")
     assert guidance["preferred_surface"] == "wet platform edge"
-    assert "footprints" in guidance["preferred_pattern"].lower()
     assert "yellow tactile line" in guidance["preferred_pattern"].lower()
+    assert "footprint" in guidance["preferred_pattern"].lower()
 
 
 def test_platform_edge_grammar_uses_directional_foot_change_shape():
@@ -68,6 +63,6 @@ def test_platform_edge_grammar_uses_directional_foot_change_shape():
 def test_tti_master_prompt_uses_grammar_memory():
     prompt = build_tti_anchor_master_prompt(_config())
     lowered = prompt.lower()
-    assert "full-body" in lowered
-    assert "neutral backdrop" in lowered or "pale grey" in lowered
-    assert "footwear" in lowered
+    assert "neutral continuity anchor" in lowered
+    assert "wardrobe should read as polished everyday idol styling" in lowered
+    assert "identity priority" in lowered

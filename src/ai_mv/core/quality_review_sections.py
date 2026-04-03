@@ -5,25 +5,23 @@ from ai_mv.core.quality_review_metrics import lyric_metrics
 
 def review_story_alignment(config: dict, payload: dict) -> dict:
     timeline = payload.get("lyrics_timeline", {})
-    if not isinstance(timeline, dict) or not isinstance(payload.get("scene_plan"), dict):
+    if not isinstance(timeline, dict) or not isinstance(payload.get("scene_outline"), dict):
         return {}
     metrics = lyric_metrics(payload)
-    repetition = render_prompt_repetition(payload.get("workflow_inputs_preview", {}))
-    progression = story_progression(payload)
     return {
         "lyric_alignment": {
-            "reasoning": "Lyric lines were checked against lyric beats and shot coverage.",
+            "reasoning": "Lyric lines were checked against beat coverage in the scene outline.",
             "strengths": [f"shot coverage maps {metrics['covered_beat_count']} lyric beats"],
             "risks": [f"{metrics['unmapped_lyric_lines']} lyric lines are unmapped"] if metrics["unmapped_lyric_lines"] else [],
         },
         "repeat_variation": {
-            "reasoning": "Repeated hook and chorus line reuse was checked for changed visual treatment.",
-            "strengths": ["repeated hooks have some visual variation"] if metrics["repeated_hook_variation"] >= 0.5 else [],
-            "risks": ["repeated hooks collapse into near-identical visual beats"] if metrics["repeated_hook_variation"] < 0.5 else [],
+            "reasoning": "Repeated hooks are evaluated later through prompt execution and image review.",
+            "strengths": [],
+            "risks": [],
         },
-        "story_progression": progression,
+        "story_progression": story_progression(payload),
         "section_visual_separation": section_visual_separation(payload),
-        "render_prompt_repetition": repetition,
+        "render_prompt_repetition": render_prompt_repetition(payload.get("workflow_inputs_preview", {})),
         "profile_continuity": profile_continuity(payload),
         "same_heroine_protection": same_heroine_protection(config, payload),
         "style_alignment": style_alignment(payload),
@@ -31,196 +29,135 @@ def review_story_alignment(config: dict, payload: dict) -> dict:
 
 
 def story_progression(payload: dict) -> dict:
-    progression = [row for row in payload["scene_plan"].get("zone_progression", []) if isinstance(row, dict)]
-    if not progression:
-        return {"reasoning": "No zone progression found.", "strengths": [], "risks": ["section progression is missing"]}
-    roles = [str(row.get("story_role", "")).strip().lower() for row in progression if str(row.get("story_role", "")).strip()]
-    zones = [str(row.get("zone", "")).strip().lower() for row in progression if str(row.get("zone", "")).strip()]
+    progression = [row for row in payload["scene_outline"].get("section_progression", []) if isinstance(row, dict)]
+    roles = {str(row.get("story_goal", "")).strip() for row in progression if str(row.get("story_goal", "")).strip()}
+    zones = {str(row.get("world_zone", "")).strip() for row in progression if str(row.get("world_zone", "")).strip()}
     strengths = []
     risks = []
-    if len(set(roles)) >= max(2, len(roles) // 2):
-        strengths.append("section progression differentiates story roles across the song")
+    if len(roles) >= 3:
+        strengths.append("section progression differentiates story goals across the song")
     else:
-        risks.append("section progression roles are too repetitive")
-    if len(set(zones)) >= min(3, max(2, len(zones) // 2)):
-        strengths.append("zone progression meaningfully changes the staging state across sections")
+        risks.append("section story goals are still too repetitive")
+    if len(zones) >= 3:
+        strengths.append("world zones change meaningfully across sections")
     else:
-        risks.append("zone progression is too shallow across sections")
-    return {"reasoning": "Section progression was checked for distinct story roles and zone changes.", "strengths": strengths, "risks": risks}
+        risks.append("world zones are too shallow across sections")
+    return {"reasoning": "Section progression was checked for distinct story goals and world zones.", "strengths": strengths, "risks": risks}
 
 
 def render_prompt_repetition(workflow_inputs: dict) -> dict:
     backend_preview = workflow_inputs.get("backend_preview", {}) if isinstance(workflow_inputs, dict) else {}
-    clips = backend_preview.get("wan_adapter", []) if isinstance(backend_preview, dict) else []
-    prompts = [str(row.get("positive_prompt_preview", "")).strip().lower() for row in clips if isinstance(row, dict)]
-    unique = len(set(prompts))
-    ratio = (unique / len(prompts)) if prompts else 1.0
-    strengths = ["render-facing prompts preserve clip-to-clip differences"] if ratio >= 0.7 else []
-    risks = ["render-facing wan prompts repeat too aggressively across clips"] if prompts and ratio < 0.7 else []
-    return {
-        "reasoning": "WAN positive prompts were compared for repeated text.",
-        "strengths": strengths,
-        "risks": risks,
-        "distinct_ratio": round(ratio, 3),
-    }
+    rows = [str(row.get("positive_prompt_preview", "")).strip().lower() for row in backend_preview.get("wan_adapter", []) if isinstance(row, dict)]
+    ratio = (len(set(rows)) / len(rows)) if rows else 1.0
+    strengths = ["WAN prompt previews preserve clip-to-clip differences"] if ratio >= 0.7 else []
+    risks = ["WAN prompt previews repeat too aggressively across clips"] if rows and ratio < 0.7 else []
+    return {"reasoning": "WAN prompt previews were checked for repeated text.", "strengths": strengths, "risks": risks, "distinct_ratio": round(ratio, 3)}
 
 
 def section_visual_separation(payload: dict) -> dict:
     sections = {}
-    for row in payload["scene_plan"].get("shot_packages", []):
+    for row in payload["scene_outline"].get("shot_packages", []):
         if not isinstance(row, dict):
             continue
         label = str(row.get("section_label", "")).strip()
-        if not label:
-            continue
-        bucket = sections.setdefault(label, {"zones": set(), "motifs": set(), "roles": set()})
-        zone = str(row.get("zone", "")).strip().lower()
-        motif = str(row.get("motif_family", "")).strip().lower()
-        role = str(row.get("story_role", "")).strip().lower()
-        if zone:
-            bucket["zones"].add(zone)
-        if motif:
-            bucket["motifs"].add(motif)
-        if role:
-            bucket["roles"].add(role)
-    ordered = [(label, sections[label]) for label in sections]
+        bucket = sections.setdefault(label, {"zones": set(), "functions": set()})
+        if str(row.get("world_zone", "")).strip():
+            bucket["zones"].add(str(row.get("world_zone", "")).strip())
+        if str(row.get("story_function", "")).strip():
+            bucket["functions"].add(str(row.get("story_function", "")).strip())
+    ordered = list(sections.items())
     comparisons = 0
     distinct_pairs = 0
-    for (_prev_label, prev), (_cur_label, cur) in zip(ordered, ordered[1:]):
+    for (_pl, prev), (_cl, cur) in zip(ordered, ordered[1:]):
         comparisons += 1
-        same_zone = bool(prev["zones"] & cur["zones"]) and prev["zones"] == cur["zones"]
-        same_motif = bool(prev["motifs"] & cur["motifs"]) and prev["motifs"] == cur["motifs"]
-        same_role = bool(prev["roles"] & cur["roles"]) and prev["roles"] == cur["roles"]
-        if not (same_zone and same_motif and same_role):
+        if prev != cur:
             distinct_pairs += 1
-    ratio = (distinct_pairs / float(comparisons)) if comparisons else 1.0
-    strengths = ["adjacent sections carry distinct visual treatments instead of repeating the same setup"] if ratio >= 0.6 else []
-    risks = ["adjacent sections read too similarly in zone, motif, and story role"] if comparisons and ratio < 0.6 else []
-    return {
-        "reasoning": "Section-to-section transitions were checked for differences in zone, motif family, and story role.",
-        "strengths": strengths,
-        "risks": risks,
-        "separation_ratio": round(ratio, 3),
-    }
+    ratio = (distinct_pairs / comparisons) if comparisons else 1.0
+    strengths = ["adjacent sections carry distinct story-function or world-zone setups"] if ratio >= 0.6 else []
+    risks = ["adjacent sections still read too similarly in structure"] if comparisons and ratio < 0.6 else []
+    return {"reasoning": "Section transitions were checked for world-zone and story-function change.", "strengths": strengths, "risks": risks, "separation_ratio": round(ratio, 3)}
 
 
 def profile_continuity(payload: dict) -> dict:
-    scene = payload["scene_plan"]
-    heroine = str(scene.get("identity_core", "")).strip()
-    world = str(scene.get("world_core", "")).strip()
-    motifs = [
-        str(row.get("motif_family", "")).strip()
-        for row in scene.get("motif_progression", [])
-        if isinstance(row, dict) and str(row.get("motif_family", "")).strip()
-    ]
+    outline = payload["scene_outline"]
     strengths = []
     risks = []
-    if heroine:
-        strengths.append("same-heroine invariants are present in the scene plan")
+    if str(outline.get("story_premise", "")).strip():
+        strengths.append("story premise is present in the scene outline")
     else:
-        risks.append("same-heroine invariants are missing")
-    if world:
-        strengths.append("continuous world invariants are present in the scene plan")
+        risks.append("story premise is missing from the scene outline")
+    if str(outline.get("world_rules", "")).strip():
+        strengths.append("world rules are preserved in the scene outline")
     else:
-        risks.append("continuous world invariants are missing")
-    if motifs:
-        strengths.append("recurring motif families are defined in the scene plan")
-    else:
-        risks.append("recurring motif families are missing")
-    return {"reasoning": "V2 continuity fields were checked for heroine, world, and recurring motif constraints.", "strengths": strengths, "risks": risks}
+        risks.append("world rules are missing from the scene outline")
+    return {"reasoning": "Writer-layer story premises and world rules were checked in the outline output.", "strengths": strengths, "risks": risks}
 
 
 def same_heroine_protection(config: dict, payload: dict) -> dict:
-    render_shots = [row for row in payload["render_plan"].get("shot_packages", []) if isinstance(row, dict)]
-    sensitive = [row for row in render_shots if str(row.get("identity_core", "")).strip()]
-    protected = [row for row in render_shots if str(row.get("render_strategy", "")).strip() == "ref_pair"]
-    ratio = (len(protected) / float(len(sensitive))) if sensitive else 1.0
-    strengths = ["identity-sensitive shots are mostly ref-protected"] if ratio >= 0.75 else []
-    risks = ["identity-sensitive shots are under-protected by ref routing"] if ratio < 0.75 else []
-    strengths.append("direct-face shot ratio stays within profile policy")
-    return {
-        "reasoning": "V2 render strategies were checked for identity protection and conservative face exposure.",
-        "strengths": strengths,
-        "risks": risks,
-        "protected_ratio": round(ratio, 3),
-        "direct_face_ratio": 0.0,
-    }
+    ref_items = [row for row in payload.get("prompt_plan", {}).get("ref_items", []) if isinstance(row, dict)]
+    ratio = (
+        sum(1 for row in ref_items if "same" in str(row.get("ref_start_prompt_text", "")).lower()) / float(len(ref_items))
+        if ref_items
+        else 1.0
+    )
+    strengths = ["prompt plan keeps same-heroine language across REF items"] if ratio >= 0.9 else []
+    risks = ["prompt plan loses same-heroine continuity in too many REF items"] if ratio < 0.9 else []
+    return {"reasoning": "REF prompt text was checked for same-heroine continuity wording.", "strengths": strengths, "risks": risks, "protected_ratio": round(ratio, 3), "direct_face_ratio": 0.0}
 
 
 def style_alignment(payload: dict) -> dict:
-    director = [row for row in payload["director_plan"].get("shot_packages", []) if isinstance(row, dict)]
-    backend_preview = payload.get("backend_preview", {}) if isinstance(payload.get("backend_preview"), dict) else {}
-    route_focus_ratio = (
-        sum(
-            1
-            for row in backend_preview.get("wan_adapter", [])
-            if isinstance(row, dict) and str(row.get("positive_prompt_preview", "")).strip()
-        )
-        / float(len(backend_preview.get("wan_adapter", [])))
-        if backend_preview.get("wan_adapter")
+    direction = [row for row in payload.get("direction_plan", {}).get("shot_packages", []) if isinstance(row, dict)]
+    zone_ratio = (
+        sum(1 for row in direction if str(row.get("world_zone", "")).strip() in {"threshold", "compression", "open_peak"}) / float(len(direction))
+        if direction
         else 0.0
     )
-    total = len(director) or 1
-    graphic_count = sum(
-        1
-        for row in director
-        if str(row.get("zone", "")).strip().lower() in {"compression", "open_world", "open_world_peak", "threshold", "edge"}
-    )
-    alt_focus_count = sum(
-        1
-        for row in director
-        if any(
-            token in str(row.get("camera_intent", "")).strip().lower()
-            for token in ("objects", "space", "off-center", "frame wider", "world")
-        )
-    )
-    payoff_rows = [row for row in director if str(row.get("section_label", "")).strip().lower() == "final chorus"]
-    payoff_graphic = sum(
-        1 for row in payoff_rows if str(row.get("zone", "")).strip().lower() in {"open_world_peak", "open_world", "compression"}
-    )
-    graphic_ratio = graphic_count / float(total)
-    alt_focus_ratio = alt_focus_count / float(total)
-    payoff_ratio = (payoff_graphic / float(len(payoff_rows))) if payoff_rows else 0.0
-    strengths = []
-    risks = []
-    if graphic_ratio >= 0.45:
-        strengths.append("shot mix favors graphic, spatial, or threshold-led staging over generic heroine coverage")
-    else:
-        risks.append("shot mix still leans too far toward conventional heroine coverage")
-    if alt_focus_ratio >= 0.5:
-        strengths.append("object-, space-, and environment-led beats are common enough to support BGA-like visual flow")
-    else:
-        risks.append("object-, space-, and graphic-led beats are still underrepresented")
-    if payoff_ratio >= 0.5:
-        strengths.append("final payoff uses wider world-system staging instead of relying only on heroine close coverage")
-    elif payoff_rows:
-        risks.append("final payoff still depends too heavily on heroine-centric shots")
-    if route_focus_ratio >= 0.8:
-        strengths.append("backend preview preserves non-reset shot continuity through the whole chain")
-    else:
-        risks.append("backend preview does not yet preserve continuity intent strongly enough")
+    strengths = ["direction plan includes staged world-zone variety for a cinematic music-video flow"] if zone_ratio >= 0.4 else []
+    risks = ["direction plan still lacks enough world-zone contrast"] if direction and zone_ratio < 0.4 else []
     return {
-        "reasoning": "V2 shot zones, camera intents, and backend preview continuity were checked against the target cinematic music-video style.",
+        "reasoning": "Direction-plan world zones were checked for cinematic staging variety.",
         "strengths": strengths,
         "risks": risks,
-        "graphic_event_ratio": round(graphic_ratio, 3),
-        "non_heroine_focus_ratio": round(alt_focus_ratio, 3),
-        "payoff_graphic_ratio": round(payoff_ratio, 3),
-        "route_non_heroine_focus_ratio": round(route_focus_ratio, 3),
+        "graphic_event_ratio": round(zone_ratio, 3),
+        "non_heroine_focus_ratio": 0.0,
+        "payoff_graphic_ratio": 0.0,
+        "route_non_heroine_focus_ratio": 0.0,
     }
 
 
 def collect_strengths(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment", "ref_prompt_contracts", "wan_prompt_contracts"):
+    for key in (
+        "lyric_alignment",
+        "repeat_variation",
+        "story_progression",
+        "section_visual_separation",
+        "render_prompt_repetition",
+        "profile_continuity",
+        "same_heroine_protection",
+        "style_alignment",
+        "prompt_review",
+        "visual_generation_review",
+    ):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("strengths", []) if str(x).strip())
-    return out[:8] or ["lyric-first contracts are structurally present"]
+    return out[:8] or ["writer, director, and prompt-plan structure is present"]
 
 
 def collect_risks(story: dict) -> list[str]:
     out: list[str] = []
-    for key in ("lyric_alignment", "repeat_variation", "story_progression", "section_visual_separation", "render_prompt_repetition", "profile_continuity", "same_heroine_protection", "style_alignment", "ref_prompt_contracts", "wan_prompt_contracts"):
+    for key in (
+        "lyric_alignment",
+        "repeat_variation",
+        "story_progression",
+        "section_visual_separation",
+        "render_prompt_repetition",
+        "profile_continuity",
+        "same_heroine_protection",
+        "style_alignment",
+        "prompt_review",
+        "visual_generation_review",
+    ):
         node = story.get(key, {})
         out.extend(str(x) for x in node.get("risks", []) if str(x).strip())
-    return out[:8] or ["no major lyric-story structural risk detected"]
+    return out[:8] or ["no major structural risk detected"]

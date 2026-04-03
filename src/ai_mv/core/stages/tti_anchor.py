@@ -36,57 +36,54 @@ def run_tti_anchor(stage_input: StageInput) -> StageOutput:
 
 def build_tti_anchor_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    shots = [row for row in payload.get("render_plan", {}).get("shot_packages", []) if isinstance(row, dict)]
-    durations = _beat_duration_map(payload)
-    tti_shots: list[dict] = []
+    shots = [row for row in payload.get("prompt_plan", {}).get("ref_items", []) if isinstance(row, dict)]
+    tti_shots = []
     for idx, shot in enumerate(shots, start=1):
-        shot_id = str(shot.get("shot_id", "")).strip()
         section_label = str(shot.get("section_label", "")).strip()
-        duration = float(durations.get(shot_id, 2.0))
         tti_shots.append(
             {
-                "shot_id": shot_id,
-                "shot_type": _shot_type(shot),
+                "shot_id": str(shot.get("shot_id", "")).strip(),
+                "shot_type": "DETAIL_INSERT",
                 "section_name": str(shot.get("section_name", "")).strip(),
                 "section_label": section_label,
-                "duration_sec": duration,
+                "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
                 "is_chorus": "chorus" in section_label.lower(),
-                "lyric_beat_id": shot_id,
+                "lyric_beat_id": str(shot.get("shot_id", "")).strip(),
                 "line_refs": list(shot.get("line_refs", [])),
-                "literal_image": str(shot.get("environment_anchor", "")).strip(),
-                "symbolic_image": str(shot.get("motif_family", "")).strip(),
-                "motif_object": str(shot.get("motif_family", "")).strip(),
-                "edit_device": str(shot.get("story_role", "")).strip(),
-                "prompt_focus": _prompt_focus(shot),
-                "space_event": str(shot.get("environment_anchor", "")).strip(),
-                "continuity_lock": str(shot.get("identity_core", "")).strip(),
+                "literal_image": str(shot.get("primary_surface", "")).strip(),
+                "symbolic_image": str(shot.get("ref_archetype", "")).strip(),
+                "motif_object": str(shot.get("ref_archetype", "")).strip(),
+                "edit_device": str(shot.get("story_goal", "")).strip(),
+                "prompt_focus": "space",
+                "space_event": str(shot.get("primary_surface", "")).strip(),
+                "continuity_lock": str(brief.get("identity_core", "")).strip(),
                 "scene_change_level": "evolve",
                 "anchor_strategy": "refine_anchor",
                 "continuity_basis": "heroine",
-                "edit_role": str(shot.get("story_role", "")).strip(),
-                "camera_language": str(shot.get("camera_intent", "")).strip(),
-                "pose_delta": str(shot.get("performance_intent", "")).strip(),
-                "emotion": str(shot.get("transition_intent", "")).strip(),
-                "scene_detail": str(shot.get("environment_anchor", "")).strip(),
-                "motion_hint": str(shot.get("motion_intent", "")).strip(),
-                "workflow_motion_clause": str(shot.get("motion_intent", "")).strip(),
-                "space_relation": str(shot.get("zone", "")).strip(),
+                "edit_role": str(shot.get("story_function", "")).strip(),
+                "camera_language": "",
+                "pose_delta": str(shot.get("dominant_action", "")).strip(),
+                "emotion": str(shot.get("continuity_delta", "")).strip(),
+                "scene_detail": str(shot.get("primary_surface", "")).strip(),
+                "motion_hint": str(shot.get("dominant_action", "")).strip(),
+                "workflow_motion_clause": str(shot.get("dominant_action", "")).strip(),
+                "space_relation": str(shot.get("world_zone", "")).strip(),
                 "start_frame": {},
                 "end_frame": {},
                 "kinetic_transition": "carry",
-                "lighting_fx": str(shot.get("lighting_intent", "")).strip(),
-                "kinetic_intensity": _kinetic_intensity(shot),
-                "location_family": str(shot.get("motif_family", "")).strip(),
-                "composition_shape": str(shot.get("camera_intent", "")).strip(),
-                "palette_mode": str(brief.get("lighting_bias", "")).strip(),
+                "lighting_fx": "",
+                "kinetic_intensity": "medium",
+                "location_family": str(shot.get("ref_archetype", "")).strip(),
+                "composition_shape": "",
+                "palette_mode": "",
                 "character_render_mode": "cinematic heroine continuity",
-                "face_exposure_level": "soft" if "chorus" in section_label.lower() else "partial",
+                "face_exposure_level": "soft",
                 "heroine_visibility": "clear",
                 "continuity_priority": "high",
                 "wardrobe_read": "high",
                 "hero_frame_score": 2,
                 "consistency_need": "high",
-                "mv_function": str(shot.get("story_role", "")).strip(),
+                "mv_function": str(shot.get("story_goal", "")).strip(),
                 "return_weight": 2,
                 "edit_density": "medium",
                 "shot_priority": "support",
@@ -95,10 +92,9 @@ def build_tti_anchor_plan(config: dict, payload: dict) -> dict:
                 "retry": 0,
             }
         )
-    master_prompt = build_tti_anchor_master_prompt(config)
     return {
         "master_anchor": {
-            "prompt_text": master_prompt,
+            "prompt_text": build_tti_anchor_master_prompt(config),
             "seed": 1,
             "kinetic_transition": "anchor",
         },
@@ -141,51 +137,3 @@ def build_tti_anchor_master_prompt(config: dict) -> str:
         ]
         if str(part).strip()
     )
-
-
-def _beat_duration_map(payload: dict) -> dict[str, float]:
-    out: dict[str, float] = {}
-    timeline = payload.get("lyrics_timeline", {})
-    for section in timeline.get("sections", []):
-        if not isinstance(section, dict):
-            continue
-        for beat in section.get("lyric_beats", []):
-            if not isinstance(beat, dict):
-                continue
-            beat_id = str(beat.get("beat_id", "")).strip()
-            if not beat_id:
-                continue
-            start = float(beat.get("start_sec", 0.0) or 0.0)
-            end = float(beat.get("end_sec", 0.0) or 0.0)
-            out[beat_id] = max(0.5, end - start) if end > start else 2.0
-    return out
-
-
-def _shot_type(shot: dict) -> str:
-    role = str(shot.get("story_role", "")).lower()
-    zone = str(shot.get("zone", "")).lower()
-    if "peak" in role or "peak" in zone:
-        return "WORLD_EVENT"
-    if "bridge" in role or zone == "compression":
-        return "GRAPHIC_EVENT"
-    if "threshold" in role or zone in {"threshold", "edge"}:
-        return "ENV_TRANSITION"
-    return "DETAIL_INSERT"
-
-
-def _prompt_focus(shot: dict) -> str:
-    zone = str(shot.get("zone", "")).lower()
-    if zone in {"open_world", "open_world_peak"}:
-        return "space"
-    if zone == "compression":
-        return "graphic"
-    return "object"
-
-
-def _kinetic_intensity(shot: dict) -> str:
-    section = str(shot.get("section_label", "")).lower()
-    if "final chorus" in section or "chorus" in section:
-        return "high"
-    if "bridge" in section:
-        return "medium"
-    return "low"

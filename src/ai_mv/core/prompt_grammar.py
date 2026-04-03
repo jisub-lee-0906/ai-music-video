@@ -30,16 +30,16 @@ def load_ref_archetype_grammars() -> dict:
     return load_prompt_grammar("ref_archetypes")
 
 
-def load_tti_grammars() -> dict:
-    return load_prompt_grammar("tti_grammars")
+def load_tti_families() -> dict:
+    return load_prompt_grammar("tti_families")
 
 
-def load_wan_grammars() -> dict:
-    return load_prompt_grammar("wan_grammars")
+def load_wan_transitions() -> dict:
+    return load_prompt_grammar("wan_transitions")
 
 
-def load_golden_shots() -> dict:
-    return load_prompt_grammar("golden_shots")
+def load_golden_structures() -> dict:
+    return load_prompt_grammar("golden_structures")
 
 
 def ref_archetype_grammar(name: str) -> dict:
@@ -52,7 +52,7 @@ def ref_archetype_grammar(name: str) -> dict:
 
 def ref_archetype_variant(archetype: str, variant: str) -> dict:
     base = ref_archetype_grammar(archetype)
-    variants = base.get("variant_notes", {})
+    variants = base.get("variants", {})
     if not isinstance(variants, dict):
         return {}
     node = variants.get(str(variant).strip(), {})
@@ -60,12 +60,12 @@ def ref_archetype_variant(archetype: str, variant: str) -> dict:
 
 
 def tti_anchor_families() -> list[dict]:
-    rows = load_tti_grammars().get("anchor_families", [])
+    rows = load_tti_families().get("families", [])
     return [dict(row) for row in rows if isinstance(row, dict)]
 
 
 def wan_transition_families() -> list[dict]:
-    rows = load_wan_grammars().get("transition_families", [])
+    rows = load_wan_transitions().get("families", [])
     return [dict(row) for row in rows if isinstance(row, dict)]
 
 
@@ -76,9 +76,24 @@ def wan_transition_family(name: str) -> dict:
     return {}
 
 
-def golden_shot_guidance(shot_id: str) -> dict:
-    raw = load_golden_shots().get("shots", {})
-    if not isinstance(raw, dict):
+def golden_structure_guidance(story_function: str, archetype: str, variant: str = "") -> dict:
+    rows = load_golden_structures().get("structures", [])
+    if not isinstance(rows, list):
         return {}
-    node = raw.get(str(shot_id).strip(), {})
-    return dict(node) if isinstance(node, dict) else {}
+    wanted_story = str(story_function).strip()
+    wanted_archetype = str(archetype).strip()
+    wanted_variant = str(variant).strip()
+    fallback: dict = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("story_function", "")).strip() != wanted_story:
+            continue
+        if str(row.get("ref_archetype", "")).strip() != wanted_archetype:
+            continue
+        row_variant = str(row.get("variant", "")).strip()
+        if row_variant and row_variant == wanted_variant:
+            return dict(row)
+        if not row_variant and not fallback:
+            fallback = dict(row)
+    return fallback

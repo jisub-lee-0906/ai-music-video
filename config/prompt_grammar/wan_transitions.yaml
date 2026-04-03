@@ -1,4 +1,4 @@
-transition_families:
+families:
   - name: plain_continuation
     contract: Bridge one readable step of the same motion in the same place.
     allowed_motion_delta: stride continues, direction stays readable, same surface remains active

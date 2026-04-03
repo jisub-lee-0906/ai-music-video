@@ -1,204 +1,245 @@
 from __future__ import annotations
 
-from ai_mv.core.contracts.visual_plan_normalize import normalize_render_plan
+from ai_mv.core.contracts.visual_plan_normalize import normalize_prompt_plan
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.prompt_grammar import wan_transition_family
+from ai_mv.core.prompt_grammar import golden_structure_guidance, ref_archetype_grammar, wan_transition_family
 from ai_mv.core.stages.render_verbalizer import verbalize_ref_prompt_pairs, verbalize_wan_prompts
 
 
-def build_render_plan(config: dict, payload: dict) -> dict:
+def build_prompt_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    director_plan = payload["director_plan"]
-    shot_packages: list[dict] = []
-    wan_chain: list[dict] = []
-    previous_chain_key = ""
-    for index, shot in enumerate(director_plan.get("shot_packages", []), start=1):
-        shot_row = dict(shot)
-        shot_row["render_strategy"] = "ref_pair"
-        shot_row["ref_prompt_clauses"] = {
-            "subject_intro": str(brief.get("ref_subject_intro", "")).strip() or "The same Korean female idol",
-            "location": _render_location_clause(shot_row),
-            "ref_archetype": str(shot_row.get("ref_archetype", "")).strip(),
-            "ref_archetype_variant": str(shot_row.get("ref_archetype_variant", "")).strip(),
-            "ref_archetype_contract": str(shot_row.get("ref_archetype_contract", "")).strip(),
-            "ref_preferred_sentence_shape": str(shot_row.get("ref_preferred_sentence_shape", "")).strip(),
-            "golden_shot_guidance": dict(shot_row.get("golden_shot_guidance", {})),
-            "dominant_scene_grammar": str(shot_row.get("dominant_scene_grammar", "")).strip(),
-            "primary_surface": str(shot_row.get("primary_surface", "")).strip(),
-            "support_detail": str(shot_row.get("support_detail", "")).strip(),
-            "dominant_action": str(shot_row.get("dominant_action", "")).strip(),
-            "continuity_delta": str(shot_row.get("continuity_delta", "")).strip(),
-            "start_state": str(shot_row.get("ref_start_action_line", "")).strip() or str(shot_row.get("subject_action", "")).strip() or str(shot_row.get("visible_action", "")).strip(),
-            "end_state": str(shot_row.get("ref_end_action_line", "")).strip() or str(shot_row.get("subject_action", "")).strip() or str(shot_row.get("visible_action", "")).strip(),
-            "lighting": str(shot_row.get("ref_lighting_line", "")).strip() or str(shot_row.get("lighting_intent", "")).strip(),
+    direction_plan = payload["direction_plan"]
+    ref_items: list[dict] = []
+    wan_items: list[dict] = []
+    for shot in direction_plan.get("shot_packages", []):
+        story_function = str(shot.get("story_function", "")).strip()
+        archetype = str(shot.get("ref_archetype", "")).strip()
+        variant = str(shot.get("archetype_variant", "")).strip()
+        guidance = golden_structure_guidance(story_function, archetype, variant)
+        ref_atoms = _ref_prompt_atoms(brief, shot, guidance)
+        ref_items.append(
+            {
+                "shot_id": str(shot.get("shot_id", "")).strip(),
+                "section_name": str(shot.get("section_name", "")).strip(),
+                "section_label": str(shot.get("section_label", "")).strip(),
+                "line_refs": list(shot.get("line_refs", [])),
+                "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
+                "story_function": story_function,
+                "story_goal": str(shot.get("story_goal", "")).strip(),
+                "world_zone": str(shot.get("world_zone", "")).strip(),
+                "shot_function": str(shot.get("shot_function", "")).strip(),
+                "ref_archetype": archetype,
+                "archetype_variant": variant,
+                "primary_surface": str(shot.get("primary_surface", "")).strip(),
+                "dominant_action": str(shot.get("dominant_action", "")).strip(),
+                "continuity_delta": str(shot.get("continuity_delta", "")).strip(),
+                "content_trace": str(shot.get("content_trace", "")).strip(),
+                "selected_prompt_shape": str(ref_archetype_grammar(archetype).get("preferred_sentence_shape", "")).strip(),
+                "applied_grammar_source": str(shot.get("applied_grammar_source", "")).strip(),
+                "identity_hook_policy": str(shot.get("identity_hook_policy", "")).strip(),
+                "why": str(shot.get("why", "")).strip(),
+                "ref_prompt_atoms": ref_atoms,
+                "ref_prompt_contract": _ref_prompt_contract(archetype, variant, guidance),
+                "ref_start_prompt_text": "",
+                "ref_end_prompt_text": "",
+            }
+        )
+    _verbalize_ref_items(config, ref_items)
+    for index, current in enumerate(ref_items[1:], start=2):
+        previous = ref_items[index - 2]
+        transition_family = _infer_wan_transition_family(current)
+        transition = wan_transition_family(transition_family)
+        guidance = golden_structure_guidance(
+            str(current.get("story_function", "")).strip(),
+            str(current.get("ref_archetype", "")).strip(),
+            str(current.get("archetype_variant", "")).strip(),
+        )
+        wan_atoms = _wan_prompt_atoms(brief, current, guidance)
+        wan_items.append(
+            {
+                "shot_id": str(current.get("shot_id", "")).strip(),
+                "section_name": str(current.get("section_name", "")).strip(),
+                "section_label": str(current.get("section_label", "")).strip(),
+                "start_ref_shot_id": str(previous.get("shot_id", "")).strip(),
+                "end_ref_shot_id": str(current.get("shot_id", "")).strip(),
+                "duration_sec": float(current.get("duration_sec", 2.0) or 2.0),
+                "story_function": str(current.get("story_function", "")).strip(),
+                "wan_transition_family": transition_family,
+                "wan_prompt_contract": str(transition.get("contract", "")).strip(),
+                "applied_grammar_source": str(current.get("applied_grammar_source", "")).strip(),
+                "why": f"Adjacent bridge from {previous.get('shot_id', '')} to {current.get('shot_id', '')} for {current.get('story_function', '')}.",
+                "wan_prompt_atoms": wan_atoms,
+                "wan_positive_prompt_text": "",
+            }
+        )
+    _verbalize_wan_items(config, wan_items)
+    return normalize_prompt_plan(
+        {
+            "master_anchor": {
+                "render_strategy": "tti_master",
+                "identity_core": brief["identity_core"],
+                "style_contract": brief["style_contract"],
+                "environment_anchor": "simple pale backdrop for anchor extraction",
+            },
+            "ref_items": ref_items,
+            "wan_items": wan_items,
         }
-        shot_packages.append(shot_row)
-    for index, shot_row in enumerate(shot_packages[1:], start=2):
-        prev_shot = shot_packages[index - 2]
-        clip_index = index - 1
-        clip_count = max(1, len(shot_packages) - 1)
-        chain_key = f"{prev_shot['shot_id']}->{shot_row['shot_id']}"
-        wan_row = {
-            "shot_id": shot_row["shot_id"],
-            "render_strategy": "wan_chain",
-            "start_source": "previous_ref_end",
-            "start_ref_shot_id": prev_shot["shot_id"],
-            "end_ref_shot_id": shot_row["shot_id"],
-            "previous_chain_key": previous_chain_key,
-            "chain_key": chain_key,
-            "end_source": f"ref_end:{shot_row['shot_id']}",
-            "clip_index": clip_index,
-            "clip_count": clip_count,
-            "timeline_index": clip_index,
-            "section_name": str(shot_row.get("section_name", "")).strip(),
-            "section_label": str(shot_row.get("section_label", "")).strip(),
-            "environment_anchor": shot_row["environment_anchor"],
-            "location_description": str(shot_row.get("location_description", "")).strip(),
-            "lighting_intent": str(shot_row.get("lighting_intent", "")).strip(),
-            "duration_sec": float(shot_row.get("duration_sec", 2.0) or 2.0),
-            "literal_image": str(shot_row.get("literal_image", "")).strip(),
-            "visible_action": str(shot_row.get("visible_action", "")).strip(),
-            "subject_action": str(shot_row.get("subject_action", "")).strip(),
-            "wan_action_line": str(shot_row.get("wan_action_line", "")).strip(),
-            "wan_transition_family": _infer_wan_transition_family(shot_row),
-        }
-        wan_transition = wan_transition_family(str(wan_row.get("wan_transition_family", "")).strip())
-        wan_row["wan_prompt_clauses"] = {
-            "subject_intro": str(brief.get("ref_subject_intro", "")).strip() or "The same Korean female idol",
-            "location": _render_location_clause(wan_row),
-            "ref_archetype": str(shot_row.get("ref_archetype", "")).strip(),
-            "ref_archetype_variant": str(shot_row.get("ref_archetype_variant", "")).strip(),
-            "ref_archetype_contract": str(shot_row.get("ref_archetype_contract", "")).strip(),
-            "ref_preferred_sentence_shape": str(shot_row.get("ref_preferred_sentence_shape", "")).strip(),
-            "golden_shot_guidance": dict(shot_row.get("golden_shot_guidance", {})),
-            "wan_transition_family": str(wan_row.get("wan_transition_family", "")).strip(),
-            "wan_transition_contract": str(wan_transition.get("contract", "")).strip(),
-            "dominant_scene_grammar": str(shot_row.get("dominant_scene_grammar", "")).strip(),
-            "primary_surface": str(shot_row.get("primary_surface", "")).strip(),
-            "support_detail": str(shot_row.get("support_detail", "")).strip(),
-            "dominant_action": str(shot_row.get("dominant_action", "")).strip(),
-            "continuity_delta": str(shot_row.get("continuity_delta", "")).strip(),
-            "bridge_action": str(wan_row.get("wan_action_line", "")).strip() or str(wan_row.get("subject_action", "")).strip() or str(wan_row.get("visible_action", "")).strip(),
-            "lighting": str(wan_row.get("lighting_intent", "")).strip(),
-        }
-        wan_chain.append(wan_row)
-        previous_chain_key = chain_key
-    _verbalize_render_prompts(config, shot_packages, wan_chain)
-    render_plan = {
-        "master_anchor": {
-            "render_strategy": "tti_master",
-            "identity_core": brief["identity_core"],
-            "style_contract": brief["style_contract"],
-            "camera_intent": "neutral presentation pose with readable full-body character reference",
-            "environment_anchor": "simple pale backdrop for anchor extraction",
-        },
-        "shot_packages": shot_packages,
-        "wan_chain": wan_chain,
-    }
-    return normalize_render_plan(render_plan)
-
-
-def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
-    return (
-        "Map each director shot into backend strategies using one global TTI master anchor, "
-        "REF start/end image pairs per shot, a meaning-preserving render verbalizer for natural prompt prose, "
-        "and a WAN chain that bridges adjacent REF keyframes as 1-2, 2-3, 3-4."
     )
 
 
-def _render_location_clause(row: dict) -> str:
-    location = " ".join(str(row.get("location_description", "")).strip().rstrip(".").split())
-    if location:
-        return _location_lead_in(location)
-    anchor = " ".join(str(row.get("environment_anchor", "")).strip().rstrip(".").split())
-    return _location_lead_in(anchor) if anchor else ""
+def build_render_plan(config: dict, payload: dict) -> dict:
+    return build_prompt_plan(config, payload)
 
 
-def _location_lead_in(text: str) -> str:
-    cleaned = " ".join(str(text).strip().rstrip(".").split())
+def build_prompt_plan_preview_prompt(config: dict, payload: dict) -> str:
+    return (
+        "Compile direction decisions into prompt atoms and engine-ready prompt contracts. "
+        "Use grammar memory to choose the sentence shape, then verbalize without adding new meaning. "
+        "REF items should stay independent and WAN items should bridge adjacent REF keyframes only."
+    )
+
+
+def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
+    return build_prompt_plan_preview_prompt(config, payload)
+
+
+def _ref_prompt_atoms(brief: dict, shot: dict, guidance: dict) -> dict:
+    identity_hook = _identity_hook(brief, str(shot.get("identity_hook_policy", "")).strip())
+    start_shape = str(guidance.get("start_shape", "")).strip() or str(shot.get("dominant_action", "")).strip()
+    end_shape = str(guidance.get("end_shape", "")).strip() or str(shot.get("continuity_delta", "")).strip()
+    return {
+        "subject_intro": _subject_intro(brief, identity_hook),
+        "location": _location_clause(str(shot.get("primary_surface", "")).strip()),
+        "primary_surface": str(shot.get("primary_surface", "")).strip(),
+        "dominant_action": str(shot.get("dominant_action", "")).strip(),
+        "continuity_delta": str(shot.get("continuity_delta", "")).strip(),
+        "content_trace": str(shot.get("content_trace", "")).strip(),
+        "start_state": start_shape,
+        "end_state": end_shape,
+        "lighting": "",
+    }
+
+
+def _wan_prompt_atoms(brief: dict, shot: dict, guidance: dict) -> dict:
+    identity_hook = _identity_hook(brief, str(shot.get("identity_hook_policy", "")).strip())
+    bridge_shape = str(guidance.get("wan_shape", "")).strip() or str(shot.get("continuity_delta", "")).strip()
+    return {
+        "subject_intro": _subject_intro(brief, identity_hook),
+        "location": _location_clause(str(shot.get("primary_surface", "")).strip()),
+        "primary_surface": str(shot.get("primary_surface", "")).strip(),
+        "bridge_action": bridge_shape,
+        "lighting": "",
+    }
+
+
+def _verbalize_ref_items(config: dict, ref_items: list[dict]) -> None:
+    rows = []
+    for row in ref_items:
+        atoms = dict(row.get("ref_prompt_atoms", {}))
+        rows.append(
+            {
+                "shot_id": row["shot_id"],
+                "subject_intro": atoms.get("subject_intro", ""),
+                "location": atoms.get("location", ""),
+                "ref_archetype": row.get("ref_archetype", ""),
+                "ref_archetype_variant": row.get("archetype_variant", ""),
+                "ref_archetype_contract": row.get("ref_prompt_contract", ""),
+                "ref_preferred_sentence_shape": row.get("selected_prompt_shape", ""),
+                "golden_shot_guidance": {},
+                "dominant_scene_grammar": row.get("story_function", ""),
+                "primary_surface": atoms.get("primary_surface", ""),
+                "support_detail": atoms.get("content_trace", ""),
+                "dominant_action": atoms.get("dominant_action", ""),
+                "continuity_delta": atoms.get("continuity_delta", ""),
+                "start_state": atoms.get("start_state", ""),
+                "end_state": atoms.get("end_state", ""),
+                "lighting": atoms.get("lighting", ""),
+            }
+        )
+    prompts = verbalize_ref_prompt_pairs(config, rows)
+    for row in ref_items:
+        prompt = prompts.get(row["shot_id"], {})
+        row["ref_start_prompt_text"] = str(prompt.get("start_prompt_text", "")).strip()
+        row["ref_end_prompt_text"] = str(prompt.get("end_prompt_text", "")).strip()
+
+
+def _verbalize_wan_items(config: dict, wan_items: list[dict]) -> None:
+    rows = []
+    for row in wan_items:
+        atoms = dict(row.get("wan_prompt_atoms", {}))
+        rows.append(
+            {
+                "shot_id": row["shot_id"],
+                "subject_intro": atoms.get("subject_intro", ""),
+                "location": atoms.get("location", ""),
+                "ref_archetype": "",
+                "ref_archetype_variant": "",
+                "ref_archetype_contract": "",
+                "ref_preferred_sentence_shape": "",
+                "golden_shot_guidance": {},
+                "wan_transition_family": row.get("wan_transition_family", ""),
+                "wan_transition_contract": row.get("wan_prompt_contract", ""),
+                "dominant_scene_grammar": row.get("story_function", ""),
+                "primary_surface": atoms.get("primary_surface", ""),
+                "support_detail": "",
+                "dominant_action": "",
+                "continuity_delta": "",
+                "bridge_action": atoms.get("bridge_action", ""),
+                "lighting": atoms.get("lighting", ""),
+            }
+        )
+    prompts = verbalize_wan_prompts(config, rows)
+    for row in wan_items:
+        row["wan_positive_prompt_text"] = str(prompts.get(row["shot_id"], "")).strip()
+
+
+def _subject_intro(brief: dict, identity_hook: str) -> str:
+    base = str(brief.get("ref_subject_intro", "")).strip() or "The same Korean female idol"
+    if identity_hook:
+        return f"{base} {identity_hook}".strip()
+    return base
+
+
+def _identity_hook(brief: dict, policy: str) -> str:
+    if policy != "optional_small_hook":
+        return ""
+    hooks = [str(x).strip() for x in brief.get("identity_hooks", []) if str(x).strip()]
+    if not hooks:
+        return ""
+    return f"with {hooks[0]}"
+
+
+def _location_clause(surface: str) -> str:
+    cleaned = " ".join(surface.strip().split())
     if not cleaned:
         return ""
     lowered = cleaned.lower()
-    if lowered.startswith(("in ", "at ", "on ", "by ", "beside ", "near ", "under ", "inside ", "along ", "across ", "through ")):
-        return cleaned[:1].upper() + cleaned[1:]
-    if any(token in lowered for token in ("edge", "threshold", "line", "lane", "gate", "turnstile", "crosswalk", "curb", "street edge", "sidewalk", "pavement", "floor", "platform", "path")):
+    if any(token in lowered for token in ("edge", "threshold", "line", "lane", "crosswalk", "curb", "sidewalk", "pavement", "platform")):
         return f"At the {cleaned}"
-    if any(token in lowered for token in ("stairs", "stairwell", "ramp", "passage", "corridor", "hall")):
+    if any(token in lowered for token in ("stairs", "stairwell", "ramp", "passage", "corridor")):
         return f"Along the {cleaned}"
     if any(token in lowered for token in ("window", "glass", "rail", "wall", "door")):
         return f"By the {cleaned}"
     return f"In the {cleaned}"
 
 
-def _verbalize_render_prompts(config: dict, shot_packages: list[dict], wan_chain: list[dict]) -> None:
-    ref_rows = []
-    for shot in shot_packages:
-        clauses = dict(shot.get("ref_prompt_clauses", {}))
-        ref_rows.append(
-            {
-                "shot_id": str(shot.get("shot_id", "")).strip(),
-                "subject_intro": str(clauses.get("subject_intro", "")).strip(),
-                "location": str(clauses.get("location", "")).strip(),
-                "ref_archetype": str(clauses.get("ref_archetype", "")).strip(),
-                "ref_archetype_variant": str(clauses.get("ref_archetype_variant", "")).strip(),
-                "ref_archetype_contract": str(clauses.get("ref_archetype_contract", "")).strip(),
-                "ref_preferred_sentence_shape": str(clauses.get("ref_preferred_sentence_shape", "")).strip(),
-                "golden_shot_guidance": dict(clauses.get("golden_shot_guidance", {})),
-                "dominant_scene_grammar": str(clauses.get("dominant_scene_grammar", "")).strip(),
-                "primary_surface": str(clauses.get("primary_surface", "")).strip(),
-                "support_detail": str(clauses.get("support_detail", "")).strip(),
-                "dominant_action": str(clauses.get("dominant_action", "")).strip(),
-                "continuity_delta": str(clauses.get("continuity_delta", "")).strip(),
-                "start_state": str(clauses.get("start_state", "")).strip(),
-                "end_state": str(clauses.get("end_state", "")).strip(),
-                "lighting": str(clauses.get("lighting", "")).strip(),
-            }
-        )
-    ref_prompts = verbalize_ref_prompt_pairs(config, ref_rows)
-    for shot in shot_packages:
-        prompts = ref_prompts.get(str(shot.get("shot_id", "")).strip(), {})
-        shot["ref_start_prompt_text"] = str(prompts.get("start_prompt_text", "")).strip()
-        shot["ref_end_prompt_text"] = str(prompts.get("end_prompt_text", "")).strip()
-
-    wan_rows = []
-    for row in wan_chain:
-        clauses = dict(row.get("wan_prompt_clauses", {}))
-        wan_rows.append(
-            {
-                "shot_id": str(row.get("shot_id", "")).strip(),
-                "subject_intro": str(clauses.get("subject_intro", "")).strip(),
-                "location": str(clauses.get("location", "")).strip(),
-                "ref_archetype": str(clauses.get("ref_archetype", "")).strip(),
-                "ref_archetype_variant": str(clauses.get("ref_archetype_variant", "")).strip(),
-                "ref_archetype_contract": str(clauses.get("ref_archetype_contract", "")).strip(),
-                "ref_preferred_sentence_shape": str(clauses.get("ref_preferred_sentence_shape", "")).strip(),
-                "golden_shot_guidance": dict(clauses.get("golden_shot_guidance", {})),
-                "wan_transition_family": str(clauses.get("wan_transition_family", "")).strip(),
-                "wan_transition_contract": str(clauses.get("wan_transition_contract", "")).strip(),
-                "dominant_scene_grammar": str(clauses.get("dominant_scene_grammar", "")).strip(),
-                "primary_surface": str(clauses.get("primary_surface", "")).strip(),
-                "support_detail": str(clauses.get("support_detail", "")).strip(),
-                "dominant_action": str(clauses.get("dominant_action", "")).strip(),
-                "continuity_delta": str(clauses.get("continuity_delta", "")).strip(),
-                "bridge_action": str(clauses.get("bridge_action", "")).strip(),
-                "lighting": str(clauses.get("lighting", "")).strip(),
-            }
-        )
-    wan_prompts = verbalize_wan_prompts(config, wan_rows)
-    for row in wan_chain:
-        row["wan_positive_prompt_text"] = str(wan_prompts.get(str(row.get("shot_id", "")).strip(), "")).strip()
+def _ref_prompt_contract(archetype: str, variant: str, guidance: dict) -> str:
+    if str(guidance.get("prompt_contract", "")).strip():
+        return str(guidance.get("prompt_contract", "")).strip()
+    base = str(ref_archetype_grammar(archetype).get("prompt_contract", "")).strip()
+    note = str(ref_archetype_grammar(archetype).get("variants", {}).get(variant, {}).get("note", "")).strip() if variant else ""
+    return f"{base} Variant note: {note}".strip() if note else base
 
 
-def _infer_wan_transition_family(shot_row: dict) -> str:
-    archetype = str(shot_row.get("ref_archetype", "")).strip()
-    visual_role = str(shot_row.get("visual_role", "")).strip().lower()
-    zone = str(shot_row.get("zone", "")).strip().lower()
-    if archetype in {"threshold_crossing", "doorway_handoff", "gate_pass"}:
-        return "threshold_bridge"
+def _infer_wan_transition_family(shot: dict) -> str:
+    archetype = str(shot.get("ref_archetype", "")).strip()
+    story_function = str(shot.get("story_function", "")).strip()
+    if archetype in {"threshold_crossing", "doorway_handoff", "gate_pass", "curb_crossing"}:
+        return "threshold_bridge" if story_function != "payoff" else "release_crossing"
     if archetype in {"stair_descent", "ramp_descent"}:
         return "descent_bridge"
-    if archetype in {"passage_compression", "brace_pause"} or "pressure" in visual_role or zone == "compression":
+    if story_function == "pressure" or archetype in {"passage_compression", "brace_pause", "platform_edge"}:
         return "compression_bridge"
-    if "payoff" in visual_role or zone == "open_world_peak":
+    if story_function == "payoff":
         return "release_crossing"
     return "plain_continuation"

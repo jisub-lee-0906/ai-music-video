@@ -49,7 +49,7 @@ def test_apply_director_brief_merges_example_style_input(tmp_path, monkeypatch):
 
     assert cfg["audio"]["brief"] == "Director audio brief"
     assert cfg["character"]["identity_core"] == "Korean female idol"
-    assert cfg["director"]["target_style"] == "cinematic live-action music video"
+    assert cfg["visual"]["story_premise"] == "A heroine crosses the first connected night threshold."
 
 
 def _director_brief_yaml() -> str:
@@ -59,20 +59,10 @@ def _director_brief_yaml() -> str:
         "  brief: Director audio brief\n"
         "  hook_brief: Director hook brief\n"
         "visual:\n"
-        "  brief: Director visual brief\n"
-        "  negative: Avoid drift\n"
-        "mv:\n"
-        "  story_world: One connected night block\n"
-        "  action_vocabulary: Threshold turns and reflected motion\n"
-        "  payoff_style: Motif system peak\n"
-        "  outro_feel: lingering after-image\n"
-        "  avoid: random spectacle\n"
+        "  story_premise: A heroine crosses the first connected night threshold.\n"
+        "  world_rules: One connected night block with readable physical continuity.\n"
+        "  heroine_arc: She gains direction through forward movement.\n"
+        "  forbidden_story_moves: Avoid drift, random spectacle, or extra characters.\n"
         "character:\n"
         "  identity_core: Korean female idol\n"
-        "director:\n"
-        "  target_style: cinematic live-action music video\n"
-        "  world_core: layered city night\n"
-        "  camera_bias: readable cinematic framing\n"
-        "  lighting_bias: directional sign glow\n"
-        "  motion_bias: stable cinematic movement\n"
     )

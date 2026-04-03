@@ -1,34 +1,38 @@
-shots:
-  intro_b1:
-    archetype: gate_pass
+structures:
+  - name: intro_entry_gate
+    story_function: entry
+    ref_archetype: gate_pass
     preferred_surface: turnstile lane
-    contract: Keep the entry on the turnstile or gate crossing and land immediately inside the station. Do not replace the gate crossing with train-window side movement.
+    prompt_contract: Keep the entry on the turnstile or gate crossing and land immediately inside the station.
     preferred_pattern: same heroine + turnstile or gate crossing + first step inside the station
     start_shape: She enters the turnstile lane with one readable forward step.
     end_shape: She passes through the turnstile lane and lands just inside the station.
     wan_shape: She steps through the turnstile lane into the station and lands on the station side.
-  bridge_b1:
-    archetype: platform_edge
+  - name: bridge_platform_motion
+    story_function: pressure
+    ref_archetype: platform_edge
     variant: bridge_motion
     preferred_surface: wet platform edge
-    contract: Keep the beat on the wet platform edge with the yellow tactile line close at her feet, a readable shortened or crossing step, and a visible footprint trail behind her. Do not replace the beat with glass, turn-back, gesture-heavy posing, or generic drift.
+    prompt_contract: Keep the beat on the wet platform edge with the yellow tactile line close at her feet, a readable shortened or crossing step, and a visible footprint trail behind her.
     preferred_pattern: same heroine + wet platform edge + yellow tactile line near feet + crossing or shortened step + footprints widening behind
     start_shape: She sets a shorter step along the wet platform edge with the yellow tactile line close at her feet.
     end_shape: She takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.
     wan_shape: She keeps the same crossing step on the wet platform edge and carries the footprint trail wider behind her.
-  final_chorus_b1:
-    archetype: curb_crossing
+  - name: final_release_crosswalk
+    story_function: payoff
+    ref_archetype: curb_crossing
     preferred_surface: wet crosswalk
-    contract: Keep the release on a literal crosswalk crossing toward the far side. Do not flatten it into generic walking on a platform path.
+    prompt_contract: Keep the release on a literal crosswalk crossing toward the far side.
     preferred_pattern: same heroine + crosswalk + far-side arrival + forward continuation
     start_shape: She steps onto the wet crosswalk with her line set toward the far side.
     end_shape: She clears the crosswalk and reaches the far side.
     wan_shape: She keeps crossing and drives her stride to the far curb.
-  final_chorus_b3:
-    archetype: platform_edge
+  - name: final_platform_push
+    story_function: handoff
+    ref_archetype: platform_edge
     variant: bridge_motion
     preferred_surface: platform edge
-    contract: Keep the beat on the wet platform edge with the yellow tactile line near her feet and a stronger forward step. Do not turn it into a studio door, generic street-edge walk, or train-window event.
+    prompt_contract: Keep the beat on the wet platform edge with the yellow tactile line near her feet and a stronger forward step.
     preferred_pattern: same heroine + wet platform edge + yellow tactile line near feet + stronger forward step
     start_shape: She sets the next step along the wet platform edge with the yellow tactile line close at her feet.
     end_shape: She takes a longer forward step along the wet platform edge with the yellow tactile line still close at her feet.

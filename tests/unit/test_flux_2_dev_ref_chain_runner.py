@@ -46,57 +46,42 @@ def test_flux2_ref_plan_uses_literal_scene_description_for_ref_prompts():
     config = {
         "brief": "director_brief_example",
         "audio": {"brief": "Audio brief", "hook_brief": "Hook brief"},
-        "visual": {"brief": "Visual brief", "negative": "Visual negative"},
-        "mv": {
-            "story_world": "Night city transit world",
-            "payoff_style": "Cinematic release",
-            "outro_feel": "Lingering after-image",
-            "avoid": "Avoid list",
+        "visual": {
+            "story_premise": "A heroine moves through one connected night world.",
+            "world_rules": "The world stays physically connected and grounded.",
+            "heroine_arc": "She gains direction through forward movement.",
+            "forbidden_story_moves": "Avoid dream resets and extra characters.",
         },
         "character": {"identity_core": "same heroine"},
-        "director": {
-            "target_style": "cinematic live-action music video",
-            "world_core": "night city",
-            "camera_bias": "cinematic framing",
-            "lighting_bias": "city-night lighting",
-            "shadow_bias": "grounded shadows",
-            "motion_bias": "natural motion",
-            "transition_bias": "continuity",
-            "motif_families": ["curb reflection", "puddle ring"],
-            "ref_frame_style": "high-end music video keyframe quality",
-        },
     }
     payload = {
         "master_anchor": f"{ANCHOR_DIR}/master.png",
-        "render_plan": {
-            "shot_packages": [
+        "prompt_plan": {
+            "ref_items": [
                 {
                     "shot_id": "S001",
-                    "environment_family": "wet_ground_path",
-                    "environment_anchor": "a narrow side street after rain with one raised curb edge, shallow roadside water catching storefront spill light, and an empty lane trailing behind her",
-                    "location_description": "a narrow side street after rain with one raised curb edge, shallow roadside water catching storefront spill light, and an empty lane trailing behind her",
-                    "lighting_intent": "clean city-night spill",
+                    "primary_surface": "narrow side street after rain with one raised curb edge",
+                    "content_trace": "shallow roadside water catching storefront spill light",
+                    "ref_start_prompt_text": "The same heroine moves along a narrow side street after rain with one raised curb edge.",
+                    "ref_end_prompt_text": "The same heroine carries her next step along a narrow side street after rain with one raised curb edge.",
                     "section_name": "Verse 1",
                     "section_label": "Verse 1",
-                    "visual_role": "continuity_frame",
                 },
                 {
                     "shot_id": "S002",
-                    "environment_family": "wet_ground_path",
-                    "environment_anchor": "a broad wet roadway after rain with shallow puddles, painted lane markings, reflective asphalt, and distant traffic glow stretching behind her",
-                    "location_description": "a broad wet roadway after rain with shallow puddles, painted lane markings, reflective asphalt, and distant traffic glow stretching behind her",
-                    "lighting_intent": "clean city-night spill",
+                    "primary_surface": "broad wet roadway after rain with shallow puddles",
+                    "content_trace": "painted lane markings and reflective asphalt",
+                    "ref_start_prompt_text": "The same heroine enters a broad wet roadway after rain with shallow puddles.",
+                    "ref_end_prompt_text": "The same heroine crosses a broad wet roadway after rain with shallow puddles.",
                     "section_name": "Verse 1",
                     "section_label": "Verse 1",
-                    "visual_role": "continuity_frame",
                 },
             ]
         },
-        "lyrics_timeline": {"sections": []},
     }
 
     plan = build_flux2_ref_plan(config, payload)
 
     assert "narrow side street after rain" in plan["items"][0]["start_prompt_text"]
     assert "broad wet roadway after rain" in plan["items"][1]["end_prompt_text"]
-    assert "close urban pocket around" not in plan["items"][0]["start_prompt_text"]
+    assert plan["items"][0]["scene_detail"] == "narrow side street after rain with one raised curb edge"

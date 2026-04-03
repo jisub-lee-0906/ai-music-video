@@ -1,64 +1,112 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.visual_plan_schema import (
-    VALID_RENDER_STRATEGIES,
-    assert_director_plan,
-    assert_render_plan,
-    assert_scene_plan,
+    assert_direction_plan,
+    assert_prompt_plan,
+    assert_scene_outline,
 )
 
 
-def normalize_scene_plan(plan: dict) -> dict:
+def normalize_scene_outline(plan: dict) -> dict:
     normalized = dict(plan)
-    normalized["shot_packages"] = [_normalize_scene_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
-    assert_scene_plan(normalized)
+    normalized["shot_packages"] = [_normalize_outline_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
+    assert_scene_outline(normalized)
     return normalized
 
 
-def normalize_director_plan(plan: dict) -> dict:
+def normalize_direction_plan(plan: dict) -> dict:
     normalized = dict(plan)
-    normalized["shot_packages"] = [_normalize_director_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
-    assert_director_plan(normalized)
+    normalized["shot_packages"] = [_normalize_direction_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
+    assert_direction_plan(normalized)
     return normalized
 
 
-def normalize_render_plan(plan: dict) -> dict:
+def normalize_prompt_plan(plan: dict) -> dict:
     normalized = dict(plan)
     normalized["master_anchor"] = dict(plan.get("master_anchor", {}))
-    normalized["shot_packages"] = [_normalize_render_shot(dict(row)) for row in plan.get("shot_packages", []) if isinstance(row, dict)]
-    normalized["wan_chain"] = [dict(row) for row in plan.get("wan_chain", []) if isinstance(row, dict)]
-    assert_render_plan(normalized)
+    normalized["ref_items"] = [_normalize_prompt_ref_item(dict(row)) for row in plan.get("ref_items", []) if isinstance(row, dict)]
+    normalized["wan_items"] = [_normalize_prompt_wan_item(dict(row)) for row in plan.get("wan_items", []) if isinstance(row, dict)]
+    assert_prompt_plan(normalized)
     return normalized
 
 
-def _normalize_scene_shot(shot: dict) -> dict:
+def _normalize_outline_shot(shot: dict) -> dict:
     shot["beat_refs"] = [str(x).strip() for x in shot.get("beat_refs", []) if str(x).strip()]
     shot["line_refs"] = [int(x) for x in shot.get("line_refs", []) if _positive_int(x)]
-    for key in ("shot_id", "section_name", "section_label", "story_role", "visual_role", "zone", "motif_family", "continuity_group", "identity_core", "environment_anchor"):
+    for key in (
+        "shot_id",
+        "section_name",
+        "section_label",
+        "story_function",
+        "story_goal",
+        "world_zone",
+        "heroine_state",
+        "transition_need",
+        "why",
+    ):
         shot[key] = str(shot.get(key, "")).strip()
-    shot.setdefault("camera_intent", "")
-    shot.setdefault("performance_intent", "")
-    shot.setdefault("lighting_intent", "")
-    shot.setdefault("shadow_intent", "")
-    shot.setdefault("contact_intent", "")
-    shot.setdefault("motion_intent", "")
-    shot.setdefault("transition_intent", "")
-    shot.setdefault("render_strategy", "ref_pair")
+    shot["duration_sec"] = float(shot.get("duration_sec", 2.0) or 2.0)
     return shot
 
 
-def _normalize_director_shot(shot: dict) -> dict:
-    shot = _normalize_scene_shot(shot)
-    for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "contact_intent", "motion_intent", "transition_intent"):
+def _normalize_direction_shot(shot: dict) -> dict:
+    shot = _normalize_outline_shot(shot)
+    for key in (
+        "shot_function",
+        "ref_archetype",
+        "archetype_variant",
+        "primary_surface",
+        "dominant_action",
+        "continuity_delta",
+        "content_trace",
+        "identity_hook_policy",
+        "selected_prompt_shape",
+        "applied_grammar_source",
+    ):
         shot[key] = str(shot.get(key, "")).strip()
     return shot
 
 
-def _normalize_render_shot(shot: dict) -> dict:
-    shot = _normalize_director_shot(shot)
-    render_strategy = str(shot.get("render_strategy", "")).strip() or "ref_pair"
-    shot["render_strategy"] = render_strategy if render_strategy in VALID_RENDER_STRATEGIES else "ref_pair"
-    return shot
+def _normalize_prompt_ref_item(row: dict) -> dict:
+    row["duration_sec"] = float(row.get("duration_sec", 2.0) or 2.0)
+    for key in (
+        "shot_id",
+        "section_name",
+        "section_label",
+        "ref_archetype",
+        "archetype_variant",
+        "primary_surface",
+        "dominant_action",
+        "continuity_delta",
+        "content_trace",
+        "selected_prompt_shape",
+        "applied_grammar_source",
+        "ref_prompt_contract",
+        "ref_start_prompt_text",
+        "ref_end_prompt_text",
+        "why",
+    ):
+        row[key] = str(row.get(key, "")).strip()
+    row["ref_prompt_atoms"] = dict(row.get("ref_prompt_atoms", {}))
+    return row
+
+
+def _normalize_prompt_wan_item(row: dict) -> dict:
+    row["duration_sec"] = float(row.get("duration_sec", 2.0) or 2.0)
+    for key in (
+        "shot_id",
+        "section_name",
+        "section_label",
+        "start_ref_shot_id",
+        "end_ref_shot_id",
+        "wan_transition_family",
+        "wan_prompt_contract",
+        "wan_positive_prompt_text",
+        "why",
+    ):
+        row[key] = str(row.get(key, "")).strip()
+    row["wan_prompt_atoms"] = dict(row.get("wan_prompt_atoms", {}))
+    return row
 
 
 def _positive_int(value: object) -> bool:

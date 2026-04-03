@@ -27,7 +27,7 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
         config=cfg,
         payload={
             "selected_brief": str(cfg.get("brief", "")).strip(),
-            "director_brief_intent": build_director_brief_intent(cfg),
+            "story_profile": build_director_brief_intent(cfg),
             "workflow_inputs": {},
         },
     )
@@ -53,9 +53,9 @@ def _ordered_stages() -> list[tuple[str, callable]]:
     return [
         ("acestep_music", run_acestep_music),
         ("lyrics_timeline", run_lyrics_timeline),
-        ("scene_plan", run_scene_plan),
-        ("director_plan", run_director_plan),
-        ("render_plan", run_render_plan),
+        ("scene_outline", run_scene_plan),
+        ("direction_plan", run_director_plan),
+        ("prompt_plan", run_render_plan),
         ("backend_preview", run_backend_preview),
         ("tti_anchor", run_tti_anchor),
         ("flux2_ref_chain", run_flux2_ref_chain),

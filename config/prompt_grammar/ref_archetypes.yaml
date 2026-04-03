@@ -1,10 +1,11 @@
 archetypes:
   threshold_crossing:
     name: threshold_crossing
-    contract: Use source surface to destination surface with contact release; keep the threshold secondary to her crossing.
+    story_uses: entry, handoff, payoff, concrete crossing
+    prompt_contract: Use source surface to destination surface with contact release; keep the threshold secondary to her crossing.
     good_pattern: same heroine + threshold or exit line + clear crossing verb + destination surface
     preferred_sentence_shape: same heroine + one small identity hook when needed + steps/crosses off source surface onto destination surface + one contact release detail
-    avoid_pattern: opening mood, glow ahead, doorway as hero object
+    avoid_patterns: opening mood, glow ahead, doorway as hero object
     surface_priority:
       - threshold
       - exit line
@@ -12,15 +13,16 @@ archetypes:
       - street edge
     contact_policy: Contact release is optional but should stay subordinate to the crossing.
     continuity_policy: Start and end should differ by one readable step across the threshold.
-    variant_notes:
+    variants:
       station_side:
         note: Prefer gate line, station threshold, or exit line over symbolic lighting.
   stair_descent:
     name: stair_descent
-    contract: Use continuous stepped surface with continuous handrail contact; keep stair geometry literal and avoid flattening into a generic walk.
+    story_uses: descent, interior progression, vertical movement
+    prompt_contract: Use continuous stepped surface with continuous handrail contact; keep stair geometry literal and avoid flattening into a generic walk.
     good_pattern: same heroine + stair geometry + descent verb + handrail continuity
     preferred_sentence_shape: same heroine + one small identity hook when needed + steps down the stairs + one continuous handrail contact detail
-    avoid_pattern: glass mood, window drift, flat sidewalk rewrite
+    avoid_patterns: glass mood, window drift, flat sidewalk rewrite
     surface_priority:
       - stairs
       - stairwell
@@ -28,28 +30,30 @@ archetypes:
       - handrail
     contact_policy: Handrail contact is preferred when present and should stay readable.
     continuity_policy: End state should be one step lower or farther through the stair run.
-    variant_notes: {}
+    variants: {}
   passage_compression:
     name: passage_compression
-    contract: Use wall proximity plus forward movement plus trailing rail; keep the narrowness visible and avoid broad walkway staging.
+    story_uses: pressure, compression, hesitation inside a route
+    prompt_contract: Use wall proximity plus forward movement plus trailing rail; keep the narrowness visible and avoid broad walkway staging.
     good_pattern: same heroine + narrow passage + forward continuation + wall or rail proximity
     preferred_sentence_shape: same heroine + keeps close to wall or passage line + moves forward + one trailing rail detail
-    avoid_pattern: broad open street, pure mood shot, reflective set-piece
+    avoid_patterns: broad open street, pure mood shot, reflective set-piece
     surface_priority:
       - passage line
       - wall
       - rail
     contact_policy: One side contact detail is useful but optional.
     continuity_policy: The movement should tighten without becoming static.
-    variant_notes:
+    variants:
       glass_adjacent:
         note: Keep glass as side structure unless direct touch is the event.
   platform_edge:
     name: platform_edge
-    contract: Use explicit platform-edge geometry near her feet plus a readable directional foot change; keep the platform edge more important than rails, doors, or skyline, and keep any trace detail secondary.
+    story_uses: forward continuation, pressure, bridge motion, release push
+    prompt_contract: Use explicit platform-edge geometry near her feet plus a readable directional foot change; keep the platform edge more important than rails, doors, or skyline, and keep any trace detail secondary.
     good_pattern: same heroine + wet platform edge or yellow tactile line near her feet + crossing/shorter/next step + optional footprint trail behind
     preferred_sentence_shape: same heroine + one small identity hook when needed + takes a crossing, shorter, or next step along the wet platform edge + yellow tactile line stays close at her feet + one optional trace detail behind
-    avoid_pattern: train window takeover, closing-door event, skyline emphasis, distant sign
+    avoid_patterns: train window takeover, closing-door event, skyline emphasis, distant sign
     surface_priority:
       - platform edge
       - yellow tactile line
@@ -57,140 +61,150 @@ archetypes:
       - platform lane
     contact_policy: Do not require rail contact.
     continuity_policy: The edge relation should remain legible from start to end, and the motion change should come from foot-direction change rather than arm-swing or shoulder-turn exaggeration.
-    variant_notes:
+    variants:
       passing_motion:
         note: Passing train or vehicle motion can remain background-only and must not replace the edge as the route.
       bridge_motion:
         note: In bridge-like pressure shots, prefer crossing step, shorter step, or next step on the wet platform edge with the yellow tactile line near her feet; keep footprint trails secondary and avoid gesture-first motion.
   gate_pass:
     name: gate_pass
-    contract: Use beyond-the-gate continuation plus destination space ahead; keep the gate as a crossing point, not the main subject.
+    story_uses: entry, release, threshold continuation
+    prompt_contract: Use beyond-the-gate continuation plus destination space ahead; keep the gate as a crossing point, not the main subject.
     good_pattern: same heroine + gate or turnstile + beyond-the-gate continuation
     preferred_sentence_shape: same heroine + moves beyond the gate or turnstile + destination pavement or path ahead
-    avoid_pattern: machine hero shot, ticket still life, clock above
+    avoid_patterns: machine hero shot, ticket still life, clock above
     surface_priority:
       - gate lane
       - turnstile lane
       - gate threshold
     contact_policy: Ticket or card handling stays secondary inside the larger crossing.
     continuity_policy: End state should land beyond the gate on the next surface.
-    variant_notes: {}
+    variants: {}
   window_contact:
     name: window_contact
-    contract: Use present-tense surface contact plus forward continuation; keep reflection secondary to her contact with the window edge or rail.
+    story_uses: contact pressure, tactile hesitation, side-structure brushing
+    prompt_contract: Use present-tense surface contact plus forward continuation; keep reflection secondary to her contact with the window edge or rail.
     good_pattern: same heroine + direct contact on window edge/glass + forward continuation
     preferred_sentence_shape: same heroine + keeps close to the window edge or glass + one direct contact detail + forward continuation
-    avoid_pattern: reflection as event, symbolic light wash, window as route without contact
+    avoid_patterns: reflection as event, symbolic light wash, window as route without contact
     surface_priority:
       - window edge
       - glass edge
       - passage line
     contact_policy: Direct shoulder, palm, or tracing contact should be explicit.
     continuity_policy: The contact should change slightly while movement remains alive.
-    variant_notes:
+    variants:
       moving_vehicle_window:
         note: Treat carriage or train-side glass as a window-contact variant only when direct bodily contact is explicit; otherwise demote it to side structure.
   curb_crossing:
     name: curb_crossing
-    contract: Use plain crosswalk locomotion plus destination curb; avoid extra objects that compete with the crossing.
+    story_uses: payoff, release, open crossing
+    prompt_contract: Use plain crosswalk locomotion plus destination curb; avoid extra objects that compete with the crossing.
     good_pattern: same heroine + crosswalk + far curb destination
     preferred_sentence_shape: same heroine + crosses the wet crosswalk + far curb destination + optional free-arm locomotion detail
-    avoid_pattern: traffic-light hero shot, signage drift, broad skyline mood
+    avoid_patterns: traffic-light hero shot, signage drift, broad skyline mood
     surface_priority:
       - crosswalk
       - curb
       - wet street edge
     contact_policy: Free-arm locomotion is often enough.
     continuity_policy: End state should land on or near the far curb.
-    variant_notes: {}
+    variants: {}
   sidewalk_continuation:
     name: sidewalk_continuation
-    contract: Use plain locomotion with optional free-arm motion or curb-at-feet proximity; keep the street portable and open-world.
+    story_uses: continuation, open-world travel, release
+    prompt_contract: Use plain locomotion with optional free-arm motion or curb-at-feet proximity; keep the street portable and open-world.
     good_pattern: same heroine + sidewalk or pavement + plain forward continuation
     preferred_sentence_shape: same heroine + moves forward along sidewalk or pavement + optional curb-at-feet or free-arm motion detail
-    avoid_pattern: window-side atmosphere, city opening wide, generic glow
+    avoid_patterns: window-side atmosphere, city opening wide, generic glow
     surface_priority:
       - sidewalk
       - pavement
       - curb line
     contact_policy: No contact detail required; locomotion clarity matters more.
     continuity_policy: End state should feel like the next step of the same stride.
-    variant_notes: {}
+    variants: {}
   doorway_handoff:
     name: doorway_handoff
-    contract: Use doorway crossing plus literal destination space beyond; do not let the metal frame dominate the shot.
+    story_uses: handoff, threshold change, interior to path transition
+    prompt_contract: Use doorway crossing plus literal destination space beyond; do not let the metal frame dominate the shot.
     good_pattern: same heroine + clears doorway + next surface beyond
     preferred_sentence_shape: same heroine + clears the doorway threshold + carries the next step into the immediate passage beyond
-    avoid_pattern: room-entry set-piece, frame fetish, brighter corridor event
+    avoid_patterns: room-entry set-piece, frame fetish, brighter corridor event
     surface_priority:
       - doorway threshold
       - door edge
       - passage beyond
     contact_policy: Door-edge contact is optional, not required.
     continuity_policy: End state should land on the space immediately beyond the doorway.
-    variant_notes: {}
+    variants: {}
   brace_pause:
     name: brace_pause
-    contract: Use simple braced contact with minimal interpretation; keep the pose natural and avoid over-staging the pause.
+    story_uses: pause, pressure, brief hesitation
+    prompt_contract: Use simple braced contact with minimal interpretation; keep the pose natural and avoid over-staging the pause.
     good_pattern: same heroine + one braced contact + continuation hint
     preferred_sentence_shape: same heroine + pauses at one rail or wall contact + one small continuation hint
-    avoid_pattern: theatrical stillness, pure inner emotion, decorative pause
+    avoid_patterns: theatrical stillness, pure inner emotion, decorative pause
     surface_priority:
       - rail
       - wall
       - platform edge
     contact_policy: One braced contact point should stay readable.
     continuity_policy: The pause should still imply she can move again.
-    variant_notes: {}
+    variants: {}
   ramp_descent:
     name: ramp_descent
-    contract: Use slope descent plus trailing rail; keep the ramp identity distinct from stairs and flat sidewalks.
+    story_uses: descent, transition, underpass progression
+    prompt_contract: Use slope descent plus trailing rail; keep the ramp identity distinct from stairs and flat sidewalks.
     good_pattern: same heroine + underpass ramp + lower movement + trailing rail
     preferred_sentence_shape: same heroine + moves lower along the ramp + one trailing rail detail
-    avoid_pattern: flattening into stairs, generic road walk, glass drift
+    avoid_patterns: flattening into stairs, generic road walk, glass drift
     surface_priority:
       - underpass ramp
       - slope
       - rail
     contact_policy: Trailing rail is preferred when present.
     continuity_policy: End state should be lower or farther along the same slope.
-    variant_notes: {}
+    variants: {}
   turn_back_once:
     name: turn_back_once
-    contract: Use over-shoulder look-back plus explicit forward continuation; preserve face readability while the body keeps moving.
+    story_uses: glance back, hesitation without stopping
+    prompt_contract: Use over-shoulder look-back plus explicit forward continuation; preserve face readability while the body keeps moving.
     good_pattern: same heroine + over one shoulder + next step continues
     preferred_sentence_shape: same heroine + looks back over one shoulder + next step keeps moving forward
-    avoid_pattern: full rear-view stop, frozen look-back, scenic nostalgia
+    avoid_patterns: full rear-view stop, frozen look-back, scenic nostalgia
     surface_priority:
       - street edge
       - sidewalk
       - passage line
     contact_policy: Contact detail is usually unnecessary.
     continuity_policy: The body should remain committed to forward travel.
-    variant_notes: {}
+    variants: {}
   indoor_corridor:
     name: indoor_corridor
-    contract: Use narrow corridor volume plus wall proximity plus forward continuation; keep indoor neutrality stronger than decorative lights.
+    story_uses: interior continuation, neutral transition path
+    prompt_contract: Use narrow corridor volume plus wall proximity plus forward continuation; keep indoor neutrality stronger than decorative lights.
     good_pattern: same heroine + narrow corridor + wall proximity + forward motion
     preferred_sentence_shape: same heroine + moves forward through the narrow corridor + wall stays close at her side
-    avoid_pattern: light-fixture hero shot, decorative signage, static hallway pose
+    avoid_patterns: light-fixture hero shot, decorative signage, static hallway pose
     surface_priority:
       - corridor
       - hall
       - wall
     contact_policy: Wall proximity is often more useful than direct contact.
     continuity_policy: End state should continue deeper through the corridor.
-    variant_notes: {}
+    variants: {}
   bench_rest:
     name: bench_rest
-    contract: Use seated rest plus one small continuation hint; keep the seated pose natural rather than fully settled or theatrical.
+    story_uses: rest, residue, low-motion beat
+    prompt_contract: Use seated rest plus one small continuation hint; keep the seated pose natural rather than fully settled or theatrical.
     good_pattern: same heroine + bench or seat end + one foot planted / rise-again hint
     preferred_sentence_shape: same heroine + sits at the bench or seat end + one small rise-again continuation hint
-    avoid_pattern: fully settled still life, fashion pose, emotional tableau
+    avoid_patterns: fully settled still life, fashion pose, emotional tableau
     surface_priority:
       - bench
       - seat end
       - wet bench
     contact_policy: Seated contact is implied; no extra object needed.
     continuity_policy: The pose should still imply motion can resume.
-    variant_notes: {}
+    variants: {}

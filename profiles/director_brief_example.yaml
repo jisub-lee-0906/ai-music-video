@@ -11,75 +11,47 @@ audio:
   hook_brief: >
     The hook should be immediately singable, title-worthy, youthful, emotionally direct, and memorable after one listen.
 visual:
-  brief: >
-    A cinematic live-action music video centered on one consistent Korean female idol heroine,
-    with natural skin response, grounded fabric detail, and a connected late-night station-side city atmosphere.
-  negative: >
-    Avoid anime illustration, cel shading, toy-like CGI, empty studio space, random set-hopping,
-    severe monochrome tailoring, harsh runway mood, and repetitive staging that disconnects the heroine from the environment.
-mv:
-  story_world: >
-    One connected late-night station-side city block where the same heroine moves through
-    thresholds, passages, stairs, wet pavement, gates, sidewalks, and platform edges.
-  action_vocabulary: >
-    Favor natural visible actions that can read clearly in a music-video keyframe, such as walking, turning,
-    pausing at a surface, crossing thresholds, touching rails or door edges, and shifting direction inside the space.
-  payoff_style: >
-    The final return should feel decisive and physically open, with the heroine clearly crossing into the wider world she already belongs to.
-  outro_feel: >
-    End on a lingering after-image where the space still carries her presence after she passes through.
-  avoid: >
-    Avoid abrupt geography breaks, empty abstract symbolism, random extra characters, cheap CGI spectacle,
-    fashion-shoot emptiness, on-screen companion staging, and overly stern luxury-brand stiffness.
+  story_premise: >
+    A cinematic live-action music video about one consistent Korean female idol heroine moving through one connected
+    late-night station-side city block until her direction becomes physically undeniable.
+  world_rules: >
+    One connected late-night station-side world where thresholds, gates, stairs, platform edges, sidewalks, passages,
+    and wet street surfaces always belong to the same walkable geography.
+  heroine_arc: >
+    She begins at a threshold, moves deeper through the same world, compresses without fully stopping, and ends by
+    crossing into the widest forward release the world can give her.
+  forbidden_story_moves: >
+    Avoid abrupt geography breaks, random extra characters, symbolic abstraction replacing physical action, fashion-shoot
+    emptiness, generic set-hopping, and any ending that turns into a static tableau instead of a concrete forward crossing.
+  section_story_roles:
+    Intro: The heroine crosses the first boundary into the connected night world.
+    Verse 1: She moves deeper into the same world and lets the route define her direction.
+    Verse 2: She varies her path inside the same world without breaking continuity.
+    Pre-Chorus: She hesitates at a wider opening before committing to the next move.
+    Chorus: She releases forward inside the same world with readable physical movement.
+    Bridge: She compresses briefly without fully stopping, then regains direction.
+    Final Chorus: She crosses into the widest forward release the world can hold.
+    Outro: The world keeps her after-image after she has already passed through.
 character:
   identity_core: >
     same heroine, Korean female idol in her twenties, long dark hair with soft volume and a high ponytail,
     airy see-through bangs, bright clear almond-shaped eyes, luminous natural makeup, balanced center-visual features,
-    softly slim oval face, clean small nose line, bright approachable smile line,
-    polished off-duty idol outfit built from a fitted light knit top, a short clean casual outer layer,
-    a soft short skirt or premium denim bottom, and premium everyday footwear in ivory, navy, and silver tones with one subtle metallic accent,
-    slim readable silhouette
-  ref_subject_intro: >
-    The same Korean female idol
+    softly slim oval face, clean small nose line, polished off-duty idol outfit built from a fitted light knit top,
+    a short clean casual outer layer, a soft short skirt or premium denim bottom, and premium everyday footwear in ivory,
+    navy, and silver tones with one subtle metallic accent
   identity_hooks:
     - airy see-through bangs with high ponytail
     - soft face-framing strands around the jawline
     - polished ivory and navy off-duty idol silhouette with a short casual outer layer
     - subtle silver jewelry accent
-    - bright clear almond-shaped eyes
-    - softly slim oval face with balanced center-visual proportions
+  ref_subject_intro: >
+    The same Korean female idol
   anchor_wardrobe_guidance: >
     Favor elevated off-duty idol styling such as a refined fitted knit or sleeveless top, a short clean casual jacket
-    or soft cardigan, a soft mini skirt or premium denim bottom, premium sneakers or slim ankle boots,
-    subtle jewelry, and airport-fashion-like coordination with polished casual luxury.
+    or soft cardigan, a soft mini skirt or premium denim bottom, premium sneakers or slim ankle boots, subtle jewelry,
+    and airport-fashion-like coordination with polished casual luxury.
   anchor_avoid: >
     Avoid school-uniform prep, stiff formal blazers, office tailoring, loud graphic details, and costume-like stage styling.
   ref_continuity_guidance: >
-    Keep the same heroine identity, realistic facial structure, consistent hair silhouette,
-    stable wardrobe continuity, and single-subject on-screen continuity.
-director:
-  target_style: >
-    cinematic live-action Korean pop music video with premium realism, bright idol presence, and stable human continuity
-  world_core: >
-    one connected late-night station-side world with playable surfaces, urban depth, and consistent heroine continuity
-  ref_frame_style: >
-    natural cinematic music-video keyframe with grounded environmental realism
-  wan_motion_style: >
-    natural motion that stays connected between the two keyframes
-  wan_negative: >
-    morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi
-  motif_families:
-    - threshold and entry surface
-    - wet pavement and ground contact
-    - stairs rail and stepped surface
-    - side passage and doorway threshold
-    - gate lane and platform edge
-  section_grammar:
-    Intro: first entry into the connected world
-    Verse 1: moving deeper into the same world
-    Verse 2: variation inside the same world
-    Pre-Chorus: hesitation before a wider opening
-    Chorus: release inside the same world
-    Bridge: brief compression or uncertainty
-    Final Chorus: widest forward crossing through the same world
-    Outro: lingering after-image after she passes through
+    Keep the same heroine identity, realistic facial structure, consistent hair silhouette, stable wardrobe continuity,
+    and single-subject on-screen continuity.

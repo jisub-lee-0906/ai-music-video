@@ -1,74 +1,104 @@
 from __future__ import annotations
 
 
-REQUIRED_SHOT_FIELDS = (
+SCENE_OUTLINE_REQUIRED_FIELDS = (
     "shot_id",
     "section_name",
     "section_label",
     "beat_refs",
     "line_refs",
-    "story_role",
-    "visual_role",
-    "zone",
-    "motif_family",
-    "continuity_group",
-    "identity_core",
-    "environment_anchor",
-    "camera_intent",
-    "performance_intent",
-    "lighting_intent",
-    "shadow_intent",
-    "contact_intent",
-    "motion_intent",
-    "transition_intent",
-    "render_strategy",
+    "story_function",
+    "story_goal",
+    "world_zone",
+    "heroine_state",
+    "transition_need",
+    "why",
 )
 
-VALID_RENDER_STRATEGIES = {"tti_master", "ref_pair", "wan_chain"}
+DIRECTOR_REQUIRED_FIELDS = (
+    *SCENE_OUTLINE_REQUIRED_FIELDS,
+    "shot_function",
+    "ref_archetype",
+    "archetype_variant",
+    "primary_surface",
+    "dominant_action",
+    "continuity_delta",
+    "content_trace",
+    "identity_hook_policy",
+)
+
+PROMPT_REQUIRED_REF_FIELDS = (
+    "shot_id",
+    "section_name",
+    "section_label",
+    "duration_sec",
+    "ref_archetype",
+    "archetype_variant",
+    "primary_surface",
+    "dominant_action",
+    "continuity_delta",
+    "content_trace",
+    "selected_prompt_shape",
+    "applied_grammar_source",
+    "why",
+    "ref_prompt_atoms",
+    "ref_prompt_contract",
+    "ref_start_prompt_text",
+    "ref_end_prompt_text",
+)
+
+PROMPT_REQUIRED_WAN_FIELDS = (
+    "shot_id",
+    "section_name",
+    "section_label",
+    "start_ref_shot_id",
+    "end_ref_shot_id",
+    "duration_sec",
+    "wan_transition_family",
+    "wan_prompt_contract",
+    "wan_positive_prompt_text",
+    "why",
+)
 
 
-def assert_shot_package(shot: dict) -> None:
-    missing = [key for key in REQUIRED_SHOT_FIELDS if key not in shot]
-    if missing:
-        raise ValueError(f"shot package missing fields: {', '.join(missing)}")
-    if str(shot.get("render_strategy", "")).strip() not in VALID_RENDER_STRATEGIES:
-        raise ValueError(f"invalid render_strategy: {shot.get('render_strategy', '')}")
-    if not isinstance(shot.get("beat_refs"), list) or not shot["beat_refs"]:
-        raise ValueError("shot package beat_refs must be a non-empty list")
-    if not isinstance(shot.get("line_refs"), list):
-        raise ValueError("shot package line_refs must be a list")
-
-
-def assert_scene_plan(plan: dict) -> None:
+def assert_scene_outline(plan: dict) -> None:
     if not isinstance(plan.get("shot_packages"), list) or not plan["shot_packages"]:
-        raise ValueError("scene_plan.shot_packages must be a non-empty list")
+        raise ValueError("scene_outline.shot_packages must be a non-empty list")
     for shot in plan["shot_packages"]:
         if not isinstance(shot, dict):
-            raise ValueError("scene_plan shot_packages must contain objects")
-        for key in ("shot_id", "section_name", "section_label", "beat_refs", "line_refs", "story_role", "visual_role", "zone", "motif_family", "continuity_group", "identity_core", "environment_anchor"):
+            raise ValueError("scene_outline shot_packages must contain objects")
+        for key in SCENE_OUTLINE_REQUIRED_FIELDS:
             if key not in shot:
-                raise ValueError(f"scene_plan shot missing field: {key}")
+                raise ValueError(f"scene_outline shot missing field: {key}")
 
 
-def assert_director_plan(plan: dict) -> None:
+def assert_direction_plan(plan: dict) -> None:
     if not isinstance(plan.get("shot_packages"), list) or not plan["shot_packages"]:
-        raise ValueError("director_plan.shot_packages must be a non-empty list")
+        raise ValueError("direction_plan.shot_packages must be a non-empty list")
     for shot in plan["shot_packages"]:
         if not isinstance(shot, dict):
-            raise ValueError("director_plan shot_packages must contain objects")
-        for key in ("camera_intent", "performance_intent", "lighting_intent", "shadow_intent", "contact_intent", "motion_intent", "transition_intent"):
+            raise ValueError("direction_plan shot_packages must contain objects")
+        for key in DIRECTOR_REQUIRED_FIELDS:
             if key not in shot:
-                raise ValueError(f"director_plan shot missing intent field: {key}")
+                raise ValueError(f"direction_plan shot missing field: {key}")
 
 
-def assert_render_plan(plan: dict) -> None:
+def assert_prompt_plan(plan: dict) -> None:
     if not isinstance(plan.get("master_anchor"), dict):
-        raise ValueError("render_plan.master_anchor must be an object")
-    if str(plan["master_anchor"].get("render_strategy", "")).strip() != "tti_master":
-        raise ValueError("render_plan.master_anchor.render_strategy must be tti_master")
-    if not isinstance(plan.get("shot_packages"), list) or not plan["shot_packages"]:
-        raise ValueError("render_plan.shot_packages must be a non-empty list")
-    if not isinstance(plan.get("wan_chain"), list) or not plan["wan_chain"]:
-        raise ValueError("render_plan.wan_chain must be a non-empty list")
-    for shot in plan["shot_packages"]:
-        assert_shot_package(shot)
+        raise ValueError("prompt_plan.master_anchor must be an object")
+    if not isinstance(plan.get("ref_items"), list) or not plan["ref_items"]:
+        raise ValueError("prompt_plan.ref_items must be a non-empty list")
+    if not isinstance(plan.get("wan_items"), list):
+        raise ValueError("prompt_plan.wan_items must be a list")
+    for row in plan["ref_items"]:
+        if not isinstance(row, dict):
+            raise ValueError("prompt_plan.ref_items must contain objects")
+        for key in PROMPT_REQUIRED_REF_FIELDS:
+            if key not in row:
+                raise ValueError(f"prompt_plan ref item missing field: {key}")
+    for row in plan["wan_items"]:
+        if not isinstance(row, dict):
+            raise ValueError("prompt_plan.wan_items must contain objects")
+        for key in PROMPT_REQUIRED_WAN_FIELDS:
+            if key not in row:
+                raise ValueError(f"prompt_plan wan item missing field: {key}")

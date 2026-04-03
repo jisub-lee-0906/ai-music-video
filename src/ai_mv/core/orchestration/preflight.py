@@ -22,7 +22,7 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
     state = init_run_state(cfg, run_id, allow_existing=allow_existing_run, scope="preflight")
     payload = {
         "selected_brief": str(cfg.get("brief", "")).strip(),
-        "director_brief_intent": build_director_brief_intent(cfg),
+        "story_profile": build_director_brief_intent(cfg),
         "workflow_inputs": {},
     }
     save_snapshot(state, payload)
@@ -30,9 +30,9 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
     try:
         _run_stage(state, stage_input, "acestep_music", _add_audio)
         _run_stage(state, stage_input, "lyrics_timeline", _add_lyrics_timeline)
-        _run_stage(state, stage_input, "scene_plan", _add_scene_plan)
-        _run_stage(state, stage_input, "director_plan", _add_director_plan)
-        _run_stage(state, stage_input, "render_plan", _add_render_plan)
+        _run_stage(state, stage_input, "scene_outline", _add_scene_plan)
+        _run_stage(state, stage_input, "direction_plan", _add_director_plan)
+        _run_stage(state, stage_input, "prompt_plan", _add_render_plan)
         _run_stage(state, stage_input, "backend_preview", _add_backend_preview)
         state["current_stage"] = "preflight"
         state["status"] = "done"

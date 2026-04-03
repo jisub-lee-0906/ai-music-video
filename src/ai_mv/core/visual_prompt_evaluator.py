@@ -36,18 +36,7 @@ _ACTION_TOKENS = (
     "enter",
     "follow",
     "carry",
-    "edge",
-)
-
-_STATIC_ONLY_TOKENS = (
-    "breathes",
-    "waits",
-    "watches",
-    "looks toward",
-    "gazes",
-    "holds still",
-    "remains",
-    "stands still",
+    "run",
 )
 
 _OPTICAL_TAKEOVER_TOKENS = (
@@ -62,6 +51,8 @@ _OPTICAL_TAKEOVER_TOKENS = (
     "signal light",
 )
 
+_TRACE_TOKENS = ("footprint", "footprints", "trail", "trace")
+
 
 def build_visual_prompt_evaluation(payload: dict) -> dict:
     workflow_inputs = payload.get("workflow_inputs_preview", {})
@@ -72,168 +63,204 @@ def build_visual_prompt_evaluation(payload: dict) -> dict:
     wan_rows = [row for row in backend.get("wan_adapter", []) if isinstance(row, dict)]
     if not ref_rows and not wan_rows:
         return {}
-    ref_eval = _evaluate_ref_rows(ref_rows)
-    wan_eval = _evaluate_wan_rows(wan_rows)
     return {
-        "ref_prompt_contracts": ref_eval,
-        "wan_prompt_contracts": wan_eval,
+        "prompt_execution_review": _evaluate_ref_rows(ref_rows),
+        "visual_generation_contracts": _evaluate_wan_rows(wan_rows),
     }
 
 
 def _evaluate_ref_rows(rows: list[dict]) -> dict:
     total = len(rows) or 1
-    subject_first = 0
-    single_heroine = 0
-    readable_action = 0
-    grounded_surface = 0
-    optical_takeover = 0
+    story_function_match = 0
     archetype_match = 0
-    adjacent_state = 0
+    prompt_shape_match = 0
+    surface_anchor_strength = 0
+    motion_readability = 0
+    trace_detail_balance = 0
+    single_heroine = 0
+    optical_takeover = 0
     for row in rows:
         start = str(row.get("start_prompt_preview", "")).strip().lower()
         end = str(row.get("end_prompt_preview", "")).strip().lower()
         raw = dict(row.get("raw_prompt_clauses", {}))
-        primary_surface = str(raw.get("primary_surface", "")).strip().lower()
+        story_function = str(raw.get("story_function", "")).strip().lower()
         archetype = str(raw.get("ref_archetype", "")).strip().lower()
-        start_state = str(raw.get("start_state", "")).strip().lower()
-        end_state = str(raw.get("end_state", "")).strip().lower()
-        if start.startswith(_SUBJECT_PREFIXES):
-            subject_first += 1
-        if not any(token in start for token in _MULTI_SUBJECT_TOKENS) and not any(token in end for token in _MULTI_SUBJECT_TOKENS):
-            single_heroine += 1
-        if any(token in start_state or token in end_state for token in _ACTION_TOKENS) and not (
-            any(token in start_state for token in _STATIC_ONLY_TOKENS) and not any(token in start_state for token in _ACTION_TOKENS)
-        ):
-            readable_action += 1
-        if primary_surface:
-            grounded_surface += 1
-        if any(token in start or token in end or token in primary_surface for token in _OPTICAL_TAKEOVER_TOKENS):
-            if archetype != "window_contact":
-                optical_takeover += 1
-        if _matches_ref_archetype(archetype, primary_surface, start_state, end_state):
+        surface = str(raw.get("primary_surface", "")).strip().lower()
+        action = str(raw.get("dominant_action", "")).strip().lower()
+        continuity = str(raw.get("continuity_delta", "")).strip().lower()
+        trace = str(raw.get("content_trace", "")).strip().lower()
+        selected_shape = str(raw.get("selected_prompt_shape", "")).strip().lower()
+        text = f"{start} {end} {surface} {action} {continuity} {trace}"
+        if _matches_story_function(story_function, action, continuity, surface):
+            story_function_match += 1
+        if _matches_ref_archetype(archetype, surface, action, continuity, trace):
             archetype_match += 1
-        if start_state and end_state and start_state != end_state:
-            adjacent_state += 1
-    subject_ratio = round(subject_first / float(total), 3)
-    single_ratio = round(single_heroine / float(total), 3)
-    action_ratio = round(readable_action / float(total), 3)
-    surface_ratio = round(grounded_surface / float(total), 3)
-    archetype_ratio = round(archetype_match / float(total), 3)
-    adjacency_ratio = round(adjacent_state / float(total), 3)
-    takeover_ratio = round(optical_takeover / float(total), 3)
+        if _matches_prompt_shape(selected_shape, start, end, surface, action, trace):
+            prompt_shape_match += 1
+        if surface and (start.startswith(_SUBJECT_PREFIXES) or end.startswith(_SUBJECT_PREFIXES)) and surface in text:
+            surface_anchor_strength += 1
+        if any(token in action or token in continuity or token in text for token in _ACTION_TOKENS):
+            motion_readability += 1
+        if not trace or (
+            any(token in trace for token in _TRACE_TOKENS)
+            and any(token in surface for token in ("platform", "edge", "threshold", "crosswalk", "stairs", "passage", "gate", "sidewalk"))
+        ):
+            trace_detail_balance += 1
+        if not any(token in text for token in _MULTI_SUBJECT_TOKENS):
+            single_heroine += 1
+        if any(token in text for token in _OPTICAL_TAKEOVER_TOKENS) and archetype != "window_contact":
+            optical_takeover += 1
+    metrics = {
+        "story_function_match": round(story_function_match / float(total), 3),
+        "archetype_selection_match": round(archetype_match / float(total), 3),
+        "prompt_shape_match": round(prompt_shape_match / float(total), 3),
+        "surface_anchor_strength": round(surface_anchor_strength / float(total), 3),
+        "motion_readability": round(motion_readability / float(total), 3),
+        "trace_detail_balance": round(trace_detail_balance / float(total), 3),
+        "single_heroine_integrity": round(single_heroine / float(total), 3),
+        "optical_takeover_ratio": round(optical_takeover / float(total), 3),
+    }
     strengths = []
     risks = []
-    if subject_ratio >= 0.8:
-        strengths.append("REF prompts stay subject-first in most shots.")
+    if metrics["story_function_match"] >= 0.85:
+        strengths.append("REF prompt lines preserve the intended story function in most shots.")
     else:
-        risks.append("REF prompts still bury the heroine behind setup in too many shots.")
-    if single_ratio >= 0.95:
+        risks.append("REF prompt lines still drift away from the intended story function.")
+    if metrics["archetype_selection_match"] >= 0.85:
+        strengths.append("REF prompt lines mostly execute the intended archetype contract.")
+    else:
+        risks.append("REF prompt lines still drift away from the chosen archetype.")
+    if metrics["prompt_shape_match"] >= 0.85:
+        strengths.append("REF prompt lines follow the chosen sentence shape instead of flattening into generic prose.")
+    else:
+        risks.append("REF prompt lines still flatten away from the selected sentence shape.")
+    if metrics["surface_anchor_strength"] >= 0.9:
+        strengths.append("REF prompt lines keep a readable surface anchor near the sentence head.")
+    else:
+        risks.append("REF prompt lines still lose surface geometry too often.")
+    if metrics["motion_readability"] >= 0.85:
+        strengths.append("REF prompt lines keep readable body-led action or locomotion change.")
+    else:
+        risks.append("REF prompt lines still contain weak motion phrasing.")
+    if metrics["trace_detail_balance"] >= 0.85:
+        strengths.append("Trace details mostly stay secondary to the route geometry and action.")
+    else:
+        risks.append("Trace details still compete with the main surface or action too often.")
+    if metrics["single_heroine_integrity"] >= 0.95:
         strengths.append("REF prompts keep single-heroine continuity stable.")
     else:
         risks.append("REF prompts still risk multi-subject drift.")
-    if action_ratio >= 0.8:
-        strengths.append("REF prompts use readable body-led actions instead of mood-only phrasing.")
+    if metrics["optical_takeover_ratio"] <= 0.1:
+        strengths.append("Optical motifs rarely take over the prompt nucleus.")
     else:
-        risks.append("REF prompts still contain too many weak or static action lines.")
-    if surface_ratio >= 0.9:
-        strengths.append("REF prompts keep a concrete playable surface in view.")
-    else:
-        risks.append("REF prompts still lose the grounded surface too often.")
-    if takeover_ratio <= 0.1:
-        strengths.append("Optical motifs rarely take over the REF prompt nucleus.")
-    else:
-        risks.append("Optical motifs still replace the main action in some REF prompts.")
-    if archetype_ratio >= 0.75:
-        strengths.append("REF prompts mostly match their archetype contract.")
-    else:
-        risks.append("REF prompts still drift away from the intended archetype pattern.")
-    if adjacency_ratio >= 0.8:
-        strengths.append("REF start/end states usually read as adjacent keyframes.")
-    else:
-        risks.append("REF start/end states still collapse into too-similar or too-generic phrasing.")
+        risks.append("Optical motifs still replace the main action in some prompts.")
     return {
-        "reasoning": "REF prompt previews were checked for subject priority, single-heroine continuity, readable action, grounded surface, optical takeover, archetype match, and adjacent-state continuity.",
+        "reasoning": "REF prompt previews were checked for story-function fit, archetype fit, selected prompt-shape execution, surface anchoring, motion readability, trace-detail balance, and single-heroine integrity.",
         "strengths": strengths,
         "risks": risks,
-        "metrics": {
-            "subject_first_ratio": subject_ratio,
-            "single_heroine_ratio": single_ratio,
-            "readable_action_ratio": action_ratio,
-            "grounded_surface_ratio": surface_ratio,
-            "optical_takeover_ratio": takeover_ratio,
-            "archetype_match_ratio": archetype_ratio,
-            "adjacent_state_ratio": adjacency_ratio,
-        },
+        "metrics": metrics,
     }
 
 
 def _evaluate_wan_rows(rows: list[dict]) -> dict:
     total = len(rows) or 1
-    bridge_integrity = 0
-    subject_first = 0
+    adjacency = 0
+    single_heroine = 0
+    motion_readability = 0
     optical_takeover = 0
     for row in rows:
         positive = str(row.get("positive_prompt_preview", "")).strip().lower()
         raw = dict(row.get("raw_prompt_clauses", {}))
         bridge_action = str(raw.get("bridge_action", "")).strip().lower()
-        if positive.startswith(_SUBJECT_PREFIXES):
-            subject_first += 1
-        if bridge_action and any(token in bridge_action for token in _ACTION_TOKENS) and "camera" not in positive:
-            bridge_integrity += 1
+        start_ref = str(raw.get("start_ref_shot_id", "")).strip()
+        end_ref = str(raw.get("end_ref_shot_id", "")).strip()
+        if start_ref and end_ref and start_ref != end_ref:
+            adjacency += 1
+        if not any(token in positive for token in _MULTI_SUBJECT_TOKENS):
+            single_heroine += 1
+        if any(token in bridge_action or token in positive for token in _ACTION_TOKENS):
+            motion_readability += 1
         if any(token in positive for token in _OPTICAL_TAKEOVER_TOKENS):
-            if str(raw.get("ref_archetype", "")).strip().lower() != "window_contact":
-                optical_takeover += 1
-    bridge_ratio = round(bridge_integrity / float(total), 3)
-    subject_ratio = round(subject_first / float(total), 3)
-    takeover_ratio = round(optical_takeover / float(total), 3)
+            optical_takeover += 1
+    metrics = {
+        "adjacent_transition_integrity": round(adjacency / float(total), 3),
+        "single_heroine_integrity": round(single_heroine / float(total), 3),
+        "motion_readability": round(motion_readability / float(total), 3),
+        "optical_takeover_ratio": round(optical_takeover / float(total), 3),
+    }
     strengths = []
     risks = []
-    if bridge_ratio >= 0.8:
-        strengths.append("WAN prompts read as visible bridges instead of new scenes.")
+    if metrics["adjacent_transition_integrity"] >= 0.9:
+        strengths.append("WAN prompts preserve adjacent keyframe chaining.")
     else:
-        risks.append("WAN prompts still drift toward generic scene description instead of transition.")
-    if subject_ratio >= 0.8:
-        strengths.append("WAN prompts keep the heroine readable as the acting subject.")
+        risks.append("WAN prompts still lose adjacent keyframe integrity.")
+    if metrics["single_heroine_integrity"] >= 0.95:
+        strengths.append("WAN prompts keep single-heroine continuity stable.")
     else:
-        risks.append("WAN prompts do not stay consistently subject-first.")
-    if takeover_ratio <= 0.1:
-        strengths.append("WAN prompts mostly keep optical details subordinate to the bridge action.")
+        risks.append("WAN prompts still risk multi-subject drift.")
+    if metrics["motion_readability"] >= 0.8:
+        strengths.append("WAN prompts keep the bridge action visible instead of collapsing into static mood wording.")
     else:
-        risks.append("WAN prompts still let optical motifs overshadow the bridge.")
+        risks.append("WAN prompts still weaken the bridge into low-motion prose.")
+    if metrics["optical_takeover_ratio"] <= 0.1:
+        strengths.append("WAN prompts mostly keep optical detail subordinate to the bridge action.")
+    else:
+        risks.append("WAN prompts still let optical motifs overshadow the bridge action.")
     return {
-        "reasoning": "WAN prompt previews were checked for subject priority, bridge integrity, and optical takeover.",
+        "reasoning": "WAN prompt previews were checked for adjacent-keyframe chaining, single-heroine continuity, bridge motion readability, and optical takeover.",
         "strengths": strengths,
         "risks": risks,
-        "metrics": {
-            "subject_first_ratio": subject_ratio,
-            "bridge_integrity_ratio": bridge_ratio,
-            "optical_takeover_ratio": takeover_ratio,
-        },
+        "metrics": metrics,
     }
 
 
-def _matches_ref_archetype(archetype: str, primary_surface: str, start_state: str, end_state: str) -> bool:
-    if not archetype:
-        return False
-    text = f"{primary_surface} {start_state} {end_state}"
+def _matches_story_function(story_function: str, action: str, continuity: str, surface: str) -> bool:
+    text = f"{surface} {action} {continuity}"
+    mapping = {
+        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to"),
+        "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing"),
+        "pressure": ("shorter step", "brace", "tight", "close", "smaller", "compress", "yellow tactile line close", "edge geometry close"),
+        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "route forward", "immediate passage"),
+        "payoff": ("far side", "opens", "release", "wider", "drive forward", "final", "far curb", "full release", "widest"),
+        "reflection": ("looks back", "over one shoulder", "turns back"),
+    }
+    wanted = mapping.get(story_function, ())
+    return bool(wanted) and any(token in text for token in wanted)
+
+
+def _matches_prompt_shape(shape: str, start: str, end: str, surface: str, action: str, trace: str) -> bool:
+    text = f"{start} {end}"
+    if shape == "compact_natural_prose":
+        return bool(surface) and bool(action)
+    if shape == "surface_first_crossing":
+        return bool(surface) and any(token in text for token in ("cross", "clear", "beyond", "far side"))
+    if shape == "geometry_first_directional_step":
+        has_surface = any(token in surface for token in ("platform", "edge", "yellow", "tactile"))
+        has_step = any(token in action or token in text for token in ("crossing step", "shorter step", "next step", "longer step"))
+        return has_surface and has_step
+    return bool(surface) and bool(action)
+
+
+def _matches_ref_archetype(archetype: str, surface: str, action: str, continuity: str, trace: str) -> bool:
+    text = f"{surface} {action} {continuity} {trace}"
     if archetype == "threshold_crossing":
-        return any(token in text for token in ("threshold", "exit line", "street edge", "clear", "cross", "beyond", "far side", "gate side", "wet road"))
+        return any(token in text for token in ("threshold", "exit line", "street edge", "clear", "cross", "beyond", "far side"))
     if archetype == "stair_descent":
         return any(token in text for token in ("stairs", "stairwell", "handrail", "step", "lower"))
     if archetype == "passage_compression":
-        return any(token in text for token in ("passage", "wall", "close", "rail", "lane", "smaller line", "tightens"))
+        return any(token in text for token in ("passage", "wall", "close", "rail", "lane", "tightens"))
     if archetype == "platform_edge":
         has_surface = any(token in text for token in ("platform edge", "yellow line", "yellow tactile line", "wet platform", "platform"))
-        has_motion = any(token in text for token in ("crossing step", "shorter step", "next step", "longer step", "step along", "moves past", "keeps moving"))
+        has_motion = any(token in text for token in ("crossing step", "shorter step", "next step", "longer step", "step along", "keeps moving", "drive forward"))
         return has_surface and has_motion
     if archetype == "gate_pass":
-        return any(token in text for token in ("gate", "turnstile", "gate line", "turnstile lane", "beyond", "inside the station"))
+        return any(token in text for token in ("gate", "turnstile", "gate line", "turnstile lane", "inside the station", "beyond"))
     if archetype == "window_contact":
         return any(token in text for token in ("window", "glass", "shoulder", "touch", "trace", "press", "brush"))
     if archetype == "curb_crossing":
         return any(token in text for token in ("crosswalk", "curb", "far curb"))
     if archetype == "sidewalk_continuation":
-        return any(token in text for token in ("sidewalk", "pavement", "street edge", "path", "entrance path", "moves forward", "wet lane", "keeps moving", "moves along", "keeps running"))
+        return any(token in text for token in ("sidewalk", "pavement", "street edge", "path", "moves forward", "keeps moving", "moves along", "keeps running"))
     if archetype == "doorway_handoff":
         return any(token in text for token in ("doorway", "door edge", "threshold", "beyond"))
     if archetype == "brace_pause":
@@ -246,4 +273,4 @@ def _matches_ref_archetype(archetype: str, primary_surface: str, start_state: st
         return any(token in text for token in ("corridor", "hall", "wall"))
     if archetype == "bench_rest":
         return any(token in text for token in ("bench", "seat", "rise again", "foot still planted"))
-    return True
+    return bool(archetype)

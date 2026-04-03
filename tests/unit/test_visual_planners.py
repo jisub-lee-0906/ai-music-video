@@ -1,32 +1,31 @@
-from ai_mv.engines.scene_plan.planner import build_scene_plan
-from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _infer_ref_archetype_variant, _planner_primary_surface, build_director_plan
-from ai_mv.engines.render_plan.planner import build_render_plan
 from ai_mv.core.stages.wan_interpolation import build_wan_plan
+from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _infer_ref_archetype_variant, _planner_primary_surface, build_direction_plan
+from ai_mv.engines.render_plan.planner import build_prompt_plan
+from ai_mv.engines.scene_plan.planner import build_scene_outline
 
 
 def _config() -> dict:
     return {
         "brief": "director_brief_example",
         "audio": {"language": "ko", "brief": "Audio brief", "hook_brief": "Hook brief"},
-        "visual": {"brief": "Visual brief", "negative": "Visual negative"},
-        "mv": {
-            "story_world": "Story world",
-            "action_vocabulary": "Actions",
-            "payoff_style": "Payoff style",
-            "outro_feel": "Outro feel",
-            "avoid": "Avoid list",
+        "visual": {
+            "story_premise": "A heroine moves through one connected station-side night world.",
+            "world_rules": "The world stays physically connected, readable, and grounded.",
+            "heroine_arc": "She gains direction through forward movement.",
+            "forbidden_story_moves": "Avoid dream resets, symbolic tableaux, and extra characters.",
+            "section_story_roles": {
+                "Verse 1": "She moves deeper into the same world.",
+                "Bridge": "She compresses briefly without fully stopping, then regains direction.",
+                "Final Chorus": "She crosses into the widest forward release.",
+            },
         },
-        "character": {"identity_core": "same heroine", "identity_hooks": ["red ribbon"]},
-        "director": {
-            "target_style": "anime style",
-            "world_core": "night world",
-            "camera_bias": "readable anime framing",
-            "lighting_bias": "sign glow",
-            "shadow_bias": "cel shaded shadows",
-            "motion_bias": "stable 2d anime motion",
-            "transition_bias": "previous-end continuity",
-            "motif_families": ["train window", "ticket gate"],
+        "character": {
+            "identity_core": "same heroine",
+            "identity_hooks": ["with a high ponytail"],
+            "anchor_wardrobe_guidance": "polished off-duty idol styling",
+            "anchor_avoid": "avoid costume styling",
         },
+        "video": {"target": "1920x1080@24"},
     }
 
 
@@ -38,388 +37,97 @@ def _payload() -> dict:
                     "section_name": "Verse 1",
                     "section_label": "Verse 1",
                     "lyric_beats": [
-                        {
-                            "beat_id": "B001",
-                            "line_refs": [1],
-                            "literal_image": "train window reflection",
-                            "visible_action": "she presses her hand to the glass",
-                        },
-                        {
-                            "beat_id": "B002",
-                            "line_refs": [2],
-                            "literal_image": "ticket gate glow",
-                            "visible_action": "she steps through the gate",
-                        },
+                        {"beat_id": "verse1_b1", "line_refs": [1]},
+                        {"beat_id": "verse1_b2", "line_refs": [2]},
                     ],
-                }
+                },
+                {
+                    "section_name": "Bridge",
+                    "section_label": "Bridge",
+                    "lyric_beats": [
+                        {"beat_id": "bridge_b1", "line_refs": [3]},
+                    ],
+                },
             ]
         }
     }
 
 
-def test_scene_director_render_plan_chain():
-    scene = build_scene_plan(_config(), _payload())
-    assert len(scene["shot_packages"]) == 2
-    assert scene["shot_packages"][0]["beat_refs"] == ["B001"]
-    assert scene["shot_packages"][0]["visual_role"] == "opening_frame"
-    first_location = scene["shot_packages"][0]["environment_anchor"]
-    assert first_location
-    assert scene["shot_packages"][0]["location_description"] == first_location
-    assert "camera" not in first_location.lower()
-    assert "frame" not in first_location.lower()
-    assert scene["motif_progression"][0]["environment_anchor"] == first_location
+def test_scene_direction_prompt_chain():
+    scene = build_scene_outline(_config(), _payload())
+    assert len(scene["shot_packages"]) == 3
+    assert scene["shot_packages"][0]["story_function"] == "entry"
+    assert scene["shot_packages"][1]["story_function"] in {"handoff", "continuation"}
+    assert scene["section_progression"][0]["world_zone"]
 
-    director = build_director_plan(_config(), {**_payload(), "scene_plan": scene})
-    assert "camera_intent" in director["shot_packages"][0]
-    assert "motion_intent" in director["shot_packages"][0]
-    assert director["shot_packages"][0]["ref_archetype"]
-    assert director["shot_packages"][0]["ref_archetype_contract"]
-    assert "Variant note" in director["shot_packages"][0]["ref_archetype_contract"] or director["shot_packages"][0]["ref_archetype_contract"]
-    assert director["shot_packages"][0]["visual_role"] == "opening_frame"
-    assert "ref_start_continuity_line" not in director["shot_packages"][0]
-    assert "ref_start_camera_line" not in director["shot_packages"][0]
+    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene})
+    first = direction["shot_packages"][0]
+    assert first["shot_function"]
+    assert first["ref_archetype"]
+    assert first["primary_surface"]
+    assert first["dominant_action"]
+    assert first["selected_prompt_shape"]
+    assert first["applied_grammar_source"]
 
-    render = build_render_plan(_config(), {**_payload(), "director_plan": director})
-    assert render["master_anchor"]["render_strategy"] == "tti_master"
-    assert render["shot_packages"][0]["render_strategy"] == "ref_pair"
-    assert len(render["wan_chain"]) == 1
-    assert render["wan_chain"][0]["start_source"] == "previous_ref_end"
-    assert render["wan_chain"][0]["start_ref_shot_id"] == "B001"
-    assert render["wan_chain"][0]["end_ref_shot_id"] == "B002"
-    assert render["wan_chain"][0]["environment_anchor"]
-    assert render["wan_chain"][0]["location_description"]
-    assert render["wan_chain"][0]["duration_sec"] > 0
-    assert any(token in render["wan_chain"][0]["visible_action"] for token in ("step", "clear", "cross", "pass"))
-    assert "gate" in render["wan_chain"][0]["visible_action"]
-    assert render["wan_chain"][0]["wan_action_line"]
-    assert render["shot_packages"][0]["ref_prompt_clauses"]["subject_intro"]
-    assert render["shot_packages"][0]["ref_prompt_clauses"]["ref_archetype"]
-    assert render["shot_packages"][0]["ref_prompt_clauses"]["ref_archetype_contract"]
-    assert render["shot_packages"][0]["ref_start_prompt_text"]
-    assert render["shot_packages"][0]["ref_end_prompt_text"]
-    assert render["wan_chain"][0]["wan_prompt_clauses"]["bridge_action"]
-    assert render["wan_chain"][0]["wan_prompt_clauses"]["wan_transition_family"]
-    assert render["wan_chain"][0]["wan_prompt_clauses"]["wan_transition_contract"]
-    assert render["wan_chain"][0]["wan_positive_prompt_text"]
+    prompt = build_prompt_plan(_config(), {**_payload(), "direction_plan": direction})
+    assert prompt["master_anchor"]["render_strategy"] == "tti_master"
+    assert len(prompt["ref_items"]) == 3
+    assert len(prompt["wan_items"]) == 2
+    assert prompt["wan_items"][0]["start_ref_shot_id"] == "verse1_b1"
+    assert prompt["wan_items"][0]["end_ref_shot_id"] == "verse1_b2"
+    assert prompt["ref_items"][0]["ref_prompt_atoms"]["subject_intro"]
+    assert prompt["ref_items"][0]["ref_prompt_contract"]
+    assert prompt["ref_items"][0]["ref_start_prompt_text"]
+    assert prompt["ref_items"][0]["ref_end_prompt_text"]
+    assert prompt["wan_items"][0]["wan_positive_prompt_text"]
 
 
-def test_director_archetype_prefers_golden_shot_override():
+def test_director_archetype_prefers_golden_structure_override():
     shot = {
-        "shot_id": "final_chorus_b1",
-        "zone": "open_world_peak",
-        "primary_surface": "wet platform edge",
-        "location_description": "At the wet platform edge",
-        "environment_anchor": "wet platform edge",
-        "subject_action": "",
-        "visible_action": "",
-        "support_detail": "",
-        "literal_image": "",
-        "visual_role": "payoff_frame",
+        "story_function": "payoff",
+        "section_label": "Final Chorus",
+        "world_zone": "open_peak",
     }
     guidance = {
-        "archetype": "curb_crossing",
-        "preferred_surface": "wet crosswalk",
+        "ref_archetype": "curb_crossing",
     }
     assert _infer_ref_archetype(shot, guidance) == "curb_crossing"
 
 
-def test_director_archetype_classifies_door_gap_as_doorway_handoff():
+def test_director_archetype_classifies_bridge_pressure_as_platform_edge():
     shot = {
-        "zone": "threshold",
-        "primary_surface": "train door gap",
-        "location_description": "By the train door gap",
-        "environment_anchor": "train door gap",
-        "subject_action": "",
-        "visible_action": "",
-        "support_detail": "",
-        "literal_image": "",
-        "visual_role": "handoff_frame",
+        "section_label": "Bridge",
+        "story_function": "pressure",
+        "world_zone": "compression",
     }
-    assert _infer_ref_archetype(shot) == "doorway_handoff"
-
-
-def test_director_archetype_classifies_ticket_machine_ledge_hold_as_brace_pause():
-    shot = {
-        "zone": "edge",
-        "primary_surface": "ticket machine ledge",
-        "location_description": "At the ticket machine ledge",
-        "environment_anchor": "ticket machine ledge",
-        "subject_action": "she holds the coin and pauses",
-        "visible_action": "",
-        "support_detail": "",
-        "literal_image": "",
-        "visual_role": "pressure_frame",
-    }
-    assert _infer_ref_archetype(shot) == "brace_pause"
-
-
-def test_scene_plan_motif_assignment_is_section_local_and_stable():
-    payload_a = {
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "Verse 1",
-                    "section_label": "Verse 1",
-                    "lyric_beats": [{"beat_id": "V1_B1", "line_refs": [1]}],
-                },
-                {
-                    "section_name": "Chorus",
-                    "section_label": "Chorus",
-                    "lyric_beats": [
-                        {"beat_id": "C_B1", "line_refs": [1]},
-                        {"beat_id": "C_B2", "line_refs": [2]},
-                        {"beat_id": "C_B3", "line_refs": [3]},
-                        {"beat_id": "C_B4", "line_refs": [4]},
-                    ],
-                },
-            ]
-        }
-    }
-    payload_b = {
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "Verse 1",
-                    "section_label": "Verse 1",
-                    "lyric_beats": [
-                        {"beat_id": "V1_B1", "line_refs": [1]},
-                        {"beat_id": "V1_B2", "line_refs": [2]},
-                    ],
-                },
-                {
-                    "section_name": "Chorus",
-                    "section_label": "Chorus",
-                    "lyric_beats": [
-                        {"beat_id": "C_B1", "line_refs": [1]},
-                        {"beat_id": "C_B2", "line_refs": [2]},
-                        {"beat_id": "C_B3", "line_refs": [3]},
-                        {"beat_id": "C_B4", "line_refs": [4]},
-                    ],
-                },
-            ]
-        }
-    }
-    scene_a = build_scene_plan(_config(), payload_a)
-    scene_b = build_scene_plan(_config(), payload_b)
-    chorus_a = {row["shot_id"]: row["motif_family"] for row in scene_a["shot_packages"] if row["shot_id"].startswith("C_")}
-    chorus_b = {row["shot_id"]: row["motif_family"] for row in scene_b["shot_packages"] if row["shot_id"].startswith("C_")}
-    assert chorus_a == chorus_b
-
-
-def test_scene_plan_smooths_high_cost_adjacent_family_jumps():
-    config = _config()
-    config["director"]["motif_families"] = [
-        "train window",
-        "ticket gate",
-        "curb reflection",
-        "puddle ring",
-        "platform sign glow",
-        "stair landing",
-    ]
-    payload = {
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "Final Chorus",
-                    "section_label": "Final Chorus",
-                    "lyric_beats": [
-                        {"beat_id": "FC_B1", "line_refs": [1]},
-                        {"beat_id": "FC_B2", "line_refs": [2]},
-                        {"beat_id": "FC_B3", "line_refs": [3]},
-                        {"beat_id": "FC_B4", "line_refs": [4]},
-                    ],
-                }
-            ]
-        }
-    }
-    scene = build_scene_plan(config, payload)
-    families = [row["environment_family"] for row in scene["shot_packages"]]
-    adjacent_pairs = list(zip(families, families[1:]))
-    assert "transit_side_edge" not in families
-    assert ("vertical_path", "transit_side_edge") not in adjacent_pairs
-    assert ("transit_side_edge", "vertical_path") not in adjacent_pairs
-
-
-def test_scene_plan_open_world_prefers_connected_exterior_families_over_train_window():
-    config = _config()
-    config["director"]["motif_families"] = [
-        "train window",
-        "ticket gate",
-        "curb reflection",
-        "puddle ring",
-        "platform sign glow",
-    ]
-    payload = {
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "Chorus",
-                    "section_label": "Chorus",
-                    "lyric_beats": [
-                        {"beat_id": "C_B1", "line_refs": [1]},
-                        {"beat_id": "C_B2", "line_refs": [2]},
-                        {"beat_id": "C_B3", "line_refs": [3]},
-                    ],
-                }
-            ]
-        }
-    }
-    scene = build_scene_plan(config, payload)
-    families = [row["environment_family"] for row in scene["shot_packages"]]
-    assert "transit_side_edge" not in families
-
-
-def test_director_plan_abstracts_carryover_when_family_changes():
-    config = _config()
-    config["director"]["motif_families"] = [
-        "ticket gate",
-        "curb reflection",
-        "puddle ring",
-        "platform sign glow",
-    ]
-    payload = {
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "Final Chorus",
-                    "section_label": "Final Chorus",
-                    "lyric_beats": [
-                        {"beat_id": "FC_B1", "line_refs": [1]},
-                        {"beat_id": "FC_B2", "line_refs": [2]},
-                        {"beat_id": "FC_B3", "line_refs": [3]},
-                        {"beat_id": "FC_B4", "line_refs": [4]},
-                    ],
-                }
-            ]
-        }
-    }
-    scene = build_scene_plan(config, payload)
-    director = build_director_plan(config, {**payload, "scene_plan": scene})
-    shots = {row["shot_id"]: row for row in director["shot_packages"]}
-    b3 = shots["FC_B3"]
-    assert b3["ref_start_action_line"].startswith("She ")
-    assert b3["ref_end_action_line"].startswith("She ")
-    assert b3["ref_end_action_line"] != b3["ref_start_action_line"]
-    assert "camera" not in b3["ref_end_action_line"].lower()
-    assert "frame" not in b3["ref_end_action_line"].lower()
-
-
-def test_scene_plan_final_chorus_uses_progressive_roles_and_only_last_payoff_is_wide():
-    config = _config()
-    payload = {
-        "lyrics_timeline": {
-            "sections": [
-                {
-                    "section_name": "chorus",
-                    "section_label": "Final Chorus",
-                    "lyric_beats": [
-                        {"beat_id": "FC_B1", "line_refs": [1]},
-                        {"beat_id": "FC_B2", "line_refs": [2]},
-                        {"beat_id": "FC_B3", "line_refs": [3]},
-                        {"beat_id": "FC_B4", "line_refs": [4]},
-                    ],
-                }
-            ]
-        }
-    }
-    scene = build_scene_plan(config, payload)
-    rows = {row["shot_id"]: row for row in scene["shot_packages"]}
-    assert rows["FC_B1"]["visual_role"] == "opening_frame"
-    assert rows["FC_B2"]["visual_role"] == "continuity_frame"
-    assert rows["FC_B3"]["visual_role"] == "handoff_frame"
-    assert rows["FC_B4"]["visual_role"] == "payoff_frame"
-    assert rows["FC_B2"]["camera_distance_band"] == "medium_wide"
-    assert rows["FC_B3"]["camera_distance_band"] == "medium_wide"
-    assert rows["FC_B4"]["camera_distance_band"] == "wide_full_figure"
-
-
-def test_wan_plan_uses_duration_aware_natural_prompt_lines():
-    config = {
-        **_config(),
-        "video": {"target": "1920x1080@24"},
-    }
-    scene = build_scene_plan(config, _payload())
-    director = build_director_plan(config, {**_payload(), "scene_plan": scene})
-    render = build_render_plan(config, {**_payload(), "director_plan": director})
-    payload = {
-        **_payload(),
-        "render_plan": render,
-        "flux2_ref_images": [
-            {"shot_id": "B001", "start": "start.png", "end": "end1.png"},
-            {"shot_id": "B002", "start": "end1.png", "end": "end2.png"},
-        ],
-    }
-    wan = build_wan_plan(config, payload)
-    assert "Use the provided first and last keyframes" not in wan["clips"][0]["positive_prompt"]
-    assert "same space" not in wan["clips"][0]["positive_prompt"]
-    assert "The same location light stays grounded" not in wan["clips"][0]["positive_prompt"]
-    assert len(wan["clips"]) == 1
-    assert wan["clips"][0]["start"] == "end1.png"
-    assert wan["clips"][0]["end"] == "end2.png"
-    assert wan["clips"][0]["start_source"] == "previous_ref_end"
-    assert wan["clips"][0]["start_ref_shot_id"] == "B001"
-    assert wan["clips"][0]["end_ref_shot_id"] == "B002"
-
-
-def test_director_archetype_prefers_doorway_handoff_over_threshold_when_door_surface_is_primary():
-    shot = {
-        "zone": "threshold",
-        "primary_surface": "doorway threshold",
-        "location_description": "a wet doorway threshold leading to a narrow passage",
-        "environment_anchor": "a wet doorway threshold leading to a narrow passage",
-        "subject_action": "she clears the doorway",
-        "visible_action": "she steps through the doorway",
-        "literal_image": "wet door edge and passage beyond",
-        "support_detail": "",
-        "visual_role": "handoff_frame",
-    }
-    assert _infer_ref_archetype(shot) == "doorway_handoff"
-
-
-def test_director_primary_surface_uses_archetype_priority_over_optical_noise():
-    shot = {
-        "ref_archetype": "gate_pass",
-        "primary_surface": "gate lane",
-        "location_description": "ticket gate lane with window light sliding across the floor",
-        "environment_anchor": "ticket gate lane with window light sliding across the floor",
-        "literal_image": "window light on a ticket gate lane",
-        "support_detail": "window light",
-        "golden_shot_guidance": {},
-    }
-    assert _planner_primary_surface(shot, "gate_pass") == "gate lane"
-
-
-def test_director_archetype_detects_platform_bridge_motion_variant():
-    shot = {
-        "location_description": "wet platform edge with the yellow tactile line close at her feet",
-        "environment_anchor": "wet platform edge with the yellow tactile line close at her feet",
-        "literal_image": "wet platform edge and a footprint trail widening behind her",
-        "visible_action": "she takes a crossing step along the edge",
-        "subject_action": "she takes a crossing step along the wet platform edge",
-        "primary_surface": "wet platform edge",
-        "support_detail": "footprint trail widening behind her",
-    }
+    assert _infer_ref_archetype(shot) == "platform_edge"
     assert _infer_ref_archetype_variant(shot, "platform_edge") == "bridge_motion"
 
 
-def test_wan_negative_prompt_avoids_camera_language():
-    config = {
-        **_config(),
-        "video": {"target": "1920x1080@24"},
+def test_director_primary_surface_uses_archetype_priority():
+    shot = {
+        "story_function": "pressure",
+        "archetype_variant": "bridge_motion",
     }
-    wan = build_wan_plan(
-        config,
-        {
-            "render_plan": {
-                "wan_chain": [
-                    {
-                        "shot_id": "B001",
-                        "location_description": "a station threshold at night beside a convenience store window",
-                    }
-                ]
-            },
-            "flux2_ref_images": [{"shot_id": "B001", "start": "start.png", "end": "end.png"}],
-            "clip_routes": [{"shot_id": "B001", "duration_sec": 2.0, "section_name": "Intro", "section_label": "Intro"}],
-        },
-    )
-    assert "camera" not in wan["clips"][0]["negative_prompt"].lower()
+    assert _planner_primary_surface(shot, "platform_edge") == "wet platform edge"
+
+
+def test_wan_plan_uses_adjacent_ref_pairs():
+    scene = build_scene_outline(_config(), _payload())
+    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene})
+    prompt = build_prompt_plan(_config(), {**_payload(), "direction_plan": direction})
+    payload = {
+        **_payload(),
+        "prompt_plan": prompt,
+        "flux2_ref_images": [
+            {"shot_id": "verse1_b1", "start": "start1.png", "end": "end1.png"},
+            {"shot_id": "verse1_b2", "start": "start2.png", "end": "end2.png"},
+            {"shot_id": "bridge_b1", "start": "start3.png", "end": "end3.png"},
+        ],
+    }
+    wan = build_wan_plan(_config(), payload)
+    assert len(wan["clips"]) == 2
+    assert wan["clips"][0]["start"] == "end1.png"
+    assert wan["clips"][0]["end"] == "end2.png"
+    assert wan["clips"][1]["start"] == "end2.png"
+    assert wan["clips"][1]["end"] == "end3.png"

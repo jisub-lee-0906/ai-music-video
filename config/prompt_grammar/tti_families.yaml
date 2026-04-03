@@ -1,4 +1,4 @@
-anchor_families:
+families:
   - name: neutral_full_body_anchor
     contract: Prioritize full-body readability, stable face read, and clean silhouette over scene atmosphere.
     identity_priority:

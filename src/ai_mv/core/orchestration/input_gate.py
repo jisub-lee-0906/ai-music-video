@@ -7,13 +7,13 @@ from ai_mv.core.contracts.errors import StageFailure
 
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
     "lyrics_timeline": ("audio_plan", "audio_map"),
-    "scene_plan": ("audio_plan", "audio_map", "lyrics_timeline"),
-    "director_plan": ("scene_plan",),
-    "render_plan": ("director_plan",),
-    "backend_preview": ("render_plan",),
-    "tti_anchor": ("render_plan",),
-    "flux2_ref_chain": ("render_plan", "master_anchor"),
-    "wan_interpolation": ("render_plan", "flux2_ref_images", "clip_routes"),
+    "scene_outline": ("audio_plan", "audio_map", "lyrics_timeline"),
+    "direction_plan": ("scene_outline",),
+    "prompt_plan": ("direction_plan",),
+    "backend_preview": ("prompt_plan",),
+    "tti_anchor": ("prompt_plan",),
+    "flux2_ref_chain": ("prompt_plan", "master_anchor"),
+    "wan_interpolation": ("prompt_plan", "flux2_ref_images", "clip_routes"),
     "merge_mux": ("clips", "music_file"),
 }
 

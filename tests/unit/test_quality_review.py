@@ -10,9 +10,9 @@ def test_run_summary_and_quality_review_are_written(tmp_path, monkeypatch):
     payload = {
         "selected_brief": "director_brief_example",
         "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
-        "scene_plan": {"shot_packages": []},
+        "scene_outline": {"shot_packages": []},
     }
-    review = {"visual": {"reasoning": "best"}}
+    review = {"visual_generation_review": {"reasoning": "best"}}
     summary = build_run_summary(state, payload, review)
     write_quality_review(state, review)
     write_run_summary(state, summary)
@@ -29,129 +29,95 @@ def test_run_summary_includes_plan_metrics():
     payload = {
         "selected_brief": "director_brief_example",
         "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
-        "scene_plan": {
+        "scene_outline": {
             "shot_packages": [
-                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold"},
-                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world"},
+                {"shot_id": "b1", "section_label": "Intro", "world_zone": "threshold", "story_function": "entry", "continuity_group": "Intro:threshold"},
+                {"shot_id": "b2", "section_label": "Chorus", "world_zone": "open_peak", "story_function": "payoff", "continuity_group": "Chorus:open_peak"},
             ]
         },
-        "render_plan": {
-            "shot_packages": [
-                {"shot_id": "B001", "render_strategy": "ref_pair"},
-                {"shot_id": "B002", "render_strategy": "ref_pair"},
-            ]
-        },
+        "direction_plan": {"shot_packages": [{"shot_id": "b1", "ref_archetype": "gate_pass"}, {"shot_id": "b2", "ref_archetype": "curb_crossing"}]},
+        "prompt_plan": {"ref_items": [{"shot_id": "b1"}, {"shot_id": "b2"}]},
     }
     summary = build_run_summary(state, payload, {})
     assert summary["pipeline_version"] == "visual"
     assert summary["shot_package_count"] == 2
-    assert summary["motif_family_count"] == 2
-    assert summary["zone_count"] == 2
-    assert summary["continuity_group_count"] == 2
-    assert summary["render_strategy_counts"] == {"ref_pair": 2}
+    assert summary["world_zone_count"] == 2
+    assert summary["story_function_count"] == 2
+    assert summary["archetype_count"] == 2
 
 
-def test_quality_review_uses_scene_director_inputs():
+def test_quality_review_uses_new_structure():
     payload = {
         "lyrics_timeline": {
             "sections": [
-                {"section_label": "Intro", "lyric_beats": [{"beat_id": "B001"}]},
-                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "B002"}]},
+                {"section_label": "Intro", "lyric_beats": [{"beat_id": "intro_b1"}]},
+                {"section_label": "Chorus", "lyric_beats": [{"beat_id": "chorus_b1"}]},
             ]
         },
-        "scene_plan": {
-            "identity_core": "same Korean female idol",
-            "world_core": "late-night city transit spaces",
-            "zone_progression": [
-                {"section_label": "Intro", "zone": "threshold", "story_role": "threshold setup"},
-                {"section_label": "Chorus", "zone": "open_world", "story_role": "open world release"},
-            ],
-            "motif_progression": [
-                {"shot_id": "B001", "motif_family": "train window"},
-                {"shot_id": "B002", "motif_family": "ticket gate"},
+        "scene_outline": {
+            "story_premise": "A heroine crosses a connected night world.",
+            "world_rules": "The world stays physically connected.",
+            "section_progression": [
+                {"section_label": "Intro", "story_goal": "Entry", "world_zone": "threshold"},
+                {"section_label": "Chorus", "story_goal": "Release", "world_zone": "open_peak"},
             ],
             "shot_packages": [
-                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "motif_family": "train window", "continuity_group": "Intro:threshold", "identity_core": "same Korean female idol", "beat_refs": ["B001"], "line_refs": [1], "visual_role": "opening_frame"},
-                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "motif_family": "ticket gate", "continuity_group": "Chorus:open_world", "identity_core": "same Korean female idol", "beat_refs": ["B002"], "line_refs": [1], "visual_role": "payoff_frame"},
+                {"shot_id": "intro_b1", "section_label": "Intro", "world_zone": "threshold", "story_function": "entry", "beat_refs": ["intro_b1"], "line_refs": [1]},
+                {"shot_id": "chorus_b1", "section_label": "Chorus", "world_zone": "open_peak", "story_function": "payoff", "beat_refs": ["chorus_b1"], "line_refs": [1]},
             ],
         },
-        "director_plan": {
+        "direction_plan": {
             "shot_packages": [
-                {"shot_id": "B001", "section_label": "Intro", "zone": "threshold", "camera_intent": "favor objects and space before direct face coverage", "identity_core": "same Korean female idol", "visual_role": "opening_frame"},
-                {"shot_id": "B002", "section_label": "Chorus", "zone": "open_world", "camera_intent": "open the frame wider and let the camera commit to the payoff space", "identity_core": "same Korean female idol", "visual_role": "payoff_frame"},
+                {"shot_id": "intro_b1", "world_zone": "threshold", "ref_archetype": "gate_pass"},
+                {"shot_id": "chorus_b1", "world_zone": "open_peak", "ref_archetype": "curb_crossing"},
             ]
         },
-        "render_plan": {
-            "shot_packages": [
-                {"shot_id": "B001", "render_strategy": "ref_pair", "identity_core": "same Korean female idol", "visual_role": "opening_frame"},
-                {"shot_id": "B002", "render_strategy": "ref_pair", "identity_core": "same Korean female idol", "visual_role": "payoff_frame"},
+        "prompt_plan": {
+            "ref_items": [
+                {
+                    "shot_id": "intro_b1",
+                    "ref_start_prompt_text": "The same Korean female idol enters the turnstile lane with one readable forward step.",
+                },
+                {
+                    "shot_id": "chorus_b1",
+                    "ref_start_prompt_text": "The same Korean female idol steps onto the wet crosswalk with her line set toward the far curb.",
+                },
             ]
         },
         "backend_preview": {
             "ref_adapter": [
                 {
                     "raw_prompt_clauses": {
-                        "primary_surface": "threshold",
-                        "ref_archetype": "threshold_crossing",
-                        "start_state": "She crosses the threshold",
-                        "end_state": "She lands beyond the threshold",
+                        "story_function": "entry",
+                        "primary_surface": "turnstile lane",
+                        "ref_archetype": "gate_pass",
+                        "dominant_action": "She enters the turnstile lane with one readable forward step.",
+                        "continuity_delta": "She moves beyond the turnstile lane and lands on the next pavement.",
+                        "content_trace": "",
+                        "selected_prompt_shape": "surface_first_crossing",
                     },
-                    "start_prompt_preview": "The same Korean female idol crosses the threshold into the wet street.",
-                    "end_prompt_preview": "The same Korean female idol lands beyond the threshold and keeps moving.",
+                    "start_prompt_preview": "The same Korean female idol enters the turnstile lane with one readable forward step.",
+                    "end_prompt_preview": "The same Korean female idol moves beyond the turnstile lane and lands on the next pavement.",
                 }
             ],
             "wan_adapter": [
                 {
-                    "raw_prompt_clauses": {"bridge_action": "She clears the threshold and keeps going", "ref_archetype": "threshold_crossing"},
-                    "positive_prompt_preview": "The same Korean female idol clears the threshold and keeps going into the wet street.",
-                    "start_source": "ref_start",
-                },
-                {
-                    "raw_prompt_clauses": {"bridge_action": "She keeps moving across the wet street edge", "ref_archetype": "sidewalk_continuation"},
-                    "positive_prompt_preview": "The same Korean female idol keeps moving across the wet street edge.",
-                    "start_source": "previous_end",
-                },
-            ]
+                    "raw_prompt_clauses": {
+                        "bridge_action": "She clears the threshold and keeps going.",
+                        "start_ref_shot_id": "intro_b1",
+                        "end_ref_shot_id": "chorus_b1",
+                    },
+                    "positive_prompt_preview": "The same Korean female idol clears the threshold and keeps going.",
+                }
+            ],
         },
     }
     out = build_quality_review({}, payload)
-    assert out["story_progression"]["strengths"]
-    assert out["profile_continuity"]["strengths"]
-    assert out["style_alignment"]["strengths"]
-    assert out["ref_prompt_contracts"]["metrics"]["subject_first_ratio"] > 0
-    assert out["wan_prompt_contracts"]["metrics"]["bridge_integrity_ratio"] > 0
-
-
-def test_quality_review_accepts_gate_pass_and_entrance_path_patterns():
-    payload = {
-        "backend_preview": {
-            "ref_adapter": [
-                {
-                    "raw_prompt_clauses": {
-                        "primary_surface": "turnstile lane",
-                        "ref_archetype": "gate_pass",
-                        "start_state": "She enters the turnstile lane with one readable forward step.",
-                        "end_state": "She passes through the turnstile lane and lands just inside the station.",
-                    },
-                    "start_prompt_preview": "The same Korean female idol enters the turnstile lane with one readable forward step.",
-                    "end_prompt_preview": "The same Korean female idol passes through the turnstile lane and lands just inside the station.",
-                },
-                {
-                    "raw_prompt_clauses": {
-                        "primary_surface": "station entrance path",
-                        "ref_archetype": "sidewalk_continuation",
-                        "start_state": "She runs onto the station entrance path with her body set forward.",
-                        "end_state": "She reaches the last stretch before the station entrance and keeps running.",
-                    },
-                    "start_prompt_preview": "The same Korean female idol runs onto the station entrance path with her body set forward.",
-                    "end_prompt_preview": "The same Korean female idol reaches the last stretch before the station entrance and keeps running.",
-                },
-            ],
-            "wan_adapter": [],
-        }
-    }
-    out = build_quality_review({}, payload)
-    assert out["ref_prompt_contracts"]["metrics"]["archetype_match_ratio"] == 1.0
+    assert out["story_review"]["strengths"]
+    assert out["direction_review"]["strengths"]
+    assert out["prompt_review"]["strengths"] or out["prompt_review"]["risks"] == []
+    assert out["prompt_execution_review"]["metrics"]["story_function_match"] > 0
+    assert out["visual_generation_contracts"]["metrics"]["adjacent_transition_integrity"] > 0
 
 
 def test_quality_review_accepts_platform_edge_directional_step_patterns():
@@ -160,12 +126,15 @@ def test_quality_review_accepts_platform_edge_directional_step_patterns():
             "ref_adapter": [
                 {
                     "raw_prompt_clauses": {
+                        "story_function": "pressure",
                         "primary_surface": "wet platform edge with yellow tactile line",
                         "ref_archetype": "platform_edge",
-                        "start_state": "She sets the next step along the wet platform edge with the yellow tactile line close at her feet.",
-                        "end_state": "She takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.",
+                        "dominant_action": "She sets a shorter step along the wet platform edge with the yellow tactile line close at her feet.",
+                        "continuity_delta": "She takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.",
+                        "content_trace": "footprint trail widening behind her",
+                        "selected_prompt_shape": "geometry_first_directional_step",
                     },
-                    "start_prompt_preview": "The same Korean female idol sets the next step along the wet platform edge with the yellow tactile line close at her feet.",
+                    "start_prompt_preview": "The same Korean female idol sets a shorter step along the wet platform edge with the yellow tactile line close at her feet.",
                     "end_prompt_preview": "The same Korean female idol takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.",
                 }
             ],
@@ -173,4 +142,5 @@ def test_quality_review_accepts_platform_edge_directional_step_patterns():
         }
     }
     out = build_quality_review({}, payload)
-    assert out["ref_prompt_contracts"]["metrics"]["archetype_match_ratio"] == 1.0
+    assert out["prompt_execution_review"]["metrics"]["archetype_selection_match"] == 1.0
+    assert out["prompt_execution_review"]["metrics"]["prompt_shape_match"] == 1.0
