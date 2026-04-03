@@ -109,6 +109,34 @@
 - Recommended pattern:
   - `The same Korean female idol [identity hook] moves past the wet platform edge at night, the yellow line staying close at her feet.`
 
+## 2026-04-03 Update
+
+### Why this archetype needed another pass
+- Later bridge-motion testing showed that plain forward continuation is stable, but not always enough when the shot needs stronger locomotion change.
+- The platform-edge family becomes stronger when the same geometry is preserved and only the foot-direction change is increased.
+
+### Updated stronger motion variant
+- Study:
+  - [ref_bridge_platform_motion_study_20260403.md](D:/workspace/ai-music-video/artifacts/reports/ref_bridge_platform_motion_study_20260403.md)
+- Stronger motion variant:
+  - `The same Korean female idol with a high ponytail takes a crossing step along the wet platform edge at night, the yellow tactile line close at her feet and her footprint trail widening behind her.`
+
+### Updated interpretation
+- Base platform-edge:
+  - edge proximity near the feet + forward continuation
+- Strong motion variant:
+  - edge geometry near the feet + directional foot change + optional trace detail
+
+### Updated caution
+- Stronger motion should come from:
+  - `crossing step`
+  - `shorter step`
+  - `next step`
+- Avoid stronger motion from:
+  - `arm swing`
+  - `shoulder turn`
+  - exaggerated gesture-first language
+
 ## Avoid
 - `clears the platform edge`
 - `leaving the guard rail behind her`

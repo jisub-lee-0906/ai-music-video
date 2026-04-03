@@ -3,6 +3,7 @@ archetypes:
     name: threshold_crossing
     contract: Use source surface to destination surface with contact release; keep the threshold secondary to her crossing.
     good_pattern: same heroine + threshold or exit line + clear crossing verb + destination surface
+    preferred_sentence_shape: same heroine + one small identity hook when needed + steps/crosses off source surface onto destination surface + one contact release detail
     avoid_pattern: opening mood, glow ahead, doorway as hero object
     surface_priority:
       - threshold
@@ -18,6 +19,7 @@ archetypes:
     name: stair_descent
     contract: Use continuous stepped surface with continuous handrail contact; keep stair geometry literal and avoid flattening into a generic walk.
     good_pattern: same heroine + stair geometry + descent verb + handrail continuity
+    preferred_sentence_shape: same heroine + one small identity hook when needed + steps down the stairs + one continuous handrail contact detail
     avoid_pattern: glass mood, window drift, flat sidewalk rewrite
     surface_priority:
       - stairs
@@ -31,6 +33,7 @@ archetypes:
     name: passage_compression
     contract: Use wall proximity plus forward movement plus trailing rail; keep the narrowness visible and avoid broad walkway staging.
     good_pattern: same heroine + narrow passage + forward continuation + wall or rail proximity
+    preferred_sentence_shape: same heroine + keeps close to wall or passage line + moves forward + one trailing rail detail
     avoid_pattern: broad open street, pure mood shot, reflective set-piece
     surface_priority:
       - passage line
@@ -43,22 +46,27 @@ archetypes:
         note: Keep glass as side structure unless direct touch is the event.
   platform_edge:
     name: platform_edge
-    contract: Use edge proximity near her feet plus forward continuation; keep the platform edge more important than rails, doors, or skyline.
-    good_pattern: same heroine + wet platform edge or yellow line near her feet + forward continuation
+    contract: Use explicit platform-edge geometry near her feet plus a readable directional foot change; keep the platform edge more important than rails, doors, or skyline, and keep any trace detail secondary.
+    good_pattern: same heroine + wet platform edge or yellow tactile line near her feet + crossing/shorter/next step + optional footprint trail behind
+    preferred_sentence_shape: same heroine + one small identity hook when needed + takes a crossing, shorter, or next step along the wet platform edge + yellow tactile line stays close at her feet + one optional trace detail behind
     avoid_pattern: train window takeover, closing-door event, skyline emphasis, distant sign
     surface_priority:
       - platform edge
+      - yellow tactile line
       - yellow line
       - platform lane
     contact_policy: Do not require rail contact.
-    continuity_policy: The edge relation should remain legible from start to end.
+    continuity_policy: The edge relation should remain legible from start to end, and the motion change should come from foot-direction change rather than arm-swing or shoulder-turn exaggeration.
     variant_notes:
       passing_motion:
         note: Passing train or vehicle motion can remain background-only and must not replace the edge as the route.
+      bridge_motion:
+        note: In bridge-like pressure shots, prefer crossing step, shorter step, or next step on the wet platform edge with the yellow tactile line near her feet; keep footprint trails secondary and avoid gesture-first motion.
   gate_pass:
     name: gate_pass
     contract: Use beyond-the-gate continuation plus destination space ahead; keep the gate as a crossing point, not the main subject.
     good_pattern: same heroine + gate or turnstile + beyond-the-gate continuation
+    preferred_sentence_shape: same heroine + moves beyond the gate or turnstile + destination pavement or path ahead
     avoid_pattern: machine hero shot, ticket still life, clock above
     surface_priority:
       - gate lane
@@ -71,6 +79,7 @@ archetypes:
     name: window_contact
     contract: Use present-tense surface contact plus forward continuation; keep reflection secondary to her contact with the window edge or rail.
     good_pattern: same heroine + direct contact on window edge/glass + forward continuation
+    preferred_sentence_shape: same heroine + keeps close to the window edge or glass + one direct contact detail + forward continuation
     avoid_pattern: reflection as event, symbolic light wash, window as route without contact
     surface_priority:
       - window edge
@@ -85,6 +94,7 @@ archetypes:
     name: curb_crossing
     contract: Use plain crosswalk locomotion plus destination curb; avoid extra objects that compete with the crossing.
     good_pattern: same heroine + crosswalk + far curb destination
+    preferred_sentence_shape: same heroine + crosses the wet crosswalk + far curb destination + optional free-arm locomotion detail
     avoid_pattern: traffic-light hero shot, signage drift, broad skyline mood
     surface_priority:
       - crosswalk
@@ -97,6 +107,7 @@ archetypes:
     name: sidewalk_continuation
     contract: Use plain locomotion with optional free-arm motion or curb-at-feet proximity; keep the street portable and open-world.
     good_pattern: same heroine + sidewalk or pavement + plain forward continuation
+    preferred_sentence_shape: same heroine + moves forward along sidewalk or pavement + optional curb-at-feet or free-arm motion detail
     avoid_pattern: window-side atmosphere, city opening wide, generic glow
     surface_priority:
       - sidewalk
@@ -109,6 +120,7 @@ archetypes:
     name: doorway_handoff
     contract: Use doorway crossing plus literal destination space beyond; do not let the metal frame dominate the shot.
     good_pattern: same heroine + clears doorway + next surface beyond
+    preferred_sentence_shape: same heroine + clears the doorway threshold + carries the next step into the immediate passage beyond
     avoid_pattern: room-entry set-piece, frame fetish, brighter corridor event
     surface_priority:
       - doorway threshold
@@ -121,6 +133,7 @@ archetypes:
     name: brace_pause
     contract: Use simple braced contact with minimal interpretation; keep the pose natural and avoid over-staging the pause.
     good_pattern: same heroine + one braced contact + continuation hint
+    preferred_sentence_shape: same heroine + pauses at one rail or wall contact + one small continuation hint
     avoid_pattern: theatrical stillness, pure inner emotion, decorative pause
     surface_priority:
       - rail
@@ -133,6 +146,7 @@ archetypes:
     name: ramp_descent
     contract: Use slope descent plus trailing rail; keep the ramp identity distinct from stairs and flat sidewalks.
     good_pattern: same heroine + underpass ramp + lower movement + trailing rail
+    preferred_sentence_shape: same heroine + moves lower along the ramp + one trailing rail detail
     avoid_pattern: flattening into stairs, generic road walk, glass drift
     surface_priority:
       - underpass ramp
@@ -145,6 +159,7 @@ archetypes:
     name: turn_back_once
     contract: Use over-shoulder look-back plus explicit forward continuation; preserve face readability while the body keeps moving.
     good_pattern: same heroine + over one shoulder + next step continues
+    preferred_sentence_shape: same heroine + looks back over one shoulder + next step keeps moving forward
     avoid_pattern: full rear-view stop, frozen look-back, scenic nostalgia
     surface_priority:
       - street edge
@@ -157,6 +172,7 @@ archetypes:
     name: indoor_corridor
     contract: Use narrow corridor volume plus wall proximity plus forward continuation; keep indoor neutrality stronger than decorative lights.
     good_pattern: same heroine + narrow corridor + wall proximity + forward motion
+    preferred_sentence_shape: same heroine + moves forward through the narrow corridor + wall stays close at her side
     avoid_pattern: light-fixture hero shot, decorative signage, static hallway pose
     surface_priority:
       - corridor
@@ -169,6 +185,7 @@ archetypes:
     name: bench_rest
     contract: Use seated rest plus one small continuation hint; keep the seated pose natural rather than fully settled or theatrical.
     good_pattern: same heroine + bench or seat end + one foot planted / rise-again hint
+    preferred_sentence_shape: same heroine + sits at the bench or seat end + one small rise-again continuation hint
     avoid_pattern: fully settled still life, fashion pose, emotional tableau
     surface_priority:
       - bench

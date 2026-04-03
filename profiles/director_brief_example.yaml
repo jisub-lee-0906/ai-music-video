@@ -19,8 +19,8 @@ visual:
     severe monochrome tailoring, harsh runway mood, and repetitive staging that disconnects the heroine from the environment.
 mv:
   story_world: >
-    One connected late-night station-side city block where the same heroine moves through thresholds,
-    passages, stairs, wet pavement, gates, doorways, sidewalks, and platform edges.
+    One connected late-night station-side city block where the same heroine moves through
+    thresholds, passages, stairs, wet pavement, gates, sidewalks, and platform edges.
   action_vocabulary: >
     Favor natural visible actions that can read clearly in a music-video keyframe, such as walking, turning,
     pausing at a surface, crossing thresholds, touching rails or door edges, and shifting direction inside the space.
@@ -69,11 +69,11 @@ director:
   wan_negative: >
     morphing, melting, static, anatomy collapse, warped hands, extra limbs, identity drift, toy-like cgi
   motif_families:
-    - station threshold and entry point
+    - threshold and entry surface
     - wet pavement and ground contact
-    - stair rail and platform stairs
-    - doorway edge and side passage
-    - gate line and platform edge
+    - stairs rail and stepped surface
+    - side passage and doorway threshold
+    - gate lane and platform edge
   section_grammar:
     Intro: first entry into the connected world
     Verse 1: moving deeper into the same world

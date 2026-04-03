@@ -13,14 +13,15 @@ def build_director_plan(config: dict, payload: dict) -> dict:
     durations = _shot_duration_map(payload)
     shot_packages: list[dict] = []
     for index, shot in enumerate(scene_plan.get("shot_packages", []), start=1):
-        ref_archetype = _infer_ref_archetype(shot)
         shot_id = str(shot.get("shot_id", "")).strip()
+        guidance = golden_shot_guidance(shot_id)
+        ref_archetype = _infer_ref_archetype(shot, guidance)
         current = {
             **dict(shot),
             "duration_sec": float(durations.get(shot_id, 2.0)),
             "ref_archetype": ref_archetype,
-            "ref_archetype_variant": _infer_ref_archetype_variant(shot, ref_archetype),
-            "golden_shot_guidance": golden_shot_guidance(shot_id),
+            "ref_archetype_variant": _infer_ref_archetype_variant(shot, ref_archetype, guidance),
+            "golden_shot_guidance": guidance,
             "ref_archetype_contract": "",
             "camera_intent": _camera_intent(shot, brief, index),
             "performance_intent": _performance_intent(shot),
@@ -131,17 +132,23 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
         archetype = str(shot.get("ref_archetype", "")).strip()
         primary_surface = _planner_primary_surface(shot, archetype)
         support_detail = _director_support_detail(shot)
+        location = _director_location(shot)
+        literal_image = _director_literal_image(shot)
+        shot["primary_surface"] = primary_surface
+        shot["support_detail"] = support_detail
+        shot["location_description"] = location
+        shot["literal_image"] = literal_image
         rows.append(
             {
                 "shot_id": str(shot.get("shot_id", "")).strip(),
                 "section_label": str(shot.get("section_label", "")).strip(),
                 "story_role": str(shot.get("story_role", "")).strip(),
                 "zone": str(shot.get("zone", "")).strip(),
-                "location": _director_location(shot),
+                "location": location,
                 "dominant_scene_grammar": str(shot.get("dominant_scene_grammar", "")).strip(),
                 "primary_surface": primary_surface,
                 "support_detail": support_detail,
-                "literal_image": _director_literal_image(shot),
+                "literal_image": literal_image,
                 "subject_action": str(shot.get("subject_action", "")).strip(),
                 "visible_action": str(shot.get("visible_action", "")).strip(),
                 "continuity_anchor": str(shot.get("beat_continuity_anchor", "")).strip(),
@@ -150,6 +157,7 @@ def _rewrite_prompt_action_lines(config: dict, shot_packages: list[dict]) -> Non
                 "ref_archetype": archetype,
                 "ref_archetype_variant": str(shot.get("ref_archetype_variant", "")).strip(),
                 "ref_archetype_contract": str(shot.get("ref_archetype_contract", "")).strip(),
+                "ref_preferred_sentence_shape": str(_ref_preferred_sentence_shape(archetype)).strip(),
                 "golden_shot_guidance": dict(shot.get("golden_shot_guidance", {})),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
             }
@@ -212,7 +220,10 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "The dominant action must stay more important than any support detail. "
         "Use section_label, story_role, visual_role, and payoff_role_hint as hidden dramatic guidance for why the shot exists in the sequence, but do not repeat those labels in the output. "
         "Use ref_archetype, ref_archetype_variant, and ref_archetype_contract as hidden guidance for what prompt structure is most reliable for this shot family. "
+        "Use ref_preferred_sentence_shape as the closest known best-performing sentence skeleton for that archetype, and stay close to it unless the source clearly requires a nearby variation. "
         "Some shots may also include golden_shot_guidance from successful probe results. When golden_shot_guidance is present, treat it as the highest-priority hidden structure for this exact shot id. Preserve its preferred surface, preferred pattern, and start/end/WAN shape unless the source clearly conflicts. "
+        "When golden_shot_guidance is present, do not reinterpret the shot into a different archetype family even if another nearby family also sounds plausible. "
+        "When golden_shot_guidance is present, keep the preferred surface explicit in dominant_action, ref_start_action_line, ref_end_action_line, and wan_action_line. "
         "Treat location, primary_surface, and literal_image as lean structural inputs, not invitations to restore decorative motifs. "
         "If support_detail is empty, do not invent a replacement optical detail. "
         "If golden_shot_guidance exists, do not drift to a different archetype, a different route surface, or a different release structure just because another wording also sounds plausible. "
@@ -232,6 +243,9 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "If ref_archetype is stair_descent, keep the action on stairs, stair run, handrail, or landing progression; do not make glass, reflection, or window mood the action nucleus. "
         "If stairs, stairwell, landing, escalator, or ramp are present together with a nearby window, keep dominant_action, start_state, end_state, and wan_action_line on the stair geometry first; do not promote the window edge unless she is directly touching or bracing on it. "
         "If ref_archetype is platform_edge, keep the action on the edge, yellow line, or forward stride by the drop; do not make blurred glass, a train window, or a nearby sign the action nucleus. "
+        "If ref_archetype is platform_edge, prefer directional foot-change language such as crossing step, shorter step, next step, or longer step over generic keeps moving wording when the source supports a stronger motion read. "
+        "If ref_archetype is platform_edge, keep the yellow line or yellow tactile line near her feet explicit when it materially anchors the surface. "
+        "If ref_archetype is platform_edge, do not try to create stronger motion through arm swing, shoulder turn, or theatrical gesture-first posing. Prefer the feet, stride, and route geometry. "
         "If ref_archetype is threshold_crossing or doorway_handoff, keep the action on clearing the threshold, door edge, gate line, exit line, curb, or street edge; do not make the light beyond or the opening mood the event. "
         "If ref_archetype is threshold_crossing or doorway_handoff, do not make opening a hand, opening the door, or entering a brighter corridor the event when clearing the threshold or landing beyond it is already readable. "
         "If ref_archetype is threshold_crossing, make threshold language explicit in dominant_action, ref_start_action_line, ref_end_action_line, and wan_action_line. Use words such as threshold, exit line, curb, street edge, clear, cross, beyond, far side, or lands beyond so the crossing contract stays visible in the actual line. "
@@ -250,6 +264,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "If continuity is likely to drift, it is acceptable to keep one small identity hook that is already part of the heroine, such as her high ponytail, as long as the line still reads like natural prose and not a checklist. "
         "This is especially acceptable in difficult REF shots such as final-opening crossings or tight bridge contact shots. "
         "For difficult REF shots, a strong pattern is: same heroine, one small identity hook when needed, one body-led action, one place anchor, and one tactile contact detail. "
+        "If ref_preferred_sentence_shape already implies a small identity hook, use it only where it materially stabilizes the archetype and avoid turning every line into the same checklist. "
         "Default to a single-heroine scene. Never introduce you, your, he, him, they, them, or another figure unless the source explicitly names or clearly requires another person. "
         "This visual pipeline should stay single-subject by default. Even if the lyric implies an addressee, reunion, longing, or mutual feeling, keep only one visible heroine in frame unless the source unmistakably requires two visible bodies in one shot. "
         "For this project, prefer one visible heroine moving through one connected world over any duet, reunion, embrace, or partner staging. "
@@ -356,6 +371,7 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
         "For Bridge/compression shots, if glass or a clock appears, keep the step, rail, platform end, curb, or passage line primary and reduce the glass or clock to background timing or side detail. "
         "If continuity_anchor or visible_action implies wet footprints, a trail on the floor, or marks spreading behind her, keep that as a secondary ground trace while the dominant action stays on the same platform, floor, pavement, or edge. "
         "For Bridge/compression shots with a wet-ground trace, prefer shorter stride, braced step, tightened movement, or a small advance on the same surface over generic drift or neutral walkway continuation. "
+        "For Bridge/compression shots on a platform edge, prefer crossing step, shorter step, or next step on the edge over generic keeps moving language, and keep any footprint trail behind her as secondary support detail rather than the event itself. "
         "If a stair, rail, tread, stair top, or stairwell is present, keep the action visibly on that stair geometry; do not let the shot flatten into a generic straight walk on an open road or broad plaza. "
         "The action must stay physically compatible with the given location. "
         "The environment should support the heroine's movement instead of overpowering it. "
@@ -389,7 +405,11 @@ def _rewrite_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
     return out
 
 
-def _infer_ref_archetype(shot: dict) -> str:
+def _infer_ref_archetype(shot: dict, guidance: dict | None = None) -> str:
+    guidance = dict(guidance or {})
+    guided_archetype = str(guidance.get("archetype", "")).strip()
+    if guided_archetype:
+        return guided_archetype
     zone = str(shot.get("zone", "")).strip().lower()
     primary_surface = str(shot.get("primary_surface", "")).strip().lower()
     subject_action = str(shot.get("subject_action", "")).strip().lower()
@@ -425,20 +445,22 @@ def _infer_ref_archetype(shot: dict) -> str:
         return "ramp_descent"
     if any(token in primary_surface for token in ("corridor", "hall")) and "indoor" in text:
         return "indoor_corridor"
-    if any(token in primary_surface for token in ("turnstile", "ticket gate", "gate lane")):
+    if any(token in primary_surface for token in ("turnstile", "ticket gate", "gate lane", "gate line")):
         return "gate_pass"
     if any(token in primary_surface for token in ("stair", "stairs", "stairwell", "tread", "handrail", "rail")) and "stair" in text:
         return "stair_descent"
-    if any(token in primary_surface for token in ("platform edge", "yellow line")):
+    if any(token in primary_surface for token in ("platform edge", "platform end", "wet platform", "yellow line")):
         return "platform_edge"
-    if any(token in primary_surface for token in ("crosswalk", "far curb", "curb")) and any(
-        token in f"{subject_action} {visible_action} {location}" for token in ("cross", "crosses", "crossing", "far side")
-    ):
+    if any(token in primary_surface for token in ("crosswalk", "far curb", "curb")):
         return "curb_crossing"
-    if any(token in primary_surface for token in ("doorway", "door edge", "opening")):
+    if any(token in primary_surface for token in ("doorway", "door edge", "opening", "door gap", "door line")):
         return "doorway_handoff"
     if any(token in primary_surface for token in ("threshold", "exit line", "street edge")):
         return "threshold_crossing"
+    if any(token in primary_surface for token in ("ticket machine ledge", "ledge")) and any(
+        token in text for token in ("holds", "holding", "turns", "coin", "card", "ticket", "pause", "brace")
+    ):
+        return "brace_pause"
     if zone == "compression" and any(token in text for token in ("lane", "passage", "wall", "rail", "narrow", "close", "wet lane", "street lane")):
         return "passage_compression"
     if any(token in primary_surface for token in ("passage", "wall")) and any(token in text for token in ("rail", "narrow", "close")):
@@ -472,7 +494,11 @@ def _infer_ref_archetype(shot: dict) -> str:
     return "sidewalk_continuation"
 
 
-def _infer_ref_archetype_variant(shot: dict, archetype: str) -> str:
+def _infer_ref_archetype_variant(shot: dict, archetype: str, guidance: dict | None = None) -> str:
+    guidance = dict(guidance or {})
+    guided_variant = str(guidance.get("variant", "")).strip()
+    if guided_variant:
+        return guided_variant
     text = " ".join(
         [
             str(shot.get("location_description", "")).strip(),
@@ -490,6 +516,8 @@ def _infer_ref_archetype_variant(shot: dict, archetype: str) -> str:
         return "glass_adjacent"
     if archetype == "platform_edge" and any(token in text for token in ("passing train", "passing vehicle", "moving light", "train-side")):
         return "passing_motion"
+    if archetype == "platform_edge" and any(token in text for token in ("footprint", "footprints", "footprint trail", "yellow line", "tactile line", "shorter step", "crossing step")):
+        return "bridge_motion"
     if any(token in text for token in ("station", "platform", "gate", "turnstile", "threshold")):
         return "station_side"
     return ""
@@ -649,6 +677,11 @@ def _ref_archetype_contract(archetype: str, variant: str = "") -> str:
     if contract:
         return contract
     return "Use one heroine, one readable body action, one nearby surface, and one chain-friendly visible progression."
+
+
+def _ref_preferred_sentence_shape(archetype: str) -> str:
+    grammar = ref_archetype_grammar(archetype)
+    return str(grammar.get("preferred_sentence_shape", "")).strip()
 
 
 def _dominant_action_fallback(shot: dict) -> str:

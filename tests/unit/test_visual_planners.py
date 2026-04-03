@@ -1,5 +1,5 @@
 from ai_mv.engines.scene_plan.planner import build_scene_plan
-from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _planner_primary_surface, build_director_plan
+from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _infer_ref_archetype_variant, _planner_primary_surface, build_director_plan
 from ai_mv.engines.render_plan.planner import build_render_plan
 from ai_mv.core.stages.wan_interpolation import build_wan_plan
 
@@ -89,7 +89,7 @@ def test_scene_director_render_plan_chain():
     assert render["wan_chain"][0]["environment_anchor"]
     assert render["wan_chain"][0]["location_description"]
     assert render["wan_chain"][0]["duration_sec"] > 0
-    assert "step" in render["wan_chain"][0]["visible_action"]
+    assert any(token in render["wan_chain"][0]["visible_action"] for token in ("step", "clear", "cross", "pass"))
     assert "gate" in render["wan_chain"][0]["visible_action"]
     assert render["wan_chain"][0]["wan_action_line"]
     assert render["shot_packages"][0]["ref_prompt_clauses"]["subject_intro"]
@@ -101,6 +101,56 @@ def test_scene_director_render_plan_chain():
     assert render["wan_chain"][0]["wan_prompt_clauses"]["wan_transition_family"]
     assert render["wan_chain"][0]["wan_prompt_clauses"]["wan_transition_contract"]
     assert render["wan_chain"][0]["wan_positive_prompt_text"]
+
+
+def test_director_archetype_prefers_golden_shot_override():
+    shot = {
+        "shot_id": "final_chorus_b1",
+        "zone": "open_world_peak",
+        "primary_surface": "wet platform edge",
+        "location_description": "At the wet platform edge",
+        "environment_anchor": "wet platform edge",
+        "subject_action": "",
+        "visible_action": "",
+        "support_detail": "",
+        "literal_image": "",
+        "visual_role": "payoff_frame",
+    }
+    guidance = {
+        "archetype": "curb_crossing",
+        "preferred_surface": "wet crosswalk",
+    }
+    assert _infer_ref_archetype(shot, guidance) == "curb_crossing"
+
+
+def test_director_archetype_classifies_door_gap_as_doorway_handoff():
+    shot = {
+        "zone": "threshold",
+        "primary_surface": "train door gap",
+        "location_description": "By the train door gap",
+        "environment_anchor": "train door gap",
+        "subject_action": "",
+        "visible_action": "",
+        "support_detail": "",
+        "literal_image": "",
+        "visual_role": "handoff_frame",
+    }
+    assert _infer_ref_archetype(shot) == "doorway_handoff"
+
+
+def test_director_archetype_classifies_ticket_machine_ledge_hold_as_brace_pause():
+    shot = {
+        "zone": "edge",
+        "primary_surface": "ticket machine ledge",
+        "location_description": "At the ticket machine ledge",
+        "environment_anchor": "ticket machine ledge",
+        "subject_action": "she holds the coin and pauses",
+        "visible_action": "",
+        "support_detail": "",
+        "literal_image": "",
+        "visual_role": "pressure_frame",
+    }
+    assert _infer_ref_archetype(shot) == "brace_pause"
 
 
 def test_scene_plan_motif_assignment_is_section_local_and_stable():
@@ -337,6 +387,19 @@ def test_director_primary_surface_uses_archetype_priority_over_optical_noise():
         "golden_shot_guidance": {},
     }
     assert _planner_primary_surface(shot, "gate_pass") == "gate lane"
+
+
+def test_director_archetype_detects_platform_bridge_motion_variant():
+    shot = {
+        "location_description": "wet platform edge with the yellow tactile line close at her feet",
+        "environment_anchor": "wet platform edge with the yellow tactile line close at her feet",
+        "literal_image": "wet platform edge and a footprint trail widening behind her",
+        "visible_action": "she takes a crossing step along the edge",
+        "subject_action": "she takes a crossing step along the wet platform edge",
+        "primary_surface": "wet platform edge",
+        "support_detail": "footprint trail widening behind her",
+    }
+    assert _infer_ref_archetype_variant(shot, "platform_edge") == "bridge_motion"
 
 
 def test_wan_negative_prompt_avoids_camera_language():

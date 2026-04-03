@@ -34,10 +34,11 @@
 ### 4. Platform Edge Forward Walk
 - Study:
   - [ref_platform_edge_prompt_study_20260401.md](D:/workspace/ai-music-video/artifacts/reports/ref_platform_edge_prompt_study_20260401.md)
+  - [ref_bridge_platform_motion_study_20260403.md](D:/workspace/ai-music-video/artifacts/reports/ref_bridge_platform_motion_study_20260403.md)
 - Best grammar:
-  - edge proximity near the feet + forward continuation
+  - edge geometry near the feet + directional foot change + optional trace detail
 - Best example:
-  - `The same Korean female idol with a high ponytail moves past the wet platform edge at night, the yellow line staying close at her feet.`
+  - `The same Korean female idol with a high ponytail takes a crossing step along the wet platform edge at night, the yellow tactile line close at her feet and her footprint trail widening behind her.`
 
 ### 5. Gate / Turnstile Pass
 - Study:
@@ -122,9 +123,11 @@
 ## Shared Structural Rules
 - keep one heroine
 - keep one small identity hook when continuity matters
+- keep one dominant surface/path before strengthening motion
 - keep one dominant action
-- keep one dominant surface/path
-- use one support contact detail only if it helps the archetype
+- use one support contact or trace detail only if it helps the archetype
+- when motion needs to increase, prefer directional foot-change language over arm-swing or shoulder-turn exaggeration
+- in this workflow, compact natural prose usually outperforms heavier identity padding, style padding, or JSON prompt formatting
 - avoid symbolic optical language as the main event
 
 ## Shared Failure Modes
@@ -132,6 +135,8 @@
 - `clears ... behind her` often erases the current archetype
 - `threads through` often widens the space
 - `holding/resting` often makes the shot posed
+- gesture-first motion often becomes a pose or dance frame
+- content-only detail often invents the wrong environment
 - `reflection/glow/window` become dangerous when they stop being surface details and become the scene subject
 
 ## Current Strategy

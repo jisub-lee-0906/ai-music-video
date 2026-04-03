@@ -120,3 +120,57 @@ def test_quality_review_uses_scene_director_inputs():
     assert out["style_alignment"]["strengths"]
     assert out["ref_prompt_contracts"]["metrics"]["subject_first_ratio"] > 0
     assert out["wan_prompt_contracts"]["metrics"]["bridge_integrity_ratio"] > 0
+
+
+def test_quality_review_accepts_gate_pass_and_entrance_path_patterns():
+    payload = {
+        "backend_preview": {
+            "ref_adapter": [
+                {
+                    "raw_prompt_clauses": {
+                        "primary_surface": "turnstile lane",
+                        "ref_archetype": "gate_pass",
+                        "start_state": "She enters the turnstile lane with one readable forward step.",
+                        "end_state": "She passes through the turnstile lane and lands just inside the station.",
+                    },
+                    "start_prompt_preview": "The same Korean female idol enters the turnstile lane with one readable forward step.",
+                    "end_prompt_preview": "The same Korean female idol passes through the turnstile lane and lands just inside the station.",
+                },
+                {
+                    "raw_prompt_clauses": {
+                        "primary_surface": "station entrance path",
+                        "ref_archetype": "sidewalk_continuation",
+                        "start_state": "She runs onto the station entrance path with her body set forward.",
+                        "end_state": "She reaches the last stretch before the station entrance and keeps running.",
+                    },
+                    "start_prompt_preview": "The same Korean female idol runs onto the station entrance path with her body set forward.",
+                    "end_prompt_preview": "The same Korean female idol reaches the last stretch before the station entrance and keeps running.",
+                },
+            ],
+            "wan_adapter": [],
+        }
+    }
+    out = build_quality_review({}, payload)
+    assert out["ref_prompt_contracts"]["metrics"]["archetype_match_ratio"] == 1.0
+
+
+def test_quality_review_accepts_platform_edge_directional_step_patterns():
+    payload = {
+        "backend_preview": {
+            "ref_adapter": [
+                {
+                    "raw_prompt_clauses": {
+                        "primary_surface": "wet platform edge with yellow tactile line",
+                        "ref_archetype": "platform_edge",
+                        "start_state": "She sets the next step along the wet platform edge with the yellow tactile line close at her feet.",
+                        "end_state": "She takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.",
+                    },
+                    "start_prompt_preview": "The same Korean female idol sets the next step along the wet platform edge with the yellow tactile line close at her feet.",
+                    "end_prompt_preview": "The same Korean female idol takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.",
+                }
+            ],
+            "wan_adapter": [],
+        }
+    }
+    out = build_quality_review({}, payload)
+    assert out["ref_prompt_contracts"]["metrics"]["archetype_match_ratio"] == 1.0

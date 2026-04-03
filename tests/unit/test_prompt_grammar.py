@@ -47,13 +47,22 @@ def test_ref_archetype_contract_data_is_structured():
     grammar = ref_archetype_grammar("threshold_crossing")
     assert grammar["contract"]
     assert grammar["good_pattern"]
+    assert grammar["preferred_sentence_shape"]
     assert "threshold" in " ".join(grammar["surface_priority"]).lower()
 
 
 def test_golden_shot_guidance_loads_priority_probe_shapes():
     guidance = golden_shot_guidance("bridge_b1")
-    assert guidance["preferred_surface"] == "wet platform"
+    assert guidance["preferred_surface"] == "wet platform edge"
     assert "footprints" in guidance["preferred_pattern"].lower()
+    assert "yellow tactile line" in guidance["preferred_pattern"].lower()
+
+
+def test_platform_edge_grammar_uses_directional_foot_change_shape():
+    grammar = ref_archetype_grammar("platform_edge")
+    lowered = grammar["preferred_sentence_shape"].lower()
+    assert "crossing" in lowered or "shorter" in lowered or "next step" in lowered
+    assert "tactile" in " ".join(grammar["surface_priority"]).lower() or "yellow line" in " ".join(grammar["surface_priority"]).lower()
 
 
 def test_tti_master_prompt_uses_grammar_memory():

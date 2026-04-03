@@ -655,6 +655,8 @@ def _request_translated_beat_render_phrases(config: dict, beats: list[dict]) -> 
         "If the beat implies wet footprints, a trail on the ground, or marks spreading behind her, keep that as a material ground trace rather than deleting it as abstract mood. "
         "In Bridge or other compression beats, a wet-footprint trail can survive as support_detail_en or continuity_anchor_en when it strengthens the same playable surface she is moving on. "
         "If wet footprints or a track on the floor are present, keep the action on the same platform, pavement, or floor while the footprints remain a secondary trace of motion behind her. "
+        "If the beat is on a wet platform edge or yellow line, prefer a literal edge-geometry phrase and let the footprint trail stay secondary to that geometry. "
+        "For platform-edge bridge beats, directional foot change such as the next step, a shorter step, or a crossing step is usually more reliable than larger gesture language. "
         "Do not build literal_image_en as a still life of a ticket and a clock together when the same beat already has a playable surface or lane she can move through. "
         "Also avoid static verbs such as studies, admires, lets a reflection settle, holds a smile, lets a smile rise, lets the motion settle, or lets the floor steady when a more readable visible action can carry the beat. "
         "Do not use heartbeat, hesitation, memory, loneliness, or pause as the main visible event unless there is no other faithful physical reading. "

@@ -223,15 +223,17 @@ def _matches_ref_archetype(archetype: str, primary_surface: str, start_state: st
     if archetype == "passage_compression":
         return any(token in text for token in ("passage", "wall", "close", "rail", "lane", "smaller line", "tightens"))
     if archetype == "platform_edge":
-        return any(token in text for token in ("platform edge", "yellow line", "platform"))
+        has_surface = any(token in text for token in ("platform edge", "yellow line", "yellow tactile line", "wet platform", "platform"))
+        has_motion = any(token in text for token in ("crossing step", "shorter step", "next step", "longer step", "step along", "moves past", "keeps moving"))
+        return has_surface and has_motion
     if archetype == "gate_pass":
-        return any(token in text for token in ("gate", "turnstile", "beyond"))
+        return any(token in text for token in ("gate", "turnstile", "gate line", "turnstile lane", "beyond", "inside the station"))
     if archetype == "window_contact":
         return any(token in text for token in ("window", "glass", "shoulder", "touch", "trace", "press", "brush"))
     if archetype == "curb_crossing":
         return any(token in text for token in ("crosswalk", "curb", "far curb"))
     if archetype == "sidewalk_continuation":
-        return any(token in text for token in ("sidewalk", "pavement", "street edge", "moves forward", "wet lane", "keeps moving", "moves along"))
+        return any(token in text for token in ("sidewalk", "pavement", "street edge", "path", "entrance path", "moves forward", "wet lane", "keeps moving", "moves along", "keeps running"))
     if archetype == "doorway_handoff":
         return any(token in text for token in ("doorway", "door edge", "threshold", "beyond"))
     if archetype == "brace_pause":

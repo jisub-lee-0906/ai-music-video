@@ -1,20 +1,21 @@
 shots:
   intro_b1:
-    archetype: threshold_crossing
+    archetype: gate_pass
     preferred_surface: turnstile lane
-    contract: Keep the entry on the gate or turnstile crossing, then land immediately inside the station. Do not replace the crossing with train-window side movement.
-    preferred_pattern: same heroine + turnstile or gate crossing + first step inside
+    contract: Keep the entry on the turnstile or gate crossing and land immediately inside the station. Do not replace the gate crossing with train-window side movement.
+    preferred_pattern: same heroine + turnstile or gate crossing + first step inside the station
     start_shape: She enters the turnstile lane with one readable forward step.
-    end_shape: She passes through the turnstile and lands just inside the station.
+    end_shape: She passes through the turnstile lane and lands just inside the station.
     wan_shape: She steps through the turnstile lane into the station and lands on the station side.
   bridge_b1:
     archetype: platform_edge
-    preferred_surface: wet platform
-    contract: Keep the beat on the wet platform with a shortened stride and a visible footprint trail behind her. Do not replace the beat with glass, turn-back, or generic drift.
-    preferred_pattern: same heroine + wet platform + shortened stride + footprints widening behind
-    start_shape: She shortens her stride on the wet platform with one smaller step set forward.
-    end_shape: She keeps moving on the wet platform while her footprints widen behind her.
-    wan_shape: She keeps the same shortened stride on the wet platform and leaves a wider footprint trail behind.
+    variant: bridge_motion
+    preferred_surface: wet platform edge
+    contract: Keep the beat on the wet platform edge with the yellow tactile line close at her feet, a readable shortened or crossing step, and a visible footprint trail behind her. Do not replace the beat with glass, turn-back, gesture-heavy posing, or generic drift.
+    preferred_pattern: same heroine + wet platform edge + yellow tactile line near feet + crossing or shortened step + footprints widening behind
+    start_shape: She sets a shorter step along the wet platform edge with the yellow tactile line close at her feet.
+    end_shape: She takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.
+    wan_shape: She keeps the same crossing step on the wet platform edge and carries the footprint trail wider behind her.
   final_chorus_b1:
     archetype: curb_crossing
     preferred_surface: wet crosswalk
@@ -25,9 +26,10 @@ shots:
     wan_shape: She keeps crossing and drives her stride to the far curb.
   final_chorus_b3:
     archetype: platform_edge
+    variant: bridge_motion
     preferred_surface: platform edge
-    contract: Keep the beat on the wet platform edge with the yellow line near her feet. Do not turn it into a studio door or generic street-edge walk.
-    preferred_pattern: same heroine + wet platform edge + yellow line near feet + forward continuation
-    start_shape: She moves past the wet platform edge with the yellow line close at her feet.
-    end_shape: She keeps moving along the wet platform edge with the yellow line still close at her feet.
-    wan_shape: She keeps her stride on the wet platform edge and leaves the platform door behind.
+    contract: Keep the beat on the wet platform edge with the yellow tactile line near her feet and a stronger forward step. Do not turn it into a studio door, generic street-edge walk, or train-window event.
+    preferred_pattern: same heroine + wet platform edge + yellow tactile line near feet + stronger forward step
+    start_shape: She sets the next step along the wet platform edge with the yellow tactile line close at her feet.
+    end_shape: She takes a longer forward step along the wet platform edge with the yellow tactile line still close at her feet.
+    wan_shape: She keeps the stronger step on the wet platform edge and drives forward past the platform door.
