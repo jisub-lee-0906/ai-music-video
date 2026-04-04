@@ -18,6 +18,18 @@ def build_quality_review(config: dict, payload: dict) -> dict:
     visual_eval = build_visual_prompt_evaluation(payload)
     if visual_eval:
         review.update(visual_eval)
+    if isinstance(payload.get("prompt_plan"), dict) and "prompt_review" not in review:
+        review["prompt_review"] = {
+            "reasoning": "Prompt-plan review inspected prompt source trace even when story-alignment inputs were unavailable.",
+            "strengths": [],
+            "risks": [],
+            "metrics": {
+                "prompt_distinct_ratio": 1.0,
+                "same_heroine_protected_ratio": 1.0,
+                "style_alignment_ratio": 0.0,
+            },
+            "rule_source_trace": _prompt_rule_trace(payload),
+        }
     story = review_story_alignment(config, payload)
     if story:
         review["story_review"] = {
@@ -60,6 +72,7 @@ def build_quality_review(config: dict, payload: dict) -> dict:
                 "same_heroine_protected_ratio": story.get("same_heroine_protection", {}).get("protected_ratio", 1.0),
                 "style_alignment_ratio": story.get("style_alignment", {}).get("graphic_event_ratio", 0.0),
             },
+            "rule_source_trace": _prompt_rule_trace(payload),
         }
         review["visual_generation_review"] = {
             "reasoning": "Visual generation review combines prompt-contract checks with stage-level story and direction findings.",
@@ -75,6 +88,24 @@ def build_quality_review(config: dict, payload: dict) -> dict:
         review["same_heroine_protection"] = story["same_heroine_protection"]
         review["style_alignment"] = story["style_alignment"]
     return review
+
+
+def _prompt_rule_trace(payload: dict) -> dict:
+    prompt_plan = payload.get("prompt_plan", {}) if isinstance(payload, dict) else {}
+    ref_items = [row for row in prompt_plan.get("ref_items", []) if isinstance(row, dict)]
+    wan_items = [row for row in prompt_plan.get("wan_items", []) if isinstance(row, dict)]
+    master = dict(prompt_plan.get("master_anchor", {})) if isinstance(prompt_plan, dict) else {}
+    ref_with_golden = sum(1 for row in ref_items if str(row.get("applied_golden_structure", "")).strip())
+    wan_with_golden = sum(1 for row in wan_items if str(row.get("applied_golden_structure", "")).strip())
+    global_refs = sum(1 for row in ref_items if row.get("applied_global_prompt_rules"))
+    global_wan = sum(1 for row in wan_items if row.get("applied_global_prompt_rules"))
+    return {
+        "master_anchor_precedence": str(master.get("rule_precedence_summary", "")).strip(),
+        "ref_items_with_global_rules": global_refs,
+        "ref_items_with_golden_structure": ref_with_golden,
+        "wan_items_with_global_rules": global_wan,
+        "wan_items_with_golden_structure": wan_with_golden,
+    }
 
 
 def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:

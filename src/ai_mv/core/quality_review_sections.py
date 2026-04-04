@@ -107,22 +107,99 @@ def same_heroine_protection(config: dict, payload: dict) -> dict:
 
 def style_alignment(payload: dict) -> dict:
     direction = [row for row in payload.get("direction_plan", {}).get("shot_packages", []) if isinstance(row, dict)]
-    zone_ratio = (
-        sum(1 for row in direction if str(row.get("world_zone", "")).strip() in {"threshold", "compression", "open_peak"}) / float(len(direction))
-        if direction
-        else 0.0
+    if not direction:
+        return {
+            "reasoning": "Direction-plan world zones and story-visual intents were checked for cinematic staging variety.",
+            "strengths": [],
+            "risks": [],
+            "graphic_event_ratio": 0.0,
+            "non_heroine_focus_ratio": 0.0,
+            "payoff_graphic_ratio": 0.0,
+            "route_non_heroine_focus_ratio": 0.0,
+        }
+    visual_intent_ratio = sum(1 for row in direction if str(row.get("story_visual_intent", "")).strip()) / float(len(direction))
+    section_signatures: dict[str, dict[str, set[str]]] = {}
+    payoff_release_hits = 0
+    for row in direction:
+        label = str(row.get("section_label", "")).strip() or "section"
+        bucket = section_signatures.setdefault(
+            label,
+            {
+                "zones": set(),
+                "archetypes": set(),
+                "surfaces": set(),
+                "functions": set(),
+            },
+        )
+        zone = str(row.get("world_zone", "")).strip()
+        archetype = str(row.get("ref_archetype", "")).strip()
+        surface = _surface_family(str(row.get("primary_surface", "")).strip())
+        story_function = str(row.get("story_function", "")).strip()
+        if zone:
+            bucket["zones"].add(zone)
+        if archetype:
+            bucket["archetypes"].add(archetype)
+        if surface:
+            bucket["surfaces"].add(surface)
+        if story_function:
+            bucket["functions"].add(story_function)
+        if story_function == "payoff" and (
+            zone == "open_peak" or surface in {"crosswalk", "platform_edge", "curb", "street_release"}
+        ):
+            payoff_release_hits += 1
+
+    ordered = list(section_signatures.items())
+    comparisons = 0
+    distinct_pairs = 0
+    for (_, prev), (_, cur) in zip(ordered, ordered[1:]):
+        comparisons += 1
+        if prev != cur:
+            distinct_pairs += 1
+    section_signature_ratio = (distinct_pairs / float(comparisons)) if comparisons else 1.0
+    surface_family_count = len({surface for bucket in section_signatures.values() for surface in bucket["surfaces"] if surface})
+    surface_contrast_ratio = min(1.0, surface_family_count / 4.0)
+    payoff_graphic_ratio = 1.0 if payoff_release_hits > 0 else 0.0
+    graphic_event_ratio = round(
+        (
+            (visual_intent_ratio * 0.30)
+            + (section_signature_ratio * 0.30)
+            + (surface_contrast_ratio * 0.20)
+            + (payoff_graphic_ratio * 0.20)
+        ),
+        3,
     )
-    strengths = ["direction plan includes staged world-zone variety for a cinematic music-video flow"] if zone_ratio >= 0.4 else []
-    risks = ["direction plan still lacks enough world-zone contrast"] if direction and zone_ratio < 0.4 else []
+    strengths = ["direction plan includes staged world-zone variety and explicit story-visual intent for a cinematic music-video flow"] if graphic_event_ratio >= 0.6 else []
+    risks = ["direction plan still lacks enough world-zone contrast or explicit story-visual intent"] if graphic_event_ratio < 0.6 else []
     return {
-        "reasoning": "Direction-plan world zones were checked for cinematic staging variety.",
+        "reasoning": "Direction-plan world zones and story-visual intents were checked for cinematic staging variety.",
         "strengths": strengths,
         "risks": risks,
-        "graphic_event_ratio": round(zone_ratio, 3),
+        "graphic_event_ratio": graphic_event_ratio,
         "non_heroine_focus_ratio": 0.0,
-        "payoff_graphic_ratio": 0.0,
+        "payoff_graphic_ratio": payoff_graphic_ratio,
         "route_non_heroine_focus_ratio": 0.0,
     }
+
+
+def _surface_family(surface: str) -> str:
+    lowered = surface.strip().lower()
+    if not lowered:
+        return ""
+    if "crosswalk" in lowered:
+        return "crosswalk"
+    if "platform edge" in lowered or "platform" in lowered:
+        return "platform_edge"
+    if "threshold" in lowered or "gate" in lowered or "turnstile" in lowered:
+        return "threshold_gate"
+    if "sidewalk" in lowered or "pavement" in lowered or "curb" in lowered:
+        return "street_release"
+    if "stairs" in lowered or "stair" in lowered:
+        return "stairs"
+    if "passage" in lowered or "corridor" in lowered:
+        return "passage"
+    if "window" in lowered or "glass" in lowered:
+        return "window_contact"
+    return lowered
 
 
 def collect_strengths(story: dict) -> list[str]:

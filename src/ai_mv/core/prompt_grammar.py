@@ -42,6 +42,10 @@ def load_golden_structures() -> dict:
     return load_prompt_grammar("golden_structures")
 
 
+def load_flux2_prompting() -> dict:
+    return load_prompt_grammar("flux2_prompting")
+
+
 def ref_archetype_grammar(name: str) -> dict:
     raw = load_ref_archetype_grammars().get("archetypes", {})
     if not isinstance(raw, dict):

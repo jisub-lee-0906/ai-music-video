@@ -42,6 +42,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
                     "story_goal": story_goal,
                     "world_zone": world_zone,
                     "heroine_state": heroine_state,
+                    "story_visual_intent": _story_visual_intent(section_label, story_function, world_zone),
                     "transition_need": transition_need,
                     "duration_sec": _duration(beat),
                     "why": _why_line(section_label, story_function, story_goal),
@@ -137,6 +138,29 @@ def _heroine_state(section_label: str, story_function: str) -> str:
     if "bridge" in section_label.lower() and story_function == "pressure":
         return "tightens her route and regains direction"
     return base.get(story_function, "keeps moving through the same world")
+
+
+def _story_visual_intent(section_label: str, story_function: str, world_zone: str) -> str:
+    low = section_label.lower()
+    if story_function == "entry":
+        if "intro" in low or world_zone == "threshold":
+            return "Show the first committed boundary crossing that makes the connected world physically real."
+        if world_zone in {"open_route", "open_peak"}:
+            return "Show forward release beginning in a space that has already opened wider."
+        return "Show the first committed move into the route without flattening into generic walking."
+    if story_function == "continuation":
+        return "Show the same route carrying forward without resetting the heroine or the world."
+    if story_function == "pressure":
+        return "Show a tightened route and a shorter physical progression without fully stopping."
+    if story_function == "handoff":
+        if world_zone in {"threshold", "edge"}:
+            return "Show the next state already committed beyond the threshold before the cut."
+        return "Show the next state already formed so the following shot feels physically inevitable."
+    if story_function == "payoff":
+        if "final chorus" in low or world_zone == "open_peak":
+            return "Show the widest forward release with unmistakable arrival and larger directional commitment."
+        return "Show a decisive forward release rather than another neutral continuation."
+    return "Keep the heroine moving through one connected world with a readable physical change."
 
 
 def _why_line(section_label: str, story_function: str, story_goal: str) -> str:

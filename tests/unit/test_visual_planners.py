@@ -1,4 +1,5 @@
 from ai_mv.core.stages.wan_interpolation import build_wan_plan
+from ai_mv.core.stages.backend_preview import build_backend_preview
 from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _infer_ref_archetype_variant, _planner_primary_surface, build_direction_plan
 from ai_mv.engines.render_plan.planner import build_prompt_plan
 from ai_mv.engines.scene_plan.planner import build_scene_outline
@@ -66,6 +67,7 @@ def test_scene_direction_prompt_chain():
     assert first["ref_archetype"]
     assert first["primary_surface"]
     assert first["dominant_action"]
+    assert first["story_visual_intent"]
     assert first["selected_prompt_shape"]
     assert first["applied_grammar_source"]
 
@@ -80,6 +82,12 @@ def test_scene_direction_prompt_chain():
     assert prompt["ref_items"][0]["ref_start_prompt_text"]
     assert prompt["ref_items"][0]["ref_end_prompt_text"]
     assert prompt["wan_items"][0]["wan_positive_prompt_text"]
+    assert prompt["master_anchor"]["applied_global_prompt_rules"]
+    assert prompt["master_anchor"]["applied_archetype_rules"]
+    assert prompt["ref_items"][0]["applied_global_prompt_rules"]
+    assert prompt["ref_items"][0]["applied_archetype_rules"]
+    assert prompt["ref_items"][0]["rule_precedence_summary"]
+    assert "flux2_prompting.ref" in " ".join(prompt["ref_items"][0]["applied_global_prompt_rules"])
 
 
 def test_director_archetype_prefers_golden_structure_override():
@@ -104,12 +112,40 @@ def test_director_archetype_classifies_bridge_pressure_as_platform_edge():
     assert _infer_ref_archetype_variant(shot, "platform_edge") == "bridge_motion"
 
 
+def test_director_open_peak_handoff_uses_curb_crossing_release_family():
+    shot = {
+        "section_label": "Final Chorus",
+        "story_function": "handoff",
+        "world_zone": "open_peak",
+    }
+    assert _infer_ref_archetype(shot) == "curb_crossing"
+    assert _infer_ref_archetype_variant(shot, "curb_crossing") == ""
+
+
 def test_director_primary_surface_uses_archetype_priority():
     shot = {
         "story_function": "pressure",
         "archetype_variant": "bridge_motion",
     }
     assert _planner_primary_surface(shot, "platform_edge") == "wet platform edge"
+
+
+def test_director_story_function_can_override_surface_for_route_readability():
+    shot = {
+        "story_function": "handoff",
+        "archetype_variant": "",
+    }
+    assert _planner_primary_surface(shot, "sidewalk_continuation") == "curb line"
+
+
+def test_director_edge_handoff_uses_threshold_passage_exit_variant():
+    shot = {
+        "section_label": "Pre-Chorus",
+        "story_function": "handoff",
+        "world_zone": "edge",
+    }
+    assert _infer_ref_archetype(shot) == "threshold_crossing"
+    assert _infer_ref_archetype_variant(shot, "threshold_crossing") == "passage_exit"
 
 
 def test_wan_plan_uses_adjacent_ref_pairs():
@@ -131,3 +167,18 @@ def test_wan_plan_uses_adjacent_ref_pairs():
     assert wan["clips"][0]["end"] == "end2.png"
     assert wan["clips"][1]["start"] == "end2.png"
     assert wan["clips"][1]["end"] == "end3.png"
+
+
+def test_backend_preview_exposes_prompt_rule_trace():
+    scene = build_scene_outline(_config(), _payload())
+    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene})
+    prompt = build_prompt_plan(_config(), {**_payload(), "direction_plan": direction})
+    preview = build_backend_preview(_config(), {"prompt_plan": prompt})
+    ref_row = preview["ref_adapter"][0]["raw_prompt_clauses"]
+    wan_row = preview["wan_adapter"][0]["raw_prompt_clauses"]
+    assert ref_row["applied_global_prompt_rules"]
+    assert ref_row["applied_archetype_rules"]
+    assert "rule_precedence_summary" in ref_row
+    assert "applied_golden_structure" in ref_row
+    assert wan_row["applied_global_prompt_rules"]
+    assert wan_row["applied_archetype_rules"]

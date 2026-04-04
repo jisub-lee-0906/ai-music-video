@@ -1,0 +1,17 @@
+runtime_note: Current project runtime uses single-reference REF only; do not apply multi-reference prompt assumptions here.
+tti:
+  natural_language_contract: Use complete natural-language image prose rather than comma-separated keyword tags.
+  hierarchy: subject first, then pose or action, then environment, then lighting or rendering detail.
+  emphasis: Front-load the heroine identity and full-body readability before atmosphere or camera flavor.
+  suppression: Avoid tag salad, prop clutter, or story-event phrasing inside the master anchor prompt.
+ref:
+  natural_language_contract: Use compact natural-language image prose rather than metadata or tag lists.
+  preservation_bias: Keep the prompt short when strong identity preservation is needed; add detail only when the shot must force a specific place or event.
+  hierarchy: same heroine identity hook first, then explicit surface geometry, then readable body-led action, then optional continuity or trace detail.
+  emphasis: The first clause after the heroine should lock the route, edge, threshold, wall, rail, curb, crosswalk, or doorway that makes the shot physically readable.
+  suppression: Avoid JSON-style structure, camera jargon, symbolic light language, and extra descriptive clauses that compete with the primary surface.
+wan:
+  natural_language_contract: Use one compact natural sentence that bridges two adjacent states in the same place.
+  hierarchy: same heroine identity hook first, then same-surface continuity, then one readable transition.
+  emphasis: Preserve same-place continuity and readable movement more than atmosphere.
+  suppression: Avoid new-scene invention, static pose language, or decorative environment escalation.

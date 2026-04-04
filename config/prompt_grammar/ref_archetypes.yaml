@@ -16,6 +16,8 @@ archetypes:
     variants:
       station_side:
         note: Prefer gate line, station threshold, or exit line over symbolic lighting.
+      passage_exit:
+        note: In wider-opening handoff beats, prefer a literal station threshold into a wet passage over a decorative doorway frame.
   stair_descent:
     name: stair_descent
     story_uses: descent, interior progression, vertical movement

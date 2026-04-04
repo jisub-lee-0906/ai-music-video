@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.prompt_grammar import load_flux2_prompting
 from ai_mv.infra.codex_cli_client import generate_structured, ping_codex
 
 
@@ -56,6 +57,15 @@ def verbalize_wan_prompts(config: dict, rows: list[dict]) -> dict[str, str]:
 
 
 def _verbalize_ref_prompt_pairs_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
+    flux_rules = load_flux2_prompting().get("ref", {})
+    flux_rule_block = _rule_block(
+        flux_rules,
+        "natural_language_contract",
+        "preservation_bias",
+        "hierarchy",
+        "emphasis",
+        "suppression",
+    )
     schema = {
         "type": "object",
         "properties": {
@@ -78,7 +88,9 @@ def _verbalize_ref_prompt_pairs_with_codex(config: dict, rows: list[dict]) -> di
         "You are a render verbalizer for a music-video pipeline. "
         "Your job is only to merge already-decided prompt clauses into natural English prose for Flux image generation. "
         "Preserve meaning exactly. Do not add any new person, place, prop, action, relationship, emotion, symbolism, or story information. "
+        f"{flux_rule_block} "
         "The planner has already chosen the shot's dominant grammar, dominant action, primary surface, support detail, and continuity delta. Preserve that hierarchy. "
+        "The planner may also provide a hidden story_visual_intent that explains whether the shot should read as first boundary commit, same-route carry, tightened pressure, next-state handoff, or widest release; preserve that visual distinction instead of flattening different story functions into the same walking shot. "
         "The planner has also chosen a hidden ref_archetype, optional ref_archetype_variant, and ref_archetype_contract based on proven prompt studies; preserve that shot-family logic when merging the sentence. "
         "The planner may also provide ref_preferred_sentence_shape and golden_shot_guidance from successful probes; treat these as high-priority hidden structure, not optional style hints. "
         "Do not remove any provided meaning. Do not invent another person unless the clauses already include one. "
@@ -124,6 +136,14 @@ def _verbalize_ref_prompt_pairs_with_codex(config: dict, rows: list[dict]) -> di
 
 
 def _verbalize_wan_prompts_with_codex(config: dict, rows: list[dict]) -> dict[str, str]:
+    flux_rules = load_flux2_prompting().get("wan", {})
+    flux_rule_block = _rule_block(
+        flux_rules,
+        "natural_language_contract",
+        "hierarchy",
+        "emphasis",
+        "suppression",
+    )
     schema = {
         "type": "object",
         "properties": {
@@ -145,7 +165,9 @@ def _verbalize_wan_prompts_with_codex(config: dict, rows: list[dict]) -> dict[st
         "You are a render verbalizer for a Wan first-last-frame bridge pipeline. "
         "Your job is only to merge already-decided clauses into one natural English positive prompt. "
         "Preserve meaning exactly. Do not add any new person, place, prop, action, relationship, emotion, symbolism, or story information. "
+        f"{flux_rule_block} "
         "The planner has already chosen the shot's dominant grammar, dominant action, primary surface, support detail, and continuity delta. Preserve that hierarchy. "
+        "The planner may also provide a hidden story_visual_intent that explains whether the bridge should feel like boundary commit, same-route carry, tightened pressure, next-state handoff, or widest release; preserve that transition intent instead of flattening all bridges into the same generic movement. "
         "The planner has also chosen a hidden ref_archetype, optional ref_archetype_variant, ref_archetype_contract, and wan_transition_contract based on proven prompt studies; preserve that shot-family logic when merging the sentence. "
         "The planner may also provide ref_preferred_sentence_shape and golden_shot_guidance from successful probes; treat these as high-priority hidden structure, not optional style hints. "
         "Do not invent another person unless the clauses already include one. "
@@ -191,3 +213,11 @@ def _join_prompt_parts(location: object, subject: object, action: object, lighti
 def _sentence(text: object) -> str:
     cleaned = " ".join(str(text).strip().rstrip(". ").split())
     return f"{cleaned}." if cleaned else ""
+
+
+def _rule_block(rules: dict, *keys: str) -> str:
+    return " ".join(
+        str(rules.get(key, "")).strip()
+        for key in keys
+        if str(rules.get(key, "")).strip()
+    )

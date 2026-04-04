@@ -68,8 +68,8 @@ def test_quality_review_uses_new_structure():
         },
         "direction_plan": {
             "shot_packages": [
-                {"shot_id": "intro_b1", "world_zone": "threshold", "ref_archetype": "gate_pass"},
-                {"shot_id": "chorus_b1", "world_zone": "open_peak", "ref_archetype": "curb_crossing"},
+                {"shot_id": "intro_b1", "world_zone": "threshold", "ref_archetype": "gate_pass", "story_visual_intent": "Show the first committed boundary crossing."},
+                {"shot_id": "chorus_b1", "world_zone": "open_peak", "ref_archetype": "curb_crossing", "story_visual_intent": "Show the widest forward release."},
             ]
         },
         "prompt_plan": {
@@ -118,6 +118,8 @@ def test_quality_review_uses_new_structure():
     assert out["prompt_review"]["strengths"] or out["prompt_review"]["risks"] == []
     assert out["prompt_execution_review"]["metrics"]["story_function_match"] > 0
     assert out["visual_generation_contracts"]["metrics"]["adjacent_transition_integrity"] > 0
+    assert out["prompt_review"]["metrics"]["style_alignment_ratio"] > 0.5
+    assert "rule_source_trace" in out["prompt_review"]
 
 
 def test_quality_review_accepts_platform_edge_directional_step_patterns():
@@ -144,3 +146,31 @@ def test_quality_review_accepts_platform_edge_directional_step_patterns():
     out = build_quality_review({}, payload)
     assert out["prompt_execution_review"]["metrics"]["archetype_selection_match"] == 1.0
     assert out["prompt_execution_review"]["metrics"]["prompt_shape_match"] == 1.0
+
+
+def test_quality_review_reports_rule_source_trace_without_scoring_dependency():
+    payload = {
+        "prompt_plan": {
+            "master_anchor": {
+                "rule_precedence_summary": "identity_core and identity_hooks > tti_families > flux2_prompting.tti",
+            },
+            "ref_items": [
+                {
+                    "applied_global_prompt_rules": ["flux2_prompting.ref.natural_language_contract"],
+                    "applied_golden_structure": "bridge_platform_motion",
+                }
+            ],
+            "wan_items": [
+                {
+                    "applied_global_prompt_rules": ["flux2_prompting.wan.natural_language_contract"],
+                    "applied_golden_structure": "",
+                }
+            ],
+        }
+    }
+    out = build_quality_review({}, payload)
+    trace = out["prompt_review"]["rule_source_trace"]
+    assert trace["master_anchor_precedence"]
+    assert trace["ref_items_with_global_rules"] == 1
+    assert trace["ref_items_with_golden_structure"] == 1
+    assert trace["wan_items_with_global_rules"] == 1

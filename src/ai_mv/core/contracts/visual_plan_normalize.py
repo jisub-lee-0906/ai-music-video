@@ -23,7 +23,7 @@ def normalize_direction_plan(plan: dict) -> dict:
 
 def normalize_prompt_plan(plan: dict) -> dict:
     normalized = dict(plan)
-    normalized["master_anchor"] = dict(plan.get("master_anchor", {}))
+    normalized["master_anchor"] = _normalize_master_anchor(dict(plan.get("master_anchor", {})))
     normalized["ref_items"] = [_normalize_prompt_ref_item(dict(row)) for row in plan.get("ref_items", []) if isinstance(row, dict)]
     normalized["wan_items"] = [_normalize_prompt_wan_item(dict(row)) for row in plan.get("wan_items", []) if isinstance(row, dict)]
     assert_prompt_plan(normalized)
@@ -41,6 +41,7 @@ def _normalize_outline_shot(shot: dict) -> dict:
         "story_goal",
         "world_zone",
         "heroine_state",
+        "story_visual_intent",
         "transition_need",
         "why",
     ):
@@ -62,6 +63,7 @@ def _normalize_direction_shot(shot: dict) -> dict:
         "identity_hook_policy",
         "selected_prompt_shape",
         "applied_grammar_source",
+        "story_visual_intent",
     ):
         shot[key] = str(shot.get(key, "")).strip()
     return shot
@@ -81,12 +83,17 @@ def _normalize_prompt_ref_item(row: dict) -> dict:
         "content_trace",
         "selected_prompt_shape",
         "applied_grammar_source",
+        "applied_golden_structure",
+        "rule_precedence_summary",
+        "story_visual_intent",
         "ref_prompt_contract",
         "ref_start_prompt_text",
         "ref_end_prompt_text",
         "why",
     ):
         row[key] = str(row.get(key, "")).strip()
+    row["applied_global_prompt_rules"] = [str(x).strip() for x in row.get("applied_global_prompt_rules", []) if str(x).strip()]
+    row["applied_archetype_rules"] = [str(x).strip() for x in row.get("applied_archetype_rules", []) if str(x).strip()]
     row["ref_prompt_atoms"] = dict(row.get("ref_prompt_atoms", {}))
     return row
 
@@ -101,11 +108,31 @@ def _normalize_prompt_wan_item(row: dict) -> dict:
         "end_ref_shot_id",
         "wan_transition_family",
         "wan_prompt_contract",
+        "applied_golden_structure",
+        "rule_precedence_summary",
+        "story_visual_intent",
         "wan_positive_prompt_text",
         "why",
     ):
         row[key] = str(row.get(key, "")).strip()
+    row["applied_global_prompt_rules"] = [str(x).strip() for x in row.get("applied_global_prompt_rules", []) if str(x).strip()]
+    row["applied_archetype_rules"] = [str(x).strip() for x in row.get("applied_archetype_rules", []) if str(x).strip()]
     row["wan_prompt_atoms"] = dict(row.get("wan_prompt_atoms", {}))
+    return row
+
+
+def _normalize_master_anchor(row: dict) -> dict:
+    for key in (
+        "render_strategy",
+        "identity_core",
+        "style_contract",
+        "environment_anchor",
+        "applied_golden_structure",
+        "rule_precedence_summary",
+    ):
+        row[key] = str(row.get(key, "")).strip()
+    row["applied_global_prompt_rules"] = [str(x).strip() for x in row.get("applied_global_prompt_rules", []) if str(x).strip()]
+    row["applied_archetype_rules"] = [str(x).strip() for x in row.get("applied_archetype_rules", []) if str(x).strip()]
     return row
 
 

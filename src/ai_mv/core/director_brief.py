@@ -64,6 +64,7 @@ def build_director_brief_intent(config: dict) -> dict:
         or "Keep the same heroine identity, realistic facial structure, consistent hair silhouette, and stable wardrobe continuity.",
         "style_contract": style,
         "world_core": world_rules,
+        "time_anchor": _time_anchor(_text(visual, "story_premise"), world_rules),
         "story_premise": _text(visual, "story_premise"),
         "world_rules": world_rules,
         "heroine_arc": _text(visual, "heroine_arc"),
@@ -124,6 +125,13 @@ def _section_story_roles(raw: object) -> dict[str, str]:
         for alias in aliases:
             out.setdefault(alias, desc)
     return out
+
+
+def _time_anchor(story_premise: str, world_rules: str) -> str:
+    text = f"{story_premise} {world_rules}".lower()
+    if "late-night" in text or "late night" in text or "night world" in text or "at night" in text or "night" in text:
+        return "at night"
+    return ""
 
 
 def _section(config: dict, key: str) -> dict:

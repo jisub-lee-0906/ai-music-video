@@ -11,6 +11,7 @@ SCENE_OUTLINE_REQUIRED_FIELDS = (
     "story_goal",
     "world_zone",
     "heroine_state",
+    "story_visual_intent",
     "transition_need",
     "why",
 )
@@ -40,6 +41,11 @@ PROMPT_REQUIRED_REF_FIELDS = (
     "content_trace",
     "selected_prompt_shape",
     "applied_grammar_source",
+    "applied_global_prompt_rules",
+    "applied_archetype_rules",
+    "applied_golden_structure",
+    "rule_precedence_summary",
+    "story_visual_intent",
     "why",
     "ref_prompt_atoms",
     "ref_prompt_contract",
@@ -56,8 +62,24 @@ PROMPT_REQUIRED_WAN_FIELDS = (
     "duration_sec",
     "wan_transition_family",
     "wan_prompt_contract",
+    "applied_global_prompt_rules",
+    "applied_archetype_rules",
+    "applied_golden_structure",
+    "rule_precedence_summary",
+    "story_visual_intent",
     "wan_positive_prompt_text",
     "why",
+)
+
+MASTER_ANCHOR_REQUIRED_FIELDS = (
+    "render_strategy",
+    "identity_core",
+    "style_contract",
+    "environment_anchor",
+    "applied_global_prompt_rules",
+    "applied_archetype_rules",
+    "applied_golden_structure",
+    "rule_precedence_summary",
 )
 
 
@@ -86,6 +108,9 @@ def assert_direction_plan(plan: dict) -> None:
 def assert_prompt_plan(plan: dict) -> None:
     if not isinstance(plan.get("master_anchor"), dict):
         raise ValueError("prompt_plan.master_anchor must be an object")
+    for key in MASTER_ANCHOR_REQUIRED_FIELDS:
+        if key not in plan["master_anchor"]:
+            raise ValueError(f"prompt_plan master_anchor missing field: {key}")
     if not isinstance(plan.get("ref_items"), list) or not plan["ref_items"]:
         raise ValueError("prompt_plan.ref_items must be a non-empty list")
     if not isinstance(plan.get("wan_items"), list):

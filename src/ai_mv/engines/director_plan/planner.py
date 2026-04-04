@@ -16,16 +16,18 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
         archetype = _ref_archetype_for_shot(current)
         variant = _ref_archetype_variant_for_shot(current, archetype)
         guidance = golden_structure_guidance(story_function, archetype, variant)
-        primary_surface = _primary_surface(archetype, variant, guidance)
-        dominant_action = _dominant_action(story_function, archetype, variant, primary_surface, guidance)
-        continuity_delta = _continuity_delta(story_function, archetype, variant, primary_surface, guidance)
-        content_trace = _content_trace(archetype, variant, guidance)
+        story_visual_intent = str(current.get("story_visual_intent", "")).strip()
+        primary_surface = _primary_surface(story_function, archetype, variant, guidance)
+        dominant_action = _dominant_action(story_function, archetype, variant, primary_surface, guidance, story_visual_intent)
+        continuity_delta = _continuity_delta(story_function, archetype, variant, primary_surface, guidance, story_visual_intent)
+        content_trace = _content_trace(story_function, archetype, variant, guidance)
         identity_hook_policy = _identity_hook_policy(archetype, variant)
         current.update(
             {
                 "shot_function": shot_function,
                 "ref_archetype": archetype,
                 "archetype_variant": variant,
+                "story_visual_intent": story_visual_intent,
                 "primary_surface": primary_surface,
                 "dominant_action": dominant_action,
                 "continuity_delta": continuity_delta,
@@ -33,7 +35,7 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
                 "identity_hook_policy": identity_hook_policy,
                 "selected_prompt_shape": str(ref_archetype_grammar(archetype).get("preferred_sentence_shape", "")).strip(),
                 "applied_grammar_source": _applied_grammar_source(story_function, archetype, variant, guidance),
-                "why": _director_why(current, archetype, variant, primary_surface),
+                "why": _director_why(current, archetype, variant, primary_surface, story_visual_intent),
             }
         )
         shot_packages.append(current)
@@ -100,11 +102,11 @@ def _ref_archetype_for_shot(shot: dict) -> str:
             return "sidewalk_continuation"
     if story_function == "handoff":
         if world_zone in {"threshold", "edge"}:
-            return "doorway_handoff"
+            return "threshold_crossing"
         if world_zone == "compression":
             return "platform_edge"
         if world_zone == "open_peak":
-            return "platform_edge"
+            return "curb_crossing"
         if world_zone == "open_route":
             return "curb_crossing"
         return "sidewalk_continuation"
@@ -127,12 +129,18 @@ def _ref_archetype_variant_for_shot(shot: dict, archetype: str) -> str:
     section = str(shot.get("section_label", "")).strip().lower()
     story_function = str(shot.get("story_function", "")).strip()
     world_zone = str(shot.get("world_zone", "")).strip()
-    if archetype == "platform_edge" and (story_function == "pressure" or "bridge" in section or world_zone == "compression"):
+    if archetype == "threshold_crossing" and story_function == "handoff" and world_zone in {"threshold", "edge"}:
+        return "passage_exit"
+    if archetype == "platform_edge" and (
+        story_function == "pressure"
+        or "bridge" in section
+        or world_zone == "compression"
+    ):
         return "bridge_motion"
     return ""
 
 
-def _primary_surface(archetype: str, variant: str, guidance: dict) -> str:
+def _primary_surface(story_function: str, archetype: str, variant: str, guidance: dict) -> str:
     preferred = str(guidance.get("preferred_surface", "")).strip()
     if preferred:
         return preferred
@@ -142,10 +150,15 @@ def _primary_surface(archetype: str, variant: str, guidance: dict) -> str:
         note = ref_archetype_variant(archetype, variant)
         if str(note.get("preferred_surface", "")).strip():
             return str(note.get("preferred_surface", "")).strip()
+    story_surface = _story_surface_override(story_function, archetype, variant)
+    if story_surface:
+        return story_surface
     return priorities[0] if priorities else "walkable path"
 
 
-def _dominant_action(story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict) -> str:
+def _dominant_action(
+    story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict, story_visual_intent: str
+) -> str:
     shaped = str(guidance.get("start_shape", "")).strip()
     if shaped:
         return shaped
@@ -166,13 +179,13 @@ def _dominant_action(story_function: str, archetype: str, variant: str, primary_
         "curb_crossing": {
             "entry": f"She steps onto the {surface} with her line set toward the far curb.",
             "continuation": f"She keeps crossing the {surface} with her stride still aimed at the far curb.",
-            "handoff": f"She drives one more step across the {surface} toward the far curb.",
+            "handoff": f"She keeps the same crossing stride through the {surface} with the far curb clearly ahead.",
             "payoff": f"She drives across the {surface} with her line fully committed to the far side.",
         },
         "sidewalk_continuation": {
-            "entry": f"She takes the route along the {surface} with one readable forward stride.",
-            "continuation": f"She keeps moving along the {surface} with a readable forward stride.",
-            "handoff": f"She carries the next stride along the {surface} into the following beat.",
+            "entry": f"She takes the first committed stride along the {surface} and lets the route define her line.",
+            "continuation": f"She keeps the same stride alive along the {surface} without resetting the route.",
+            "handoff": f"She plants the next stride along the {surface} with the following route already forming ahead.",
         },
         "stair_descent": {
             "entry": f"She steps down the {surface} with one continuous handrail contact.",
@@ -191,8 +204,8 @@ def _dominant_action(story_function: str, archetype: str, variant: str, primary_
         "platform_edge": {
             "entry": _platform_edge_start(variant, surface),
             "pressure": _platform_edge_start(variant, surface),
-            "continuation": f"She keeps the next step riding along the {surface} with the edge geometry close at her feet.",
-            "handoff": f"She sets the next step along the {surface} with the edge geometry close at her feet.",
+            "continuation": f"She keeps the same line along the {surface} with the edge geometry still close at her feet.",
+            "handoff": f"She sets the next committed step along the {surface} with the edge geometry close at her feet.",
         },
     }
     archetype_templates = templates.get(archetype, {})
@@ -211,7 +224,9 @@ def _dominant_action(story_function: str, archetype: str, variant: str, primary_
     return default
 
 
-def _continuity_delta(story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict) -> str:
+def _continuity_delta(
+    story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict, story_visual_intent: str
+) -> str:
     shaped = str(guidance.get("end_shape", "")).strip()
     if shaped:
         return shaped
@@ -232,13 +247,13 @@ def _continuity_delta(story_function: str, archetype: str, variant: str, primary
         "curb_crossing": {
             "entry": f"She clears the {surface} and reaches the far curb.",
             "continuation": f"She keeps crossing the {surface} and draws closer to the far curb.",
-            "handoff": f"She clears more of the {surface} and lands near the far curb.",
+            "handoff": f"She carries the same crossing stride farther through the {surface} and leaves the far curb visibly nearer.",
             "payoff": f"She clears the {surface} and reaches the far side in full release.",
         },
         "sidewalk_continuation": {
-            "entry": f"She carries the same route one readable stride farther along the {surface}.",
-            "continuation": f"She keeps the same stride on the {surface} and moves one step farther.",
-            "handoff": f"She lands the next stride on the {surface} and hands the route to the following beat.",
+            "entry": f"She carries the route one readable stride farther along the {surface} and makes the path feel established.",
+            "continuation": f"She keeps the same stride on the {surface} and moves one step farther without breaking the route.",
+            "handoff": f"She lands the next stride on the {surface} and leaves the following route already formed.",
         },
         "stair_descent": {
             "entry": f"She lands one step lower on the {surface} and keeps descending.",
@@ -258,7 +273,7 @@ def _continuity_delta(story_function: str, archetype: str, variant: str, primary
             "entry": _platform_edge_end(variant, surface),
             "pressure": _platform_edge_end(variant, surface),
             "continuation": f"She takes one more step along the {surface} and keeps the edge line tight at her feet.",
-            "handoff": f"She lands the next step along the {surface} and hands the route forward.",
+            "handoff": f"She lands the next step along the {surface} and leaves the forward route already committed.",
         },
     }
     archetype_templates = templates.get(archetype, {})
@@ -270,13 +285,19 @@ def _continuity_delta(story_function: str, archetype: str, variant: str, primary
     return f"She carries the same movement one readable step farther on the {surface}."
 
 
-def _content_trace(archetype: str, variant: str, guidance: dict) -> str:
+def _content_trace(story_function: str, archetype: str, variant: str, guidance: dict) -> str:
     if str(guidance.get("preferred_pattern", "")).strip():
         pattern = str(guidance["preferred_pattern"]).lower()
         if "footprint" in pattern:
             return "footprint trail widening behind her"
+        if "arm swinging free" in pattern or "free-arm" in pattern:
+            return "one arm swinging free"
     if archetype == "platform_edge" and variant == "bridge_motion":
         return "footprint trail widening behind her"
+    if archetype == "curb_crossing" and story_function in {"entry", "payoff"}:
+        return "one arm swinging free"
+    if archetype == "sidewalk_continuation" and story_function == "continuation":
+        return "the curb line staying close at her feet"
     if archetype == "stair_descent":
         return "one hand sliding along the handrail"
     if archetype == "passage_compression":
@@ -298,10 +319,11 @@ def _applied_grammar_source(story_function: str, archetype: str, variant: str, g
     return f"ref_archetypes:{archetype}:{variant or 'base'}"
 
 
-def _director_why(shot: dict, archetype: str, variant: str, primary_surface: str) -> str:
+def _director_why(shot: dict, archetype: str, variant: str, primary_surface: str, story_visual_intent: str) -> str:
     return (
         f"{shot.get('story_function', '')} beat uses {archetype}"
         f"{f'/{variant}' if variant else ''} on {primary_surface} to serve {shot.get('story_goal', '')}"
+        f" Visual intent: {story_visual_intent}"
     ).strip()
 
 
@@ -337,4 +359,22 @@ def _planner_primary_surface(shot: dict, archetype: str) -> str:
         archetype,
         str(shot.get("archetype_variant", shot.get("ref_archetype_variant", ""))).strip(),
     )
-    return _primary_surface(archetype, str(shot.get("archetype_variant", "")).strip(), guidance)
+    return _primary_surface(str(shot.get("story_function", "")).strip(), archetype, str(shot.get("archetype_variant", "")).strip(), guidance)
+
+
+def _story_surface_override(story_function: str, archetype: str, variant: str) -> str:
+    overrides = {
+        ("sidewalk_continuation", "entry"): "station-side sidewalk",
+        ("sidewalk_continuation", "continuation"): "wet sidewalk",
+        ("sidewalk_continuation", "handoff"): "curb line",
+        ("curb_crossing", "entry"): "wet crosswalk",
+        ("curb_crossing", "continuation"): "wet crosswalk",
+        ("curb_crossing", "handoff"): "wet crosswalk near the far curb",
+        ("curb_crossing", "payoff"): "wet crosswalk",
+        ("platform_edge", "handoff"): "wet platform edge",
+        ("platform_edge", "continuation"): "wet platform edge",
+        ("threshold_crossing", "entry"): "gate threshold",
+        ("threshold_crossing", "handoff"): "station threshold",
+        ("gate_pass", "entry"): "turnstile lane",
+    }
+    return overrides.get((archetype, story_function), "")

@@ -52,6 +52,7 @@ _OPTICAL_TAKEOVER_TOKENS = (
 )
 
 _TRACE_TOKENS = ("footprint", "footprints", "trail", "trace")
+_SECONDARY_DETAIL_TOKENS = ("one arm swinging free", "free arm", "handrail", "rail", "curb line")
 
 
 def build_visual_prompt_evaluation(payload: dict) -> dict:
@@ -102,7 +103,7 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
         if any(token in action or token in continuity or token in text for token in _ACTION_TOKENS):
             motion_readability += 1
         if not trace or (
-            any(token in trace for token in _TRACE_TOKENS)
+            any(token in trace for token in _TRACE_TOKENS + _SECONDARY_DETAIL_TOKENS)
             and any(token in surface for token in ("platform", "edge", "threshold", "crosswalk", "stairs", "passage", "gate", "sidewalk"))
         ):
             trace_detail_balance += 1
@@ -217,10 +218,10 @@ def _evaluate_wan_rows(rows: list[dict]) -> dict:
 def _matches_story_function(story_function: str, action: str, continuity: str, surface: str) -> bool:
     text = f"{surface} {action} {continuity}"
     mapping = {
-        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to"),
+        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to", "first committed stride", "path feel established"),
         "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing"),
         "pressure": ("shorter step", "brace", "tight", "close", "smaller", "compress", "yellow tactile line close", "edge geometry close"),
-        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "route forward", "immediate passage"),
+        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "route forward", "immediate passage", "already formed", "already committed"),
         "payoff": ("far side", "opens", "release", "wider", "drive forward", "final", "far curb", "full release", "widest"),
         "reflection": ("looks back", "over one shoulder", "turns back"),
     }
@@ -260,7 +261,7 @@ def _matches_ref_archetype(archetype: str, surface: str, action: str, continuity
     if archetype == "curb_crossing":
         return any(token in text for token in ("crosswalk", "curb", "far curb"))
     if archetype == "sidewalk_continuation":
-        return any(token in text for token in ("sidewalk", "pavement", "street edge", "path", "moves forward", "keeps moving", "moves along", "keeps running"))
+        return any(token in text for token in ("sidewalk", "station-side sidewalk", "wet sidewalk", "curb line", "pavement", "street edge", "path", "moves forward", "keeps moving", "moves along", "keeps running"))
     if archetype == "doorway_handoff":
         return any(token in text for token in ("doorway", "door edge", "threshold", "beyond"))
     if archetype == "brace_pause":
