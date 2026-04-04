@@ -52,9 +52,9 @@
 - Study:
   - [ref_window_contact_prompt_study_20260401.md](D:/workspace/ai-music-video/artifacts/reports/ref_window_contact_prompt_study_20260401.md)
 - Best grammar:
-  - present-tense surface contact + forward continuation
+  - direct metal/window-edge contact + forward continuation
 - Best example:
-  - `The same Korean female idol with a high ponytail keeps close to the station window at night and moves forward, one hand trailing the metal edge.`
+  - `The same Korean female idol with a high ponytail moves past the station window edge at night with one hand still tracing the metal frame.`
 
 ### 7. Curb Crossing
 - Study:
@@ -87,9 +87,9 @@
 - Study:
   - [ref_brace_pause_prompt_study_20260401.md](D:/workspace/ai-music-video/artifacts/reports/ref_brace_pause_prompt_study_20260401.md)
 - Best grammar:
-  - simple braced contact with minimal interpretation
+  - one braced hand on a literal wet rail + forward line still implied
 - Best example:
-  - `The same Korean female idol with a high ponytail pauses at the wet rail at night, one hand braced on the metal bar.`
+  - `The same Korean female idol with a high ponytail catches one brief pause at the wet rail at night, one hand braced on the bar and her line still forward.`
 
 ### 11. Ramp / Underpass Descent
 - Study:

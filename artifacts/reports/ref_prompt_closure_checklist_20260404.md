@@ -35,19 +35,23 @@ A family is `closed` only if all of the following are true:
 - `curb_crossing / payoff`
   - Current best pattern: moving away toward the far curb with more open street surrounding her.
   - Reason: rerun confirms this behaves as a real release/payoff event rather than another forward-walk frame.
+- `window_contact`
+  - Current best pattern: same heroine + station/window edge + direct metal-frame contact + forward continuation.
+  - Reason: latest probe shows actual tactile contact events without collapsing into reflection mood.
+- `brace_pause`
+  - Current best pattern: same heroine + wet rail + one braced hand + forward line still implied.
+  - Reason: latest probe shows a readable brief pause that does not fully collapse into a static fashion pose.
 
 ### Partially Closed
 - `sidewalk_continuation`
   - Current best pattern: `same heroine + curb line stays tight at her feet + same stride carries forward`
   - Why partial: usable and grounded, but still tends to recenter and can collapse back into generic route walking without stronger sequence context.
+- `passage_compression`
+  - Current best pattern: `same heroine + right wall of the narrow passage + same stride carrying forward + one hand trails the rail`
+  - Why partial: visually strong and usable, but still needs one more in-sequence confirmation before treating it as fully closed.
 
 ### Open
-- `window_contact`
-  - Main gap: can still drift into optical takeover or side-structure mood instead of tactile event.
-- `passage_compression`
-  - Main gap: works as compression grammar, but still needs stronger proof of MV event value.
-- `brace_pause`
-  - Main gap: pause tends to flatten unless the contact is extremely clear.
+- No fully open family is blocking the current profile anymore.
 
 ## Current Best Image-Driven Patterns
 
@@ -85,7 +89,7 @@ A family is `closed` only if all of the following are true:
 ## Next Closure Order
 1. Close `sidewalk_continuation` by proving it can differ from generic walking across at least one repeated sequence context.
 2. Re-open `passage_compression` only if the current profile still needs a stronger non-platform compression event.
-3. Research `window_contact` and `brace_pause` only after a full-run check confirms they are still blocking real sections.
+3. Run a full-profile sequence check to see whether `sidewalk_continuation` still flattens repeated sections.
 
 ## Rule
 Do not move on to denser story scripting until the current profile has at least one fully closed release family and one fully closed compression family.
