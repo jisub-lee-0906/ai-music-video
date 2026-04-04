@@ -105,7 +105,7 @@ def test_flux2_ref_mapper():
         "negative_prompt": "blurry, low detail",
         "shot_type": "CHAR_MASTER",
         "style_ref": "refs/front.png",
-        "filename_prefix": flux2_ref_frame_prefix("s_001", "start"),
+        "filename_prefix": flux2_ref_frame_prefix("s_001", sequence_index=1),
     }
     out = map_flux2_ref_workflow(cfg, item)
     nodes = out["node.inputs"]
@@ -130,7 +130,7 @@ def test_wan_mapper():
         "positive_prompt": "A kitten made of ice crystals wakes and transforms into a giant beast.",
         "negative_prompt": "blur",
         "wan_size": "640x640",
-        "filename_prefix": wan_clip_prefix("s_001", "s_002"),
+        "filename_prefix": wan_clip_prefix("s_001", "s_002", start_index=1, end_index=2),
     }
     out = map_wan_workflow(cfg, clip)
     nodes = out["node.inputs"]

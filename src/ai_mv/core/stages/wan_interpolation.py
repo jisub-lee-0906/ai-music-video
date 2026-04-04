@@ -61,6 +61,8 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "shot_id": str(chain.get("shot_id", "")).strip(),
                 "start": str(start_ref["end"]),
                 "end": str(end_ref["end"]),
+                "start_ref_index": int(start_ref.get("timeline_index", 0) or 0),
+                "end_ref_index": int(end_ref.get("timeline_index", 0) or 0),
                 "fps": fps,
                 "frames": max(_frame_floor(fps), int(round(duration_sec * fps))),
                 "section_name": str(chain.get("section_name", "")).strip(),

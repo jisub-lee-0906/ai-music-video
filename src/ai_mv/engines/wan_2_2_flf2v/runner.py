@@ -39,6 +39,8 @@ def _prepare_clip(config: dict, clip: dict) -> dict:
     out["filename_prefix"] = wan_clip_prefix(
         str(clip.get("start_ref_shot_id", "")).strip() or str(clip["shot_id"]).strip(),
         str(clip.get("end_ref_shot_id", "")).strip() or str(clip["shot_id"]).strip(),
+        start_index=int(clip.get("start_ref_index", 0) or 0),
+        end_index=int(clip.get("end_ref_index", 0) or 0),
     )
     return out
 

@@ -14,9 +14,26 @@ def master_anchor_prefix() -> str:
     return f"{ANCHOR_DIR}/character_master"
 
 
-def flux2_ref_frame_prefix(shot_id: str, frame_name: str) -> str:
-    return f"{KEYFRAME_DIR}/ref_{str(shot_id).strip()}_{str(frame_name).strip()}"
+def _seq_tag(index: int | None) -> str:
+    try:
+        value = int(index or 0)
+    except Exception:
+        value = 0
+    return f"{value:03d}_" if value > 0 else ""
 
 
-def wan_clip_prefix(start_shot_id: str, end_shot_id: str) -> str:
-    return f"{CLIP_DIR}/wan_{str(start_shot_id).strip()}__{str(end_shot_id).strip()}"
+def flux2_ref_frame_prefix(shot_id: str, frame_name: str = "", sequence_index: int | None = None) -> str:
+    return f"{KEYFRAME_DIR}/ref_{_seq_tag(sequence_index)}{str(shot_id).strip()}"
+
+
+def wan_clip_prefix(
+    start_shot_id: str,
+    end_shot_id: str,
+    start_index: int | None = None,
+    end_index: int | None = None,
+) -> str:
+    return (
+        f"{CLIP_DIR}/wan_"
+        f"{_seq_tag(start_index)}{str(start_shot_id).strip()}__"
+        f"{_seq_tag(end_index)}{str(end_shot_id).strip()}"
+    )

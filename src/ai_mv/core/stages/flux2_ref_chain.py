@@ -110,7 +110,6 @@ def _clip_routes_from_prompt_plan(payload: dict, flux2_ref_images: list[dict]) -
                 "clip_count": len(shots),
                 "timeline_index": idx,
                 "chain_key": f"{shot_id}:{idx}",
-                "start": str(ref_row.get("start", "")),
                 "end": str(ref_row.get("end", "")),
             }
         )

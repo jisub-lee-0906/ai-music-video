@@ -47,13 +47,7 @@ def _shot_seed(shot_id: str, variant: str = "", retry: int = 0) -> int:
 
 
 def _flux2_ref_prompt(item: dict) -> str:
-    frame_name = str(item.get("frame_name", "")).strip().lower()
-    if frame_name == "start":
-        text = str(item.get("start_prompt_text", item.get("prompt_text", ""))).strip()
-    elif frame_name == "end":
-        text = str(item.get("end_prompt_text", item.get("prompt_text", ""))).strip()
-    else:
-        text = str(item.get("prompt_text", "")).strip()
+    text = str(item.get("end_prompt_text", item.get("prompt_text", ""))).strip()
     if not text:
         raise RuntimeError(f"empty Flux2 reference prompt_text: {item['shot_id']}")
     return text

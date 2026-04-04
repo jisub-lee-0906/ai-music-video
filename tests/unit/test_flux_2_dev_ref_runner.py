@@ -1,7 +1,8 @@
 import ai_mv.engines.flux_2_dev_ref.runner as ref_runner
+from ai_mv.core.output_paths import flux2_ref_frame_prefix
 
 
-def test_run_flux2_ref_renders_scene_specific_start_and_end_from_master_reference(monkeypatch):
+def test_run_flux2_ref_renders_one_keyframe_per_shot_from_master_reference(monkeypatch):
     calls = []
 
     def fake_stage(_config, path):
@@ -46,17 +47,11 @@ def test_run_flux2_ref_renders_scene_specific_start_and_end_from_master_referenc
 
     assert calls[0] == "staged::master.png"
     assert calls[1] == "staged::master.png"
-    assert calls[2] == "staged::master.png"
-    assert calls[3] == "staged::master.png"
-    assert out[0]["start_source"] == "master_anchor"
-    assert out[1]["start_source"] == "master_anchor"
-    assert out[0]["start"].endswith("start.png")
-    assert out[0]["end"].endswith("end.png")
-    assert out[1]["start"] != out[0]["end"]
-    assert out[1]["end"].endswith("end.png")
+    assert out[0]["end"] == f"{flux2_ref_frame_prefix('S001_C01', sequence_index=1)}.png"
+    assert out[1]["end"] == f"{flux2_ref_frame_prefix('S001_C02', sequence_index=2)}.png"
 
 
-def test_run_flux2_ref_keeps_master_reference_across_sections_but_never_uses_it_as_start(monkeypatch):
+def test_run_flux2_ref_keeps_master_reference_across_sections_for_single_keyframe_outputs(monkeypatch):
     calls = []
 
     def fake_stage(_config, path):
@@ -101,8 +96,5 @@ def test_run_flux2_ref_keeps_master_reference_across_sections_but_never_uses_it_
 
     assert calls[0] == "staged::master.png"
     assert calls[1] == "staged::master.png"
-    assert calls[2] == "staged::master.png"
-    assert calls[3] == "staged::master.png"
-    assert out[0]["start"] != "master.png"
-    assert out[1]["start"] != out[0]["end"]
-    assert out[1]["start_source"] == "master_anchor"
+    assert out[0]["end"] != "master.png"
+    assert out[1]["end"] != out[0]["end"]
