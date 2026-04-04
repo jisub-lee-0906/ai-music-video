@@ -123,19 +123,19 @@ archetypes:
   sidewalk_continuation:
     name: sidewalk_continuation
     story_uses: continuation, open-world travel, release
-    prompt_contract: Use literal sidewalk-edge locomotion with the road staying beside her; keep the route grounded on the sidewalk and avoid drifting into a road-center walk.
-    good_pattern: same heroine + wet sidewalk edge or curb line + same stride carrying forward + road held beside her
-    preferred_sentence_shape: same heroine + carries the same stride along the wet sidewalk edge or curb line + the road stays beside her
+    prompt_contract: Use literal sidewalk-edge locomotion with the road staying to one side of her body; keep the route grounded on the sidewalk and avoid drifting into a road-center walk or station platform look.
+    good_pattern: same heroine + wet sidewalk edge + same stride carrying forward + road held clearly to one side
+    preferred_sentence_shape: same heroine + carries the same stride along the wet sidewalk edge + the road stays clearly to one side
     avoid_patterns: window-side atmosphere, city opening wide, generic glow
     surface_priority:
+      - wet sidewalk edge
       - sidewalk
-      - pavement
-      - curb line
+      - pavement edge
     contact_policy: No contact detail required; sidewalk-edge grounding matters more than gesture.
-    continuity_policy: End state should feel like the next step of the same sidewalk-side stride without falling into the road center.
+    continuity_policy: End state should feel like the next step of the same sidewalk-side stride with the curb or road boundary still readable beside her, without falling into the road center.
     variants:
       curbside_carry:
-        note: Prefer wet sidewalk edge or curb line with the road clearly beside her when continuation must stay distinct from generic central walking.
+        note: Prefer wet sidewalk edge with the road clearly to her right or left when continuation must stay distinct from generic central walking.
   doorway_handoff:
     name: doorway_handoff
     story_uses: handoff, threshold change, interior to path transition

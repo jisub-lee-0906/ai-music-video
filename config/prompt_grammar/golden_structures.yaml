@@ -64,6 +64,33 @@ structures:
     start_shape: She clears the station threshold into the wet passage, her next step already committed beyond it.
     end_shape: She leaves the station threshold behind and keeps the next step inside the wet passage.
     wan_shape: She clears the station threshold and carries the next step into the wet passage beyond.
+  - name: sidewalk_route_entry
+    story_function: entry
+    ref_archetype: sidewalk_continuation
+    preferred_surface: wet sidewalk edge outside the station
+    prompt_contract: Start the route on a literal sidewalk edge outside the station and keep the road clearly to one side so it does not flatten into a platform or centered road walk.
+    preferred_pattern: same heroine + wet sidewalk edge outside the station + first committed stride + road opening beside her
+    start_shape: She steps onto the wet sidewalk edge outside the station at night.
+    end_shape: She takes the first committed stride along the wet sidewalk edge outside the station at night, the road opening beside her.
+    wan_shape: She keeps entering along the wet sidewalk edge outside the station while the road opens beside her.
+  - name: sidewalk_route_continuation
+    story_function: continuation
+    ref_archetype: sidewalk_continuation
+    preferred_surface: wet sidewalk edge
+    prompt_contract: Keep the continuation on a literal wet sidewalk edge with the road still riding to one side; avoid road-center walking or platform drift.
+    preferred_pattern: same heroine + wet sidewalk edge + same stride carrying forward + road still riding to her right
+    start_shape: She keeps the same stride along the wet sidewalk edge at night.
+    end_shape: She carries the same stride along the wet sidewalk edge at night, the road still riding to her right.
+    wan_shape: She keeps the same stride on the wet sidewalk edge while the road stays to her right.
+  - name: sidewalk_route_handoff
+    story_function: handoff
+    ref_archetype: sidewalk_continuation
+    preferred_surface: wet sidewalk edge
+    prompt_contract: Keep the handoff on the same wet sidewalk edge and make the next state already formed without dropping her into the middle of the road.
+    preferred_pattern: same heroine + next stride on the wet sidewalk edge + curb held under the near side + road clearly to her right
+    start_shape: She sets the next stride on the wet sidewalk edge at night, the curb held under her near side.
+    end_shape: She lands the next stride on the wet sidewalk edge at night, the road clearly to her right.
+    wan_shape: She keeps the next sidewalk-side stride alive while the road stays clearly to her right.
   - name: final_platform_push
     story_function: handoff
     ref_archetype: platform_edge

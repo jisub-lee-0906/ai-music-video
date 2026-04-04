@@ -135,7 +135,7 @@ def test_director_story_function_can_override_surface_for_route_readability():
         "story_function": "handoff",
         "archetype_variant": "",
     }
-    assert _planner_primary_surface(shot, "sidewalk_continuation") == "curb line"
+    assert _planner_primary_surface(shot, "sidewalk_continuation") == "wet sidewalk edge"
 
 
 def test_director_edge_handoff_uses_threshold_passage_exit_variant():

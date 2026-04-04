@@ -183,9 +183,9 @@ def _dominant_action(
             "payoff": f"She moves away through the {surface} with the far side opening wider around her.",
         },
         "sidewalk_continuation": {
-            "entry": f"She takes the first committed stride along the {surface} and lets the route define her line.",
-            "continuation": f"She carries the same stride along the {surface} with the road staying beside her.",
-            "handoff": f"She lands the next stride along the {surface} with the road still held beside her.",
+            "entry": f"She takes the first committed stride along the {surface} with the road opening beside her.",
+            "continuation": f"She carries the same stride along the {surface} with the road still riding to her right.",
+            "handoff": f"She sets the next stride on the {surface} with the curb held under her near side and the road to her right.",
         },
         "stair_descent": {
             "entry": f"She steps down the {surface} with one continuous handrail contact.",
@@ -251,9 +251,9 @@ def _continuity_delta(
             "payoff": f"She leaves the {surface} behind as more of the open street surrounds her in full release.",
         },
         "sidewalk_continuation": {
-            "entry": f"She carries the route one readable stride farther along the {surface} and makes the path feel established.",
-            "continuation": f"She keeps the same stride on the {surface} and moves one step farther with the road still beside her.",
-            "handoff": f"She lands the next stride on the {surface} and leaves the road clearly beside her.",
+            "entry": f"She carries the route one readable stride farther along the {surface} and leaves the road clearly beside her.",
+            "continuation": f"She keeps the same stride on the {surface} and moves one step farther with the road still riding to her right.",
+            "handoff": f"She lands the next stride on the {surface} and keeps the road clearly to her right.",
         },
         "stair_descent": {
             "entry": f"She lands one step lower on the {surface} and keeps descending.",
@@ -298,8 +298,10 @@ def _content_trace(story_function: str, archetype: str, variant: str, guidance: 
         return "more of the open street surrounding her"
     if archetype == "curb_crossing" and story_function == "handoff":
         return "the open road holding to her left"
-    if archetype == "sidewalk_continuation" and story_function in {"continuation", "handoff"}:
-        return "the road still held beside her"
+    if archetype == "sidewalk_continuation" and story_function == "continuation":
+        return "the road still riding to her right"
+    if archetype == "sidewalk_continuation" and story_function == "handoff":
+        return "the road clearly to her right"
     if archetype == "stair_descent":
         return "one hand sliding along the handrail"
     if archetype == "passage_compression":
@@ -366,9 +368,9 @@ def _planner_primary_surface(shot: dict, archetype: str) -> str:
 
 def _story_surface_override(story_function: str, archetype: str, variant: str) -> str:
     overrides = {
-        ("sidewalk_continuation", "entry"): "station-side sidewalk",
-        ("sidewalk_continuation", "continuation"): "wet sidewalk",
-        ("sidewalk_continuation", "handoff"): "curb line",
+        ("sidewalk_continuation", "entry"): "wet sidewalk edge outside the station",
+        ("sidewalk_continuation", "continuation"): "wet sidewalk edge",
+        ("sidewalk_continuation", "handoff"): "wet sidewalk edge",
         ("curb_crossing", "entry"): "wet crosswalk",
         ("curb_crossing", "continuation"): "wet crosswalk",
         ("curb_crossing", "handoff"): "wet crosswalk near the far curb",
