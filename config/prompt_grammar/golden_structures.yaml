@@ -22,20 +22,38 @@ structures:
     story_function: payoff
     ref_archetype: curb_crossing
     preferred_surface: wet crosswalk
-    prompt_contract: Keep the release on a literal wet crosswalk crossing toward the far curb, with readable locomotion and no extra object invention.
-    preferred_pattern: same heroine + wet crosswalk + far curb destination + one arm swinging free
-    start_shape: She crosses the wet crosswalk toward the far curb, one arm swinging free.
-    end_shape: She clears the wet crosswalk and lands near the far curb, one arm still swinging free.
-    wan_shape: She keeps crossing the wet crosswalk and drives the stride toward the far curb.
+    prompt_contract: Keep the release on a literal wet crosswalk, but make the payoff read as departure and widening release rather than another centered walking frame.
+    preferred_pattern: same heroine + wet crosswalk + moves away toward the far curb + more of the open street surrounding her
+    start_shape: She moves away toward the far curb from the wet crosswalk at night.
+    end_shape: She moves away toward the far curb from the wet crosswalk at night, more of the open street surrounding her.
+    wan_shape: She keeps moving away through the wet crosswalk and leaves more of the open street around her.
   - name: final_release_crosswalk_handoff
     story_function: handoff
     ref_archetype: curb_crossing
     preferred_surface: wet crosswalk
-    prompt_contract: Keep the middle release beat inside the same wet crosswalk family; do not switch away to another route surface before the payoff arrives.
-    preferred_pattern: same heroine + wet crosswalk + same crossing stride + far curb clearly nearer
-    start_shape: She keeps crossing the wet crosswalk with the far curb clearly ahead.
-    end_shape: She carries the same crossing stride farther through the wet crosswalk and leaves the far curb visibly nearer.
-    wan_shape: She keeps the same crossing stride through the wet crosswalk and brings the far curb visibly closer.
+    prompt_contract: Keep the middle release beat inside the same wet crosswalk family, but use right-edge curb blocking so it stays distinct from both the left-edge entry and the away-from-camera payoff.
+    preferred_pattern: same heroine + right edge of the wet crosswalk + same stride carries forward + open road held to her left
+    start_shape: She carries the same stride along the right edge of the wet crosswalk at night.
+    end_shape: She carries the same stride along the right edge of the wet crosswalk at night, the open road holding to her left.
+    wan_shape: She keeps the same stride along the right edge of the wet crosswalk while the open road holds to her left.
+  - name: final_release_crosswalk_continuation
+    story_function: continuation
+    ref_archetype: curb_crossing
+    preferred_surface: wet crosswalk
+    prompt_contract: Keep the continuation inside the same crosswalk, but push the body off perfect center so it reads as a live crossing rather than a reset pose.
+    preferred_pattern: same heroine + middle-right side of the wet crosswalk + same stride alive
+    start_shape: She keeps the same stride alive through the middle-right side of the wet crosswalk at night.
+    end_shape: She crosses through the middle-right side of the wet crosswalk at night, keeping the same stride alive.
+    wan_shape: She keeps the same stride alive through the middle-right side of the wet crosswalk.
+  - name: final_release_crosswalk_entry
+    story_function: entry
+    ref_archetype: curb_crossing
+    preferred_surface: wet crosswalk
+    prompt_contract: Start the final release by entering the same wet crosswalk from one side of frame so the release begins as a visible crossing event rather than a generic centered walk.
+    preferred_pattern: same heroine + steps in from the left edge of the wet crosswalk + open road stretching ahead
+    start_shape: She steps in from the left edge of the wet crosswalk at night.
+    end_shape: She steps in from the left edge of the wet crosswalk at night, the open road stretching ahead of her.
+    wan_shape: She keeps entering from the left edge of the wet crosswalk as the road opens ahead of her.
   - name: pre_handoff_threshold
     story_function: handoff
     ref_archetype: threshold_crossing
@@ -51,8 +69,8 @@ structures:
     ref_archetype: platform_edge
     variant: bridge_motion
     preferred_surface: platform edge
-    prompt_contract: Keep the beat on the wet platform edge with the yellow tactile line near her feet and a stronger forward step.
-    preferred_pattern: same heroine + wet platform edge + yellow tactile line near feet + stronger forward step
-    start_shape: She sets the next step along the wet platform edge with the yellow tactile line close at her feet.
-    end_shape: She takes a longer forward step along the wet platform edge with the yellow tactile line still close at her feet.
-    wan_shape: She keeps the stronger step on the wet platform edge and drives forward past the platform door.
+    prompt_contract: Keep the beat on the same wet platform edge at night with the yellow tactile line near her feet and the track still running beside her; do not let it drift into a new bridge or roadway world.
+    preferred_pattern: same heroine + wet platform edge at night + yellow tactile line near feet + track still running beside her + longer forward step
+    start_shape: She sets the next longer step along the wet platform edge at night, the yellow tactile line still close at her feet.
+    end_shape: She takes a longer forward step along the wet platform edge at night, the yellow tactile line still close at her feet and the track still running beside her.
+    wan_shape: She keeps the longer step on the wet platform edge at night while the track still runs beside her.

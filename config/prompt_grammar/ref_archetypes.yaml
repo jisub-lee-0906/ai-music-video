@@ -101,17 +101,25 @@ archetypes:
   curb_crossing:
     name: curb_crossing
     story_uses: payoff, release, open crossing
-    prompt_contract: Use plain crosswalk locomotion plus destination curb; avoid extra objects that compete with the crossing.
-    good_pattern: same heroine + crosswalk + far curb destination
-    preferred_sentence_shape: same heroine + crosses the wet crosswalk + far curb destination + optional free-arm locomotion detail
-    avoid_patterns: traffic-light hero shot, signage drift, broad skyline mood
+    prompt_contract: Use literal wet crosswalk geometry plus clear curb-side or frame-side blocking; keep the crossing readable and avoid weak gesture-only differentiation.
+    good_pattern: same heroine + wet crosswalk + explicit entry side, curb-side, or far-side relation + readable crossing stride
+    preferred_sentence_shape: same heroine + enters, carries, or leaves the wet crosswalk with a clear side-of-route relation + one readable crossing stride + optional open-street release detail
+    avoid_patterns: traffic-light hero shot, signage drift, broad skyline mood, free-arm gesture as main differentiator
     surface_priority:
       - crosswalk
       - curb
       - wet street edge
-    contact_policy: Free-arm locomotion is often enough.
-    continuity_policy: End state should land on or near the far curb.
-    variants: {}
+    contact_policy: No contact detail is required; curb-side or frame-side blocking is usually stronger.
+    continuity_policy: End state should show a visible change of route position such as entering from one side, staying close to one curb, or moving away toward the far curb.
+    variants:
+      left_edge_entry:
+        note: Prefer entry from the left edge of frame or from one side of the crosswalk when the beat must read as a new crossing event.
+      live_continuation:
+        note: Prefer middle-right or off-center crossing continuation when the beat must stay active without resetting into a centered walk.
+      curbside_handoff:
+        note: Prefer staying close to one curb or right edge with the open road on the opposite side when the beat must differ from entry and payoff.
+      far_side_departure:
+        note: Prefer moving away toward the far curb when the payoff must read as widening release rather than another centered stride.
   sidewalk_continuation:
     name: sidewalk_continuation
     story_uses: continuation, open-world travel, release

@@ -60,9 +60,12 @@
 - Study:
   - [ref_curb_crossing_prompt_study_20260401.md](D:/workspace/ai-music-video/artifacts/reports/ref_curb_crossing_prompt_study_20260401.md)
 - Best grammar:
-  - plain crosswalk locomotion + destination curb
+  - literal wet crosswalk + explicit side-of-route blocking + readable crossing stride
 - Best example:
-  - `The same Korean female idol with a high ponytail crosses the wet crosswalk toward the far curb at night, one arm swinging free.`
+  - `The same Korean female idol with a high ponytail steps in from the left edge of the wet crosswalk at night, the open road stretching ahead of her.`
+  - `The same Korean female idol with a high ponytail crosses through the middle-right side of the wet crosswalk at night, keeping the same stride alive.`
+  - `The same Korean female idol with a high ponytail carries the same stride along the right edge of the wet crosswalk at night, the open road holding to her left.`
+  - `The same Korean female idol with a high ponytail moves away toward the far curb from the wet crosswalk at night, more of the open street surrounding her.`
 
 ### 8. Sidewalk Continuation
 - Study:

@@ -177,10 +177,10 @@ def _dominant_action(
             "handoff": f"She clears the {surface} and carries the next step into the immediate passage.",
         },
         "curb_crossing": {
-            "entry": f"She steps onto the {surface} with her line set toward the far curb.",
-            "continuation": f"She keeps crossing the {surface} with her stride still aimed at the far curb.",
-            "handoff": f"She keeps the same crossing stride through the {surface} with the far curb clearly ahead.",
-            "payoff": f"She drives across the {surface} with her line fully committed to the far side.",
+            "entry": f"She steps in from one side of the {surface} with the road opening ahead of her.",
+            "continuation": f"She keeps the same crossing stride alive through the middle-right side of the {surface}.",
+            "handoff": f"She carries the same stride along the right edge of the {surface} with the open road held to the opposite side.",
+            "payoff": f"She moves away through the {surface} with the far side opening wider around her.",
         },
         "sidewalk_continuation": {
             "entry": f"She takes the first committed stride along the {surface} and lets the route define her line.",
@@ -245,10 +245,10 @@ def _continuity_delta(
             "handoff": f"She leaves the {surface} behind and keeps the next step inside the passage.",
         },
         "curb_crossing": {
-            "entry": f"She clears the {surface} and reaches the far curb.",
-            "continuation": f"She keeps crossing the {surface} and draws closer to the far curb.",
-            "handoff": f"She carries the same crossing stride farther through the {surface} and leaves the far curb visibly nearer.",
-            "payoff": f"She clears the {surface} and reaches the far side in full release.",
+            "entry": f"She carries the crossing one beat farther from the entry side of the {surface}.",
+            "continuation": f"She crosses one beat farther through the middle-right side of the {surface} and keeps the crossing live.",
+            "handoff": f"She keeps to the right edge of the {surface} and leaves the open road clearly opposite her.",
+            "payoff": f"She leaves the {surface} behind as more of the open street surrounds her in full release.",
         },
         "sidewalk_continuation": {
             "entry": f"She carries the route one readable stride farther along the {surface} and makes the path feel established.",
@@ -292,10 +292,12 @@ def _content_trace(story_function: str, archetype: str, variant: str, guidance: 
             return "footprint trail widening behind her"
         if "arm swinging free" in pattern or "free-arm" in pattern:
             return "one arm swinging free"
-    if archetype == "platform_edge" and variant == "bridge_motion":
+    if archetype == "platform_edge" and variant == "bridge_motion" and story_function == "pressure":
         return "footprint trail widening behind her"
-    if archetype == "curb_crossing" and story_function in {"entry", "payoff"}:
-        return "one arm swinging free"
+    if archetype == "curb_crossing" and story_function == "payoff":
+        return "more of the open street surrounding her"
+    if archetype == "curb_crossing" and story_function == "handoff":
+        return "the open road holding to her left"
     if archetype == "sidewalk_continuation" and story_function == "continuation":
         return "the curb line staying close at her feet"
     if archetype == "stair_descent":

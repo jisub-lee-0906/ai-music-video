@@ -1,0 +1,6 @@
+bridge_b1	The same Korean female idol with airy see-through bangs and a high ponytail takes a crossing step along the wet platform edge, the yellow tactile line close at her feet and her footprint trail widening behind her.
+bridge_b2	The same Korean female idol with airy see-through bangs and a high ponytail takes a longer forward step along the wet platform edge, the yellow tactile line still close at her feet.
+final_chorus_b1	The same Korean female idol steps in from the left edge of the wet crosswalk at night, the open road stretching ahead of her.
+final_chorus_b2	The same Korean female idol keeps the same crossing stride through the wet crosswalk and moves one beat farther without flattening out at night.
+final_chorus_b3	The same Korean female idol keeps close to the right curb of the wet crosswalk at night, traffic opening to her left as the same stride carries forward.
+final_chorus_b4	The same Korean female idol moves away toward the far curb from the wet crosswalk at night, more of the open street surrounding her.
