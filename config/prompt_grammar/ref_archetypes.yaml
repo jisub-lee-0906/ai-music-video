@@ -123,17 +123,19 @@ archetypes:
   sidewalk_continuation:
     name: sidewalk_continuation
     story_uses: continuation, open-world travel, release
-    prompt_contract: Use plain locomotion with optional free-arm motion or curb-at-feet proximity; keep the street portable and open-world.
-    good_pattern: same heroine + sidewalk or pavement + plain forward continuation
-    preferred_sentence_shape: same heroine + moves forward along sidewalk or pavement + optional curb-at-feet or free-arm motion detail
+    prompt_contract: Use literal sidewalk-edge locomotion with the road staying beside her; keep the route grounded on the sidewalk and avoid drifting into a road-center walk.
+    good_pattern: same heroine + wet sidewalk edge or curb line + same stride carrying forward + road held beside her
+    preferred_sentence_shape: same heroine + carries the same stride along the wet sidewalk edge or curb line + the road stays beside her
     avoid_patterns: window-side atmosphere, city opening wide, generic glow
     surface_priority:
       - sidewalk
       - pavement
       - curb line
-    contact_policy: No contact detail required; locomotion clarity matters more.
-    continuity_policy: End state should feel like the next step of the same stride.
-    variants: {}
+    contact_policy: No contact detail required; sidewalk-edge grounding matters more than gesture.
+    continuity_policy: End state should feel like the next step of the same sidewalk-side stride without falling into the road center.
+    variants:
+      curbside_carry:
+        note: Prefer wet sidewalk edge or curb line with the road clearly beside her when continuation must stay distinct from generic central walking.
   doorway_handoff:
     name: doorway_handoff
     story_uses: handoff, threshold change, interior to path transition

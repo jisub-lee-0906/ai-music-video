@@ -184,8 +184,8 @@ def _dominant_action(
         },
         "sidewalk_continuation": {
             "entry": f"She takes the first committed stride along the {surface} and lets the route define her line.",
-            "continuation": f"She keeps the same stride alive along the {surface} without resetting the route.",
-            "handoff": f"She plants the next stride along the {surface} with the following route already forming ahead.",
+            "continuation": f"She carries the same stride along the {surface} with the road staying beside her.",
+            "handoff": f"She lands the next stride along the {surface} with the road still held beside her.",
         },
         "stair_descent": {
             "entry": f"She steps down the {surface} with one continuous handrail contact.",
@@ -252,8 +252,8 @@ def _continuity_delta(
         },
         "sidewalk_continuation": {
             "entry": f"She carries the route one readable stride farther along the {surface} and makes the path feel established.",
-            "continuation": f"She keeps the same stride on the {surface} and moves one step farther without breaking the route.",
-            "handoff": f"She lands the next stride on the {surface} and leaves the following route already formed.",
+            "continuation": f"She keeps the same stride on the {surface} and moves one step farther with the road still beside her.",
+            "handoff": f"She lands the next stride on the {surface} and leaves the road clearly beside her.",
         },
         "stair_descent": {
             "entry": f"She lands one step lower on the {surface} and keeps descending.",
@@ -298,8 +298,8 @@ def _content_trace(story_function: str, archetype: str, variant: str, guidance: 
         return "more of the open street surrounding her"
     if archetype == "curb_crossing" and story_function == "handoff":
         return "the open road holding to her left"
-    if archetype == "sidewalk_continuation" and story_function == "continuation":
-        return "the curb line staying close at her feet"
+    if archetype == "sidewalk_continuation" and story_function in {"continuation", "handoff"}:
+        return "the road still held beside her"
     if archetype == "stair_descent":
         return "one hand sliding along the handrail"
     if archetype == "passage_compression":
