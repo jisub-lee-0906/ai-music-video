@@ -62,18 +62,19 @@
 - Best grammar:
   - literal wet crosswalk + explicit side-of-route blocking + readable crossing stride
 - Best example:
-  - `The same Korean female idol with a high ponytail steps in from the left edge of the wet crosswalk at night, the open road stretching ahead of her.`
+  - `The same Korean female idol with a high ponytail steps in from the far left edge of the wet crosswalk at night, leaving most of the road open ahead of her.`
   - `The same Korean female idol with a high ponytail crosses through the middle-right side of the wet crosswalk at night, keeping the same stride alive.`
   - `The same Korean female idol with a high ponytail carries the same stride along the right edge of the wet crosswalk at night, the open road holding to her left.`
-  - `The same Korean female idol with a high ponytail moves away toward the far curb from the wet crosswalk at night, more of the open street surrounding her.`
+  - `The same Korean female idol with a high ponytail walks away from the wet crosswalk into the wider street at night, leaving the crossing behind her.`
 
 ### 8. Sidewalk Continuation
 - Study:
   - [ref_sidewalk_continuation_prompt_study_20260401.md](D:/workspace/ai-music-video/artifacts/reports/ref_sidewalk_continuation_prompt_study_20260401.md)
 - Best grammar:
-  - plain locomotion + optional free-arm motion or curb-at-feet proximity
+  - sidewalk-edge locomotion + one-sided road relation + optional changed-angle re-entry
 - Best example:
-  - `The same Korean female idol with a high ponytail moves forward along the wet sidewalk at night, one arm swinging free beside the curb.`
+  - `The same Korean female idol with a high ponytail carries the same stride along the wet sidewalk edge at night, the road still riding to her right.`
+  - `The same Korean female idol with a high ponytail commits one step farther from the road-side edge of the wet sidewalk edge outside the station at night and keeps the station block stretching behind her.`
 
 ### 9. Doorway Handoff
 - Study:
@@ -132,6 +133,8 @@
 - when motion needs to increase, prefer directional foot-change language over arm-swing or shoulder-turn exaggeration
 - in this workflow, compact natural prose usually outperforms heavier identity padding, style padding, or JSON prompt formatting
 - avoid symbolic optical language as the main event
+- when MV staging matters, physical blocking language works better than camera-meta language
+- `far-left edge`, `road-side edge`, `middle-right side`, `right edge`, and `walks away` are more reliable than abstract words like `recedes`, `off-center`, or `left third`
 
 ## Shared Failure Modes
 - `passes through` often over-inflates machines and doorways

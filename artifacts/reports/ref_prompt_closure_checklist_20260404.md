@@ -24,8 +24,8 @@ A family is `closed` only if all of the following are true:
 - `platform_edge / final_platform_push (handoff)`
   - Reason: after removing automatic footprint carryover, the same platform world stays intact with a stronger forward step and the track still running beside her.
 - `curb_crossing / entry`
-  - Current best pattern: left-edge entry into the wet crosswalk with open road ahead.
-  - Reason: rerun confirms this creates a distinct crossing event and breaks centered repetition.
+  - Current best pattern: far-left edge entry into the wet crosswalk with most of the road left open ahead.
+  - Reason: latest blocking rerun confirms this is the most stable way to break centered repetition and make entry read as a real crossing event.
 - `curb_crossing / continuation`
   - Current best pattern: middle-right crossing continuation to avoid centered reset.
   - Reason: rerun confirms it keeps the crossing alive without collapsing back into a generic frontal walk.
@@ -33,8 +33,8 @@ A family is `closed` only if all of the following are true:
   - Current best pattern: right-edge blocking with the open road held to the opposite side.
   - Reason: latest micro-study and sequence rerun show this is more stable than `traffic opening` wording and remains visually distinct from entry and payoff.
 - `curb_crossing / payoff`
-  - Current best pattern: moving away toward the far curb with more open street surrounding her.
-  - Reason: rerun confirms this behaves as a real release/payoff event rather than another forward-walk frame.
+  - Current best pattern: walks away from the wet crosswalk into the wider street.
+  - Reason: latest blocking rerun confirms direct walk-away language is more stable than abstract `recedes into` or `far curb` phrasing and produces a real release/payoff event.
 - `window_contact`
   - Current best pattern: same heroine + station/window edge + direct metal-frame contact + forward continuation.
   - Reason: latest probe shows actual tactile contact events without collapsing into reflection mood.
@@ -44,6 +44,9 @@ A family is `closed` only if all of the following are true:
 - `sidewalk_continuation`
   - Current best pattern: `same heroine + wet sidewalk edge + next sidewalk-side stride + road clearly to her right`
   - Reason: the latest sequence rerun (`verse1_b1/b2/b3`) now keeps the heroine on a literal sidewalk edge, preserves the road on one side, and avoids collapsing back into a road-center walk.
+- `blocking-sensitive release staging`
+  - Current best pattern: `far-left edge entry -> middle-right carry -> right-edge handoff -> walk-away payoff`
+  - Reason: latest blocking sequence rerun shows these four states are now visually distinct enough to behave as separate MV keyframes instead of centered repeats.
 
 ### Partially Closed
 - `passage_compression`
@@ -65,7 +68,7 @@ A family is `closed` only if all of the following are true:
 
 ### Final Chorus Entry
 - Best shape:
-  - `same heroine + steps in from the left edge of the wet crosswalk + open road stretching ahead`
+  - `same heroine + steps in from the far left edge of the wet crosswalk + most of the road stays open ahead`
 
 ### Final Chorus Continuation
 - Best shape:
@@ -77,7 +80,7 @@ A family is `closed` only if all of the following are true:
 
 ### Final Chorus Payoff
 - Best shape:
-  - `same heroine + moves away toward the far curb from the wet crosswalk + more of the open street surrounding her`
+  - `same heroine + walks away from the wet crosswalk into the wider street`
 
 ## What Counts As Failure
 - Background changes to a different world family.
@@ -88,7 +91,8 @@ A family is `closed` only if all of the following are true:
 
 ## Next Closure Order
 1. Re-open `passage_compression` only if the current profile still needs a stronger non-platform compression event.
-2. Run a full-profile sequence check to verify that closed families remain distinct when repeated across sections.
+2. Treat blocking as `usable and sequence-validated`, but re-open it only if a later profile collapses back into centered entry or non-release payoff.
+3. Move the next iteration focus to audio prompting and audio-visual sync behavior.
 
 ## Rule
-Do not move on to denser story scripting until the current profile's active route/release families are fully closed and stable in real image sequence tests.
+Do not move on to denser story scripting until the current profile's active route/release families are fully closed and stable in real image sequence tests. This condition is currently satisfied for the example profile's active REF families.
