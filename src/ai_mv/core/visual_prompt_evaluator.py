@@ -218,11 +218,11 @@ def _evaluate_wan_rows(rows: list[dict]) -> dict:
 def _matches_story_function(story_function: str, action: str, continuity: str, surface: str) -> bool:
     text = f"{surface} {action} {continuity}"
     mapping = {
-        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to", "first committed stride", "path feel established", "steps in from", "entry side", "road opening ahead"),
-        "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing", "middle-right side", "keeps the crossing live", "road staying beside", "road still beside", "road still riding to her right"),
+        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to", "first committed stride", "path feel established", "steps in from", "entry side", "road opening ahead", "re-enters from", "road-side edge"),
+        "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing", "middle-right side", "keeps the crossing live", "road staying beside", "road still beside", "road still riding to her right", "same connected block", "without falling back to center"),
         "pressure": ("shorter step", "brace", "tight", "close", "smaller", "compress", "yellow tactile line close", "edge geometry close"),
-        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "route forward", "immediate passage", "already formed", "already committed", "keeps close to", "same crossing stride carries forward", "traffic opening", "right edge", "open road held", "road still held beside", "road clearly beside", "curb held under", "road to her right", "road clearly to her right"),
-        "payoff": ("far side", "opens", "release", "wider", "drive forward", "final", "far curb", "full release", "widest", "moves away", "open street surrounding"),
+        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "route forward", "immediate passage", "already formed", "already committed", "keeps close to", "same crossing stride carries forward", "traffic opening", "right edge", "open road held", "road still held beside", "road clearly beside", "curb held under", "road to her right", "road clearly to her right", "already chosen before the cut", "next crossing state already formed"),
+        "payoff": ("far side", "opens", "release", "wider", "drive forward", "final", "far curb", "full release", "widest", "moves away", "open street surrounding", "walks away", "wider street"),
         "reflection": ("looks back", "over one shoulder", "turns back"),
     }
     wanted = mapping.get(story_function, ())
@@ -259,9 +259,9 @@ def _matches_ref_archetype(archetype: str, surface: str, action: str, continuity
     if archetype == "window_contact":
         return any(token in text for token in ("window", "glass", "shoulder", "touch", "trace", "press", "brush"))
     if archetype == "curb_crossing":
-        return any(token in text for token in ("crosswalk", "curb", "far curb", "steps in from", "keeps close to", "moves away", "right edge", "middle-right side"))
+        return any(token in text for token in ("crosswalk", "curb", "far curb", "steps in from", "keeps close to", "moves away", "right edge", "middle-right side", "left edge", "open road held to her left", "without falling back to center"))
     if archetype == "sidewalk_continuation":
-        return any(token in text for token in ("sidewalk", "station-side sidewalk", "wet sidewalk", "wet sidewalk edge", "sidewalk edge", "pavement edge", "curb line", "pavement", "street edge", "path", "moves forward", "keeps moving", "moves along", "keeps running", "road beside", "road to her right", "road clearly to her right", "road still riding to her right"))
+        return any(token in text for token in ("sidewalk", "station-side sidewalk", "wet sidewalk", "wet sidewalk edge", "sidewalk edge", "pavement edge", "curb line", "pavement", "street edge", "path", "moves forward", "keeps moving", "moves along", "keeps running", "road beside", "road to her right", "road clearly to her right", "road still riding to her right", "road-side edge", "same connected block", "station block stretching behind"))
     if archetype == "doorway_handoff":
         return any(token in text for token in ("doorway", "door edge", "threshold", "beyond"))
     if archetype == "brace_pause":

@@ -150,6 +150,42 @@ def test_director_story_function_can_override_surface_for_route_readability():
     assert _planner_primary_surface(shot, "sidewalk_continuation") == "wet sidewalk edge"
 
 
+def test_direction_plan_uses_story_event_to_differentiate_same_sidewalk_family():
+    config = _config()
+    payload = {
+        "scene_outline": {
+            "shot_packages": [
+                {
+                    "shot_id": "verse1_b1",
+                    "section_label": "Verse 1",
+                    "story_function": "entry",
+                    "story_goal": "Verse 1 goal",
+                    "story_event": "She steps onto the sidewalk route outside the station and lets the path claim her line.",
+                    "world_zone": "narrow_route",
+                    "story_visual_intent": "Entry event.",
+                    "why": "v1",
+                },
+                {
+                    "shot_id": "verse2_b1",
+                    "section_label": "Verse 2",
+                    "story_function": "entry",
+                    "story_goal": "Verse 2 goal",
+                    "story_event": "She re-enters the same route from a slightly changed street-side angle without breaking continuity.",
+                    "world_zone": "transit_route",
+                    "story_visual_intent": "Entry event.",
+                    "why": "v2",
+                },
+            ]
+        }
+    }
+    direction = build_direction_plan(config, payload)
+    first, second = direction["shot_packages"]
+    assert first["ref_archetype"] == "sidewalk_continuation"
+    assert second["ref_archetype"] == "sidewalk_continuation"
+    assert first["dominant_action"] != second["dominant_action"]
+    assert "road-side edge" in second["dominant_action"].lower()
+
+
 def test_director_edge_handoff_uses_threshold_passage_exit_variant():
     shot = {
         "section_label": "Pre-Chorus",

@@ -12,15 +12,16 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
     for shot in outline.get("shot_packages", []):
         current = dict(shot)
         story_function = str(current.get("story_function", "")).strip()
+        story_event = str(current.get("story_event", "")).strip()
         shot_function = _shot_function(story_function, str(current.get("world_zone", "")).strip())
         archetype = _ref_archetype_for_shot(current)
         variant = _ref_archetype_variant_for_shot(current, archetype)
         guidance = golden_structure_guidance(story_function, archetype, variant)
         story_visual_intent = str(current.get("story_visual_intent", "")).strip()
-        primary_surface = _primary_surface(story_function, archetype, variant, guidance)
-        dominant_action = _dominant_action(story_function, archetype, variant, primary_surface, guidance, story_visual_intent)
-        continuity_delta = _continuity_delta(story_function, archetype, variant, primary_surface, guidance, story_visual_intent)
-        content_trace = _content_trace(story_function, archetype, variant, guidance)
+        primary_surface = _primary_surface(story_function, archetype, variant, guidance, story_event)
+        dominant_action = _dominant_action(story_function, archetype, variant, primary_surface, guidance, story_visual_intent, story_event)
+        continuity_delta = _continuity_delta(story_function, archetype, variant, primary_surface, guidance, story_visual_intent, story_event)
+        content_trace = _content_trace(story_function, archetype, variant, guidance, story_event)
         identity_hook_policy = _identity_hook_policy(archetype, variant)
         current.update(
             {
@@ -140,7 +141,7 @@ def _ref_archetype_variant_for_shot(shot: dict, archetype: str) -> str:
     return ""
 
 
-def _primary_surface(story_function: str, archetype: str, variant: str, guidance: dict) -> str:
+def _primary_surface(story_function: str, archetype: str, variant: str, guidance: dict, story_event: str = "") -> str:
     preferred = str(guidance.get("preferred_surface", "")).strip()
     if preferred:
         return preferred
@@ -150,19 +151,23 @@ def _primary_surface(story_function: str, archetype: str, variant: str, guidance
         note = ref_archetype_variant(archetype, variant)
         if str(note.get("preferred_surface", "")).strip():
             return str(note.get("preferred_surface", "")).strip()
-    story_surface = _story_surface_override(story_function, archetype, variant)
+    story_surface = _story_surface_override(story_function, archetype, variant, story_event)
     if story_surface:
         return story_surface
     return priorities[0] if priorities else "walkable path"
 
 
 def _dominant_action(
-    story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict, story_visual_intent: str
+    story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict, story_visual_intent: str, story_event: str
 ) -> str:
+    surface = primary_surface
+    event_tags = _event_tags(story_event)
+    special = _event_driven_action(archetype, story_function, surface, event_tags)
+    if special:
+        return special
     shaped = str(guidance.get("start_shape", "")).strip()
     if shaped:
         return shaped
-    surface = primary_surface
     templates = {
         "gate_pass": {
             "entry": f"She enters the {surface} with one readable forward step.",
@@ -225,12 +230,16 @@ def _dominant_action(
 
 
 def _continuity_delta(
-    story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict, story_visual_intent: str
+    story_function: str, archetype: str, variant: str, primary_surface: str, guidance: dict, story_visual_intent: str, story_event: str
 ) -> str:
+    surface = primary_surface
+    event_tags = _event_tags(story_event)
+    special = _event_driven_continuity(archetype, story_function, surface, event_tags)
+    if special:
+        return special
     shaped = str(guidance.get("end_shape", "")).strip()
     if shaped:
         return shaped
-    surface = primary_surface
     templates = {
         "gate_pass": {
             "entry": f"She passes through the {surface} and lands just inside the station.",
@@ -285,13 +294,17 @@ def _continuity_delta(
     return f"She carries the same movement one readable step farther on the {surface}."
 
 
-def _content_trace(story_function: str, archetype: str, variant: str, guidance: dict) -> str:
+def _content_trace(story_function: str, archetype: str, variant: str, guidance: dict, story_event: str = "") -> str:
+    event_tags = _event_tags(story_event)
     if str(guidance.get("preferred_pattern", "")).strip():
         pattern = str(guidance["preferred_pattern"]).lower()
         if "footprint" in pattern:
             return "footprint trail widening behind her"
         if "arm swinging free" in pattern or "free-arm" in pattern:
             return "one arm swinging free"
+    special = _event_driven_trace(archetype, story_function, event_tags)
+    if special:
+        return special
     if archetype == "platform_edge" and variant == "bridge_motion" and story_function == "pressure":
         return "footprint trail widening behind her"
     if archetype == "curb_crossing" and story_function == "payoff":
@@ -366,7 +379,8 @@ def _planner_primary_surface(shot: dict, archetype: str) -> str:
     return _primary_surface(str(shot.get("story_function", "")).strip(), archetype, str(shot.get("archetype_variant", "")).strip(), guidance)
 
 
-def _story_surface_override(story_function: str, archetype: str, variant: str) -> str:
+def _story_surface_override(story_function: str, archetype: str, variant: str, story_event: str = "") -> str:
+    tags = _event_tags(story_event)
     overrides = {
         ("sidewalk_continuation", "entry"): "wet sidewalk edge outside the station",
         ("sidewalk_continuation", "continuation"): "wet sidewalk edge",
@@ -381,4 +395,86 @@ def _story_surface_override(story_function: str, archetype: str, variant: str) -
         ("threshold_crossing", "handoff"): "station threshold",
         ("gate_pass", "entry"): "turnstile lane",
     }
+    if archetype == "sidewalk_continuation" and "changed_street_angle" in tags:
+        return "wet curb-side sidewalk edge"
+    if archetype == "sidewalk_continuation" and "connected_block" in tags:
+        return "wet sidewalk edge with the curb line close"
+    if archetype == "curb_crossing" and "release_alive" in tags:
+        return "wet crosswalk through the middle-right side"
+    if archetype == "curb_crossing" and "crossing_handoff" in tags:
+        return "wet crosswalk along the right edge"
     return overrides.get((archetype, story_function), "")
+
+
+def _event_tags(story_event: str) -> set[str]:
+    low = str(story_event or "").strip().lower()
+    tags: set[str] = set()
+    if "slightly changed street-side angle" in low:
+        tags.add("changed_street_angle")
+    if "same connected block" in low:
+        tags.add("connected_block")
+    if "physically inevitable" in low or "already feels chosen" in low:
+        tags.add("inevitable_stride")
+    if "visible crossing event" in low or "instead of another neutral walk" in low:
+        tags.add("visible_crossing")
+    if "keeps the crossing alive" in low or "keeps the release alive" in low:
+        tags.add("release_alive")
+    if "readable next-state handoff" in low or "carries the crossing into" in low:
+        tags.add("crossing_handoff")
+    if "wider forward departure" in low or "leaves the crossing behind" in low:
+        tags.add("wider_departure")
+    return tags
+
+
+def _event_driven_action(archetype: str, story_function: str, surface: str, event_tags: set[str]) -> str:
+    if archetype == "sidewalk_continuation":
+        if "changed_street_angle" in event_tags:
+            return f"She re-enters from the road-side edge of the {surface} at night with the road opening hard to her right."
+        if "connected_block" in event_tags:
+            return f"She carries the same stride along the {surface} at night with the curb line tight at her feet and the same block running beside her."
+        if "inevitable_stride" in event_tags:
+            return f"She sets the next sidewalk-side stride on the {surface} at night with the curb held under her near side."
+    if archetype == "curb_crossing":
+        if "visible_crossing" in event_tags:
+            return f"She enters the {surface} from the left edge with the road opening ahead of her."
+        if "release_alive" in event_tags:
+            return f"She keeps the crossing alive through the middle-right side of the {surface} without falling back to center."
+        if "crossing_handoff" in event_tags:
+            return f"She carries the crossing along the right edge of the {surface} with the open road held to her left."
+        if "wider_departure" in event_tags:
+            return f"She walks away from the {surface} as the open street widens around her."
+    return ""
+
+
+def _event_driven_continuity(archetype: str, story_function: str, surface: str, event_tags: set[str]) -> str:
+    if archetype == "sidewalk_continuation":
+        if "changed_street_angle" in event_tags:
+            return f"She commits one step farther from the road-side edge and keeps the station block stretching behind her."
+        if "connected_block" in event_tags:
+            return f"She moves one step farther along the {surface} and keeps the same connected block alive beside her."
+        if "inevitable_stride" in event_tags:
+            return f"She lands the next sidewalk-side stride and leaves the curb-side line already chosen before the cut."
+    if archetype == "curb_crossing":
+        if "release_alive" in event_tags:
+            return f"She carries one more crossing step through the middle-right side of the {surface} and keeps the release live."
+        if "crossing_handoff" in event_tags:
+            return f"She leaves the next crossing state already formed at the right edge of the {surface}."
+        if "wider_departure" in event_tags:
+            return f"She leaves the {surface} behind and lets the wider street take over her forward line."
+    return ""
+
+
+def _event_driven_trace(archetype: str, story_function: str, event_tags: set[str]) -> str:
+    if archetype == "sidewalk_continuation":
+        if "changed_street_angle" in event_tags:
+            return "the road opening hard to her right"
+        if "connected_block" in event_tags:
+            return "the same connected block still running beside her"
+        if "inevitable_stride" in event_tags:
+            return "the curb still guiding her near side"
+    if archetype == "curb_crossing":
+        if "crossing_handoff" in event_tags:
+            return "the open road still held to her left"
+        if "wider_departure" in event_tags:
+            return "more of the open street widening around her"
+    return ""
