@@ -18,6 +18,7 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
         variant = _ref_archetype_variant_for_shot(current, archetype)
         guidance = golden_structure_guidance(story_function, archetype, variant)
         story_visual_intent = str(current.get("story_visual_intent", "")).strip()
+        blocking = _blocking_contract(story_function, archetype, str(current.get("world_zone", "")).strip(), story_event)
         primary_surface = _primary_surface(story_function, archetype, variant, guidance, story_event)
         dominant_action = _dominant_action(story_function, archetype, variant, primary_surface, guidance, story_visual_intent, story_event)
         continuity_delta = _continuity_delta(story_function, archetype, variant, primary_surface, guidance, story_visual_intent, story_event)
@@ -29,6 +30,12 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
                 "ref_archetype": archetype,
                 "archetype_variant": variant,
                 "story_visual_intent": story_visual_intent,
+                "blocking_role": blocking["blocking_role"],
+                "entry_side": blocking["entry_side"],
+                "travel_axis": blocking["travel_axis"],
+                "frame_bias": blocking["frame_bias"],
+                "arrival_side": blocking["arrival_side"],
+                "camera_relation": blocking["camera_relation"],
                 "primary_surface": primary_surface,
                 "dominant_action": dominant_action,
                 "continuity_delta": continuity_delta,
@@ -478,3 +485,149 @@ def _event_driven_trace(archetype: str, story_function: str, event_tags: set[str
         if "wider_departure" in event_tags:
             return "more of the open street widening around her"
     return ""
+
+
+def _blocking_contract(story_function: str, archetype: str, world_zone: str, story_event: str) -> dict[str, str]:
+    tags = _event_tags(story_event)
+    blocking = {
+        "blocking_role": "center_carry",
+        "entry_side": "center",
+        "travel_axis": "forward",
+        "frame_bias": "centered",
+        "arrival_side": "none",
+        "camera_relation": "neutral_eye_level",
+    }
+    if story_function == "entry":
+        blocking.update(
+            {
+                "blocking_role": "edge_entry",
+                "entry_side": "left",
+                "travel_axis": "left_to_right",
+                "frame_bias": "left_weighted",
+                "arrival_side": "center",
+                "camera_relation": "three_quarter_follow",
+            }
+        )
+    elif story_function == "handoff":
+        blocking.update(
+            {
+                "blocking_role": "side_handoff",
+                "entry_side": "center",
+                "travel_axis": "left_to_right",
+                "frame_bias": "right_weighted",
+                "arrival_side": "right",
+                "camera_relation": "side_follow",
+            }
+        )
+    elif story_function == "payoff":
+        blocking.update(
+            {
+                "blocking_role": "walk_away",
+                "entry_side": "center",
+                "travel_axis": "away",
+                "frame_bias": "off_center",
+                "arrival_side": "far",
+                "camera_relation": "rear_release",
+            }
+        )
+    elif story_function == "pressure":
+        blocking.update(
+            {
+                "blocking_role": "compressed_hold",
+                "entry_side": "center",
+                "travel_axis": "forward",
+                "frame_bias": "off_center",
+                "arrival_side": "none",
+                "camera_relation": "tight_side_pressure",
+            }
+        )
+    if archetype == "gate_pass":
+        blocking.update({"entry_side": "left", "frame_bias": "left_weighted", "travel_axis": "left_to_right"})
+    if archetype == "threshold_crossing":
+        blocking.update({"camera_relation": "threshold_clearance"})
+    if archetype == "platform_edge":
+        blocking.update({"travel_axis": "left_to_right", "camera_relation": "platform_edge_track"})
+    if archetype == "passage_compression":
+        blocking.update({"blocking_role": "compressed_hold", "frame_bias": "right_weighted", "camera_relation": "wall_close_follow"})
+    if archetype == "window_contact":
+        blocking.update({"frame_bias": "right_weighted", "camera_relation": "contact_side_glide"})
+    if world_zone == "compression":
+        blocking.update({"blocking_role": "compressed_hold", "frame_bias": "right_weighted"})
+    if "changed_street_angle" in tags:
+        blocking.update(
+            {
+                "blocking_role": "edge_entry",
+                "entry_side": "right",
+                "travel_axis": "right_to_left",
+                "frame_bias": "right_weighted",
+                "arrival_side": "center",
+                "camera_relation": "roadside_reentry",
+            }
+        )
+    if "connected_block" in tags:
+        blocking.update(
+            {
+                "blocking_role": "center_carry",
+                "entry_side": "none",
+                "travel_axis": "forward",
+                "frame_bias": "right_weighted",
+                "arrival_side": "none",
+                "camera_relation": "block_carry_follow",
+            }
+        )
+    if "inevitable_stride" in tags:
+        blocking.update(
+            {
+                "blocking_role": "side_handoff",
+                "entry_side": "center",
+                "travel_axis": "left_to_right",
+                "frame_bias": "right_weighted",
+                "arrival_side": "right",
+                "camera_relation": "committed_next_step",
+            }
+        )
+    if "visible_crossing" in tags:
+        blocking.update(
+            {
+                "blocking_role": "edge_entry",
+                "entry_side": "left",
+                "travel_axis": "left_to_right",
+                "frame_bias": "left_weighted",
+                "arrival_side": "center",
+                "camera_relation": "crossing_entry",
+            }
+        )
+    if "release_alive" in tags:
+        blocking.update(
+            {
+                "blocking_role": "center_carry",
+                "entry_side": "none",
+                "travel_axis": "left_to_right",
+                "frame_bias": "off_center",
+                "arrival_side": "right",
+                "camera_relation": "middle_right_carry",
+            }
+        )
+    if "crossing_handoff" in tags:
+        blocking.update(
+            {
+                "blocking_role": "side_handoff",
+                "entry_side": "center",
+                "travel_axis": "left_to_right",
+                "frame_bias": "right_weighted",
+                "arrival_side": "right",
+                "camera_relation": "right_edge_handoff",
+            }
+        )
+    if "wider_departure" in tags:
+        blocking.update(
+            {
+                "blocking_role": "walk_away",
+                "entry_side": "none",
+                "travel_axis": "away",
+                "frame_bias": "off_center",
+                "arrival_side": "far",
+                "camera_relation": "walk_away_release",
+            }
+        )
+    return blocking

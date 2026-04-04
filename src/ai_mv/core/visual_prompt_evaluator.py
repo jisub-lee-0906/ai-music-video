@@ -78,6 +78,7 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
     surface_anchor_strength = 0
     motion_readability = 0
     trace_detail_balance = 0
+    blocking_contract_match = 0
     single_heroine = 0
     optical_takeover = 0
     for row in rows:
@@ -90,6 +91,11 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
         action = str(raw.get("dominant_action", "")).strip().lower()
         continuity = str(raw.get("continuity_delta", "")).strip().lower()
         trace = str(raw.get("content_trace", "")).strip().lower()
+        blocking_role = str(raw.get("blocking_role", "")).strip().lower()
+        entry_side = str(raw.get("entry_side", "")).strip().lower()
+        travel_axis = str(raw.get("travel_axis", "")).strip().lower()
+        frame_bias = str(raw.get("frame_bias", "")).strip().lower()
+        arrival_side = str(raw.get("arrival_side", "")).strip().lower()
         selected_shape = str(raw.get("selected_prompt_shape", "")).strip().lower()
         text = f"{start} {end} {surface} {action} {continuity} {trace}"
         if _matches_story_function(story_function, action, continuity, surface):
@@ -107,6 +113,8 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
             and any(token in surface for token in ("platform", "edge", "threshold", "crosswalk", "stairs", "passage", "gate", "sidewalk"))
         ):
             trace_detail_balance += 1
+        if _matches_blocking_contract(blocking_role, entry_side, travel_axis, frame_bias, arrival_side, text):
+            blocking_contract_match += 1
         if not any(token in text for token in _MULTI_SUBJECT_TOKENS):
             single_heroine += 1
         if any(token in text for token in _OPTICAL_TAKEOVER_TOKENS) and archetype != "window_contact":
@@ -118,6 +126,7 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
         "surface_anchor_strength": round(surface_anchor_strength / float(total), 3),
         "motion_readability": round(motion_readability / float(total), 3),
         "trace_detail_balance": round(trace_detail_balance / float(total), 3),
+        "blocking_contract_match": round(blocking_contract_match / float(total), 3),
         "single_heroine_integrity": round(single_heroine / float(total), 3),
         "optical_takeover_ratio": round(optical_takeover / float(total), 3),
     }
@@ -147,6 +156,10 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
         strengths.append("Trace details mostly stay secondary to the route geometry and action.")
     else:
         risks.append("Trace details still compete with the main surface or action too often.")
+    if metrics["blocking_contract_match"] >= 0.85:
+        strengths.append("Prompt lines preserve the intended entry side, travel axis, and frame bias often enough to stage different MV keyframes.")
+    else:
+        risks.append("Prompt lines still flatten away from the intended blocking contract.")
     if metrics["single_heroine_integrity"] >= 0.95:
         strengths.append("REF prompts keep single-heroine continuity stable.")
     else:
@@ -275,3 +288,35 @@ def _matches_ref_archetype(archetype: str, surface: str, action: str, continuity
     if archetype == "bench_rest":
         return any(token in text for token in ("bench", "seat", "rise again", "foot still planted"))
     return bool(archetype)
+
+
+def _matches_blocking_contract(
+    blocking_role: str,
+    entry_side: str,
+    travel_axis: str,
+    frame_bias: str,
+    arrival_side: str,
+    text: str,
+) -> bool:
+    score = 0
+    if blocking_role == "edge_entry" and any(token in text for token in ("left edge", "right edge", "steps in from", "re-enters from", "enters the", "turnstile lane", "threshold")):
+        score += 1
+    if blocking_role == "center_carry" and any(token in text for token in ("same stride", "keeps the crossing alive", "carries the same stride", "one step farther")):
+        score += 1
+    if blocking_role == "side_handoff" and any(token in text for token in ("right edge", "next state", "already formed", "already committed")):
+        score += 1
+    if blocking_role == "walk_away" and any(token in text for token in ("walks away", "moves away", "leaves the", "wider street")):
+        score += 1
+    if blocking_role == "compressed_hold" and any(token in text for token in ("shorter step", "keeps close", "compress", "tight")):
+        score += 1
+    if entry_side == "left" and any(token in text for token in ("left edge", "left side")):
+        score += 1
+    if entry_side == "right" and any(token in text for token in ("right edge", "right side", "road-side edge")):
+        score += 1
+    if travel_axis == "away" and any(token in text for token in ("walks away", "moves away", "behind her")):
+        score += 1
+    if frame_bias == "right_weighted" and any(token in text for token in ("right edge", "road to her right", "road still riding to her right")):
+        score += 1
+    if arrival_side == "far" and any(token in text for token in ("far side", "wider street", "open street")):
+        score += 1
+    return score > 0

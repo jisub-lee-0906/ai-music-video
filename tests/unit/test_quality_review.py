@@ -91,6 +91,11 @@ def test_quality_review_uses_new_structure():
                         "story_function": "entry",
                         "primary_surface": "turnstile lane",
                         "ref_archetype": "gate_pass",
+                        "blocking_role": "edge_entry",
+                        "entry_side": "left",
+                        "travel_axis": "left_to_right",
+                        "frame_bias": "left_weighted",
+                        "arrival_side": "center",
                         "dominant_action": "She enters the turnstile lane with one readable forward step.",
                         "continuity_delta": "She moves beyond the turnstile lane and lands on the next pavement.",
                         "content_trace": "",
@@ -117,6 +122,7 @@ def test_quality_review_uses_new_structure():
     assert out["direction_review"]["strengths"]
     assert out["prompt_review"]["strengths"] or out["prompt_review"]["risks"] == []
     assert out["prompt_execution_review"]["metrics"]["story_function_match"] > 0
+    assert out["prompt_execution_review"]["metrics"]["blocking_contract_match"] > 0
     assert out["visual_generation_contracts"]["metrics"]["adjacent_transition_integrity"] > 0
     assert out["prompt_review"]["metrics"]["style_alignment_ratio"] > 0.5
     assert "rule_source_trace" in out["prompt_review"]
@@ -131,6 +137,11 @@ def test_quality_review_accepts_platform_edge_directional_step_patterns():
                         "story_function": "pressure",
                         "primary_surface": "wet platform edge with yellow tactile line",
                         "ref_archetype": "platform_edge",
+                        "blocking_role": "compressed_hold",
+                        "entry_side": "center",
+                        "travel_axis": "forward",
+                        "frame_bias": "off_center",
+                        "arrival_side": "none",
                         "dominant_action": "She sets a shorter step along the wet platform edge with the yellow tactile line close at her feet.",
                         "continuity_delta": "She takes a crossing step along the wet platform edge with the yellow tactile line close at her feet and her footprint trail widening behind her.",
                         "content_trace": "footprint trail widening behind her",

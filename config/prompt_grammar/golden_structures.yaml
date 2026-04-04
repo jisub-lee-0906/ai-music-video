@@ -22,11 +22,11 @@ structures:
     story_function: payoff
     ref_archetype: curb_crossing
     preferred_surface: wet crosswalk
-    prompt_contract: Keep the release on a literal wet crosswalk, but make the payoff read as departure and widening release rather than another centered walking frame.
-    preferred_pattern: same heroine + wet crosswalk + moves away toward the far curb + more of the open street surrounding her
-    start_shape: She moves away toward the far curb from the wet crosswalk at night.
-    end_shape: She moves away toward the far curb from the wet crosswalk at night, more of the open street surrounding her.
-    wan_shape: She keeps moving away through the wet crosswalk and leaves more of the open street around her.
+    prompt_contract: Keep the release on a literal wet crosswalk, but make the payoff read as a walk-away departure into the wider street rather than another centered crossing stride.
+    preferred_pattern: same heroine + wet crosswalk + walks away from the crossing + wider street opens around her
+    start_shape: She walks away from the wet crosswalk into the wider street at night.
+    end_shape: She moves away from the wet crosswalk at night, the wider street opening around her as she recedes.
+    wan_shape: She keeps moving away from the wet crosswalk while the wider street opens around her.
   - name: final_release_crosswalk_handoff
     story_function: handoff
     ref_archetype: curb_crossing
@@ -49,11 +49,11 @@ structures:
     story_function: entry
     ref_archetype: curb_crossing
     preferred_surface: wet crosswalk
-    prompt_contract: Start the final release by entering the same wet crosswalk from one side of frame so the release begins as a visible crossing event rather than a generic centered walk.
-    preferred_pattern: same heroine + steps in from the left edge of the wet crosswalk + open road stretching ahead
-    start_shape: She steps in from the left edge of the wet crosswalk at night.
-    end_shape: She steps in from the left edge of the wet crosswalk at night, the open road stretching ahead of her.
-    wan_shape: She keeps entering from the left edge of the wet crosswalk as the road opens ahead of her.
+    prompt_contract: Start the final release by entering the wet crosswalk from the far left edge so the release begins as an unmistakable off-center crossing event rather than a generic centered walk.
+    preferred_pattern: same heroine + steps in from the far left edge of the wet crosswalk + most of the road stays open ahead
+    start_shape: She steps in from the far left edge of the wet crosswalk at night.
+    end_shape: She steps in from the far left edge of the wet crosswalk at night, leaving most of the road open ahead of her.
+    wan_shape: She keeps entering from the far left edge of the wet crosswalk as most of the road stays open ahead.
   - name: pre_handoff_threshold
     story_function: handoff
     ref_archetype: threshold_crossing

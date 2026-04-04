@@ -79,6 +79,12 @@ def test_scene_direction_prompt_chain():
     assert first["dominant_action"]
     assert first["story_event"]
     assert first["story_visual_intent"]
+    assert first["blocking_role"]
+    assert first["entry_side"]
+    assert first["travel_axis"]
+    assert first["frame_bias"]
+    assert first["arrival_side"]
+    assert first["camera_relation"]
     assert first["selected_prompt_shape"]
     assert first["applied_grammar_source"]
 
@@ -89,6 +95,9 @@ def test_scene_direction_prompt_chain():
     assert prompt["wan_items"][0]["start_ref_shot_id"] == "verse1_b1"
     assert prompt["wan_items"][0]["end_ref_shot_id"] == "verse1_b2"
     assert prompt["ref_items"][0]["story_event"] == "She steps onto the outside sidewalk route."
+    assert prompt["ref_items"][0]["blocking_role"]
+    assert prompt["ref_items"][0]["entry_side"]
+    assert prompt["ref_items"][0]["travel_axis"]
     assert prompt["ref_items"][0]["ref_prompt_atoms"]["subject_intro"]
     assert prompt["ref_items"][0]["ref_prompt_contract"]
     assert prompt["ref_items"][0]["ref_start_prompt_text"]
@@ -183,7 +192,69 @@ def test_direction_plan_uses_story_event_to_differentiate_same_sidewalk_family()
     assert first["ref_archetype"] == "sidewalk_continuation"
     assert second["ref_archetype"] == "sidewalk_continuation"
     assert first["dominant_action"] != second["dominant_action"]
+    assert first["entry_side"] != second["entry_side"]
+    assert first["travel_axis"] != second["travel_axis"]
     assert "road-side edge" in second["dominant_action"].lower()
+
+
+def test_direction_plan_assigns_distinct_blocking_for_crosswalk_release_sequence():
+    config = _config()
+    payload = {
+        "scene_outline": {
+            "shot_packages": [
+                {
+                    "shot_id": "finalchorus_b1",
+                    "section_label": "Final Chorus",
+                    "story_function": "entry",
+                    "story_goal": "Start release",
+                    "story_event": "She starts a visible crossing event instead of another neutral walk.",
+                    "world_zone": "open_peak",
+                    "story_visual_intent": "Left-edge entry.",
+                    "why": "b1",
+                },
+                {
+                    "shot_id": "finalchorus_b2",
+                    "section_label": "Final Chorus",
+                    "story_function": "continuation",
+                    "story_goal": "Keep release alive",
+                    "story_event": "She keeps the crossing alive through the center-right lane without falling back to neutral center walking.",
+                    "world_zone": "open_peak",
+                    "story_visual_intent": "Carry.",
+                    "why": "b2",
+                },
+                {
+                    "shot_id": "finalchorus_b3",
+                    "section_label": "Final Chorus",
+                    "story_function": "handoff",
+                    "story_goal": "Hand off release",
+                    "story_event": "She carries the crossing into a readable next-state handoff along the right edge.",
+                    "world_zone": "open_peak",
+                    "story_visual_intent": "Handoff.",
+                    "why": "b3",
+                },
+                {
+                    "shot_id": "finalchorus_b4",
+                    "section_label": "Final Chorus",
+                    "story_function": "payoff",
+                    "story_goal": "Release payoff",
+                    "story_event": "She leaves the crossing behind in a wider forward departure.",
+                    "world_zone": "open_peak",
+                    "story_visual_intent": "Walk-away payoff.",
+                    "why": "b4",
+                },
+            ]
+        }
+    }
+    direction = build_direction_plan(config, payload)
+    b1, b2, b3, b4 = direction["shot_packages"]
+    assert b1["blocking_role"] == "edge_entry"
+    assert b1["entry_side"] == "left"
+    assert b2["blocking_role"] == "center_carry"
+    assert b2["frame_bias"] == "off_center"
+    assert b3["blocking_role"] == "side_handoff"
+    assert b3["arrival_side"] == "right"
+    assert b4["blocking_role"] == "walk_away"
+    assert b4["travel_axis"] == "away"
 
 
 def test_director_edge_handoff_uses_threshold_passage_exit_variant():
@@ -227,7 +298,10 @@ def test_backend_preview_exposes_prompt_rule_trace():
     assert ref_row["applied_global_prompt_rules"]
     assert ref_row["applied_archetype_rules"]
     assert ref_row["story_event"]
+    assert ref_row["blocking_role"]
+    assert ref_row["entry_side"]
     assert "rule_precedence_summary" in ref_row
     assert "applied_golden_structure" in ref_row
     assert wan_row["applied_global_prompt_rules"]
     assert wan_row["applied_archetype_rules"]
+    assert wan_row["blocking_role"]

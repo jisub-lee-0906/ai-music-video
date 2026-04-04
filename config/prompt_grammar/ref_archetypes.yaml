@@ -119,7 +119,7 @@ archetypes:
       curbside_handoff:
         note: Prefer staying close to one curb or right edge with the open road on the opposite side when the beat must differ from entry and payoff.
       far_side_departure:
-        note: Prefer moving away toward the far curb when the payoff must read as widening release rather than another centered stride.
+        note: Prefer a direct walk-away or moves-away departure from the wet crosswalk with the wider street opening around her; avoid abstract receding phrasing that can collapse back into a centered standing frame.
   sidewalk_continuation:
     name: sidewalk_continuation
     story_uses: continuation, open-world travel, release
