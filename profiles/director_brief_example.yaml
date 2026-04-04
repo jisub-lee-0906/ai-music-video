@@ -32,6 +32,35 @@ visual:
     Bridge: She compresses briefly without fully stopping, then regains direction.
     Final Chorus: She crosses into the widest forward release the world can hold.
     Outro: The world keeps her after-image after she has already passed through.
+  section_event_scripts:
+    Intro:
+      - She enters through the first public gate and commits to the connected night world.
+      - She clears the threshold and leaves the outside behind in one readable step.
+    Verse 1:
+      - She steps onto the sidewalk route outside the station and lets the path claim her line.
+      - She keeps the route alive on the sidewalk edge with the road held beside her.
+      - She lands the next sidewalk-side stride so the path already feels chosen before the cut.
+    Verse 2:
+      - She re-enters the same route from a slightly changed street-side angle without breaking continuity.
+      - She keeps the sidewalk-side carry alive through the same connected block.
+      - She sets the next sidewalk-side stride so the route still feels physically inevitable.
+    Pre-Chorus:
+      - She reaches a gate or threshold where the route could widen.
+      - She commits beyond the threshold so the next move is already inevitable.
+    Chorus:
+      - She starts a visible crossing event instead of another neutral walk.
+      - She keeps the crossing alive inside the same open route.
+      - She carries the crossing into a readable next-state handoff.
+    Bridge:
+      - She compresses into a shorter, tighter step without fully stopping.
+      - She regains a forward line inside the same compressed world.
+    Final Chorus:
+      - She enters the final release as a visible crossing event.
+      - She keeps the release alive instead of resetting to a centered walk.
+      - She carries the release to the next crossing state with the open road held beside her.
+      - She leaves the crossing behind in a wider forward departure.
+    Outro:
+      - She is already gone, but the route still holds the shape of her movement.
 character:
   identity_core: >
     same heroine, Korean female idol in her twenties, long dark hair with soft volume and a high ponytail,

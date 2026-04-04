@@ -19,6 +19,15 @@ def _config() -> dict:
                 "Bridge": "She compresses briefly without fully stopping, then regains direction.",
                 "Final Chorus": "She crosses into the widest forward release.",
             },
+            "section_event_scripts": {
+                "Verse 1": [
+                    "She steps onto the outside sidewalk route.",
+                    "She keeps the sidewalk-side route alive.",
+                ],
+                "Bridge": [
+                    "She compresses into a shorter step.",
+                ],
+            },
         },
         "character": {
             "identity_core": "same heroine",
@@ -58,6 +67,7 @@ def test_scene_direction_prompt_chain():
     scene = build_scene_outline(_config(), _payload())
     assert len(scene["shot_packages"]) == 3
     assert scene["shot_packages"][0]["story_function"] == "entry"
+    assert scene["shot_packages"][0]["story_event"] == "She steps onto the outside sidewalk route."
     assert scene["shot_packages"][1]["story_function"] in {"handoff", "continuation"}
     assert scene["section_progression"][0]["world_zone"]
 
@@ -67,6 +77,7 @@ def test_scene_direction_prompt_chain():
     assert first["ref_archetype"]
     assert first["primary_surface"]
     assert first["dominant_action"]
+    assert first["story_event"]
     assert first["story_visual_intent"]
     assert first["selected_prompt_shape"]
     assert first["applied_grammar_source"]
@@ -77,6 +88,7 @@ def test_scene_direction_prompt_chain():
     assert len(prompt["wan_items"]) == 2
     assert prompt["wan_items"][0]["start_ref_shot_id"] == "verse1_b1"
     assert prompt["wan_items"][0]["end_ref_shot_id"] == "verse1_b2"
+    assert prompt["ref_items"][0]["story_event"] == "She steps onto the outside sidewalk route."
     assert prompt["ref_items"][0]["ref_prompt_atoms"]["subject_intro"]
     assert prompt["ref_items"][0]["ref_prompt_contract"]
     assert prompt["ref_items"][0]["ref_start_prompt_text"]
@@ -178,6 +190,7 @@ def test_backend_preview_exposes_prompt_rule_trace():
     wan_row = preview["wan_adapter"][0]["raw_prompt_clauses"]
     assert ref_row["applied_global_prompt_rules"]
     assert ref_row["applied_archetype_rules"]
+    assert ref_row["story_event"]
     assert "rule_precedence_summary" in ref_row
     assert "applied_golden_structure" in ref_row
     assert wan_row["applied_global_prompt_rules"]

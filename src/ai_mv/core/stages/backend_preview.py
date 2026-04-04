@@ -23,6 +23,7 @@ def build_backend_preview(config: dict, payload: dict) -> dict:
                 "raw_prompt_clauses": {
                     "story_function": str(row.get("story_function", "")).strip(),
                     "story_goal": str(row.get("story_goal", "")).strip(),
+                    "story_event": str(row.get("story_event", "")).strip(),
                     "world_zone": str(row.get("world_zone", "")).strip(),
                     "shot_function": str(row.get("shot_function", "")).strip(),
                     "ref_archetype": str(row.get("ref_archetype", "")).strip(),
@@ -52,6 +53,7 @@ def build_backend_preview(config: dict, payload: dict) -> dict:
                 "positive_prompt_preview": str(row.get("wan_positive_prompt_text", "")).strip(),
                 "raw_prompt_clauses": {
                     "story_function": str(row.get("story_function", "")).strip(),
+                    "story_event": str(row.get("story_event", "")).strip(),
                     "wan_transition_family": str(row.get("wan_transition_family", "")).strip(),
                     "bridge_action": str(row.get("wan_prompt_atoms", {}).get("bridge_action", "")).strip(),
                     "primary_surface": str(row.get("wan_prompt_atoms", {}).get("primary_surface", "")).strip(),

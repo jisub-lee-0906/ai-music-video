@@ -1,7 +1,7 @@
 # REF Prompt Closure Checklist
 
 ## Purpose
-This checklist defines when a REF prompt family is considered closed enough to stop exploratory prompting and move on to higher-level MV writing.
+This checklist defines when a REF prompt family is considered closed and stable enough to stop exploratory prompting and move on to higher-level MV writing.
 
 ## Closure Standard
 A family is `closed` only if all of the following are true:
@@ -14,7 +14,7 @@ A family is `closed` only if all of the following are true:
 
 ## Current Status
 
-### Closed Or Nearly Closed
+### Closed
 - `gate_pass`
   - Reason: entry crossing reads cleanly and stays physically grounded.
 - `threshold_crossing / passage_exit`
@@ -41,11 +41,11 @@ A family is `closed` only if all of the following are true:
 - `brace_pause`
   - Current best pattern: same heroine + wet rail + one braced hand + forward line still implied.
   - Reason: latest probe shows a readable brief pause that does not fully collapse into a static fashion pose.
+- `sidewalk_continuation`
+  - Current best pattern: `same heroine + wet sidewalk edge + next sidewalk-side stride + road clearly to her right`
+  - Reason: the latest sequence rerun (`verse1_b1/b2/b3`) now keeps the heroine on a literal sidewalk edge, preserves the road on one side, and avoids collapsing back into a road-center walk.
 
 ### Partially Closed
-- `sidewalk_continuation`
-  - Current best pattern: `same heroine + curb line stays tight at her feet + same stride carries forward`
-  - Why partial: usable and grounded, but still tends to recenter and can collapse back into generic route walking without stronger sequence context.
 - `passage_compression`
   - Current best pattern: `same heroine + right wall of the narrow passage + same stride carrying forward + one hand trails the rail`
   - Why partial: visually strong and usable, but still needs one more in-sequence confirmation before treating it as fully closed.
@@ -87,9 +87,8 @@ A family is `closed` only if all of the following are true:
 - A later variant looks “safe” but visually collapses into the same keyframe role as the previous shot.
 
 ## Next Closure Order
-1. Close `sidewalk_continuation` by proving it can differ from generic walking across at least one repeated sequence context.
-2. Re-open `passage_compression` only if the current profile still needs a stronger non-platform compression event.
-3. Run a full-profile sequence check to see whether `sidewalk_continuation` still flattens repeated sections.
+1. Re-open `passage_compression` only if the current profile still needs a stronger non-platform compression event.
+2. Run a full-profile sequence check to verify that closed families remain distinct when repeated across sections.
 
 ## Rule
-Do not move on to denser story scripting until the current profile has at least one fully closed release family and one fully closed compression family.
+Do not move on to denser story scripting until the current profile's active route/release families are fully closed and stable in real image sequence tests.

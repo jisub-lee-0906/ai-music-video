@@ -22,12 +22,14 @@ def verbalize_ref_prompt_pairs(config: dict, rows: list[dict]) -> dict[str, dict
                 row.get("location", ""),
                 row.get("subject_intro", ""),
                 row.get("start_state", ""),
+                row.get("story_event", ""),
                 row.get("lighting", ""),
             ),
             "end_prompt_text": _join_prompt_parts(
                 row.get("location", ""),
                 row.get("subject_intro", ""),
                 row.get("end_state", ""),
+                row.get("story_event", ""),
                 row.get("lighting", ""),
             ),
         }
@@ -51,6 +53,7 @@ def verbalize_wan_prompts(config: dict, rows: list[dict]) -> dict[str, str]:
             row.get("location", ""),
             row.get("subject_intro", ""),
             row.get("bridge_action", ""),
+            row.get("story_event", ""),
             row.get("lighting", ""),
         )
     return out
@@ -90,6 +93,7 @@ def _verbalize_ref_prompt_pairs_with_codex(config: dict, rows: list[dict]) -> di
         "Preserve meaning exactly. Do not add any new person, place, prop, action, relationship, emotion, symbolism, or story information. "
         f"{flux_rule_block} "
         "The planner has already chosen the shot's dominant grammar, dominant action, primary surface, support detail, and continuity delta. Preserve that hierarchy. "
+        "The planner may also provide a hidden story_event describing the concrete beat-level event; preserve that event difference so repeated archetypes do not collapse into the same generic keyframe. "
         "The planner may also provide a hidden story_visual_intent that explains whether the shot should read as first boundary commit, same-route carry, tightened pressure, next-state handoff, or widest release; preserve that visual distinction instead of flattening different story functions into the same walking shot. "
         "The planner has also chosen a hidden ref_archetype, optional ref_archetype_variant, and ref_archetype_contract based on proven prompt studies; preserve that shot-family logic when merging the sentence. "
         "The planner may also provide ref_preferred_sentence_shape and golden_shot_guidance from successful probes; treat these as high-priority hidden structure, not optional style hints. "
@@ -117,7 +121,7 @@ def _verbalize_ref_prompt_pairs_with_codex(config: dict, rows: list[dict]) -> di
         "Avoid helper phrasing such as 'is in', 'is at', or 'is standing in' when a cleaner natural sentence can be formed. "
         "Avoid weakening the action into gaze-only, breath-only, or mood-only wording if the clauses already contain a clearer physical action. "
         "Do not foreground pause, hesitation, breath, heartbeat, or memory wording if the clauses already support a more readable physical action in the same place. "
-        "For each shot, produce start_prompt_text and end_prompt_text by naturally merging: subject_intro, dominant_action, location or primary_surface, state/action, support_detail only if still secondary, and lighting. "
+        "For each shot, produce start_prompt_text and end_prompt_text by naturally merging: subject_intro, dominant_action, location or primary_surface, state/action, story_event when it adds concrete beat-level change, support_detail only if still secondary, and lighting. "
         "Keep start and end as adjacent states in the same place. "
         "Return JSON only.\n\n"
         f"Shots={rows}"
@@ -167,6 +171,7 @@ def _verbalize_wan_prompts_with_codex(config: dict, rows: list[dict]) -> dict[st
         "Preserve meaning exactly. Do not add any new person, place, prop, action, relationship, emotion, symbolism, or story information. "
         f"{flux_rule_block} "
         "The planner has already chosen the shot's dominant grammar, dominant action, primary surface, support detail, and continuity delta. Preserve that hierarchy. "
+        "The planner may also provide a hidden story_event describing the concrete beat-level transition; preserve that event difference so repeated bridge families do not flatten into the same movement. "
         "The planner may also provide a hidden story_visual_intent that explains whether the bridge should feel like boundary commit, same-route carry, tightened pressure, next-state handoff, or widest release; preserve that transition intent instead of flattening all bridges into the same generic movement. "
         "The planner has also chosen a hidden ref_archetype, optional ref_archetype_variant, ref_archetype_contract, and wan_transition_contract based on proven prompt studies; preserve that shot-family logic when merging the sentence. "
         "The planner may also provide ref_preferred_sentence_shape and golden_shot_guidance from successful probes; treat these as high-priority hidden structure, not optional style hints. "

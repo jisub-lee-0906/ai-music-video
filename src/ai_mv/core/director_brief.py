@@ -24,6 +24,45 @@ _DEFAULT_SECTION_STORY_ROLES = {
     "Outro": "The world keeps her after-image after she has already passed through.",
 }
 
+_DEFAULT_SECTION_EVENT_SCRIPTS = {
+    "Intro": [
+        "She enters through the first public boundary and commits to the connected night world.",
+        "She clears the threshold and leaves the outside behind in one readable step.",
+    ],
+    "Verse 1": [
+        "She takes the route outside the station and lets the street-side path claim her line.",
+        "She keeps the same route alive on the sidewalk edge instead of drifting into the road.",
+        "She arrives at the next sidewalk-side beat with the road still held beside her.",
+    ],
+    "Verse 2": [
+        "She re-enters the route from a slightly changed street-side angle without breaking continuity.",
+        "She keeps the sidewalk-side carry alive through the same connected block.",
+        "She sets the next sidewalk-side stride so the path already feels chosen before the cut.",
+    ],
+    "Pre-Chorus": [
+        "She reaches a gate or threshold where the route could widen.",
+        "She commits past the threshold so the next move is already inevitable.",
+    ],
+    "Chorus": [
+        "She begins a visible crossing event instead of another neutral walk.",
+        "She keeps the crossing alive inside the same open space.",
+        "She carries the crossing into a readable next-state handoff.",
+    ],
+    "Bridge": [
+        "She compresses her movement into a shorter, tighter step without fully stopping.",
+        "She regains a forward line inside the same compressed world.",
+    ],
+    "Final Chorus": [
+        "She enters the final release as a visible crossing event.",
+        "She keeps the crossing alive instead of resetting to a centered walk.",
+        "She carries the release to the next crossing state with the open road held beside her.",
+        "She leaves the crossing behind in a wider forward departure.",
+    ],
+    "Outro": [
+        "She is already gone, but the route still holds the shape of her movement.",
+    ],
+}
+
 _DEFAULT_IDENTITY_HOOKS = [
     "airy see-through bangs with high ponytail",
     "soft face-framing strands around the jawline",
@@ -50,6 +89,7 @@ def build_director_brief_intent(config: dict) -> dict:
     style = _compose_style_contract(audio, visual)
     world_rules = _text(visual, "world_rules")
     section_roles = _section_story_roles(visual.get("section_story_roles", {}))
+    section_event_scripts = _section_event_scripts(visual.get("section_event_scripts", {}))
     return {
         "brief_name": str(config.get("brief", "")).strip() or "director_brief_example",
         "identity_core": _text(character, "identity_core"),
@@ -70,6 +110,7 @@ def build_director_brief_intent(config: dict) -> dict:
         "heroine_arc": _text(visual, "heroine_arc"),
         "forbidden_story_moves": _text(visual, "forbidden_story_moves"),
         "section_story_roles": section_roles,
+        "section_event_scripts": section_event_scripts,
         "section_grammar": section_roles,
         "wan_negative": _text(visual, "wan_negative") or _DEFAULT_WAN_NEGATIVE,
         "audio_language": _text(audio, "language") or "ko",
@@ -124,6 +165,33 @@ def _section_story_roles(raw: object) -> dict[str, str]:
             continue
         for alias in aliases:
             out.setdefault(alias, desc)
+    return out
+
+
+def _section_event_scripts(raw: object) -> dict[str, list[str]]:
+    out = {key: list(value) for key, value in _DEFAULT_SECTION_EVENT_SCRIPTS.items()}
+    if isinstance(raw, Mapping):
+        for key, value in raw.items():
+            label = str(key).strip()
+            if not label:
+                continue
+            if isinstance(value, list):
+                events = [str(item).strip() for item in value if str(item).strip()]
+            else:
+                text = str(value).strip()
+                events = [text] if text else []
+            if events:
+                out[label] = events
+    alias_pairs = {
+        "Pre-Chorus": ["Pre-Chorus 2"],
+        "Chorus": ["Chorus 2"],
+    }
+    for canonical, aliases in alias_pairs.items():
+        events = list(out.get(canonical, []))
+        if not events:
+            continue
+        for alias in aliases:
+            out.setdefault(alias, list(events))
     return out
 
 
