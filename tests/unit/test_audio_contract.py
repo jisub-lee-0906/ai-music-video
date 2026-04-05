@@ -110,6 +110,25 @@ def test_validate_audio_lyrics_quality_rejects_overdense_korean_line():
         validate_audio_lyrics_quality(blocks, "ko")
 
 
+def test_validate_audio_lyrics_quality_allows_short_english_hook_in_korean():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛 아래 숨을 고르고", "젖은 바닥 위로 발끝이 먼저 가"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["Super shy, 네 이름이 번져", "젖은 플랫폼 위로 마음이 가", "초록 불빛 따라 더 가까워져", "오늘 밤 끝에서 네게 닿아"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["Super shy, 밤이 더 열려", "젖은 불빛 끝에 두 손이 닿아", "도시의 끝에서 네온이 번져", "오늘 밤 끝내 너를 안아"]},
+    ]
+    validate_audio_lyrics_quality(blocks, "ko")
+
+
+def test_validate_audio_lyrics_quality_rejects_long_english_sentence_in_korean():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛 아래 숨을 고르고", "젖은 바닥 위로 발끝이 먼저 가"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["I will always run to you through the city tonight", "젖은 플랫폼 위로 마음이 가", "초록 불빛 따라 더 가까워져", "오늘 밤 끝에서 네게 닿아"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "개찰구가 열려", "우리 이름이 빛나"]},
+    ]
+    with pytest.raises(RuntimeError, match="expected readable Korean lines|too much English"):
+        validate_audio_lyrics_quality(blocks, "ko")
+
+
 def test_validate_audio_lyrics_quality_rejects_chorus_without_short_hook_line():
     blocks = [
         {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛이 손끝에 스치고", "젖은 바닥 위로 발자국이 번져", "유리문에 숨을 고르고", "밤의 끝을 천천히 따라가"]},

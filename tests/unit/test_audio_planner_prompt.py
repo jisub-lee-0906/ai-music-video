@@ -10,6 +10,7 @@ def _prompt_plan(**extra):
         "director_brief_intent": {
             "audio_brief": "glossy pop production with late-night momentum",
             "audio_hook_brief": "rain-light hook with a clean forward lift",
+            "audio_hook_english_fragments": ["all night", "call my name"],
             "visual_brief": "cinematic city-night movement",
             "story_world": "late-night transit spaces and wet street reflections",
             "world_core": "one connected city night with reflective thresholds",
@@ -62,6 +63,7 @@ def test_audio_outline_prompt_keeps_language_direction():
     assert "canonical English section labels exactly as provided in the outline" in prompt
     assert "Character identity=Korean female idol in her twenties." in prompt
     assert "future bracketed lyric markup skeleton" in prompt
+    assert "Hook English fragments=all night, call my name." in prompt
 
 
 def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
@@ -77,6 +79,7 @@ def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
             "section_bars": {"outro": 2},
             "brief": "glossy synth-pop with a bright but emotional lead vocal",
             "hook_brief": "a title-worthy hook with a clean final lift",
+            "hook_english_fragments": ["all night", "call my name"],
             "bpm": 118,
         },
         "visual": {
@@ -93,6 +96,7 @@ def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
     plan = audio_planner.build_audio_plan(config, {"run_id": "audio_test"})
     assert plan["audio_direction"] == "glossy synth-pop with a bright but emotional lead vocal"
     assert plan["hook_direction"] == "a title-worthy hook with a clean final lift"
+    assert plan["hook_english_fragments"] == ["all night", "call my name"]
     assert "random sci-fi drift" in plan["negative_direction"]
     assert plan["genre_head"] == "K-Pop"
     assert plan["vocal_profile"] == "female lead vocal"

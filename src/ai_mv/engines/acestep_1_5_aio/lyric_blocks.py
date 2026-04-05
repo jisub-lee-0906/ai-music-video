@@ -67,11 +67,20 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
     label = str(block.get("label", "")).strip()
     line_count = int(block.get("line_count", 1))
     block_constraints = _current_block_constraints(completed, block)
+    hook_fragments = [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+    hook_fragment_clause = ""
+    if str(plan.get("language", "")).strip().lower() == "ko" and label in {"Chorus", "Chorus 2", "Final Chorus"} and hook_fragments:
+        hook_fragment_clause = (
+            "If it fits naturally, you may use exactly one short English hook fragment in this block. "
+            f"Preferred fragments: {', '.join(hook_fragments)}. "
+            "Do not use more than one English fragment line in the block. "
+        )
     return (
         _audio_lyrics_rules_qwen(plan)
         + f"{_language_clause(plan)}{_intent_clause(plan)}"
         + f"Current block=[{label}] section={str(block.get('section', '')).strip()} style={str(block.get('style', '')).strip()} line_count={line_count}. "
         + block_constraints
+        + hook_fragment_clause
         + "Write only the lyric body for the current block. "
         + "Do not output the header. Do not output numbering, bullets, explanations, or blank filler lines. "
         + f"Output exactly {line_count} finished lyric lines, one per line. "

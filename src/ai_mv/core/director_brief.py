@@ -116,6 +116,7 @@ def build_director_brief_intent(config: dict) -> dict:
         "audio_language": _text(audio, "language") or "ko",
         "audio_brief": _text(audio, "brief"),
         "audio_hook_brief": _text(audio, "hook_brief"),
+        "audio_hook_english_fragments": _str_list(audio.get("hook_english_fragments", [])),
         "visual_brief": _text(visual, "story_premise"),
         "visual_negative": _text(visual, "forbidden_story_moves"),
         "story_world": world_rules,

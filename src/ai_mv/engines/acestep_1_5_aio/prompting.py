@@ -238,6 +238,7 @@ def _intent_clause(plan: dict) -> str:
     parts = [
         _profile_line("Audio intent", intent.get("audio_brief", "")),
         _profile_line("Hook intent", intent.get("audio_hook_brief", "")),
+        _profile_line("Hook English fragments", ", ".join(str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip())),
         _profile_line("Visual intent", intent.get("visual_brief", "")),
         _profile_line("Story world", story_world),
         _profile_line("World core", world_core if world_core and world_core != story_world else ""),

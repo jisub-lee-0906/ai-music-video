@@ -120,10 +120,13 @@ def _audio_intent_fields(intent: dict) -> dict:
     return {
         "audio_direction": str(intent.get("audio_brief", "")).strip(),
         "hook_direction": str(intent.get("audio_hook_brief", "")).strip(),
+        "hook_english_fragments": list(intent.get("audio_hook_english_fragments", []))
+        if isinstance(intent.get("audio_hook_english_fragments", []), list)
+        else [],
         "visual_direction": str(intent.get("visual_brief", "")).strip(),
         "negative_direction": " ".join(
             part for part in [str(intent.get("visual_negative", "")).strip(), str(intent.get("avoid", "")).strip()] if part
-        ).strip(),
+            ).strip(),
         "style_guidance": str(intent.get("style_contract", "")).strip(),
     }
 
@@ -140,6 +143,9 @@ def _audio_runtime_context(plan: dict) -> dict:
         "quality": plan["quality"],
         "audio_direction": str(plan.get("audio_direction", "")).strip(),
         "hook_direction": str(plan.get("hook_direction", "")).strip(),
+        "hook_english_fragments": list(plan.get("hook_english_fragments", []))
+        if isinstance(plan.get("hook_english_fragments", []), list)
+        else [],
         "visual_direction": str(plan.get("visual_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
         "style_guidance": str(plan.get("style_guidance", "")).strip(),
