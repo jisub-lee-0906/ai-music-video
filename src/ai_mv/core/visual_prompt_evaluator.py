@@ -53,6 +53,9 @@ _OPTICAL_TAKEOVER_TOKENS = (
 
 _TRACE_TOKENS = ("footprint", "footprints", "trail", "trace")
 _SECONDARY_DETAIL_TOKENS = ("one arm swinging free", "free arm", "handrail", "rail", "curb line")
+_INCIDENT_ARCHETYPES = ("window_contact", "bench_rest", "brace_pause")
+_CONTACT_TOKENS = ("hand", "palm", "contact", "trail", "braced", "bench", "seat", "window", "glass", "rail")
+_LOCOMOTION_TOKENS = ("walk", "step", "stride", "cross", "crossing", "moves away", "walks away", "keeps moving", "moving along")
 
 
 def build_visual_prompt_evaluation(payload: dict) -> dict:
@@ -81,6 +84,9 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
     blocking_contract_match = 0
     single_heroine = 0
     optical_takeover = 0
+    incident_shots = 0
+    contact_action_shots = 0
+    locomotion_dominant_shots = 0
     for row in rows:
         start = str(row.get("start_prompt_preview", "")).strip().lower()
         end = str(row.get("end_prompt_preview", "")).strip().lower()
@@ -119,6 +125,12 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
             single_heroine += 1
         if any(token in text for token in _OPTICAL_TAKEOVER_TOKENS) and archetype != "window_contact":
             optical_takeover += 1
+        if archetype in _INCIDENT_ARCHETYPES:
+            incident_shots += 1
+        if any(token in text for token in _CONTACT_TOKENS):
+            contact_action_shots += 1
+        if any(token in text for token in _LOCOMOTION_TOKENS) and archetype not in _INCIDENT_ARCHETYPES:
+            locomotion_dominant_shots += 1
     metrics = {
         "story_function_match": round(story_function_match / float(total), 3),
         "archetype_selection_match": round(archetype_match / float(total), 3),
@@ -129,6 +141,9 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
         "blocking_contract_match": round(blocking_contract_match / float(total), 3),
         "single_heroine_integrity": round(single_heroine / float(total), 3),
         "optical_takeover_ratio": round(optical_takeover / float(total), 3),
+        "incident_diversity_ratio": round(incident_shots / float(total), 3),
+        "contact_action_ratio": round(contact_action_shots / float(total), 3),
+        "locomotion_dominance_ratio": round(locomotion_dominant_shots / float(total), 3),
     }
     strengths = []
     risks = []
@@ -168,6 +183,18 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
         strengths.append("Optical motifs rarely take over the prompt nucleus.")
     else:
         risks.append("Optical motifs still replace the main action in some prompts.")
+    if metrics["incident_diversity_ratio"] >= 0.2:
+        strengths.append("REF prompt lines include enough non-locomotion incident families to help the MV read as lived action.")
+    else:
+        risks.append("REF prompt lines still underuse contact or seated incident families, so the MV may collapse back into walking variation.")
+    if metrics["contact_action_ratio"] >= 0.25:
+        strengths.append("REF prompt lines include a healthy amount of literal contact action rather than route-only movement.")
+    else:
+        risks.append("REF prompt lines still lack enough literal contact action to punctuate the route with story incidents.")
+    if metrics["locomotion_dominance_ratio"] <= 0.75:
+        strengths.append("REF prompt lines are no longer overwhelmingly dominated by stride and crossing language.")
+    else:
+        risks.append("REF prompt lines are still too dominated by locomotion language, even when the contracts are technically distinct.")
     return {
         "reasoning": "REF prompt previews were checked for story-function fit, archetype fit, selected prompt-shape execution, surface anchoring, motion readability, trace-detail balance, and single-heroine integrity.",
         "strengths": strengths,
@@ -234,7 +261,7 @@ def _matches_story_function(story_function: str, action: str, continuity: str, s
         "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to", "first committed stride", "path feel established", "steps in from", "entry side", "road opening ahead", "re-enters from", "road-side edge"),
         "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing", "middle-right side", "keeps the crossing live", "road staying beside", "road still beside", "road still riding to her right", "same connected block", "without falling back to center"),
         "pressure": ("shorter step", "brace", "tight", "close", "smaller", "compress", "yellow tactile line close", "edge geometry close"),
-        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "route forward", "immediate passage", "already formed", "already committed", "keeps close to", "same crossing stride carries forward", "traffic opening", "right edge", "open road held", "road still held beside", "road clearly beside", "curb held under", "road to her right", "road clearly to her right", "already chosen before the cut", "next crossing state already formed"),
+        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "next sidewalk-side stride", "next longer step", "route forward", "immediate passage", "already formed", "already committed", "keeps close to", "same crossing stride carries forward", "traffic opening", "right edge", "open road held", "road still held beside", "road clearly beside", "curb held under", "road to her right", "road clearly to her right", "already chosen before the cut", "next crossing state already formed"),
         "payoff": ("far side", "opens", "release", "wider", "drive forward", "final", "far curb", "full release", "widest", "moves away", "open street surrounding", "walks away", "wider street"),
         "reflection": ("looks back", "over one shoulder", "turns back"),
     }
@@ -307,7 +334,7 @@ def _matches_blocking_contract(
         score += 1
     if blocking_role == "walk_away" and any(token in text for token in ("walks away", "moves away", "leaves the", "wider street")):
         score += 1
-    if blocking_role == "compressed_hold" and any(token in text for token in ("shorter step", "keeps close", "compress", "tight")):
+    if blocking_role == "compressed_hold" and any(token in text for token in ("shorter step", "keeps close", "keeping close", "compress", "tight", "next longer step", "track beside her", "track still runs beside her")):
         score += 1
     if entry_side == "left" and any(token in text for token in ("left edge", "left side")):
         score += 1

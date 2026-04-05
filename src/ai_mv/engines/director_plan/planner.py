@@ -88,6 +88,9 @@ def _shot_function(story_function: str, world_zone: str) -> str:
 
 
 def _ref_archetype_for_shot(shot: dict) -> str:
+    override = _event_driven_archetype_override(shot)
+    if override:
+        return override
     section = str(shot.get("section_label", "")).strip().lower()
     story_function = str(shot.get("story_function", "")).strip()
     world_zone = str(shot.get("world_zone", "")).strip()
@@ -134,6 +137,9 @@ def _ref_archetype_for_shot(shot: dict) -> str:
 
 
 def _ref_archetype_variant_for_shot(shot: dict, archetype: str) -> str:
+    override = _event_driven_variant_override(shot, archetype)
+    if override:
+        return override
     section = str(shot.get("section_label", "")).strip().lower()
     story_function = str(shot.get("story_function", "")).strip()
     world_zone = str(shot.get("world_zone", "")).strip()
@@ -190,14 +196,14 @@ def _dominant_action(
         },
         "curb_crossing": {
             "entry": f"She steps in from one side of the {surface} with the road opening ahead of her.",
-            "continuation": f"She keeps the same crossing stride alive through the middle-right side of the {surface}.",
-            "handoff": f"She carries the same stride along the right edge of the {surface} with the open road held to the opposite side.",
-            "payoff": f"She moves away through the {surface} with the far side opening wider around her.",
+            "continuation": f"She keeps the same crossing stride alive through the middle-right side of the {surface} without falling back to center.",
+            "handoff": f"She carries the same stride along the right edge of the {surface} with the open road held to her left.",
+            "payoff": f"She walks away from the {surface} into the wider street at night.",
         },
         "sidewalk_continuation": {
-            "entry": f"She takes the first committed stride along the {surface} with the road opening beside her.",
+            "entry": f"She steps in from the road-side edge of the {surface} with the route opening beside her.",
             "continuation": f"She carries the same stride along the {surface} with the road still riding to her right.",
-            "handoff": f"She sets the next stride on the {surface} with the curb held under her near side and the road to her right.",
+            "handoff": f"She sets the next sidewalk-side stride on the {surface} with the road clearly to her right.",
         },
         "stair_descent": {
             "entry": f"She steps down the {surface} with one continuous handrail contact.",
@@ -212,6 +218,16 @@ def _dominant_action(
         "window_contact": {
             "entry": f"She keeps close to the {surface} with one direct contact detail and keeps moving.",
             "handoff": f"She lets the contact slide off the {surface} and carries the next step past it.",
+        },
+        "bench_rest": {
+            "entry": f"She sits at the end of the {surface} with one foot still planted as if she could rise again.",
+            "pressure": f"She sits at the end of the {surface} for one compressed beat with one foot still planted as if she could rise again.",
+            "handoff": f"She leans forward from the end of the {surface} and gathers the next step without fully settling.",
+        },
+        "brace_pause": {
+            "entry": f"She pauses at the {surface} with one hand braced on the metal bar.",
+            "pressure": f"She braces at the {surface} with one hand fixed on the metal bar while the next step waits.",
+            "handoff": f"She lets the braced contact loosen at the {surface} and keeps the next step ready.",
         },
         "platform_edge": {
             "entry": _platform_edge_start(variant, surface),
@@ -263,13 +279,13 @@ def _continuity_delta(
         "curb_crossing": {
             "entry": f"She carries the crossing one beat farther from the entry side of the {surface}.",
             "continuation": f"She crosses one beat farther through the middle-right side of the {surface} and keeps the crossing live.",
-            "handoff": f"She keeps to the right edge of the {surface} and leaves the open road clearly opposite her.",
-            "payoff": f"She leaves the {surface} behind as more of the open street surrounds her in full release.",
+            "handoff": f"She keeps to the right edge of the {surface} and leaves the next crossing state already formed with the open road held to her left.",
+            "payoff": f"She leaves the {surface} behind and keeps walking away as the wider street opens around her.",
         },
         "sidewalk_continuation": {
-            "entry": f"She carries the route one readable stride farther along the {surface} and leaves the road clearly beside her.",
+            "entry": f"She carries the route one readable stride farther from the road-side edge of the {surface} and leaves the road clearly beside her.",
             "continuation": f"She keeps the same stride on the {surface} and moves one step farther with the road still riding to her right.",
-            "handoff": f"She lands the next stride on the {surface} and keeps the road clearly to her right.",
+            "handoff": f"She lands the next sidewalk-side stride on the {surface} and keeps the road clearly to her right.",
         },
         "stair_descent": {
             "entry": f"She lands one step lower on the {surface} and keeps descending.",
@@ -284,6 +300,16 @@ def _continuity_delta(
         "window_contact": {
             "entry": f"She changes the contact slightly and keeps moving past the edge.",
             "handoff": f"She lets the contact fall behind and keeps moving past the edge.",
+        },
+        "bench_rest": {
+            "entry": f"She stays at the end of the {surface} with one foot planted and the route still waiting in front of her.",
+            "pressure": f"She holds the compressed seat at the end of the {surface} for one beat, still planted to rise again.",
+            "handoff": f"She tips forward from the end of the {surface} and leaves the rise already forming before the cut.",
+        },
+        "brace_pause": {
+            "entry": f"She keeps one hand braced on the {surface} and leaves the pause able to break at once.",
+            "pressure": f"She holds one beat at the {surface} with the braced contact still carrying pressure forward.",
+            "handoff": f"She loosens the braced contact at the {surface} and leaves the next step ready to resume.",
         },
         "platform_edge": {
             "entry": _platform_edge_end(variant, surface),
@@ -314,14 +340,6 @@ def _content_trace(story_function: str, archetype: str, variant: str, guidance: 
         return special
     if archetype == "platform_edge" and variant == "bridge_motion" and story_function == "pressure":
         return "footprint trail widening behind her"
-    if archetype == "curb_crossing" and story_function == "payoff":
-        return "more of the open street surrounding her"
-    if archetype == "curb_crossing" and story_function == "handoff":
-        return "the open road holding to her left"
-    if archetype == "sidewalk_continuation" and story_function == "continuation":
-        return "the road still riding to her right"
-    if archetype == "sidewalk_continuation" and story_function == "handoff":
-        return "the road clearly to her right"
     if archetype == "stair_descent":
         return "one hand sliding along the handrail"
     if archetype == "passage_compression":
@@ -330,7 +348,7 @@ def _content_trace(story_function: str, archetype: str, variant: str, guidance: 
 
 
 def _identity_hook_policy(archetype: str, variant: str) -> str:
-    if archetype in {"threshold_crossing", "doorway_handoff", "window_contact"}:
+    if archetype in {"threshold_crossing", "doorway_handoff", "window_contact", "bench_rest", "brace_pause"}:
         return "optional_small_hook"
     if archetype == "platform_edge" and variant == "bridge_motion":
         return "optional_small_hook"
@@ -402,6 +420,12 @@ def _story_surface_override(story_function: str, archetype: str, variant: str, s
         ("threshold_crossing", "handoff"): "station threshold",
         ("gate_pass", "entry"): "turnstile lane",
     }
+    if archetype == "window_contact":
+        return "station window"
+    if archetype == "bench_rest":
+        return "wet bench end"
+    if archetype == "brace_pause":
+        return "wet rail"
     if archetype == "sidewalk_continuation" and "changed_street_angle" in tags:
         return "wet curb-side sidewalk edge"
     if archetype == "sidewalk_continuation" and "connected_block" in tags:
@@ -416,6 +440,20 @@ def _story_surface_override(story_function: str, archetype: str, variant: str, s
 def _event_tags(story_event: str) -> set[str]:
     low = str(story_event or "").strip().lower()
     tags: set[str] = set()
+    if any(token in low for token in ("window", "glass")):
+        tags.add("window_contact")
+    if any(token in low for token in ("hand", "palm", "trailing", "contact")):
+        tags.add("contact_detail")
+    if any(token in low for token in ("bench", "seat", "sits", "sit")):
+        tags.add("bench_rest")
+    if "rise again" in low or "rise" in low:
+        tags.add("rise_ready")
+    if "leans forward" in low or "gathers her next step" in low:
+        tags.add("bench_rise_ready")
+    if "braced" in low or "brace" in low:
+        tags.add("brace_pause")
+    if "rail" in low and "hold" in low:
+        tags.add("brace_pause")
     if "slightly changed street-side angle" in low:
         tags.add("changed_street_angle")
     if "same connected block" in low:
@@ -433,7 +471,39 @@ def _event_tags(story_event: str) -> set[str]:
     return tags
 
 
+def _event_driven_archetype_override(shot: dict) -> str:
+    tags = _event_tags(str(shot.get("story_event", "")).strip())
+    if "window_contact" in tags and "contact_detail" in tags:
+        return "window_contact"
+    if "bench_rest" in tags:
+        return "bench_rest"
+    if "brace_pause" in tags:
+        return "brace_pause"
+    return ""
+
+
+def _event_driven_variant_override(shot: dict, archetype: str) -> str:
+    tags = _event_tags(str(shot.get("story_event", "")).strip())
+    if archetype == "bench_rest" and "bench_rise_ready" in tags:
+        return "rise_ready"
+    return ""
+
+
 def _event_driven_action(archetype: str, story_function: str, surface: str, event_tags: set[str]) -> str:
+    if archetype == "window_contact":
+        if "window_contact" in event_tags:
+            return f"She keeps close to the {surface} and moves forward, one hand trailing the metal edge."
+        if "contact_detail" in event_tags:
+            return f"She keeps one palm on the {surface} and steadies her breath without fully stopping."
+    if archetype == "bench_rest":
+        if story_function == "pressure" and "bench_rest" in event_tags:
+            return f"She sits at the end of the {surface} for one compressed beat, one foot still planted as if she could rise again."
+        if "bench_rise_ready" in event_tags:
+            return f"She leans forward from the end of the {surface} and gathers her next step without fully settling."
+        if "bench_rest" in event_tags:
+            return f"She sits at the end of the {surface}, one foot still planted as if she could rise again."
+    if archetype == "brace_pause" and "brace_pause" in event_tags:
+        return f"She braces at the {surface} with one hand fixed on the metal bar while the next step waits."
     if archetype == "sidewalk_continuation":
         if "changed_street_angle" in event_tags:
             return f"She re-enters from the road-side edge of the {surface} at night with the road opening hard to her right."
@@ -454,36 +524,44 @@ def _event_driven_action(archetype: str, story_function: str, surface: str, even
 
 
 def _event_driven_continuity(archetype: str, story_function: str, surface: str, event_tags: set[str]) -> str:
+    if archetype == "window_contact":
+        if "window_contact" in event_tags:
+            return f"She lets the contact slide off the {surface} and keeps moving past the edge."
+        if "contact_detail" in event_tags:
+            return f"She lets the palm contact soften on the {surface} and leaves the threshold commitment ready."
+    if archetype == "bench_rest":
+        if story_function == "pressure" and "bench_rest" in event_tags:
+            return f"She holds the compressed seat at the end of the {surface} for one beat, still planted to rise again."
+        if "bench_rise_ready" in event_tags:
+            return f"She tips forward from the end of the {surface} and leaves the rise already forming before the cut."
+        if "bench_rest" in event_tags:
+            return f"She stays at the end of the {surface} with one foot planted and the route still waiting in front of her."
+    if archetype == "brace_pause" and "brace_pause" in event_tags:
+        return f"She loosens the braced contact at the {surface} and leaves the next step ready to resume."
     if archetype == "sidewalk_continuation":
         if "changed_street_angle" in event_tags:
             return f"She commits one step farther from the road-side edge and keeps the station block stretching behind her."
         if "connected_block" in event_tags:
-            return f"She moves one step farther along the {surface} and keeps the same connected block alive beside her."
+            return f"She lands the next sidewalk-side stride along the {surface} and keeps the same connected block alive with the road still riding to her right."
         if "inevitable_stride" in event_tags:
             return f"She lands the next sidewalk-side stride and leaves the curb-side line already chosen before the cut."
     if archetype == "curb_crossing":
         if "release_alive" in event_tags:
             return f"She carries one more crossing step through the middle-right side of the {surface} and keeps the release live."
         if "crossing_handoff" in event_tags:
-            return f"She leaves the next crossing state already formed at the right edge of the {surface}."
+            return f"She leaves the next crossing state already formed at the right edge of the {surface} with the open road held to her left."
         if "wider_departure" in event_tags:
-            return f"She leaves the {surface} behind and lets the wider street take over her forward line."
+            return f"She leaves the {surface} behind and keeps walking away as the wider street opens around her."
     return ""
 
 
 def _event_driven_trace(archetype: str, story_function: str, event_tags: set[str]) -> str:
-    if archetype == "sidewalk_continuation":
-        if "changed_street_angle" in event_tags:
-            return "the road opening hard to her right"
-        if "connected_block" in event_tags:
-            return "the same connected block still running beside her"
-        if "inevitable_stride" in event_tags:
-            return "the curb still guiding her near side"
-    if archetype == "curb_crossing":
-        if "crossing_handoff" in event_tags:
-            return "the open road still held to her left"
-        if "wider_departure" in event_tags:
-            return "more of the open street widening around her"
+    if archetype == "window_contact":
+        return "one hand trailing the metal edge"
+    if archetype == "bench_rest":
+        return "one foot still planted"
+    if archetype == "brace_pause":
+        return "one hand braced on the metal bar"
     return ""
 
 
@@ -551,6 +629,28 @@ def _blocking_contract(story_function: str, archetype: str, world_zone: str, sto
         blocking.update({"blocking_role": "compressed_hold", "frame_bias": "right_weighted", "camera_relation": "wall_close_follow"})
     if archetype == "window_contact":
         blocking.update({"frame_bias": "right_weighted", "camera_relation": "contact_side_glide"})
+    if archetype == "bench_rest":
+        blocking.update(
+            {
+                "blocking_role": "compressed_hold",
+                "entry_side": "right",
+                "travel_axis": "forward",
+                "frame_bias": "right_weighted",
+                "arrival_side": "none",
+                "camera_relation": "bench_end_hold",
+            }
+        )
+    if archetype == "brace_pause":
+        blocking.update(
+            {
+                "blocking_role": "compressed_hold",
+                "entry_side": "right",
+                "travel_axis": "forward",
+                "frame_bias": "right_weighted",
+                "arrival_side": "none",
+                "camera_relation": "rail_brace_hold",
+            }
+        )
     if world_zone == "compression":
         blocking.update({"blocking_role": "compressed_hold", "frame_bias": "right_weighted"})
     if "changed_street_angle" in tags:

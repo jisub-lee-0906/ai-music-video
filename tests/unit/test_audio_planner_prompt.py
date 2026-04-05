@@ -97,6 +97,7 @@ def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
     assert plan["audio_direction"] == "glossy synth-pop with a bright but emotional lead vocal"
     assert plan["hook_direction"] == "a title-worthy hook with a clean final lift"
     assert plan["hook_english_fragments"] == ["all night", "call my name"]
+    assert plan["selected_hook_candidate"]
     assert "random sci-fi drift" in plan["negative_direction"]
     assert plan["genre_head"] == "K-Pop"
     assert plan["vocal_profile"] == "female lead vocal"

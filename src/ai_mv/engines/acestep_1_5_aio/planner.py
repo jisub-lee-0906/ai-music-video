@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.output_paths import audio_prefix
 from ai_mv.core.contracts.prompt_normalize import (
@@ -55,8 +57,14 @@ def build_audio_preview_prompt(plan: dict) -> str:
 
 
 def _plan_with_llm(config: dict, plan: dict) -> dict:
-    outline = _plan_outline_with_llm(config, plan)
-    return _plan_lyrics_with_llm(config, plan, outline)
+    hook_state = _plan_hook_candidates_with_llm(config, plan)
+    hooked_plan = dict(plan)
+    hooked_plan.update(hook_state)
+    outline = _plan_outline_with_llm(config, hooked_plan)
+    merged = _plan_lyrics_with_llm(config, hooked_plan, outline)
+    merged["hook_candidates"] = list(hook_state.get("hook_candidates", []))
+    merged["selected_hook_candidate"] = dict(hook_state.get("selected_hook_candidate", {}))
+    return merged
 
 
 def _plan_once(config: dict, plan: dict) -> dict:
@@ -102,6 +110,8 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["ending_vocal_density"] = str(plan.get("ending_vocal_density", "")).strip()
     normalized["ending_tags"] = list(plan.get("ending_tags", [])) if isinstance(plan.get("ending_tags", []), list) else []
     normalized["line_budgets"] = dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {}
+    normalized["hook_candidates"] = list(planned.get("hook_candidates", [])) if isinstance(planned.get("hook_candidates", []), list) else []
+    normalized["selected_hook_candidate"] = dict(planned.get("selected_hook_candidate", {})) if isinstance(planned.get("selected_hook_candidate", {}), dict) else {}
     if not str(normalized.get("keyscale", "")).strip():
         normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
     return normalized
@@ -146,6 +156,12 @@ def _audio_runtime_context(plan: dict) -> dict:
         "hook_english_fragments": list(plan.get("hook_english_fragments", []))
         if isinstance(plan.get("hook_english_fragments", []), list)
         else [],
+        "hook_candidates": list(plan.get("hook_candidates", []))
+        if isinstance(plan.get("hook_candidates", []), list)
+        else [],
+        "selected_hook_candidate": dict(plan.get("selected_hook_candidate", {}))
+        if isinstance(plan.get("selected_hook_candidate", {}), dict)
+        else {},
         "visual_direction": str(plan.get("visual_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
         "style_guidance": str(plan.get("style_guidance", "")).strip(),
@@ -189,6 +205,20 @@ def _plan_outline_with_llm(config: dict, plan: dict) -> dict:
     if last_exc is not None:
         raise last_exc
     raise RuntimeError("audio outline generation failed without a captured error")
+
+
+def _plan_hook_candidates_with_llm(config: dict, plan: dict) -> dict:
+    fallback = _fallback_hook_state(plan)
+    try:
+        raw = generate_structured(config, _hook_candidates_prompt(plan), _hook_candidates_schema())
+        candidates = _normalize_hook_candidates(raw)
+        selected = _select_best_hook_candidate(candidates, plan)
+        return {
+            "hook_candidates": candidates,
+            "selected_hook_candidate": selected,
+        }
+    except Exception:
+        return fallback
 
 
 def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
@@ -245,6 +275,134 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
         line_count = int(block.get("line_count", 0) or 0)
         if line_count > max_lines:
             raise RuntimeError(f"line_count too dense for {label}: {line_count} > {max_lines}")
+
+
+def _hook_candidates_prompt(plan: dict) -> str:
+    fragments = [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+    fragment_text = ", ".join(fragments)
+    return (
+        "Generate hook nucleus candidates for a Korean pop song. "
+        "Return JSON only. No markdown. "
+        "Make 6 candidates for chorus-family use only. "
+        "Each candidate must be a short hook fragment, not a full sentence. "
+        "Good candidates are easy to chant, easy to remember, and can sit at the start of a chorus line. "
+        "Keep Korean dominant overall. "
+        "English is optional and must stay within one to three words. "
+        "Do not write long English sentences. "
+        f"Hook intent={str(plan.get('hook_direction', '')).strip()}. "
+        + (f"Preferred optional English fragments={fragment_text}. " if fragment_text else "")
+        + "For each candidate, provide fragment, language_mode, placement, and why. "
+        + "language_mode must be one of ko_only or mixed_ko_en. "
+        + "placement must be one of chorus, chorus2, final_chorus. "
+    )
+
+
+def _hook_candidates_schema() -> dict:
+    item = {
+        "type": "object",
+        "required": ["fragment", "language_mode", "placement", "why"],
+        "properties": {
+            "fragment": {"type": "string"},
+            "language_mode": {"type": "string", "enum": ["ko_only", "mixed_ko_en"]},
+            "placement": {"type": "string", "enum": ["chorus", "chorus2", "final_chorus"]},
+            "why": {"type": "string"},
+        },
+    }
+    return {
+        "type": "object",
+        "required": ["candidates"],
+        "properties": {
+            "candidates": {"type": "array", "items": item, "minItems": 4, "maxItems": 8}
+        },
+    }
+
+
+def _normalize_hook_candidates(raw: dict) -> list[dict]:
+    out: list[dict] = []
+    for row in raw.get("candidates", []) if isinstance(raw, dict) else []:
+        if not isinstance(row, dict):
+            continue
+        fragment = " ".join(str(row.get("fragment", "")).strip().split())
+        language_mode = str(row.get("language_mode", "")).strip()
+        placement = str(row.get("placement", "")).strip()
+        why = " ".join(str(row.get("why", "")).strip().split())
+        if not fragment or language_mode not in {"ko_only", "mixed_ko_en"} or placement not in {"chorus", "chorus2", "final_chorus"}:
+            continue
+        out.append(
+            {
+                "fragment": fragment,
+                "language_mode": language_mode,
+                "placement": placement,
+                "why": why,
+            }
+        )
+    if not out:
+        raise RuntimeError("hook candidates missing")
+    return out
+
+
+def _select_best_hook_candidate(candidates: list[dict], plan: dict) -> dict:
+    scored = sorted(
+        (( _score_hook_candidate(row, plan), row) for row in candidates),
+        key=lambda pair: pair[0],
+        reverse=True,
+    )
+    return dict(scored[0][1]) if scored else {}
+
+
+def _score_hook_candidate(row: dict, plan: dict) -> int:
+    fragment = str(row.get("fragment", "")).strip()
+    language_mode = str(row.get("language_mode", "")).strip()
+    placement = str(row.get("placement", "")).strip()
+    lower = fragment.lower()
+    english_fragments = [str(x).strip().lower() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+    words = [token for token in re.split(r"\s+", fragment) if token]
+    score = 0
+    if placement == "chorus":
+        score += 3
+    elif placement == "final_chorus":
+        score += 2
+    if len(fragment) <= 14:
+        score += 3
+    elif len(fragment) <= 20:
+        score += 1
+    if language_mode == "mixed_ko_en":
+        score += 2
+    if any(frag == lower for frag in english_fragments):
+        score += 4
+    if len(words) <= 3:
+        score += 2
+    if "," not in fragment and "." not in fragment:
+        score += 1
+    return score
+
+
+def _fallback_hook_state(plan: dict) -> dict:
+    fragments = [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+    candidates: list[dict] = []
+    for idx, fragment in enumerate(fragments[:3], start=1):
+        placement = "chorus" if idx == 1 else "chorus2" if idx == 2 else "final_chorus"
+        candidates.append(
+            {
+                "fragment": fragment,
+                "language_mode": "mixed_ko_en",
+                "placement": placement,
+                "why": "Profile-guided short English hook fragment.",
+            }
+        )
+    if not candidates:
+        candidates.append(
+            {
+                "fragment": "젖은 플랫폼",
+                "language_mode": "ko_only",
+                "placement": "chorus",
+                "why": "Fallback Korean hook nucleus from the song world.",
+            }
+        )
+    return {
+        "hook_candidates": candidates,
+        "selected_hook_candidate": dict(candidates[0]),
+    }
 
 
 def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:

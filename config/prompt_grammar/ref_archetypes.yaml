@@ -219,4 +219,6 @@ archetypes:
       - wet bench
     contact_policy: Seated contact is implied; no extra object needed.
     continuity_policy: The pose should still imply motion can resume.
-    variants: {}
+    variants:
+      rise_ready:
+        note: Keep the body tipped forward at the bench end so the rise reads as already forming before she fully stands.

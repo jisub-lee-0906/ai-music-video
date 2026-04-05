@@ -255,6 +255,47 @@ def test_direction_plan_assigns_distinct_blocking_for_crosswalk_release_sequence
     assert b3["arrival_side"] == "right"
     assert b4["blocking_role"] == "walk_away"
     assert b4["travel_axis"] == "away"
+    assert "right edge" in b3["dominant_action"].lower()
+    assert "already formed" in b3["continuity_delta"].lower()
+    assert "walks away" in b4["dominant_action"].lower()
+    assert b3["content_trace"] == ""
+    assert b4["content_trace"] == ""
+
+
+def test_direction_plan_moves_sidewalk_route_detail_out_of_trace_and_into_action():
+    config = _config()
+    payload = {
+        "scene_outline": {
+            "shot_packages": [
+                {
+                    "shot_id": "verse2_b1",
+                    "section_label": "Verse 2",
+                    "story_function": "entry",
+                    "story_goal": "Route variation",
+                    "story_event": "She re-enters the same route from a slightly changed street-side angle without breaking continuity.",
+                    "world_zone": "transit_route",
+                    "story_visual_intent": "Re-entry.",
+                    "why": "v2_b1",
+                },
+                {
+                    "shot_id": "verse2_b2",
+                    "section_label": "Verse 2",
+                    "story_function": "handoff",
+                    "story_goal": "Route variation",
+                    "story_event": "She keeps the sidewalk-side carry alive through the same connected block.",
+                    "world_zone": "transit_route",
+                    "story_visual_intent": "Connected carry.",
+                    "why": "v2_b2",
+                },
+            ]
+        }
+    }
+    direction = build_direction_plan(config, payload)
+    b1, b2 = direction["shot_packages"]
+    assert "road-side edge" in b1["dominant_action"].lower()
+    assert b1["content_trace"] == ""
+    assert "road clearly" in b2["continuity_delta"].lower() or "road still" in b2["continuity_delta"].lower()
+    assert b2["content_trace"] == ""
 
 
 def test_director_edge_handoff_uses_threshold_passage_exit_variant():

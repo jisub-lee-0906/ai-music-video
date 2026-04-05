@@ -28,6 +28,7 @@ def test_audio_mapper():
     assert nodes["94"]["tags"] == "K-Pop: female lead vocal, airy and youthful, Bright idol-pop with punchy 808s and layered hooks"
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
+    assert plan["filename_prefix"] == "music/audio_run"
 
 
 def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
@@ -48,6 +49,7 @@ def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     assert nodes["94"]["lyrics"] == plan["lyrics"]
     assert nodes["94"]["language"] == "ja"
     assert nodes["94"]["tags"] == "J-Pop: Elegant Japanese city-pop with warm analog keys and soft neon glide"
+    assert plan["filename_prefix"] == "music/audio_run"
 
 
 def test_audio_mapper_normalizes_common_genre_aliases():

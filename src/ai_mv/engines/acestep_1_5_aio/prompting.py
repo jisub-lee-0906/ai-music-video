@@ -232,13 +232,25 @@ def _language_clause(plan: dict) -> str:
 
 def _intent_clause(plan: dict) -> str:
     intent = plan.get("director_brief_intent", {}) if isinstance(plan.get("director_brief_intent", {}), dict) else {}
+    hook_fragments = (
+        [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+        if isinstance(plan.get("hook_english_fragments", []), list)
+        else []
+    )
+    if not hook_fragments:
+        hook_fragments = [
+            str(x).strip()
+            for x in intent.get("audio_hook_english_fragments", [])
+            if str(x).strip()
+        ] if isinstance(intent.get("audio_hook_english_fragments", []), list) else []
     story_world = str(intent.get("story_world", "")).strip()
     world_core = str(intent.get("world_core", "")).strip()
     merged_avoid = _merged_avoid_text(intent)
     parts = [
         _profile_line("Audio intent", intent.get("audio_brief", "")),
         _profile_line("Hook intent", intent.get("audio_hook_brief", "")),
-        _profile_line("Hook English fragments", ", ".join(str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip())),
+        _profile_line("Hook English fragments", ", ".join(hook_fragments)),
+        _profile_line("Selected hook nucleus", str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip()),
         _profile_line("Visual intent", intent.get("visual_brief", "")),
         _profile_line("Story world", story_world),
         _profile_line("World core", world_core if world_core and world_core != story_world else ""),
