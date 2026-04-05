@@ -71,7 +71,7 @@ def validate_audio_lyrics_language(lyrics: str, language: str) -> None:
         raise RuntimeError("audio lyrics language mismatch: expected en-dominant lyrics")
 
 
-def validate_audio_lyrics_quality(blocks: list[dict], language: str) -> None:
+def validate_audio_lyrics_quality(blocks: list[dict], language: str, line_budgets: dict | None = None) -> None:
     rows = [row for row in blocks if isinstance(row, dict)]
     if not rows:
         raise RuntimeError("audio lyrics blocks missing")
@@ -81,8 +81,11 @@ def validate_audio_lyrics_quality(blocks: list[dict], language: str) -> None:
         raise RuntimeError("audio lyrics body empty")
     for line in lines:
         _validate_line_language(line, lang)
+    _validate_line_density(rows, lang)
     _validate_duplicate_lines(rows)
     _validate_chorus_growth(rows, lang)
+    _validate_hook_quality(rows, lang)
+    _validate_section_role_minimums(rows, line_budgets or {})
 
 
 def validate_audio_genre_description_language(text: str) -> None:
@@ -391,8 +394,8 @@ def _validate_line_language(line: str, language: str) -> None:
     elif language == "ko":
         if counts["ko"] < 2:
             raise RuntimeError("audio lyrics quality mismatch: expected readable Korean lines")
-        if len(latin_words) > 0:
-            raise RuntimeError("audio lyrics quality mismatch: Korean lyrics leaked English words")
+        if not _allow_limited_korean_english_hook(line, latin_words):
+            raise RuntimeError("audio lyrics quality mismatch: Korean lyrics leaked too much English")
     elif language == "en":
         if counts["latin"] < max(4, counts["jp"] + counts["ko"]):
             raise RuntimeError("audio lyrics quality mismatch: expected readable English lines")
@@ -439,14 +442,90 @@ def _validate_chorus_growth(blocks: list[dict], language: str) -> None:
             raise RuntimeError("audio lyrics quality mismatch: Final Chorus repeats Chorus too closely")
 
 
+def _validate_line_density(blocks: list[dict], language: str) -> None:
+    max_chars = 52 if language == "en" else 22 if language == "ko" else 34
+    max_commas = 2 if language == "en" else 1
+    for row in blocks:
+        label = str(row.get("label", "")).strip() or str(row.get("section", "")).strip()
+        for line in row.get("lines", []):
+            text = str(line).strip()
+            if not text:
+                continue
+            visible = _visible_char_count(text)
+            if visible > max_chars:
+                raise RuntimeError(f"audio lyrics quality mismatch: line too dense for singing in {label}")
+            comma_count = text.count(",") + text.count("，")
+            if comma_count > max_commas:
+                raise RuntimeError(f"audio lyrics quality mismatch: line too clause-heavy in {label}")
+
+
+def _validate_hook_quality(blocks: list[dict], language: str) -> None:
+    short_limit = 28 if language == "en" else 14 if language == "ko" else 18
+    for row in blocks:
+        label = str(row.get("label", "")).strip()
+        if label not in {"Chorus", "Chorus 2", "Final Chorus"}:
+            continue
+        lines = [str(line).strip() for line in row.get("lines", []) if str(line).strip()]
+        if not lines:
+            raise RuntimeError(f"audio lyrics quality mismatch: {label} missing lines")
+        if not any(_visible_char_count(line) <= short_limit for line in lines):
+            raise RuntimeError(f"audio lyrics quality mismatch: {label} lacks a short memorable hook line")
+
+
+def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> None:
+    if not line_budgets:
+        return
+    minimums = {
+        "Intro": 1,
+        "Verse 1": 4,
+        "Verse 2": 4,
+        "Pre-Chorus": 3,
+        "Pre-Chorus 2": 3,
+        "Chorus": 4,
+        "Chorus 2": 4,
+        "Final Chorus": 4,
+        "Bridge": 2,
+    }
+    for row in blocks:
+        label = str(row.get("label", "")).strip()
+        lines = [str(line).strip() for line in row.get("lines", []) if str(line).strip()]
+        if label in minimums and len(lines) < minimums[label]:
+            raise RuntimeError(f"audio lyrics quality mismatch: {label} underdelivers its section role")
+        max_allowed = int(line_budgets.get(label, 0) or 0)
+        if max_allowed > 0 and len(lines) > max_allowed:
+            raise RuntimeError(f"audio lyrics quality mismatch: {label} exceeds line budget")
+
+
 def _shared_line_count(left: dict, right: dict) -> int:
     a = {re.sub(r"\s+", " ", str(line).strip()).lower() for line in left.get("lines", []) if str(line).strip()}
     b = {re.sub(r"\s+", " ", str(line).strip()).lower() for line in right.get("lines", []) if str(line).strip()}
     return len(a & b)
 
 
+def _visible_char_count(text: str) -> int:
+    cleaned = re.sub(r"\s+", "", str(text))
+    cleaned = cleaned.replace(",", "").replace("，", "").replace(".", "")
+    return len(cleaned)
+
+
 def _latin_words(text: str) -> list[str]:
     return re.findall(r"[A-Za-z]{2,}", str(text))
+
+
+def _allow_limited_korean_english_hook(text: str, latin_words: list[str]) -> bool:
+    if not latin_words:
+        return True
+    if len(latin_words) > 3:
+        return False
+    joined = " ".join(latin_words)
+    if len(joined) > 16:
+        return False
+    line = str(text).strip()
+    latin_chars = sum(1 for ch in line if ch in string.ascii_letters)
+    korean_chars = _script_counts(line)["ko"]
+    if latin_chars > max(16, korean_chars):
+        return False
+    return True
 
 
 def _is_japanese(code: int) -> bool:

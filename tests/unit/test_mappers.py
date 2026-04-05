@@ -8,6 +8,9 @@ from ai_mv.core.output_paths import audio_prefix, flux2_ref_frame_prefix, master
 def test_audio_mapper():
     plan = {
         "tags": "kpop",
+        "genre_head": "K-Pop",
+        "vocal_profile": "female lead vocal",
+        "vocal_tone": "airy and youthful",
         "audio_direction": "K-pop with glossy synth-pop drums, bright lead vocal focus, and a tight dance-pop pulse.",
         "genre_description": "Bright idol-pop with punchy 808s and layered hooks.",
         "lyrics": "we're alive",
@@ -22,7 +25,7 @@ def test_audio_mapper():
     nodes = out["node.inputs"]
     assert nodes["94"]["duration"] == 160
     assert nodes["94"]["bpm"] == 120
-    assert nodes["94"]["tags"] == "K-Pop: Bright idol-pop with punchy 808s and layered hooks"
+    assert nodes["94"]["tags"] == "K-Pop: female lead vocal, airy and youthful, Bright idol-pop with punchy 808s and layered hooks"
     assert nodes["94"]["lyrics"] == "we're alive"
     assert nodes["94"]["keyscale"] == "A minor"
 
@@ -75,6 +78,102 @@ def test_audio_mapper_prefers_genre_like_tag_over_performance_tags():
     }
     out = map_audio_workflow({}, plan)
     assert out["node.inputs"]["94"]["tags"] == "Drum and Bass: Fast breakbeats, sub bass pressure, and a bright melodic lift"
+
+
+def test_audio_mapper_prefers_explicit_genre_prefix_from_description_over_descriptive_tags():
+    plan = {
+        "tags": "polished korean girl-group pop, bright emotional female vocal, glossy synth-pop pulse, sparkling rhythm section",
+        "genre_head": "K-Pop",
+        "vocal_profile": "female lead vocal",
+        "vocal_tone": "airy and youthful",
+        "genre_description": "K-pop: glossy synth bass and sparkling drums, bright emotional female lead, polished girl-group pop groove, airy piano hook, wide chorus stacks and lifted ad-libs, clean ending, resolved final lift.",
+        "lyrics": "가볍게 달려가",
+        "seed": 13,
+        "bpm": 116,
+        "duration": 204,
+        "language": "ko",
+        "keyscale": "A major",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"] == "K-Pop: female lead vocal, airy and youthful, glossy synth bass and sparkling drums, polished girl-group pop groove, airy piano hook, wide chorus stacks and lifted ad-libs, clean ending, resolved final lift"
+
+
+def test_audio_mapper_collapses_decorated_explicit_head_to_first_canonical_genre():
+    plan = {
+        "tags": "polished korean girl-group pop, glossy synth-pop pulse",
+        "genre_head": "K-Pop",
+        "vocal_profile": "female lead vocal",
+        "vocal_tone": "airy and youthful",
+        "genre_description": "Polished K-POP Synth-POP: glossy synth bass, bright female lead, airy piano hook, clean ending.",
+        "lyrics": "가볍게 달려가",
+        "seed": 17,
+        "bpm": 118,
+        "duration": 180,
+        "language": "ko",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"] == "K-Pop: female lead vocal, airy and youthful, glossy synth bass, airy piano hook, clean ending"
+
+
+def test_audio_mapper_locked_genre_head_overrides_generated_style_head():
+    plan = {
+        "tags": "polished korean girl-group pop, glossy synth-pop pulse",
+        "genre_head": "K-Pop",
+        "vocal_profile": "female lead vocal",
+        "vocal_tone": "airy and youthful",
+        "genre_description": "Glossy Synth-POP: polished synth bass and warm pads, bright emotional female lead vocal, mid-tempo Korean girl-group pop groove, sparkling drums and euphoric chorus lift, clean ending with resolved final lift.",
+        "lyrics": "가볍게 달려가",
+        "seed": 18,
+        "bpm": 118,
+        "duration": 180,
+        "language": "ko",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"].startswith("K-Pop: ")
+
+
+def test_audio_mapper_locked_vocal_profile_survives_when_generated_text_omits_gender():
+    plan = {
+        "tags": "polished korean girl-group pop, glossy synth-pop pulse",
+        "genre_head": "K-Pop",
+        "vocal_profile": "female lead vocal",
+        "vocal_tone": "airy and youthful",
+        "genre_description": "Glossy Synth-POP: glossy synth bass, sparkling drums, airy lead vocal, bright piano lift, tight harmony stacks, euphoric chorus rise, clean ending with resolved final lift.",
+        "lyrics": "가볍게 달려가",
+        "seed": 19,
+        "bpm": 118,
+        "duration": 180,
+        "language": "ko",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"] == "K-Pop: female lead vocal, airy and youthful, glossy synth bass, sparkling drums, bright piano lift, tight harmony stacks, euphoric chorus rise, clean ending with resolved final lift"
+
+
+def test_audio_mapper_locked_vocal_tone_is_prefixed_without_overriding_runtime_genre():
+    plan = {
+        "tags": "polished korean girl-group pop, glossy synth-pop pulse",
+        "genre_head": "K-Pop",
+        "vocal_profile": "female lead vocal",
+        "vocal_tone": "warm and husky",
+        "genre_description": "Glossy Synth-POP: glossy synth bass, sparkling drums, bright piano lift, tight harmony stacks, euphoric chorus rise, clean ending with resolved final lift.",
+        "lyrics": "가볍게 달려가",
+        "seed": 20,
+        "bpm": 118,
+        "duration": 180,
+        "language": "ko",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    assert out["node.inputs"]["94"]["tags"] == "K-Pop: female lead vocal, warm and husky, glossy synth bass, sparkling drums, bright piano lift, tight harmony stacks, euphoric chorus rise, clean ending with resolved final lift"
 
 
 def test_tti_mapper():

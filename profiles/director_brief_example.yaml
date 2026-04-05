@@ -1,5 +1,13 @@
 audio:
   language: ko
+  genre_head: K-Pop
+  vocal_profile: female lead vocal
+  vocal_tone: airy and youthful
+  ending_mode: clean_resolve
+  outro_required: true
+  ending_vocal_density: low
+  section_bars:
+    outro: 2
   tags:
     - polished korean girl-group pop
     - bright emotional female vocal

@@ -98,3 +98,33 @@ def test_validate_audio_lyrics_quality_accepts_english_growth():
         {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["The whole night opens in my chest", "Streetlight halos crown the lane", "I call your name into the blue", "We move homeward through the rain"]},
     ]
     validate_audio_lyrics_quality(blocks, "en")
+
+
+def test_validate_audio_lyrics_quality_rejects_overdense_korean_line():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은개찰구불빛아래서나는아무숨도고르지못한채너의이름을너무길게불러보네"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "개찰구 너머로", "너의 쪽이 환해져"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["젖은 빛이 더 커져", "밤을 건너 네게 가", "개찰구를 지나", "우리 이름이 빛나"]},
+    ]
+    with pytest.raises(RuntimeError, match="line too dense for singing"):
+        validate_audio_lyrics_quality(blocks, "ko")
+
+
+def test_validate_audio_lyrics_quality_rejects_chorus_without_short_hook_line():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛이 손끝에 스치고", "젖은 바닥 위로 발자국이 번져", "유리문에 숨을 고르고", "밤의 끝을 천천히 따라가"]},
+        {
+            "section": "chorus",
+            "label": "Chorus",
+            "style": "hook",
+            "lines": [
+                "젖은 네온이 내 마음 가장 깊은 곳까지 길게 번져와",
+                "차가운 플랫폼 끝에서 나는 다시 한번 숨을 길게 고르고",
+                "이 도시의 문장들이 오늘 밤 내 어깨 위로 천천히 내려와",
+                "너를 향한 모든 마음이 늦은 불빛 속에서 겨우 또렷해져",
+            ],
+        },
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "개찰구가 열려", "우리 이름이 빛나"]},
+    ]
+    with pytest.raises(RuntimeError, match="lacks a short memorable hook line"):
+        validate_audio_lyrics_quality(blocks, "ko")

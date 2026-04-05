@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import zlib
+import re
 
 from ai_mv.core.prompt_digests import compact_sentences, compact_series
 
@@ -65,6 +66,7 @@ GENRE_ALIASES = {
     "jazz": "Jazz",
     "jazz fusion": "Jazz Fusion",
     "k pop": "K-Pop",
+    "k-pop": "K-Pop",
     "k rock": "K-Rock",
     "kpop": "K-Pop",
     "krock": "K-Rock",
@@ -174,23 +176,58 @@ def _audio_seed(plan: dict) -> int:
 def _audio_conditioning_text(plan: dict) -> str:
     tags = _split_tags(str(plan.get("tags", "")).strip())
     desc = compact_sentences(plan.get("genre_description", ""), 2)
-    genre = _genre_label(tags, desc)
+    locked = _locked_audio_contract(plan)
+    locked_head = locked["genre_head"]
+    locked_vocal = locked["vocal_profile"]
+    locked_tone = locked["vocal_tone"]
     body = _trim_sentence(desc)
+    if locked_head and body:
+        compact = _dedupe_genre_prefix(body, locked_head)
+        merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
+        return f"{locked_head}: {merged}".strip()
+    if locked_head:
+        merged = _merge_locked_vocal_contract("", locked_vocal, locked_tone)
+        return f"{locked_head}: {merged}".strip() if merged else locked_head
+    if ":" in desc:
+        explicit = _trim_sentence(desc)
+        head, tail = explicit.split(":", 1)
+        normalized_head = _normalize_genre_label(head)
+        if normalized_head:
+            compact = _dedupe_genre_prefix(tail.strip(), normalized_head)
+            merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
+            return f"{normalized_head}: {merged}".strip()
+    genre = _genre_label(tags, desc)
     if genre and body:
         prefix = f"{genre}:"
         if body.lower().startswith(prefix.lower()):
-            return body
+            compact = body[len(prefix) :].strip()
+            merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
+            return f"{genre}: {merged}".strip()
         compact = _dedupe_genre_prefix(body, genre)
-        return f"{prefix} {compact}".strip()
-    return body or genre
+        merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
+        return f"{prefix} {merged}".strip()
+    merged = _merge_locked_vocal_contract(body, locked_vocal, locked_tone)
+    return merged or genre
+
+
+def _locked_audio_contract(plan: dict) -> dict:
+    return {
+        "genre_head": _normalize_genre_label(str(plan.get("genre_head", "")).strip()),
+        "vocal_profile": _normalize_vocal_profile(str(plan.get("vocal_profile", "")).strip()),
+        "vocal_tone": _normalize_vocal_tone(str(plan.get("vocal_tone", "")).strip()),
+    }
 
 
 def _dedupe_genre_prefix(body: str, genre: str) -> str:
     trimmed = _trim_sentence(body)
     head = _trim_sentence(genre).lower()
     parts = trimmed.split(":", 1)
-    if len(parts) == 2 and _normalize_genre_label(parts[0]) == genre:
-        return parts[1].strip()
+    if len(parts) == 2:
+        normalized_prefix = _normalize_genre_label(parts[0])
+        if normalized_prefix:
+            if normalized_prefix == genre:
+                return parts[1].strip()
+            return parts[1].strip()
     if trimmed.lower().startswith(f"{head} "):
         return trimmed[len(genre) :].strip(" :")
     return trimmed
@@ -200,24 +237,59 @@ def _trim_sentence(text: str) -> str:
     return str(text).strip().rstrip(". ")
 
 
+def _normalize_vocal_profile(text: str) -> str:
+    return _trim_sentence(text)
+
+
+def _normalize_vocal_tone(text: str) -> str:
+    return _trim_sentence(text)
+
+
+def _merge_locked_vocal_contract(body: str, locked_vocal: str, locked_tone: str) -> str:
+    compact = _trim_sentence(body)
+    clauses = [part.strip() for part in compact.split(",") if part.strip()]
+    filtered = [part for part in clauses if not _looks_like_vocal_clause(part)]
+    prefix: list[str] = []
+    if locked_vocal:
+        prefix.append(locked_vocal)
+    if locked_tone and not _contains_clause(filtered, locked_tone):
+        prefix.append(locked_tone)
+    if prefix and filtered:
+        return ", ".join([*prefix, *filtered])
+    if prefix:
+        return ", ".join(prefix)
+    return compact
+
+
+def _contains_clause(clauses: list[str], target: str) -> bool:
+    needle = _trim_sentence(target).lower()
+    return any(_trim_sentence(part).lower() == needle for part in clauses)
+
+
+def _looks_like_vocal_clause(text: str) -> bool:
+    low = _trim_sentence(text).lower()
+    if not low:
+        return False
+    patterns = (
+        r"\bvocal\b",
+        r"\bvocals\b",
+        r"\bvoice\b",
+        r"\blead vocal\b",
+        r"\blead vocals\b",
+        r"\blead singer\b",
+        r"\btopline\b",
+        r"\btop line\b",
+        r"\bfemale lead\b",
+        r"\bmale lead\b",
+        r"\bfemale solo\b",
+        r"\bmale solo\b",
+    )
+    return any(re.search(pattern, low) for pattern in patterns)
+
+
 def _split_tags(text: str) -> list[str]:
     vals = [part.strip(" .") for part in compact_series(text, 20).split(",")]
     return [part for part in vals if part]
-
-
-def _audio_tag_spine(tags: list[str]) -> str:
-    genre = _pick_tags(tags, ("city pop", "synthpop", "pop", "rock", "ballad", "disco", "r&b", "neo soul", "hip hop", "dance"), 1)
-    instruments = _pick_tags(tags, ("electric piano", "chorus guitar", "analog synth", "synth pad", "fretless bass", "string", "drum", "bass", "guitar", "keys"), 4)
-    vocal = _pick_tags(tags, ("female solo vocal", "male solo vocal", "solo vocal", "lead vocal", "vocal"), 1)
-    groove = _pick_tags(tags, ("bounce", "glide", "swing", "pulse", "groove", "lift"), 2)
-    tail = _dedupe_tags(instruments + vocal + groove)
-    if not genre and not tail:
-        return ""
-    head = genre[0] if genre else tail.pop(0)
-    if not tail:
-        return _sentenceize(head)
-    return _sentenceize(f"{head} with {_join_series(tail)}")
-
 
 def _genre_label(tags: list[str], desc: str) -> str:
     candidates = _genre_candidates(tags)
@@ -237,10 +309,22 @@ def _normalize_genre_label(text: str) -> str:
         return ""
     low = cleaned.lower().replace("_", " ").replace("/", " / ")
     low = " ".join(low.split())
+    embedded = _embedded_genre_alias(low)
+    if embedded:
+        return embedded
     if low in GENRE_ALIASES:
         return GENRE_ALIASES[low]
     parts = [part for part in low.split(" / ") if part]
     return "/".join(_normalize_genre_segment(part) for part in parts if part)
+
+
+def _embedded_genre_alias(text: str) -> str:
+    padded = f" {text} "
+    for alias in sorted(GENRE_ALIASES.keys(), key=len, reverse=True):
+        needle = f" {alias} "
+        if needle in padded:
+            return GENRE_ALIASES[alias]
+    return ""
 
 
 def _genre_candidates(tags: list[str]) -> list[str]:
@@ -284,40 +368,6 @@ def _normalize_genre_token(word: str) -> str:
     if len(word) <= 3 and word.isalpha() and word not in GENRE_STOPWORDS:
         return word.upper()
     return word.capitalize()
-
-
-def _pick_tags(tags: list[str], keys: tuple[str, ...], limit: int = 3) -> list[str]:
-    out: list[str] = []
-    for tag in tags:
-        low = tag.lower()
-        if any(key in low for key in keys) and tag not in out:
-            out.append(tag)
-        if len(out) >= limit:
-            break
-    return out
-
-
-def _dedupe_tags(tags: list[str]) -> list[str]:
-    out: list[str] = []
-    seen: set[str] = set()
-    for tag in tags:
-        key = tag.lower()
-        if key not in seen:
-            seen.add(key)
-            out.append(tag)
-    return out
-
-
-def _join_series(parts: list[str], conj: str = "and") -> str:
-    vals = [_sentenceize(part) for part in parts if part]
-    if not vals:
-        return ""
-    if len(vals) == 1:
-        return vals[0]
-    if len(vals) == 2:
-        return f"{vals[0]} {conj} {vals[1]}"
-    return f"{', '.join(vals[:-1])}, {conj} {vals[-1]}"
-
 
 def _sentenceize(text: str) -> str:
     cleaned = _trim_sentence(text).replace(";", ",")

@@ -43,11 +43,15 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         return common + (
             "Write fluent modern Korean lyric lines only. "
             "Use natural Hangul phrasing, natural particles, and singable endings. "
-            "Avoid translationese, stiff written-language endings, and unnecessary English words. "
+            "Avoid translationese and stiff written-language endings. "
             "Prefer polished urban-pop diction with concrete images such as train window, ticket gate, wet curb, vending light, reflected neon, station clock, and apartment windows. "
             "Keep the voice intimate, authored, and easy to sing. "
             "A good chorus should sound like a real hook someone would remember after one listen. "
             "Do not end multiple sections with the same generic tomorrow, together, or keep-going slogan. "
+            "Keep Korean lines especially short and breathable. Favor one clean image or one direct action per line. "
+            "Avoid chaining two or three clauses into one Korean line. "
+            "A very short English hook fragment is allowed only when it is catchy, intentional, and blended into otherwise Korean-dominant lyrics. "
+            "Do not write long English sentences inside Korean lyrics. "
         )
     return common + (
         "Write fluent English lyric lines only. "
@@ -110,7 +114,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
     pre_1 = next((row for row in completed if str(row.get("label", "")).strip() == "Pre-Chorus"), None)
     chorus = next((row for row in completed if str(row.get("label", "")).strip() == "Chorus"), None)
     role_rules = {
-        "Intro": "Intro should set the scene with one or two clean city-night images and no chorus-style payoff. ",
+        "Intro": "Intro should set the scene with no sung line or one very short clean city-night image and no chorus-style payoff. ",
         "Verse 1": "Verse 1 should establish concrete city details, tactile objects, visible gestures, and motion. ",
         "Pre-Chorus": "Pre-Chorus should raise anticipation and momentum without repeating the coming hook. ",
         "Chorus": "Chorus should establish the central hook image in its clearest, most memorable, and most singable form. ",
@@ -118,7 +122,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
         "Pre-Chorus 2": "Pre-Chorus 2 should feel like a lift from the first pre-chorus, not a copy. ",
         "Bridge": "Bridge should reframe the song with a new perspective, memory, or wider city/system image. ",
         "Final Chorus": "Final Chorus should sound like the emotional answer, clearest payoff, and most satisfying final resolution of the song. ",
-        "Outro": "Outro should leave one last residue image and avoid restating the full chorus. ",
+        "Outro": "Outro should leave one last residue image, avoid restating the full chorus, and feel short enough that the song can stop immediately after it, ideally in a single short line. ",
     }
     base = role_rules.get(label, "")
     if label == "Verse 1" and intro:
@@ -198,6 +202,8 @@ def _validate_generated_block(plan: dict, completed: list[dict], block: dict) ->
     label = str(block.get("label", "")).strip()
     chorus = next((row for row in completed if str(row.get("label", "")).strip() == "Chorus"), None)
     lang = str(plan.get("language", "")).strip().lower()
+    _validate_block_density(label, block.get("lines", []), lang)
+    _validate_block_hook_quality(label, block.get("lines", []), lang)
     if not chorus:
         return
     shared = _shared_lyric_line_count(chorus, block)
@@ -223,6 +229,37 @@ def _shared_lyric_line_count(left: dict, right: dict) -> int:
 
 def _normalize_lyric_line(text: object) -> str:
     return " ".join(str(text).strip().lower().split())
+
+
+def _validate_block_density(label: str, lines: list[object], language: str) -> None:
+    max_chars = 52 if language == "en" else 22 if language == "ko" else 34
+    max_commas = 2 if language == "en" else 1
+    for line in lines:
+        text = str(line).strip()
+        if not text:
+            continue
+        visible = _visible_char_count(text)
+        if visible > max_chars:
+            raise RuntimeError(f"audio lyrics quality mismatch: line too dense for singing in {label}")
+        comma_count = text.count(",") + text.count("，")
+        if comma_count > max_commas:
+            raise RuntimeError(f"audio lyrics quality mismatch: line too clause-heavy in {label}")
+
+
+def _validate_block_hook_quality(label: str, lines: list[object], language: str) -> None:
+    if label not in {"Chorus", "Chorus 2", "Final Chorus"}:
+        return
+    short_limit = 28 if language == "en" else 14 if language == "ko" else 18
+    rendered = [str(line).strip() for line in lines if str(line).strip()]
+    if not any(_visible_char_count(line) <= short_limit for line in rendered):
+        raise RuntimeError(f"audio lyrics quality mismatch: {label} lacks a short memorable hook line")
+
+
+def _visible_char_count(text: str) -> int:
+    cleaned = "".join(str(text).split())
+    for token in [",", "，", "."]:
+        cleaned = cleaned.replace(token, "")
+    return len(cleaned)
 
 
 def _audio_retry_clause(plan: dict) -> str:

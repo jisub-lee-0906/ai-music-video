@@ -42,9 +42,10 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     plan = {
         "tags": tags,
         "director_brief_intent": intent,
-        "language": _audio_language(audio),
         "filename_prefix": audio_prefix(payload["run_id"]),
     }
+    plan.update(_audio_fixed_fields(audio))
+    plan.update(_audio_intent_fields(intent))
     plan.update(audio_policy(config))
     return _plan_once(config, plan)
 
@@ -81,21 +82,84 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized = normalize_audio_fields(planned)
     validate_audio_genre_description_language(normalized["genre_description"])
     validate_audio_lyrics_language(normalized["lyrics"], str(plan.get("language", "")).strip())
-    validate_audio_lyrics_quality(normalized["lyrics_blocks"], str(plan.get("language", "")).strip())
+    validate_audio_lyrics_quality(
+        normalized["lyrics_blocks"],
+        str(plan.get("language", "")).strip(),
+        dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {},
+    )
     _validate_ending_contract(plan, normalized)
     normalized["lyrics_blocks"] = _attach_line_indexes(normalized.get("lyrics_blocks", []))
+    normalized["lyrics"] = _render_final_lyrics(plan, normalized.get("lyrics_blocks", []))
     normalized["duration"] = _resolved_duration(plan, normalized)
-    normalized["tags"] = plan["tags"]
-    normalized["director_brief_intent"] = dict(plan.get("director_brief_intent", {}))
-    normalized["language"] = plan["language"]
-    normalized["filename_prefix"] = plan["filename_prefix"]
-    normalized["quality"] = plan["quality"]
+    normalized.update(_audio_runtime_context(plan))
     normalized["beats_per_bar"] = int(plan.get("beats_per_bar", 4))
     normalized["section_bars"] = dict(plan.get("section_bars", {}))
     normalized["bar_lane"] = str(plan.get("bar_lane", "")).strip()
+    normalized["ending_mode"] = str(plan.get("ending_mode", "")).strip()
+    normalized["terminal_end_tag"] = bool(plan.get("terminal_end_tag", False))
+    normalized["final_chorus_required"] = bool(plan.get("final_chorus_required", False))
+    normalized["outro_required"] = bool(plan.get("outro_required", False))
+    normalized["ending_vocal_density"] = str(plan.get("ending_vocal_density", "")).strip()
+    normalized["ending_tags"] = list(plan.get("ending_tags", [])) if isinstance(plan.get("ending_tags", []), list) else []
+    normalized["line_budgets"] = dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {}
     if not str(normalized.get("keyscale", "")).strip():
         normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
     return normalized
+
+
+def _audio_fixed_fields(audio: dict) -> dict:
+    return {
+        "language": _audio_language(audio),
+        "genre_head": str(audio.get("genre_head", "")).strip(),
+        "vocal_profile": str(audio.get("vocal_profile", "")).strip(),
+        "vocal_tone": str(audio.get("vocal_tone", "")).strip(),
+    }
+
+
+def _audio_intent_fields(intent: dict) -> dict:
+    return {
+        "audio_direction": str(intent.get("audio_brief", "")).strip(),
+        "hook_direction": str(intent.get("audio_hook_brief", "")).strip(),
+        "visual_direction": str(intent.get("visual_brief", "")).strip(),
+        "negative_direction": " ".join(
+            part for part in [str(intent.get("visual_negative", "")).strip(), str(intent.get("avoid", "")).strip()] if part
+        ).strip(),
+        "style_guidance": str(intent.get("style_contract", "")).strip(),
+    }
+
+
+def _audio_runtime_context(plan: dict) -> dict:
+    return {
+        "tags": plan["tags"],
+        "director_brief_intent": dict(plan.get("director_brief_intent", {})),
+        "language": str(plan.get("language", "")).strip(),
+        "filename_prefix": str(plan.get("filename_prefix", "")).strip(),
+        "genre_head": str(plan.get("genre_head", "")).strip(),
+        "vocal_profile": str(plan.get("vocal_profile", "")).strip(),
+        "vocal_tone": str(plan.get("vocal_tone", "")).strip(),
+        "quality": plan["quality"],
+        "audio_direction": str(plan.get("audio_direction", "")).strip(),
+        "hook_direction": str(plan.get("hook_direction", "")).strip(),
+        "visual_direction": str(plan.get("visual_direction", "")).strip(),
+        "negative_direction": str(plan.get("negative_direction", "")).strip(),
+        "style_guidance": str(plan.get("style_guidance", "")).strip(),
+    }
+
+
+def _render_final_lyrics(plan: dict, blocks: list[dict]) -> str:
+    lines: list[str] = []
+    for row in blocks:
+        label = str(row.get("label", "")).strip()
+        body = [str(x).strip() for x in row.get("lines", []) if str(x).strip()]
+        if not label or not body:
+            continue
+        lines.append(f"[{label}]")
+        lines.extend(body)
+        lines.append("")
+    text = "\n".join(lines).strip()
+    if bool(plan.get("terminal_end_tag", False)):
+        return f"{text}\n\n[End]" if text else "[End]"
+    return text
 
 
 def _plan_outline_with_llm(config: dict, plan: dict) -> dict:
@@ -107,6 +171,7 @@ def _plan_outline_with_llm(config: dict, plan: dict) -> dict:
         normalized = _normalize_audio_outline(outline)
         try:
             _validate_outline_labels(normalized)
+            _validate_outline_line_budgets(plan, normalized)
             return normalized
         except RuntimeError as exc:
             last_exc = exc
@@ -158,6 +223,22 @@ def _validate_outline_labels(outline: dict) -> None:
         label = str(block.get("label", "")).strip()
         if label and label not in allowed:
             raise RuntimeError(f"invalid section label: {label}")
+
+
+def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
+    budgets = plan.get("line_budgets", {}) if isinstance(plan.get("line_budgets", {}), dict) else {}
+    if not budgets:
+        return
+    for block in outline.get("lyrics_blocks", []):
+        if not isinstance(block, dict):
+            continue
+        label = str(block.get("label", "")).strip()
+        max_lines = int(budgets.get(label, 0) or 0)
+        if max_lines <= 0:
+            continue
+        line_count = int(block.get("line_count", 0) or 0)
+        if line_count > max_lines:
+            raise RuntimeError(f"line_count too dense for {label}: {line_count} > {max_lines}")
 
 
 def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:
@@ -265,6 +346,9 @@ def _validate_ending_contract(plan: dict, normalized: dict) -> None:
     density = str(ending.get("ending_vocal_density", "")).strip().lower()
     if str(blocks[-1].get("section", "")).strip().lower() == "outro":
         line_count = len([str(x).strip() for x in blocks[-1].get("lines", []) if str(x).strip()])
+        ending_mode = str(ending.get("ending_mode", "")).strip().lower()
         max_lines = {"tail_only": 1, "low": 2, "medium": 4}.get(density)
+        if ending_mode == "clean_resolve" and density in {"low", "tail_only"}:
+            max_lines = 1
         if max_lines is not None and line_count > max_lines:
             raise RuntimeError(f"audio ending contract failed: outro too long for ending_vocal_density={density}")

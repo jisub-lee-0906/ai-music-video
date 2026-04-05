@@ -4,6 +4,29 @@ from collections.abc import Sequence
 
 DEFAULT_BEATS_PER_BAR = 4
 DEFAULT_DURATION_BPM = 120
+DEFAULT_ENDING_MODE = "clean_resolve"
+DEFAULT_ENDING_VOCAL_DENSITY = "medium"
+DEFAULT_TERMINAL_END_TAG = True
+DEFAULT_ENDING_TAGS: dict[str, list[str]] = {
+    "hard_stop": ["clean ending", "hard stop", "decisive final hit"],
+    "clean_resolve": ["clean ending", "resolved final lift"],
+    "glow_fade": ["clean ending", "gentle synth tail", "soft afterglow"],
+    "bittersweet_tail": ["clean ending", "brief emotional tail", "controlled after-image"],
+    "anthem_lift": ["clean ending", "anthemic final lift", "open final release"],
+}
+DEFAULT_LINE_BUDGETS: dict[str, int] = {
+    "Intro": 1,
+    "Verse 1": 6,
+    "Verse 2": 6,
+    "Pre-Chorus": 4,
+    "Pre-Chorus 2": 4,
+    "Chorus": 6,
+    "Chorus 2": 6,
+    "Final Chorus": 6,
+    "Post-Chorus": 3,
+    "Bridge": 4,
+    "Outro": 2,
+}
 DEFAULT_SECTION_BARS: dict[str, int] = {
     "intro": 4,
     "verse": 12,
@@ -49,6 +72,13 @@ def audio_policy(config: dict) -> dict:
         "bpm": bpm,
         "quality": str(audio.get("quality", "V0")),
         "keyscale": str(audio.get("keyscale", "")).strip(),
+        "ending_mode": _ending_mode(audio),
+        "terminal_end_tag": _terminal_end_tag(audio),
+        "final_chorus_required": _coerce_bool(audio.get("final_chorus_required"), default=True),
+        "outro_required": _coerce_bool(audio.get("outro_required"), default=False),
+        "ending_vocal_density": _ending_vocal_density(audio),
+        "ending_tags": _ending_tags(audio),
+        "line_budgets": resolve_line_budgets(audio),
     }
 
 
@@ -112,6 +142,29 @@ def resolve_section_bars(audio: dict) -> dict[str, int]:
         if not name:
             continue
         resolved[name] = _coerce_positive_int(value, default=0, label=f"audio.section_bars.{name}")
+    return resolved
+
+
+def resolve_line_budgets(audio: dict) -> dict[str, int]:
+    resolved = dict(DEFAULT_LINE_BUDGETS)
+    language = str(audio.get("language", "")).strip().lower()
+    ending_mode = _ending_mode(audio)
+    terminal_end_tag = _terminal_end_tag(audio)
+    ending_vocal_density = _ending_vocal_density(audio)
+    outro_required = _coerce_bool(audio.get("outro_required"), default=False)
+    if language == "ko":
+        resolved["Verse 1"] = 4
+        resolved["Verse 2"] = 4
+        resolved["Pre-Chorus"] = 3
+        resolved["Pre-Chorus 2"] = 3
+        resolved["Chorus"] = 4
+        resolved["Chorus 2"] = 4
+        resolved["Final Chorus"] = 4
+        resolved["Bridge"] = 2
+    if ending_mode == "clean_resolve":
+        resolved["Intro"] = 1
+    if outro_required and terminal_end_tag and ending_mode == "clean_resolve":
+        resolved["Outro"] = 1 if ending_vocal_density in {"low", "tail_only"} else 2
     return resolved
 
 
@@ -210,3 +263,40 @@ def _coerce_positive_int(raw: object, default: int, label: str = "") -> int:
 def _audio_config(config: dict) -> dict:
     audio = config.get("audio", {}) if isinstance(config, dict) else {}
     return audio if isinstance(audio, dict) else {}
+
+
+def _ending_mode(audio: dict) -> str:
+    raw = str(audio.get("ending_mode", DEFAULT_ENDING_MODE)).strip().lower()
+    allowed = {"hard_stop", "clean_resolve", "glow_fade", "bittersweet_tail", "anthem_lift"}
+    return raw if raw in allowed else DEFAULT_ENDING_MODE
+
+
+def _terminal_end_tag(audio: dict) -> bool:
+    return _coerce_bool(audio.get("terminal_end_tag"), default=DEFAULT_TERMINAL_END_TAG)
+
+def _ending_vocal_density(audio: dict) -> str:
+    raw = str(audio.get("ending_vocal_density", DEFAULT_ENDING_VOCAL_DENSITY)).strip().lower()
+    allowed = {"full", "medium", "low", "tail_only"}
+    return raw if raw in allowed else DEFAULT_ENDING_VOCAL_DENSITY
+
+
+def _ending_tags(audio: dict) -> list[str]:
+    raw = audio.get("ending_tags", []) if isinstance(audio, dict) else []
+    if isinstance(raw, list):
+        vals = [str(item).strip() for item in raw if str(item).strip()]
+        if vals:
+            return vals
+    return list(DEFAULT_ENDING_TAGS[_ending_mode(audio)])
+
+
+def _coerce_bool(raw: object, default: bool) -> bool:
+    if raw in ("", None):
+        return bool(default)
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return bool(default)

@@ -17,6 +17,35 @@ def test_audio_policy_target_duration_override_wins():
     assert out["duration_override"] is True
 
 
+def test_audio_policy_populates_default_ending_contract():
+    out = audio_policy({"audio": {"bpm": 108, "language": "ko"}})
+    assert out["ending_mode"] == "clean_resolve"
+    assert out["terminal_end_tag"] is True
+    assert out["final_chorus_required"] is True
+    assert out["outro_required"] is False
+    assert out["ending_vocal_density"] == "medium"
+    assert "clean ending" in out["ending_tags"]
+    assert out["line_budgets"]["Intro"] == 1
+    assert out["line_budgets"]["Verse 1"] == 4
+    assert out["line_budgets"]["Pre-Chorus"] == 3
+    assert out["line_budgets"]["Final Chorus"] == 4
+
+
+def test_audio_policy_tightens_terminal_clean_resolve_outro_budget():
+    out = audio_policy(
+        {
+            "audio": {
+                "bpm": 108,
+                "ending_mode": "clean_resolve",
+                "outro_required": True,
+                "ending_vocal_density": "low",
+                "terminal_end_tag": True,
+            }
+        }
+    )
+    assert out["line_budgets"]["Outro"] == 1
+
+
 def test_audio_policy_accepts_custom_section_bars():
     out = audio_policy(
         {
