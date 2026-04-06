@@ -149,6 +149,9 @@ def materialize_profile_config(config: dict) -> None:
     genre = _top_text(config, "genre")
     voice = _top_text(config, "voice")
     language = _top_text(config, "language") or "ko"
+    visual_concept = _top_text(config, "visual_concept")
+    locations = _top_list(config, "locations")
+    props = _top_list(config, "props")
     audio = config.setdefault("audio", {})
     if isinstance(audio, dict):
         audio["language"] = language
@@ -159,10 +162,14 @@ def materialize_profile_config(config: dict) -> None:
         audio.setdefault("vocal_tone", voice)
     visual = config.setdefault("visual", {})
     if isinstance(visual, dict):
-        visual.setdefault("story_premise", prompt)
+        visual.setdefault("story_premise", visual_concept or prompt)
         visual.setdefault("world_rules", "")
         visual.setdefault("heroine_arc", "Keep one readable direction across the song.")
         visual.setdefault("forbidden_story_moves", "")
+        if locations:
+            visual.setdefault("locations", list(locations))
+        if props:
+            visual.setdefault("props", list(props))
     character = config.setdefault("character", {})
     if isinstance(character, dict):
         character.setdefault("identity_core", _identity_core_from_voice(voice))
@@ -249,6 +256,15 @@ def _top_text(config: dict, key: str) -> str:
     return str(config.get(key, "")).strip() if isinstance(config, dict) else ""
 
 
+def _top_list(config: dict, key: str) -> list[str]:
+    if not isinstance(config, dict):
+        return []
+    raw = config.get(key, [])
+    if not isinstance(raw, list):
+        return []
+    return [str(item).strip() for item in raw if str(item).strip()]
+
+
 def _text(node: dict, key: str) -> str:
     return str(node.get(key, "")).strip() if isinstance(node, dict) else ""
 
@@ -271,6 +287,9 @@ def _build_minimal_brief_intent(config: dict) -> dict:
     genre = _top_text(config, "genre")
     voice = _top_text(config, "voice")
     language = _top_text(config, "language") or "ko"
+    visual_concept = _top_text(config, "visual_concept")
+    locations = _top_list(config, "locations")
+    props = _top_list(config, "props")
     style = " ".join(part for part in (genre, voice, prompt) if part).strip()
     subject_intro = _ref_subject_intro_from_voice(voice)
     identity_core = _identity_core_from_voice(voice)
@@ -281,8 +300,8 @@ def _build_minimal_brief_intent(config: dict) -> dict:
     anchor_shoes = _anchor_text(config, "anchor_shoes")
     anchor_pose = _anchor_text(config, "anchor_pose") or "full-body standing pose, slight side angle, both hands visible, shoes fully visible"
     anchor_background = _anchor_text(config, "anchor_background") or "plain neutral studio background, no props, no environmental elements"
-    section_roles = _generic_section_story_roles(prompt)
-    section_events = _generic_section_event_scripts(prompt)
+    section_roles = _generic_section_story_roles(prompt, visual_concept, locations)
+    section_events = _generic_section_event_scripts(prompt, visual_concept, locations, props)
     return {
         "brief_name": str(config.get("brief", "")).strip() or "director_brief_example",
         "identity_core": identity_core,
@@ -294,7 +313,7 @@ def _build_minimal_brief_intent(config: dict) -> dict:
         "style_contract": style,
         "world_core": "",
         "time_anchor": "at night" if "night" in prompt.lower() else "",
-        "story_premise": prompt,
+        "story_premise": visual_concept or prompt,
         "world_rules": "",
         "heroine_arc": "Keep one readable direction across the song.",
         "forbidden_story_moves": "",
@@ -324,6 +343,9 @@ def _build_minimal_brief_intent(config: dict) -> dict:
         "profile_prompt": prompt,
         "profile_genre": genre,
         "profile_voice": voice,
+        "visual_concept": visual_concept,
+        "profile_locations": locations,
+        "profile_props": props,
         "anchor_subject": anchor_subject,
         "anchor_hair": anchor_hair,
         "anchor_top": anchor_top,
@@ -377,10 +399,11 @@ def _anchor_wardrobe_guidance(config: dict) -> str:
     return ", ".join(part for part in parts if part)
 
 
-def _generic_section_story_roles(prompt: str) -> dict[str, str]:
-    mood = _generic_visual_mood(prompt)
+def _generic_section_story_roles(prompt: str, visual_concept: str, locations: list[str]) -> dict[str, str]:
+    mood = _generic_visual_mood(f"{prompt} {visual_concept}")
+    location_hint = locations[0] if locations else "real-world location"
     return {
-        "Intro": f"Establish the protagonist and world with a {mood} opening image.",
+        "Intro": f"Establish the protagonist and world with a {mood} opening image in {location_hint}.",
         "Verse 1": "Introduce the first readable environment and emotional state through grounded physical behavior.",
         "Verse 2": "Carry the same emotional thread into a new but connected place without breaking continuity.",
         "Pre-Chorus": "Tighten tension and reduce space before the release.",
@@ -391,31 +414,37 @@ def _generic_section_story_roles(prompt: str) -> dict[str, str]:
     }
 
 
-def _generic_section_event_scripts(prompt: str) -> dict[str, list[str]]:
-    motif = _generic_prompt_motif(prompt)
+def _generic_section_event_scripts(prompt: str, visual_concept: str, locations: list[str], props: list[str]) -> dict[str, list[str]]:
+    motif = _generic_prompt_motif(f"{prompt} {visual_concept}")
+    location_bits = [str(x).strip() for x in locations if str(x).strip()]
+    prop_bits = [str(x).strip() for x in props if str(x).strip()]
+    intro_open, intro_hold = _generic_intro_events(motif, location_bits, prop_bits)
+    verse_first, verse_shift, verse_carry = _generic_verse_events(motif, location_bits, prop_bits)
+    verse2_open, verse2_carry, verse2_land = _generic_verse2_events(motif, location_bits, prop_bits)
+    chorus_open, chorus_carry, chorus_land = _generic_chorus_events(motif, location_bits, prop_bits)
     return {
         "Intro": [
-            f"She appears alone inside the first {motif} space of the sequence.",
-            "She settles into the emotional tone before the movement begins.",
+            intro_open,
+            intro_hold,
         ],
         "Verse 1": [
-            "She interacts with the first grounded environment detail in a natural everyday way.",
-            "She moves through the same area with a small but readable change in posture or direction.",
-            "She continues forward while keeping one visual detail from the previous shot alive.",
+            verse_first,
+            verse_shift,
+            verse_carry,
         ],
         "Verse 2": [
-            "She reaches a different but connected environment that expands the same emotional thread.",
-            "She keeps moving while one physical object or texture carries over from the last location.",
-            "She lands in a clearer visual state before the next transition.",
+            verse2_open,
+            verse2_carry,
+            verse2_land,
         ],
         "Pre-Chorus": [
             "She slows down or pauses briefly as the tension gathers.",
             "She commits toward the next emotional release without breaking continuity.",
         ],
         "Chorus": [
-            "She enters the strongest and most open image of the current sequence.",
-            "She keeps the energy alive with a clearer gesture, stride, or performance beat.",
-            "She lands the moment in a readable visual payoff.",
+            chorus_open,
+            chorus_carry,
+            chorus_land,
         ],
         "Bridge": [
             "She compresses into a quieter or more isolated moment.",
@@ -427,7 +456,7 @@ def _generic_section_event_scripts(prompt: str) -> dict[str, list[str]]:
             "She leaves the moment with a clear sense of emotional resolution.",
         ],
         "Outro": [
-            "The final image lingers after she has already emotionally moved through the scene.",
+            "The final image lingers after she has already moved through the scene.",
         ],
     }
 
@@ -452,3 +481,104 @@ def _generic_prompt_motif(prompt: str) -> str:
     if any(token in low for token in ("room", "diner", "cafe", "apartment")):
         return "interior"
     return "real-world"
+
+
+def _generic_intro_events(motif: str, locations: list[str], props: list[str]) -> tuple[str, str]:
+    first_location = locations[0] if locations else "the first location"
+    first_prop = props[0] if props else "one everyday object"
+    if motif == "city-night":
+        return (
+            f"She stands alone in {first_location} before she starts moving.",
+            f"She pauses long enough for the empty street, reflections, and {first_prop} to settle into the frame.",
+        )
+    if motif == "performance":
+        return (
+            "She settles into the room before the performance energy begins.",
+            "She holds a quiet beat beside the instrument or stage setup.",
+        )
+    if motif == "interior":
+        return (
+            f"She sits alone in {first_location}, taking in the space before she moves.",
+            f"She holds a quiet still moment with {first_prop} close to her.",
+        )
+    return (
+        "She appears alone in the first grounded location before the motion begins.",
+        "She holds a quiet still beat that fixes the mood and the place.",
+    )
+
+
+def _generic_verse_events(motif: str, locations: list[str], props: list[str]) -> tuple[str, str, str]:
+    carry_prop = props[0] if props else "one physical detail"
+    if motif == "city-night":
+        return (
+            "She passes one grounded street detail in a natural everyday way.",
+            "She keeps walking with a small but readable change in posture or direction.",
+            f"She continues forward while rain, reflections, passing light, and {carry_prop} carry over from the previous shot.",
+        )
+    if motif == "performance":
+        return (
+            "She adjusts or touches one piece of gear in a natural rehearsal-like way.",
+            "She moves through the room with a small but readable shift in rhythm or posture.",
+            f"She keeps {carry_prop} or one lighting detail alive from the previous shot.",
+        )
+    if motif == "interior":
+        return (
+            "She interacts with one everyday object in a natural unforced way.",
+            "She shifts through the same room with a small but readable change in posture or direction.",
+            f"She keeps {carry_prop} and one physical detail from the previous shot alive.",
+        )
+    return (
+        "She interacts with one grounded environment detail in a natural everyday way.",
+        "She moves through the same area with a small but readable shift in posture or direction.",
+        "She continues forward while keeping one physical detail from the previous shot alive.",
+    )
+
+
+def _generic_verse2_events(motif: str, locations: list[str], props: list[str]) -> tuple[str, str, str]:
+    next_location = locations[1] if len(locations) > 1 else (locations[0] if locations else "a connected place")
+    carry_prop = props[0] if props else "one object"
+    if motif == "city-night":
+        return (
+            f"She reaches {next_location} without breaking the same night route.",
+            f"She keeps moving while the same rain, pavement texture, window light, and {carry_prop} carry over.",
+            "She lands in a clearer visual state before the next cut.",
+        )
+    if motif == "performance":
+        return (
+            f"She reaches {next_location} without breaking continuity.",
+            f"She keeps moving while {carry_prop}, one instrument, cable, or light cue carries over from the last shot.",
+            "She lands in a clearer visual state before the next cut.",
+        )
+    if motif == "interior":
+        return (
+            f"She reaches {next_location} as a different but connected corner of the same interior world.",
+            f"She keeps moving while {carry_prop} or one texture carries over from the last location.",
+            "She lands in a clearer visual state before the next cut.",
+        )
+    return (
+        "She reaches a different but connected environment that expands the same mood.",
+        "She keeps moving while one physical object or texture carries over from the last location.",
+        "She lands in a clearer visual state before the next cut.",
+    )
+
+
+def _generic_chorus_events(motif: str, locations: list[str], props: list[str]) -> tuple[str, str, str]:
+    payoff_location = locations[-1] if locations else "the widest location"
+    carry_prop = props[0] if props else "one continuity prop"
+    if motif == "city-night":
+        return (
+            f"She steps into {payoff_location} as the widest and clearest night image of the song so far.",
+            f"She keeps the energy alive with a more open stride, gesture, or body turn while still carrying {carry_prop}.",
+            "She lands the moment in a readable visual payoff.",
+        )
+    if motif == "performance":
+        return (
+            f"She steps into {payoff_location} as the strongest and most open performance image of the song so far.",
+            f"She keeps the energy alive with a clearer performance beat or body movement while still carrying {carry_prop}.",
+            "She lands the moment in a readable visual payoff.",
+        )
+    return (
+        "She enters the strongest and most open image of the song so far.",
+        "She keeps the energy alive with a clearer gesture, stride, or performance beat.",
+        "She lands the moment in a readable visual payoff.",
+    )

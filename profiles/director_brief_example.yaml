@@ -5,6 +5,17 @@ prompt: >
 genre: "k-pop synth pop"
 voice: "solo female, airy and emotional"
 language: "ko"
+visual_concept: >
+  Realistic cinematic music video moving between rain-soaked city night exteriors,
+  a dim retro diner, and a final open release space before dawn.
+locations:
+  - dim retro diner
+  - wet city street at night
+  - wide wet intersection at night
+props:
+  - worn notebook
+  - half-empty coffee mug
+  - studio headphones
 anchor_subject: "pretty young Korean female idol in her 20s"
 anchor_hair: "long dark hair with soft volume and light face-framing strands"
 anchor_top: "clean fitted knit top with a short polished outer layer"

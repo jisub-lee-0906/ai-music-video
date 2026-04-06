@@ -41,7 +41,7 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
             continuity_delta = _continuity_delta(story_function, archetype, variant, primary_surface, guidance, story_visual_intent, story_event)
             content_trace = _content_trace(story_function, archetype, variant, guidance, story_event)
             identity_hook_policy = _identity_hook_policy(archetype, variant)
-            selected_prompt_shape = str(ref_archetype_grammar(archetype).get("preferred_sentence_shape", "")).strip()
+            selected_prompt_shape = str(ref_archetype_grammar(archetype).get("preferred_sentence_shape", "")).strip() or "connected cinematic prose"
             applied_grammar_source = _applied_grammar_source(story_function, archetype, variant, guidance)
         current.update(
             {
@@ -320,7 +320,18 @@ def _planner_primary_surface(shot: dict, archetype: str) -> str:
         archetype,
         str(shot.get("archetype_variant", shot.get("ref_archetype_variant", ""))).strip(),
     )
-    return _primary_surface(str(shot.get("story_function", "")).strip(), archetype, str(shot.get("archetype_variant", "")).strip(), guidance)
+    resolved = _primary_surface(str(shot.get("story_function", "")).strip(), archetype, str(shot.get("archetype_variant", "")).strip(), guidance)
+    if resolved and resolved != "walkable path":
+        return resolved
+    defaults = {
+        "platform_edge": "wet platform edge",
+        "sidewalk_continuation": "wet sidewalk edge",
+        "curb_crossing": "wet crosswalk",
+        "threshold_crossing": "threshold crossing",
+        "gate_pass": "entry threshold",
+        "passage_compression": "narrow interior passage",
+    }
+    return defaults.get(archetype, "grounded real-world surface")
 
 
 def _story_surface_override(story_function: str, archetype: str, variant: str, story_event: str = "") -> str:
@@ -684,6 +695,13 @@ def _generic_primary_surface(brief: dict, shot: dict) -> str:
     prompt = str(brief.get("profile_prompt", "")).lower()
     section = str(shot.get("section_label", "")).lower()
     story_function = str(shot.get("story_function", "")).strip()
+    literal_image = str(shot.get("literal_image", "")).strip()
+    locations = [str(x).strip() for x in brief.get("profile_locations", []) if str(x).strip()]
+    if literal_image:
+        return _literal_image_surface(literal_image)
+    if locations:
+        location = _pick_location_for_section(section, story_function, locations)
+        return f"a grounded cinematic view of {location}"
     if _has_any_term(prompt, "diner", "cafe") and "intro" in section:
         return "a dim late-night diner with a rain-streaked window and worn table"
     if _has_any_term(prompt, "club", "synth", "stage", "band") and "bridge" in section:
@@ -700,12 +718,15 @@ def _generic_primary_surface(brief: dict, shot: dict) -> str:
 def _generic_dominant_action(brief: dict, shot: dict, primary_surface: str) -> str:
     story_function = str(shot.get("story_function", "")).strip()
     event = str(shot.get("story_event", "")).strip()
+    visible_action = str(shot.get("visible_action", "")).strip()
+    if visible_action:
+        return _generic_action_from_visible_action(visible_action, primary_surface)
     if story_function == "entry":
-        return f"She enters the scene in a natural, readable motion inside {primary_surface}"
+        return f"She moves into frame naturally inside {primary_surface}"
     if story_function == "pressure":
         return f"She holds a quieter, more compressed moment inside {primary_surface}"
     if story_function == "payoff":
-        return f"She opens into the clearest emotional release inside {primary_surface}"
+        return f"She opens into the clearest release moment inside {primary_surface}"
     if event:
         return event
     return f"She keeps moving naturally through {primary_surface}"
@@ -713,16 +734,31 @@ def _generic_dominant_action(brief: dict, shot: dict, primary_surface: str) -> s
 
 def _generic_continuity_delta(shot: dict, primary_surface: str) -> str:
     story_function = str(shot.get("story_function", "")).strip()
+    continuity_anchor = str(shot.get("continuity_anchor", "")).strip()
+    if continuity_anchor:
+        return _generic_continuity_from_anchor(continuity_anchor)
     if story_function == "handoff":
-        return f"moving into a clear next state while staying inside {primary_surface}"
+        return "She leaves the shot with the next movement already forming."
     if story_function == "payoff":
-        return f"opening into the emotional payoff while remaining grounded inside {primary_surface}"
-    return f"continuing through the same place and emotional thread inside {primary_surface}"
+        return "She holds the release without losing the grounded reality of the place."
+    return "She carries the moment forward without breaking place continuity."
 
 
 def _generic_content_trace(brief: dict, shot: dict) -> str:
     prompt = str(brief.get("profile_prompt", "")).lower()
     section = str(shot.get("section_label", "")).lower()
+    literal_image = str(shot.get("literal_image", "")).strip()
+    emotional_turn = str(shot.get("emotional_turn", "")).strip()
+    lyric_lines = [str(x).strip() for x in shot.get("lyric_lines", []) if str(x).strip()]
+    props = [str(x).strip() for x in brief.get("profile_props", []) if str(x).strip()]
+    if literal_image:
+        return literal_image
+    if emotional_turn:
+        return emotional_turn
+    if lyric_lines:
+        return " / ".join(lyric_lines[:2])
+    if props:
+        return ", ".join(props[:2])
     if _has_any_term(prompt, "diner", "cafe", "notebook") and "intro" in section:
         return "a worn notebook, a half-empty coffee mug, and raindrops on the window"
     if _has_any_term(prompt, "rain", "wet", "street", "city"):
@@ -782,3 +818,54 @@ def _has_any_term(text: str, *terms: str) -> bool:
         if re.search(rf"\b{re.escape(term.lower())}\b", lowered):
             return True
     return False
+
+
+def _pick_location_for_section(section: str, story_function: str, locations: list[str]) -> str:
+    if not locations:
+        return "a grounded location"
+    low = str(section).lower()
+    if "intro" in low:
+        return locations[0]
+    if "bridge" in low and len(locations) >= 3:
+        return locations[min(2, len(locations) - 1)]
+    if ("chorus" in low or story_function == "payoff") and len(locations) >= 2:
+        return locations[min(len(locations) - 1, 1 if len(locations) == 2 else 2)]
+    if len(locations) >= 2:
+        return locations[1]
+    return locations[0]
+
+
+def _literal_image_surface(text: str) -> str:
+    cleaned = " ".join(str(text).strip().rstrip(". ").split())
+    if not cleaned:
+        return "a grounded everyday place with readable depth and physical texture"
+    lowered = cleaned.lower()
+    if any(token in lowered for token in ("window", "glass")):
+        return f"a lived-in interior framed by {cleaned}"
+    if any(token in lowered for token in ("street", "road", "asphalt", "crosswalk", "sidewalk", "rain", "wet")):
+        return f"a real nighttime street with {cleaned}"
+    if any(token in lowered for token in ("room", "club", "stage", "synth", "cable")):
+        return f"a grounded performance space with {cleaned}"
+    if any(token in lowered for token in ("roof", "skyline", "dawn", "fog")):
+        return f"an open rooftop atmosphere with {cleaned}"
+    return f"a grounded real-world scene built around {cleaned}"
+
+
+def _generic_action_from_visible_action(visible_action: str, primary_surface: str) -> str:
+    cleaned = " ".join(str(visible_action).strip().rstrip(". ").split())
+    lowered = cleaned.lower()
+    if lowered.startswith("she "):
+        return cleaned
+    if any(lowered.startswith(prefix) for prefix in ("walking", "standing", "sitting", "leaning", "writing", "playing", "crossing", "holding", "pausing")):
+        return f"She is {cleaned} within {primary_surface}"
+    return f"She {cleaned} within {primary_surface}"
+
+
+def _generic_continuity_from_anchor(text: str) -> str:
+    cleaned = " ".join(str(text).strip().rstrip(". ").split())
+    if not cleaned:
+        return ""
+    lowered = cleaned.lower()
+    if lowered.startswith("same ") or lowered.startswith("still ") or lowered.startswith("keep "):
+        return cleaned[0].upper() + cleaned[1:] + "."
+    return f"Keep {cleaned} consistent from the previous shot."

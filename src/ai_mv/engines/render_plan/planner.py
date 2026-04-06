@@ -2,30 +2,33 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.visual_plan_normalize import normalize_prompt_plan
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.prompt_grammar import golden_structure_guidance, load_flux2_prompting, load_render_plan_rules, ref_archetype_grammar, wan_transition_family
+from ai_mv.core.prompt_grammar import load_flux2_prompting
 from ai_mv.core.stages.render_verbalizer import verbalize_ref_prompt_pairs, verbalize_wan_prompts
 
 
 def build_prompt_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     flux_rules = load_flux2_prompting()
-    use_generic_profile = bool(str(brief.get("profile_prompt", "")).strip())
     direction_plan = payload["direction_plan"]
     ref_items: list[dict] = []
     wan_items: list[dict] = []
     for shot in direction_plan.get("shot_packages", []):
         story_function = str(shot.get("story_function", "")).strip()
         archetype = str(shot.get("ref_archetype", "")).strip()
-        variant = str(shot.get("archetype_variant", "")).strip()
-        guidance = {} if use_generic_profile else golden_structure_guidance(story_function, archetype, variant)
-        ref_atoms = _ref_prompt_atoms(brief, shot, guidance)
-        ref_trace = _generic_ref_trace(flux_rules) if use_generic_profile else _ref_trace(flux_rules, shot, guidance)
+        ref_atoms = _ref_prompt_atoms(brief, shot)
+        ref_trace = _generic_ref_trace(flux_rules)
         ref_items.append(
             {
                 "shot_id": str(shot.get("shot_id", "")).strip(),
                 "section_name": str(shot.get("section_name", "")).strip(),
                 "section_label": str(shot.get("section_label", "")).strip(),
                 "line_refs": list(shot.get("line_refs", [])),
+                "lyric_lines": list(shot.get("lyric_lines", [])),
+                "literal_image": str(shot.get("literal_image", "")).strip(),
+                "visible_action": str(shot.get("visible_action", "")).strip(),
+                "emotional_turn": str(shot.get("emotional_turn", "")).strip(),
+                "continuity_anchor": str(shot.get("continuity_anchor", "")).strip(),
+                "payoff_role": str(shot.get("payoff_role", "")).strip(),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
                 "story_function": story_function,
                 "story_goal": str(shot.get("story_goal", "")).strip(),
@@ -34,7 +37,7 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "story_visual_intent": str(shot.get("story_visual_intent", "")).strip(),
                 "shot_function": str(shot.get("shot_function", "")).strip(),
                 "ref_archetype": archetype,
-                "archetype_variant": variant,
+                "archetype_variant": "",
                 "blocking_role": str(shot.get("blocking_role", "")).strip(),
                 "entry_side": str(shot.get("entry_side", "")).strip(),
                 "travel_axis": str(shot.get("travel_axis", "")).strip(),
@@ -45,8 +48,8 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "dominant_action": str(shot.get("dominant_action", "")).strip(),
                 "continuity_delta": str(shot.get("continuity_delta", "")).strip(),
                 "content_trace": str(shot.get("content_trace", "")).strip(),
-                "selected_prompt_shape": "connected cinematic prose" if use_generic_profile else str(ref_archetype_grammar(archetype).get("preferred_sentence_shape", "")).strip(),
-                "applied_grammar_source": str(shot.get("applied_grammar_source", "")).strip(),
+                "selected_prompt_shape": "connected cinematic prose",
+                "applied_grammar_source": "generic_profile_runtime",
                 "applied_global_prompt_rules": list(ref_trace["applied_global_prompt_rules"]),
                 "applied_archetype_rules": list(ref_trace["applied_archetype_rules"]),
                 "applied_golden_structure": str(ref_trace["applied_golden_structure"]),
@@ -54,7 +57,7 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "identity_hook_policy": str(shot.get("identity_hook_policy", "")).strip(),
                 "why": str(shot.get("why", "")).strip(),
                 "ref_prompt_atoms": ref_atoms,
-                "ref_prompt_contract": "Write one connected cinematic image prompt with grounded place, action, physical detail, and film language." if use_generic_profile else _ref_prompt_contract(archetype, variant, guidance),
+                "ref_prompt_contract": "Write one connected cinematic image prompt with grounded place, action, physical detail, and film language.",
                 "ref_start_prompt_text": "",
                 "ref_end_prompt_text": "",
             }
@@ -63,14 +66,8 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
     for index, current in enumerate(ref_items[1:], start=2):
         previous = ref_items[index - 2]
         transition_family = _infer_wan_transition_family(current)
-        transition = wan_transition_family(transition_family)
-        guidance = {} if use_generic_profile else golden_structure_guidance(
-            str(current.get("story_function", "")).strip(),
-            str(current.get("ref_archetype", "")).strip(),
-            str(current.get("archetype_variant", "")).strip(),
-        )
-        wan_atoms = _wan_prompt_atoms(brief, current, guidance)
-        wan_trace = _generic_wan_trace(flux_rules) if use_generic_profile else _wan_trace(flux_rules, current, transition_family, guidance)
+        wan_atoms = _wan_prompt_atoms(brief, current)
+        wan_trace = _generic_wan_trace(flux_rules)
         wan_items.append(
             {
                 "shot_id": str(current.get("shot_id", "")).strip(),
@@ -88,8 +85,8 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "frame_bias": str(current.get("frame_bias", "")).strip(),
                 "arrival_side": str(current.get("arrival_side", "")).strip(),
                 "camera_relation": str(current.get("camera_relation", "")).strip(),
-                "wan_prompt_contract": "Bridge two adjacent keyframes in the same place with one readable movement." if use_generic_profile else str(transition.get("contract", "")).strip(),
-                "applied_grammar_source": str(current.get("applied_grammar_source", "")).strip(),
+                "wan_prompt_contract": "Bridge two adjacent keyframes in the same place with one readable movement.",
+                "applied_grammar_source": "generic_profile_runtime",
                 "applied_global_prompt_rules": list(wan_trace["applied_global_prompt_rules"]),
                 "applied_archetype_rules": list(wan_trace["applied_archetype_rules"]),
                 "applied_golden_structure": str(wan_trace["applied_golden_structure"]),
@@ -108,9 +105,9 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "style_contract": brief["style_contract"],
                 "environment_anchor": "simple pale backdrop for anchor extraction",
                 "applied_global_prompt_rules": _global_rule_keys(flux_rules, "tti"),
-                "applied_archetype_rules": ["tti_families", "identity_core", "identity_hooks"],
+                "applied_archetype_rules": ["generic_profile_runtime", "identity_core", "identity_hooks"],
                 "applied_golden_structure": "",
-                "rule_precedence_summary": str(load_render_plan_rules().get("rule_precedence", {}).get("tti", "")).strip(),
+                "rule_precedence_summary": "identity core first, then reusable anchor clarity, then prompt cleanup",
             },
             "ref_items": ref_items,
             "wan_items": wan_items,
@@ -134,10 +131,10 @@ def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
     return build_prompt_plan_preview_prompt(config, payload)
 
 
-def _ref_prompt_atoms(brief: dict, shot: dict, guidance: dict) -> dict:
+def _ref_prompt_atoms(brief: dict, shot: dict) -> dict:
     identity_hook = _identity_hook(brief, str(shot.get("identity_hook_policy", "")).strip())
-    start_shape = str(guidance.get("start_shape", "")).strip() or str(shot.get("dominant_action", "")).strip()
-    end_shape = str(guidance.get("end_shape", "")).strip() or str(shot.get("continuity_delta", "")).strip()
+    start_shape = str(shot.get("dominant_action", "")).strip()
+    end_shape = str(shot.get("continuity_delta", "")).strip()
     return {
         "subject_intro": _subject_intro(brief, identity_hook),
         "location": _location_clause(str(shot.get("primary_surface", "")).strip()),
@@ -145,6 +142,12 @@ def _ref_prompt_atoms(brief: dict, shot: dict, guidance: dict) -> dict:
         "dominant_action": str(shot.get("dominant_action", "")).strip(),
         "continuity_delta": str(shot.get("continuity_delta", "")).strip(),
         "content_trace": str(shot.get("content_trace", "")).strip(),
+        "lyric_lines": list(shot.get("lyric_lines", [])),
+        "literal_image": str(shot.get("literal_image", "")).strip(),
+        "visible_action": str(shot.get("visible_action", "")).strip(),
+        "emotional_turn": str(shot.get("emotional_turn", "")).strip(),
+        "continuity_anchor": str(shot.get("continuity_anchor", "")).strip(),
+        "payoff_role": str(shot.get("payoff_role", "")).strip(),
         "story_event": str(shot.get("story_event", "")).strip(),
         "story_visual_intent": str(shot.get("story_visual_intent", "")).strip(),
         "blocking_role": str(shot.get("blocking_role", "")).strip(),
@@ -159,9 +162,9 @@ def _ref_prompt_atoms(brief: dict, shot: dict, guidance: dict) -> dict:
     }
 
 
-def _wan_prompt_atoms(brief: dict, shot: dict, guidance: dict) -> dict:
+def _wan_prompt_atoms(brief: dict, shot: dict) -> dict:
     identity_hook = _identity_hook(brief, str(shot.get("identity_hook_policy", "")).strip())
-    bridge_shape = str(guidance.get("wan_shape", "")).strip() or str(shot.get("continuity_delta", "")).strip()
+    bridge_shape = str(shot.get("continuity_delta", "")).strip()
     return {
         "subject_intro": _subject_intro(brief, identity_hook),
         "location": _location_clause(str(shot.get("primary_surface", "")).strip()),
@@ -204,6 +207,12 @@ def _verbalize_ref_items(config: dict, ref_items: list[dict]) -> None:
                 "camera_relation": atoms.get("camera_relation", ""),
                 "primary_surface": atoms.get("primary_surface", ""),
                 "support_detail": atoms.get("content_trace", ""),
+                "lyric_lines": atoms.get("lyric_lines", []),
+                "literal_image": atoms.get("literal_image", ""),
+                "visible_action": atoms.get("visible_action", ""),
+                "emotional_turn": atoms.get("emotional_turn", ""),
+                "continuity_anchor": atoms.get("continuity_anchor", ""),
+                "payoff_role": atoms.get("payoff_role", ""),
                 "dominant_action": atoms.get("dominant_action", ""),
                 "continuity_delta": atoms.get("continuity_delta", ""),
                 "start_state": atoms.get("start_state", ""),
@@ -286,26 +295,14 @@ def _location_clause(surface: str) -> str:
     return f"In the {cleaned}"
 
 
-def _ref_prompt_contract(archetype: str, variant: str, guidance: dict) -> str:
-    if str(guidance.get("prompt_contract", "")).strip():
-        return str(guidance.get("prompt_contract", "")).strip()
-    base = str(ref_archetype_grammar(archetype).get("prompt_contract", "")).strip()
-    note = str(ref_archetype_grammar(archetype).get("variants", {}).get(variant, {}).get("note", "")).strip() if variant else ""
-    return f"{base} Variant note: {note}".strip() if note else base
-
-
 def _infer_wan_transition_family(shot: dict) -> str:
-    rules = load_render_plan_rules().get("wan_transition_family", {})
-    archetype = str(shot.get("ref_archetype", "")).strip()
     story_function = str(shot.get("story_function", "")).strip()
-    if archetype in set(rules.get("threshold_or_release_archetypes", [])):
-        return "threshold_bridge" if story_function != "payoff" else "release_crossing"
-    if archetype in set(rules.get("descent_archetypes", [])):
-        return "descent_bridge"
-    if story_function == "pressure" or archetype in set(rules.get("compression_archetypes", [])):
+    if story_function == "pressure":
         return "compression_bridge"
     if story_function == "payoff":
         return "release_crossing"
+    if story_function == "handoff":
+        return "threshold_bridge"
     return "plain_continuation"
 
 
@@ -328,7 +325,7 @@ def _ref_trace(flux_rules: dict, shot: dict, guidance: dict) -> dict:
         "applied_global_prompt_rules": _global_rule_keys(flux_rules, "ref"),
         "applied_archetype_rules": rules,
         "applied_golden_structure": str(guidance.get("name", "")).strip(),
-        "rule_precedence_summary": str(load_render_plan_rules().get("rule_precedence", {}).get("ref", "")).strip(),
+        "rule_precedence_summary": "grounded place first, then readable action, then secondary detail",
     }
 
 
@@ -348,7 +345,7 @@ def _wan_trace(flux_rules: dict, shot: dict, transition_family: str, guidance: d
         "applied_global_prompt_rules": _global_rule_keys(flux_rules, "wan"),
         "applied_archetype_rules": rules,
         "applied_golden_structure": str(guidance.get("name", "")).strip(),
-        "rule_precedence_summary": str(load_render_plan_rules().get("rule_precedence", {}).get("wan", "")).strip(),
+        "rule_precedence_summary": "same-place continuity first, then one readable transition",
     }
 
 

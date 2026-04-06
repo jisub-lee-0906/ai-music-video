@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.prompt_grammar import wan_transition_family
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.wan_2_2_flf2v.runner import run_wan
 from ai_mv.utils.text_utils import parse_target
@@ -56,7 +55,6 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
         start_ref = ref_map[start_ref_shot_id]
         end_ref = ref_map[end_ref_shot_id]
         transition_family = str(chain.get("wan_transition_family", "")).strip()
-        transition = wan_transition_family(transition_family)
         duration_sec = float(chain.get("duration_sec", 2.0) or 2.0)
         planned_frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
         clips.append(
@@ -114,7 +112,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "subject_action": str(chain.get("wan_prompt_atoms", {}).get("bridge_action", "")).strip(),
                 "wan_action_line": str(chain.get("wan_prompt_atoms", {}).get("bridge_action", "")).strip(),
                 "wan_transition_family": transition_family,
-                "wan_transition_contract": str(transition.get("contract", "")).strip(),
+                "wan_transition_contract": str(chain.get("wan_prompt_contract", "")).strip(),
                 "positive_prompt": str(chain.get("wan_positive_prompt_text", "")).strip() or _wan_positive_prompt(brief, chain),
                 "negative_prompt": _wan_negative_prompt(brief),
                 "energy": "high" if "chorus" in str(chain.get("section_label", "")).lower() else "normal",

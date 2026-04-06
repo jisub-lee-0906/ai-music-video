@@ -52,16 +52,19 @@ def _build_ref_prompt(config: dict, row: dict, previous: dict | None, phase: str
     subject = _ref_subject(row, brief)
     action = _action_clause(row, phase)
     place = _place_clause(row, previous)
-    support = _support_clause(row, previous, phase)
+    support_parts = _support_parts(row, previous, phase)
     finish = _cinematic_finish(brief, row)
-    parts = [
-        _sentence(f"{subject} is {action}"),
-        _sentence(place),
-        support,
-        finish,
-        "Keep the face.",
-    ]
-    return " ".join(part for part in parts if part).strip()
+    sentences: list[str] = []
+    lead = _lead_sentence(subject, action, place)
+    if lead:
+        sentences.append(lead)
+    if place and (place.startswith("The same ") or place.startswith("The scene ")):
+        sentences.append(_sentence(place))
+    sentences.extend(_sentence(part) for part in support_parts if _clean_phrase(part))
+    if finish:
+        sentences.append(finish)
+    sentences.append("Keep the face.")
+    return " ".join(sentence for sentence in sentences if sentence).strip()
 
 
 def _verbalize_ref_prompt_pairs_with_codex(config: dict, rows: list[dict]) -> dict[str, dict]:
@@ -228,6 +231,8 @@ def _action_clause(row: dict, phase: str) -> str:
         "closes ": "closing ",
         "crosses ": "crossing ",
         "stands ": "standing ",
+        "touches ": "touching ",
+        "passes ": "passing ",
     }
     for prefix, replacement in replacements.items():
         if lowered.startswith(prefix):
@@ -241,8 +246,11 @@ def _place_clause(row: dict, previous: dict | None) -> str:
     surface = _clean_phrase(row.get("primary_surface", ""))
     location = _clean_phrase(row.get("location", ""))
     previous_surface = _clean_phrase(previous.get("primary_surface", "")) if isinstance(previous, dict) else ""
+    continuity_anchor = _clean_phrase(row.get("continuity_anchor", ""))
     if surface and previous_surface and surface == previous_surface:
-        return f"The same place continues around her with {surface} still anchoring the frame."
+        return f"The same location stays around her, with {surface} still anchoring the frame."
+    if continuity_anchor:
+        return _continuity_anchor_sentence(continuity_anchor)
     if surface:
         return f"The scene is grounded by {surface}."
     if location:
@@ -250,22 +258,22 @@ def _place_clause(row: dict, previous: dict | None) -> str:
     return ""
 
 
-def _support_clause(row: dict, previous: dict | None, phase: str) -> str:
-    trace = _clean_phrase(row.get("support_detail", "")) or _clean_phrase(row.get("content_trace", ""))
+def _support_parts(row: dict, previous: dict | None, phase: str) -> list[str]:
+    trace = _clean_phrase(row.get("literal_image", "")) or _clean_phrase(row.get("support_detail", "")) or _clean_phrase(row.get("content_trace", ""))
     event = _clean_phrase(row.get("story_event", ""))
     continuity = _clean_phrase(row.get("end_state", "")) if phase == "end" else ""
+    emotional_turn = _clean_phrase(row.get("emotional_turn", ""))
     previous_event = _clean_phrase(previous.get("story_event", "")) if isinstance(previous, dict) else ""
     pieces: list[str] = []
     if trace:
         pieces.append(trace)
-    if event and event != previous_event:
+    if emotional_turn and _looks_like_english_clause(emotional_turn) and not _looks_like_meta_event(emotional_turn):
+        pieces.append(emotional_turn)
+    if event and event != previous_event and not _looks_like_meta_event(event) and not _same_motion_family(event, row.get("dominant_action", "")):
         pieces.append(event)
-    if continuity and continuity != _clean_phrase(row.get("dominant_action", "")):
+    if continuity and continuity != _clean_phrase(row.get("dominant_action", "")) and not _looks_like_meta_continuity(continuity):
         pieces.append(continuity)
-    if not pieces:
-        return ""
-    sentence = ". ".join(_capitalize_fragment(piece) for piece in pieces if piece)
-    return _sentence(sentence)
+    return [_capitalize_fragment(piece) for piece in pieces if piece]
 
 
 def _cinematic_finish(brief: dict, row: dict) -> str:
@@ -309,3 +317,86 @@ def _capitalize_fragment(text: str) -> str:
     if not cleaned:
         return ""
     return cleaned[0].upper() + cleaned[1:]
+
+
+def _looks_like_meta_event(text: str) -> bool:
+    lowered = _clean_phrase(text).lower()
+    meta_tokens = (
+        "the song so far",
+        "the scene",
+        "the mood",
+        "the place",
+        "the final image",
+    )
+    return any(token in lowered for token in meta_tokens)
+
+
+def _looks_like_meta_continuity(text: str) -> bool:
+    lowered = _clean_phrase(text).lower()
+    meta_tokens = (
+        "place continuity",
+        "grounded reality",
+        "release without losing",
+        "moment forward",
+        "next movement already forming",
+        "consistent from the previous shot",
+        "keep the same",
+    )
+    return any(token in lowered for token in meta_tokens)
+
+
+def _looks_like_english_clause(text: str) -> bool:
+    lowered = _clean_phrase(text).lower()
+    words = [w for w in lowered.split() if w]
+    if len(words) < 2:
+        return False
+    alpha_words = sum(1 for w in words if any("a" <= ch <= "z" for ch in w))
+    return alpha_words >= max(2, len(words) // 2)
+
+
+def _continuity_anchor_sentence(anchor: str) -> str:
+    cleaned = _clean_phrase(anchor)
+    if not cleaned:
+        return ""
+    lowered = cleaned.lower()
+    if lowered.startswith("the same "):
+        subject = cleaned[9:]
+        return f"The same {subject} stays with her."
+    return f"{_capitalize_fragment(cleaned)} remains visible."
+
+
+def _same_motion_family(left: object, right: object) -> bool:
+    left_low = _clean_phrase(left).lower()
+    right_low = _clean_phrase(right).lower()
+    verb_families = (
+        ("move", "moving", "moves"),
+        ("walk", "walking", "walks"),
+        ("open", "opening", "opens"),
+        ("enter", "entering", "enters"),
+        ("interact", "interacting", "interacts"),
+        ("hold", "holding", "holds"),
+        ("pause", "pausing", "pauses"),
+        ("step", "stepping", "steps"),
+        ("touch", "touching", "touches"),
+        ("pass", "passing", "passes"),
+    )
+    for family in verb_families:
+        if any(token in left_low for token in family) and any(token in right_low for token in family):
+            return True
+    return False
+
+
+def _lead_sentence(subject: str, action: str, place: str) -> str:
+    action_text = _clean_phrase(action)
+    place_text = _clean_phrase(place)
+    if not action_text:
+        return ""
+    if place_text.startswith("The same ") or place_text.startswith("The scene "):
+        return _sentence(f"{subject} is {action_text}")
+    if place_text:
+        if place_text.endswith("."):
+            place_text = place_text[:-1]
+        if place_text.lower().startswith(("in ", "at ", "by ", "along ")):
+            return _sentence(f"{subject} is {action_text}, {place_text.lower()}")
+        return _sentence(f"{subject} is {action_text}. {place_text}")
+    return _sentence(f"{subject} is {action_text}")

@@ -49,7 +49,9 @@ def test_apply_director_brief_merges_example_style_input(tmp_path, monkeypatch):
 
     assert cfg["audio"]["brief"] == "Director audio brief"
     assert cfg["character"]["identity_core"] == "same vocalist, solo female, airy and emotional"
-    assert cfg["visual"]["story_premise"] == "Director audio brief"
+    assert cfg["visual"]["story_premise"] == "Realistic cinematic city-night breakup video."
+    assert cfg["visual"]["locations"] == ["dim retro diner", "wet city street at night"]
+    assert cfg["visual"]["props"] == ["worn notebook", "coffee mug"]
     assert cfg["anchor_subject"] == "pretty young Korean female idol in her 20s"
 
 
@@ -59,6 +61,13 @@ def _director_brief_yaml() -> str:
         "genre: k-pop synth pop\n"
         "voice: solo female, airy and emotional\n"
         "language: ko\n"
+        "visual_concept: Realistic cinematic city-night breakup video.\n"
+        "locations:\n"
+        "  - dim retro diner\n"
+        "  - wet city street at night\n"
+        "props:\n"
+        "  - worn notebook\n"
+        "  - coffee mug\n"
         "anchor_subject: pretty young Korean female idol in her 20s\n"
         "anchor_hair: long dark hair with soft volume\n"
         "anchor_top: fitted knit top with a short polished outer layer\n"

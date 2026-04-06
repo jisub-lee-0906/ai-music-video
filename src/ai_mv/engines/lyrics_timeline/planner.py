@@ -4,13 +4,14 @@ import json
 
 from ai_mv.core.contracts.prompt_normalize import normalize_lyrics_timeline
 from ai_mv.core.contracts.prompt_schema import lyrics_timeline_schema
+from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.infra.codex_cli_client import generate_structured
 
 
 def build_lyrics_timeline(config: dict, payload: dict) -> dict:
     audio_plan = payload["audio_plan"]
     sections = list(payload["audio_map"]["sections"])
-    prompt = _planner_prompt(audio_plan, sections)
+    prompt = _planner_prompt(config, audio_plan, sections)
     raw = generate_structured(config, prompt, lyrics_timeline_schema(), attempts=1)
     try:
         timeline = normalize_lyrics_timeline(raw, sections)
@@ -20,12 +21,13 @@ def build_lyrics_timeline(config: dict, payload: dict) -> dict:
     return timeline
 
 
-def build_lyrics_timeline_preview_prompt(audio_plan: dict, sections: list[dict]) -> str:
-    return _planner_prompt(audio_plan, sections)
+def build_lyrics_timeline_preview_prompt(config: dict, audio_plan: dict, sections: list[dict]) -> str:
+    return _planner_prompt(config, audio_plan, sections)
 
 
-def _planner_prompt(audio_plan: dict, sections: list[dict]) -> str:
+def _planner_prompt(config: dict, audio_plan: dict, sections: list[dict]) -> str:
     max_beats = _recommended_max_beats(audio_plan, sections)
+    brief = build_director_brief_intent(config)
     return (
         "You are a lyric-to-scene timeline planner for a music video. "
         "Return strict JSON only. No prose outside JSON. "
@@ -45,14 +47,25 @@ def _planner_prompt(audio_plan: dict, sections: list[dict]) -> str:
         "line_refs must point only to line_index values from that section. "
         "Never invent a line_index that is not present in the source section. "
         "Never output an empty line text when a line exists. "
-        "literal_image must stay close to the lyric image. "
-        "visible_action must be screen-readable. "
+        "literal_image must stay close to the lyric image and name concrete physical things the camera can actually show. "
+        "visible_action must be screen-readable and describe exactly what the woman is doing in that beat. "
+        "emotional_turn must describe the feeling shift in plain cinematic language, not abstract criticism or analysis. "
+        "continuity_anchor must name the specific person/place/prop/detail that should carry into the next beat. "
+        "payoff_role must explain what that beat does in the sequence: setup, carry, tighten, release, payoff, or residue. "
+        "Use grounded cinematic shot-card thinking, not symbolic analysis. "
+        "Prefer tangible nouns like window, mug, notebook, wet asphalt, headlights, cables, rooftop wind, or empty chair over vague mood language. "
+        "Prefer visible actions like writing, walking, turning, crossing, sitting, holding, looking, stepping, or pausing over internal-only statements. "
+        "Do not write meta phrases like 'the scene shows', 'the sequence', 'visual metaphor', 'emotional thread', 'continuity', or 'camera-ready'. "
+        "Do not mention editing, camera instructions, lens names, film grain, or prompt-writing advice here. "
         "Within a section, avoid flattening all beats into the same image or action. "
         "If a chorus repeats, keep the core motif but change at least the emotional_turn or payoff_role and shift the image/action emphasis. "
         "Intro should establish the world cleanly, verses should progress through distinct observations, pre-chorus should tighten and aim, chorus should present the hook image and release, bridge should interrupt or thin the motion, and outro should resolve with a final after-image. "
         "Repeated choruses must not collapse into the same emotional_turn and payoff_role. "
         "Instrumental Intro or Outro sections should remain empty here rather than inventing fake lyric beats. "
         "Before finalizing, check every section: all source lines are present, each has line_index and text, and all beat line_refs refer only to that section's line_index values. "
+        f"Visual concept={_brief_visual_context(brief)}. "
+        f"Preferred locations={_preferred_locations(brief)}. "
+        f"Carry-friendly props={_preferred_props(brief)}. "
         f"Sections={_section_digest(sections)}. "
         f"Source section lines JSON={_section_lines_json(sections)}. "
         f"Lyrics={_lyrics_digest(audio_plan)}."
@@ -144,3 +157,22 @@ def _recommended_max_beats(audio_plan: dict, sections: list[dict]) -> int:
     if max_lines >= 6:
         return 4
     return 3
+
+
+def _brief_visual_context(brief: dict) -> str:
+    parts = [
+        str(brief.get("visual_concept", "")).strip(),
+        str(brief.get("profile_genre", "")).strip(),
+        str(brief.get("profile_voice", "")).strip(),
+    ]
+    return " | ".join(part for part in parts if part) or "grounded cinematic music video"
+
+
+def _preferred_locations(brief: dict) -> str:
+    rows = [str(x).strip() for x in brief.get("profile_locations", []) if str(x).strip()]
+    return ", ".join(rows) if rows else "no fixed location list"
+
+
+def _preferred_props(brief: dict) -> str:
+    rows = [str(x).strip() for x in brief.get("profile_props", []) if str(x).strip()]
+    return ", ".join(rows) if rows else "no fixed prop list"

@@ -19,10 +19,10 @@ def grammar_file(name: str) -> Path:
 def load_prompt_grammar(name: str) -> dict:
     path = grammar_file(name)
     if not path.exists():
-        raise RuntimeError(f"missing prompt grammar file: {path.as_posix()}")
+        return {}
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise RuntimeError(f"invalid prompt grammar file: {path.as_posix()}")
+        return {}
     return raw
 
 

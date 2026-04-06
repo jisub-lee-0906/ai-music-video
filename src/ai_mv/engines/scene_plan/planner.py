@@ -17,6 +17,11 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
         story_goal = brief["section_story_roles"].get(section_label, brief["section_story_roles"].get(section_name, ""))
         section_events = list(event_scripts.get(section_label, event_scripts.get(section_name, [])))
         world_zone = _world_zone_for_section(section_label, section_index)
+        line_map = {
+            int(row.get("line_index", 0)): str(row.get("text", "")).strip()
+            for row in section.get("lines", [])
+            if isinstance(row, dict) and int(row.get("line_index", 0)) > 0 and str(row.get("text", "")).strip()
+        }
         beats = [row for row in section.get("lyric_beats", []) if isinstance(row, dict)]
         section_progression.append(
             {
@@ -44,6 +49,12 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
                         "section_label": section_label,
                         "beat_refs": [beat_id],
                         "line_refs": [int(x) for x in beat.get("line_refs", []) if int(x) > 0],
+                        "lyric_lines": [line_map.get(int(x), "") for x in beat.get("line_refs", []) if int(x) in line_map],
+                        "literal_image": str(beat.get("literal_image", "")).strip(),
+                        "visible_action": str(beat.get("visible_action", "")).strip(),
+                        "emotional_turn": str(beat.get("emotional_turn", "")).strip(),
+                        "continuity_anchor": str(beat.get("continuity_anchor", "")).strip(),
+                        "payoff_role": str(beat.get("payoff_role", "")).strip(),
                         "story_function": story_function,
                         "story_goal": story_goal,
                         "story_event": story_event,

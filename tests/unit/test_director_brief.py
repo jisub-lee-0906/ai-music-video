@@ -10,6 +10,9 @@ def _brief() -> dict:
         "genre": "k-pop synth pop",
         "voice": "solo female, airy and emotional",
         "language": "ko",
+        "visual_concept": "Realistic cinematic city-night breakup video.",
+        "locations": ["dim retro diner", "wet city street at night"],
+        "props": ["worn notebook", "coffee mug"],
     }
 
 
@@ -27,5 +30,8 @@ def test_build_director_brief_intent_returns_writer_layer_fields():
     assert intent["anchor_subject"] == "pretty young Korean female idol in her 20s"
     assert intent["anchor_pose"]
     assert intent["anchor_background"]
+    assert intent["visual_concept"] == "Realistic cinematic city-night breakup video."
+    assert intent["profile_locations"] == ["dim retro diner", "wet city street at night"]
+    assert intent["profile_props"] == ["worn notebook", "coffee mug"]
     assert "Intro" in intent["section_story_roles"]
     assert intent["motif_families"] == []

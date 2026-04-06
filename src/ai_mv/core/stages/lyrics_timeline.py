@@ -14,7 +14,7 @@ def run_lyrics_timeline(stage_input: StageInput) -> StageOutput:
         build_stage_payload(
             stage_input.payload,
             planner_key="lyrics_timeline",
-            planner_value={"prompt": _planner_prompt(stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])},
+            planner_value={"prompt": _planner_prompt(stage_input.config, stage_input.payload["audio_plan"], stage_input.payload["audio_map"]["sections"])},
             workflow_key="lyrics_timeline",
             workflow_value={"sections": _timeline_preview(timeline)},
             render_updates={"lyrics_timeline": timeline},
@@ -54,7 +54,7 @@ def build_lyrics_timeline_preview_payload(config: dict, payload: dict) -> dict:
     return build_stage_payload(
         payload,
         planner_key="lyrics_timeline",
-        planner_value={"prompt": build_lyrics_timeline_preview_prompt(payload["audio_plan"], payload["audio_map"]["sections"])},
+        planner_value={"prompt": build_lyrics_timeline_preview_prompt(config, payload["audio_plan"], payload["audio_map"]["sections"])},
         workflow_key="lyrics_timeline",
         workflow_value={"sections": list(timeline.get("sections", []))},
         render_updates={"lyrics_timeline": timeline},
