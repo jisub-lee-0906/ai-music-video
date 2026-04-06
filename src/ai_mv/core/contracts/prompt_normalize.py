@@ -147,6 +147,19 @@ def normalize_lyrics_timeline(raw: dict, sections: list[dict]) -> dict:
         section_label = str(section.get("label", section_name)).strip()
         lines = [x for x in row.get("lines", []) if isinstance(x, dict)]
         if not lines:
+            if _allows_empty_lyric_section(section_name, section_label):
+                out_sections.append(
+                    {
+                        "section_name": section_name,
+                        "section_label": section_label,
+                        "lines": [],
+                        "hook_lines": [],
+                        "lyric_beats": [],
+                        "start_sec": float(section.get("start_sec", section.get("start", 0.0))),
+                        "end_sec": float(section.get("end_sec", section.get("end", 0.0))),
+                    }
+                )
+                continue
             raise RuntimeError("lyrics timeline lines missing")
         parsed_lines = []
         valid_refs: set[int] = set()
@@ -159,6 +172,19 @@ def normalize_lyrics_timeline(raw: dict, sections: list[dict]) -> dict:
             valid_refs.add(line_index)
         beats = [x for x in row.get("lyric_beats", []) if isinstance(x, dict)]
         if not beats:
+            if _allows_empty_lyric_section(section_name, section_label):
+                out_sections.append(
+                    {
+                        "section_name": section_name,
+                        "section_label": section_label,
+                        "lines": parsed_lines,
+                        "hook_lines": [int(x) for x in row.get("hook_lines", []) if int(x) in valid_refs],
+                        "lyric_beats": [],
+                        "start_sec": float(section.get("start_sec", section.get("start", 0.0))),
+                        "end_sec": float(section.get("end_sec", section.get("end", 0.0))),
+                    }
+                )
+                continue
             raise RuntimeError("lyrics timeline lyric_beats missing")
         parsed_beats = []
         for beat in beats:
@@ -210,7 +236,11 @@ def _render_lyrics_blocks(blocks: list[dict]) -> str:
     for row in blocks:
         label = str(row["label"]).strip()
         arr = [str(x).strip() for x in row["lines"] if str(x).strip()]
-        if not label or not arr:
+        if not label:
+            raise RuntimeError("invalid lyrics block")
+        if not arr:
+            if _allows_empty_lyric_section(str(row.get("section", "")).strip(), label):
+                continue
             raise RuntimeError("invalid lyrics block")
         lines.append(f"[{label}]")
         lines.extend(arr)
@@ -476,7 +506,6 @@ def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> N
     if not line_budgets:
         return
     minimums = {
-        "Intro": 1,
         "Verse 1": 4,
         "Verse 2": 4,
         "Pre-Chorus": 3,
@@ -489,11 +518,19 @@ def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> N
     for row in blocks:
         label = str(row.get("label", "")).strip()
         lines = [str(line).strip() for line in row.get("lines", []) if str(line).strip()]
+        if _allows_empty_lyric_section(str(row.get("section", "")).strip(), label) and not lines:
+            continue
         if label in minimums and len(lines) < minimums[label]:
             raise RuntimeError(f"audio lyrics quality mismatch: {label} underdelivers its section role")
         max_allowed = int(line_budgets.get(label, 0) or 0)
         if max_allowed > 0 and len(lines) > max_allowed:
             raise RuntimeError(f"audio lyrics quality mismatch: {label} exceeds line budget")
+
+
+def _allows_empty_lyric_section(section_name: str, section_label: str) -> bool:
+    sec = str(section_name).strip().lower()
+    label = str(section_label).strip().lower()
+    return sec in {"intro", "outro"} or label in {"intro", "outro"}
 
 
 def _shared_line_count(left: dict, right: dict) -> int:

@@ -23,6 +23,44 @@ def ping_comfy(base_url: str) -> bool:
         return False
 
 
+def queue_state(base_url: str, timeout: int | float | None = 5) -> dict[str, Any]:
+    try:
+        res = requests.get(f"{base_url.rstrip('/')}/queue", timeout=timeout)
+        res.raise_for_status()
+        data = res.json()
+    except Exception as exc:
+        raise ComfyRequestError(f"Comfy queue request failed: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ComfyRequestError("Comfy queue response is not a dict")
+    return data
+
+
+def interrupt(base_url: str, timeout: int | float | None = 5) -> None:
+    try:
+        res = requests.post(f"{base_url.rstrip('/')}/interrupt", timeout=timeout)
+        res.raise_for_status()
+    except Exception as exc:
+        raise ComfyRequestError(f"Comfy interrupt failed: {exc}") from exc
+
+
+def clear_queue(base_url: str, timeout: int | float | None = 5) -> None:
+    try:
+        res = requests.post(f"{base_url.rstrip('/')}/queue", json={"clear": True}, timeout=timeout)
+        res.raise_for_status()
+    except Exception as exc:
+        raise ComfyRequestError(f"Comfy queue clear failed: {exc}") from exc
+
+
+def running_and_pending_counts(base_url: str, timeout: int | float | None = 5) -> tuple[int, int]:
+    state = queue_state(base_url, timeout=timeout)
+    running = state.get("queue_running", [])
+    pending = state.get("queue_pending", [])
+    return (
+        len(running) if isinstance(running, list) else 0,
+        len(pending) if isinstance(pending, list) else 0,
+    )
+
+
 def submit_workflow(base_url: str, workflow: dict[str, Any], timeout: int | None) -> dict:
     queued = _queue_prompt(base_url, workflow, timeout)
     prompt_id = _prompt_id_from_queue(queued)

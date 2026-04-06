@@ -15,6 +15,7 @@ from ai_mv.core.stages.director_plan import build_director_plan_preview_payload
 from ai_mv.core.stages.lyrics_timeline import build_lyrics_timeline_preview_payload
 from ai_mv.core.stages.render_plan import build_render_plan_preview_payload
 from ai_mv.core.stages.scene_plan import build_scene_plan_preview_payload
+from ai_mv.core.stages.shot_density_refiner import build_shot_density_refiner_preview_payload
 
 
 def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = False) -> str:
@@ -31,6 +32,7 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
         _run_stage(state, stage_input, "acestep_music", _add_audio)
         _run_stage(state, stage_input, "lyrics_timeline", _add_lyrics_timeline)
         _run_stage(state, stage_input, "scene_outline", _add_scene_plan)
+        _run_stage(state, stage_input, "shot_density_refiner", _add_shot_density_refiner)
         _run_stage(state, stage_input, "direction_plan", _add_director_plan)
         _run_stage(state, stage_input, "prompt_plan", _add_render_plan)
         _run_stage(state, stage_input, "backend_preview", _add_backend_preview)
@@ -69,6 +71,10 @@ def _add_lyrics_timeline(stage_input: StageInput) -> None:
 
 def _add_scene_plan(stage_input: StageInput) -> None:
     stage_input.payload.update(build_scene_plan_preview_payload(stage_input.config, stage_input.payload))
+
+
+def _add_shot_density_refiner(stage_input: StageInput) -> None:
+    stage_input.payload.update(build_shot_density_refiner_preview_payload(stage_input.config, stage_input.payload))
 
 
 def _add_director_plan(stage_input: StageInput) -> None:

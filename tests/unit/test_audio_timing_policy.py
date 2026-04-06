@@ -25,13 +25,15 @@ def test_audio_policy_populates_default_ending_contract():
     assert out["outro_required"] is False
     assert out["ending_vocal_density"] == "medium"
     assert "clean ending" in out["ending_tags"]
-    assert out["line_budgets"]["Intro"] == 1
+    assert out["line_budgets"]["Intro"] == 0
     assert out["line_budgets"]["Verse 1"] == 4
     assert out["line_budgets"]["Pre-Chorus"] == 3
     assert out["line_budgets"]["Final Chorus"] == 4
 
+    assert out["line_budgets"]["Outro"] == 0
 
-def test_audio_policy_tightens_terminal_clean_resolve_outro_budget():
+
+def test_audio_policy_keeps_intro_and_outro_instrumental_by_default():
     out = audio_policy(
         {
             "audio": {
@@ -40,10 +42,12 @@ def test_audio_policy_tightens_terminal_clean_resolve_outro_budget():
                 "outro_required": True,
                 "ending_vocal_density": "low",
                 "terminal_end_tag": True,
+                "language": "ko",
             }
         }
     )
-    assert out["line_budgets"]["Outro"] == 1
+    assert out["line_budgets"]["Intro"] == 0
+    assert out["line_budgets"]["Outro"] == 0
 
 
 def test_audio_policy_accepts_custom_section_bars():

@@ -24,7 +24,7 @@ def map_wan_workflow(config: dict, clip: dict) -> dict:
         retry=int(clip.get("retry", 0)),
     )
     seed = 3000 + idx
-    steps = _steps_for_energy(str(clip["energy"]))
+    steps = _steps_for_energy(config, str(clip["energy"]))
     neg = str(clip["negative_prompt"])
     pos = str(clip["positive_prompt"])
     return {
@@ -85,11 +85,21 @@ def wan_required_inputs() -> dict[str, list[str]]:
     }
 
 
-def _steps_for_energy(energy: str) -> int:
+def _steps_for_energy(config: dict, energy: str) -> int:
+    render = config.get("render", {}) if isinstance(config, dict) else {}
     if energy == "low":
-        return 14
+        return _int_render_override(render, "wan_steps_low", 12)
     if energy == "high":
-        return 22
+        return _int_render_override(render, "wan_steps_high", 16)
     if energy == "normal":
-        return 18
+        return _int_render_override(render, "wan_steps_normal", 14)
     raise ValueError(f"invalid energy: {energy}")
+
+
+def _int_render_override(render: dict, key: str, default: int) -> int:
+    raw = render.get(key, default) if isinstance(render, dict) else default
+    try:
+        value = int(raw)
+    except Exception:
+        return default
+    return max(1, value)

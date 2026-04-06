@@ -45,6 +45,8 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
 def build_wan_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     fps = parse_target(config["video"]["target"])[2]
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    max_frames = _wan_max_frames(render, fps)
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in payload.get("flux2_ref_images", []) if isinstance(row, dict)}
     chains = [row for row in payload.get("prompt_plan", {}).get("wan_items", []) if isinstance(row, dict)]
     clips: list[dict] = []
@@ -56,6 +58,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
         transition_family = str(chain.get("wan_transition_family", "")).strip()
         transition = wan_transition_family(transition_family)
         duration_sec = float(chain.get("duration_sec", 2.0) or 2.0)
+        planned_frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
         clips.append(
             {
                 "shot_id": str(chain.get("shot_id", "")).strip(),
@@ -64,7 +67,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "start_ref_index": int(start_ref.get("timeline_index", 0) or 0),
                 "end_ref_index": int(end_ref.get("timeline_index", 0) or 0),
                 "fps": fps,
-                "frames": max(_frame_floor(fps), int(round(duration_sec * fps))),
+                "frames": min(max_frames, planned_frames),
                 "section_name": str(chain.get("section_name", "")).strip(),
                 "section_label": str(chain.get("section_label", "")).strip(),
                 "shot_type": "DETAIL_INSERT",
@@ -136,3 +139,12 @@ def _wan_negative_prompt(brief: dict) -> str:
 
 def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
+
+
+def _wan_max_frames(render: dict, fps: int) -> int:
+    raw = render.get("wan_max_frames", 40) if isinstance(render, dict) else 40
+    try:
+        value = int(raw)
+    except Exception:
+        value = 40
+    return max(_frame_floor(fps), value)

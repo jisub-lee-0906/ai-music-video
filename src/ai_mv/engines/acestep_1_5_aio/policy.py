@@ -15,7 +15,7 @@ DEFAULT_ENDING_TAGS: dict[str, list[str]] = {
     "anthem_lift": ["clean ending", "anthemic final lift", "open final release"],
 }
 DEFAULT_LINE_BUDGETS: dict[str, int] = {
-    "Intro": 1,
+    "Intro": 0,
     "Verse 1": 6,
     "Verse 2": 6,
     "Pre-Chorus": 4,
@@ -25,7 +25,7 @@ DEFAULT_LINE_BUDGETS: dict[str, int] = {
     "Final Chorus": 6,
     "Post-Chorus": 3,
     "Bridge": 4,
-    "Outro": 2,
+    "Outro": 0,
 }
 DEFAULT_SECTION_BARS: dict[str, int] = {
     "intro": 4,
@@ -161,10 +161,12 @@ def resolve_line_budgets(audio: dict) -> dict[str, int]:
         resolved["Chorus 2"] = 4
         resolved["Final Chorus"] = 4
         resolved["Bridge"] = 2
+        resolved["Intro"] = 0
+        resolved["Outro"] = 0
     if ending_mode == "clean_resolve":
-        resolved["Intro"] = 1
+        resolved["Intro"] = min(int(resolved.get("Intro", 0)), 0)
     if outro_required and terminal_end_tag and ending_mode == "clean_resolve":
-        resolved["Outro"] = 1 if ending_vocal_density in {"low", "tail_only"} else 2
+        resolved["Outro"] = min(int(resolved.get("Outro", 0)), 0)
     return resolved
 
 

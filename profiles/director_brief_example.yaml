@@ -16,12 +16,14 @@ audio:
   brief: >
     Korean-language polished pop track with an immediate melodic hook, bright but emotional young adult female vocal,
     sparkling drums, glossy synth lift, and a clean euphoric chorus that can support a premium live-action music video.
+    Keep the lyric image system centered on the last-train station night: ticket gate light, platform air, wet road,
+    station glass, and closing doors. Avoid throwaway convenience-store or paper-cup details unless they become central.
+    Avoid bus-stop, phone-screen, or generic street-object drift; keep the world inside one station-night route.
   hook_brief: >
-    The hook should be immediately singable, title-worthy, youthful, emotionally direct, and memorable after one listen.
-  hook_english_fragments:
-    - all night
-    - call my name
-    - stay with me
+    The hook should be immediately singable, title-worthy, youthful, emotionally direct, memorable after one listen,
+    and led by a Korean phrase that belongs to this exact station-night world rather than a generic English slogan.
+    Prefer a compact back half with one short emotional low-point bridge before the final answer.
+    If the first chorus already lands, skip Chorus 2 rather than dropping the bridge.
 visual:
   story_premise: >
     A cinematic live-action music video about one consistent Korean female idol heroine moving through one connected

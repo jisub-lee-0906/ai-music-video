@@ -24,7 +24,7 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
         (tmp_path / "workflows" / name).write_text("{}", encoding="utf-8")
     out = bootstrap_config(cfg, tmp_path / "artifacts")
     assert out["video"]["target"] == "1920x1080@24"
-    assert out["render"]["wan_size"] == "896x512"
+    assert out["render"]["wan_size"] == "768x432"
     assert out["audio"]["language"] == "ko"
 
 

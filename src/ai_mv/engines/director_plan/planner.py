@@ -7,7 +7,7 @@ from ai_mv.core.prompt_grammar import golden_structure_guidance, ref_archetype_g
 
 def build_direction_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    outline = payload["scene_outline"]
+    outline = payload.get("wan_safe_scene_outline", payload["scene_outline"])
     shot_packages: list[dict] = []
     for shot in outline.get("shot_packages", []):
         current = dict(shot)
@@ -122,6 +122,8 @@ def _ref_archetype_for_shot(shot: dict) -> str:
             return "curb_crossing"
         return "sidewalk_continuation"
     if story_function == "continuation":
+        if world_zone in {"threshold", "edge"}:
+            return "threshold_crossing"
         if world_zone == "compression":
             return "passage_compression"
         if world_zone in {"open_route", "open_peak"}:
@@ -188,6 +190,7 @@ def _dominant_action(
         },
         "threshold_crossing": {
             "entry": f"She sets her line across the {surface} toward the next surface.",
+            "continuation": f"She keeps one committed step moving through the {surface} toward the next surface.",
             "handoff": f"She clears the {surface} and carries the next step into the following route.",
         },
         "doorway_handoff": {
@@ -216,12 +219,12 @@ def _dominant_action(
             "handoff": f"She compresses one more step through the {surface} and carries it forward.",
         },
         "window_contact": {
-            "entry": f"She keeps close to the {surface} with one direct contact detail and keeps moving.",
-            "handoff": f"She lets the contact slide off the {surface} and carries the next step past it.",
+            "entry": f"She keeps one empty palm on the {surface} and steadies her breath without fully stopping.",
+            "handoff": f"She lets the empty palm lift from the lower rail of the {surface} and keeps moving past the edge.",
         },
         "bench_rest": {
-            "entry": f"She sits at the end of the {surface} with one foot still planted as if she could rise again.",
-            "pressure": f"She sits at the end of the {surface} for one compressed beat with one foot still planted as if she could rise again.",
+            "entry": f"She sits on the {surface} with one foot still planted on the ground as if she could rise again.",
+            "pressure": f"She sits on the {surface} for one compressed beat with one foot still planted on the ground as if she could rise again.",
             "handoff": f"She leans forward from the end of the {surface} and gathers the next step without fully settling.",
         },
         "brace_pause": {
@@ -270,6 +273,7 @@ def _continuity_delta(
         },
         "threshold_crossing": {
             "entry": f"She clears the {surface} and lands beyond it on the next surface.",
+            "continuation": f"She carries the threshold crossing one beat farther beyond the {surface} into the next surface.",
             "handoff": f"She lands beyond the {surface} and carries the route forward.",
         },
         "doorway_handoff": {
@@ -298,12 +302,12 @@ def _continuity_delta(
             "handoff": f"She clears the tightest part of the route and carries the compression forward.",
         },
         "window_contact": {
-            "entry": f"She changes the contact slightly and keeps moving past the edge.",
-            "handoff": f"She lets the contact fall behind and keeps moving past the edge.",
+            "entry": f"She lets the palm contact soften on the {surface} and leaves the next commitment ready.",
+            "handoff": f"She lets the empty palm lift from the lower rail of the {surface} and leaves the next step moving past the edge.",
         },
         "bench_rest": {
-            "entry": f"She stays at the end of the {surface} with one foot planted and the route still waiting in front of her.",
-            "pressure": f"She holds the compressed seat at the end of the {surface} for one beat, still planted to rise again.",
+            "entry": f"She stays on the {surface} with one foot planted on the ground and the route still waiting in front of her.",
+            "pressure": f"She holds the compressed seat on the {surface} for one beat, still planted to rise again.",
             "handoff": f"She tips forward from the end of the {surface} and leaves the rise already forming before the cut.",
         },
         "brace_pause": {
@@ -423,7 +427,7 @@ def _story_surface_override(story_function: str, archetype: str, variant: str, s
     if archetype == "window_contact":
         return "station window"
     if archetype == "bench_rest":
-        return "wet bench end"
+        return "wet bench seat"
     if archetype == "brace_pause":
         return "wet rail"
     if archetype == "sidewalk_continuation" and "changed_street_angle" in tags:
@@ -448,7 +452,7 @@ def _event_tags(story_event: str) -> set[str]:
         tags.add("bench_rest")
     if "rise again" in low or "rise" in low:
         tags.add("rise_ready")
-    if "leans forward" in low or "gathers her next step" in low:
+    if "leans forward" in low or "gathers her next step" in low or "tips away" in low or "rise already forming" in low:
         tags.add("bench_rise_ready")
     if "braced" in low or "brace" in low:
         tags.add("brace_pause")
@@ -491,17 +495,23 @@ def _event_driven_variant_override(shot: dict, archetype: str) -> str:
 
 def _event_driven_action(archetype: str, story_function: str, surface: str, event_tags: set[str]) -> str:
     if archetype == "window_contact":
+        if story_function == "entry" and "window_contact" in event_tags:
+            return f"She keeps one empty palm on the {surface} and steadies her breath without fully stopping."
+        if story_function == "handoff" and "window_contact" in event_tags:
+            return f"She keeps close to the {surface} at night, one empty palm resting on the lower metal rail as the next step gathers."
         if "window_contact" in event_tags:
-            return f"She keeps close to the {surface} and moves forward, one hand trailing the metal edge."
+            return f"She keeps close to the {surface} at night, one empty palm resting on the lower metal rail as she moves past it."
         if "contact_detail" in event_tags:
-            return f"She keeps one palm on the {surface} and steadies her breath without fully stopping."
+            return f"She keeps one empty palm on the {surface} and steadies her breath without fully stopping."
     if archetype == "bench_rest":
         if story_function == "pressure" and "bench_rest" in event_tags:
-            return f"She sits at the end of the {surface} for one compressed beat, one foot still planted as if she could rise again."
+            return f"She sits on the {surface} for one compressed beat, one foot still planted on the ground as if she could rise again."
+        if story_function == "continuation" and "bench_rest" in event_tags:
+            return f"She holds one compressed seated beat on the {surface} with one foot still planted on the ground."
         if "bench_rise_ready" in event_tags:
-            return f"She leans forward from the end of the {surface} and gathers her next step without fully settling."
+            return f"She leans forward from the {surface} at night, one foot still planted on the ground as the rise gathers into her next step."
         if "bench_rest" in event_tags:
-            return f"She sits at the end of the {surface}, one foot still planted as if she could rise again."
+            return f"She sits on the {surface} at night, one foot still planted on the ground as if she could rise again."
     if archetype == "brace_pause" and "brace_pause" in event_tags:
         return f"She braces at the {surface} with one hand fixed on the metal bar while the next step waits."
     if archetype == "sidewalk_continuation":
@@ -525,17 +535,23 @@ def _event_driven_action(archetype: str, story_function: str, surface: str, even
 
 def _event_driven_continuity(archetype: str, story_function: str, surface: str, event_tags: set[str]) -> str:
     if archetype == "window_contact":
+        if story_function == "entry" and "window_contact" in event_tags:
+            return f"She softens the empty-palm contact on the {surface} and leaves the next commitment ready."
+        if story_function == "handoff" and "window_contact" in event_tags:
+            return f"She lets the empty palm lift from the lower rail of the {surface} and leaves the next step already forming."
         if "window_contact" in event_tags:
-            return f"She lets the contact slide off the {surface} and keeps moving past the edge."
+            return f"She lets the empty palm lift from the lower rail of the {surface} and keeps moving past the edge."
         if "contact_detail" in event_tags:
-            return f"She lets the palm contact soften on the {surface} and leaves the threshold commitment ready."
+            return f"She lets the empty palm contact soften on the {surface} and leaves the threshold commitment ready."
     if archetype == "bench_rest":
         if story_function == "pressure" and "bench_rest" in event_tags:
-            return f"She holds the compressed seat at the end of the {surface} for one beat, still planted to rise again."
+            return f"She holds the compressed seat on the {surface} for one beat, still planted to rise again."
+        if story_function == "continuation" and "bench_rest" in event_tags:
+            return f"She keeps the compressed seat on the {surface} with one foot still planted to rise again."
         if "bench_rise_ready" in event_tags:
-            return f"She tips forward from the end of the {surface} and leaves the rise already forming before the cut."
+            return f"She tips forward from the {surface} and leaves the rise already forming before the cut."
         if "bench_rest" in event_tags:
-            return f"She stays at the end of the {surface} with one foot planted and the route still waiting in front of her."
+            return f"She stays on the {surface} with one foot planted on the ground and the route still waiting in front of her."
     if archetype == "brace_pause" and "brace_pause" in event_tags:
         return f"She loosens the braced contact at the {surface} and leaves the next step ready to resume."
     if archetype == "sidewalk_continuation":
@@ -557,7 +573,7 @@ def _event_driven_continuity(archetype: str, story_function: str, surface: str, 
 
 def _event_driven_trace(archetype: str, story_function: str, event_tags: set[str]) -> str:
     if archetype == "window_contact":
-        return "one hand trailing the metal edge"
+        return "one empty palm on the lower metal rail"
     if archetype == "bench_rest":
         return "one foot still planted"
     if archetype == "brace_pause":

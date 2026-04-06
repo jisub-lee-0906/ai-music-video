@@ -54,6 +54,14 @@ def test_audio_prompt_focuses_on_outline_planning_not_lyrics_dump():
     assert "Final Chorus<= 4 lines" in prompt
     assert "final [End] marker" in prompt
     assert "instrumental-friendly by default" in prompt
+    assert "readable dramatic arc" in prompt
+    assert "Verse 2 should add complication or cost" in prompt
+    assert "Korean-led hook nucleus" in prompt
+    assert "line_count may be 0 only for instrumental Intro or instrumental Outro blocks" in prompt
+    assert "Do not introduce weak one-off props like convenience-store snacks" in prompt
+    assert "the final chorus should usually get shorter, cleaner, and more decisive" in prompt
+    assert "prefer a short two-line Bridge before Final Chorus" in prompt
+    assert "prefer Verse 2 -> Pre-Chorus 2 -> Bridge -> Final Chorus" in prompt
 
 
 def test_audio_outline_prompt_keeps_language_direction():
@@ -64,6 +72,19 @@ def test_audio_outline_prompt_keeps_language_direction():
     assert "Character identity=Korean female idol in her twenties." in prompt
     assert "future bracketed lyric markup skeleton" in prompt
     assert "Hook English fragments=all night, call my name." in prompt
+
+
+def test_audio_outline_prompt_lets_llm_choose_bpm_when_unlocked():
+    prompt = audio_planner._audio_prompt(_prompt_plan(bpm=0))
+    assert "Target bpm is not fixed." in prompt
+    assert "choose it yourself from the songform, line density, language breathing room, and tags" in prompt
+
+
+def test_hook_scoring_prefers_world_anchored_korean_hook_over_generic_english():
+    plan = _prompt_plan(hook_english_fragments=["all night", "call my name"])
+    korean = {"fragment": "새벽 너머", "language_mode": "ko_only", "placement": "chorus"}
+    english = {"fragment": "all night", "language_mode": "mixed_ko_en", "placement": "chorus"}
+    assert audio_planner._score_hook_candidate(korean, plan) > audio_planner._score_hook_candidate(english, plan)
 
 
 def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
@@ -108,8 +129,8 @@ def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
     assert plan["outro_required"] is True
     assert plan["ending_vocal_density"] == "low"
     assert plan["section_bars"]["outro"] == 2
-    assert plan["line_budgets"]["Intro"] == 1
-    assert plan["line_budgets"]["Outro"] == 1
+    assert plan["line_budgets"]["Intro"] == 0
+    assert plan["line_budgets"]["Outro"] == 0
     assert plan["line_budgets"]["Verse 1"] == 4
     assert plan["line_budgets"]["Final Chorus"] == 4
 
@@ -140,8 +161,22 @@ def test_validate_outline_line_budgets_rejects_overpacked_blocks():
     with pytest.raises(RuntimeError, match="line_count too dense for Chorus"):
         audio_planner._validate_outline_line_budgets(
             {"line_budgets": {"Chorus": 6}},
-            {"lyrics_blocks": [{"label": "Chorus", "line_count": 8}]},
+            {"bpm": 108, "lyrics_blocks": [{"label": "Chorus", "line_count": 8}]},
         )
+
+
+def test_validate_outline_line_budgets_rejects_sung_intro_when_budget_is_zero():
+    with pytest.raises(RuntimeError, match="line_count must stay instrumental for Intro"):
+        audio_planner._validate_outline_line_budgets(
+            {"line_budgets": {"Intro": 0}},
+            {"bpm": 108, "lyrics_blocks": [{"label": "Intro", "section": "intro", "line_count": 1}]},
+        )
+
+
+def test_generate_lyrics_block_skips_llm_for_zero_line_intro():
+    block = {"section": "intro", "label": "Intro", "style": "open", "line_count": 0}
+    out = audio_planner._generate_lyrics_block({}, _prompt_plan(), {"lyrics_blocks": [block]}, [], block)
+    assert out["lines"] == []
 
 
 def test_plan_lyrics_with_llm_uses_codex_text_generation(monkeypatch):

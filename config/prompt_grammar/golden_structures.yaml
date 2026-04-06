@@ -70,17 +70,17 @@ structures:
     preferred_surface: station window
     prompt_contract: Keep the beat on a literal station-side window or glass edge with one hand trailing the metal edge; keep the contact readable and the movement alive.
     preferred_pattern: same heroine + station window + one hand trailing the metal edge + forward continuation
-    start_shape: She keeps close to the station window and moves forward, one hand trailing the metal edge.
-    end_shape: She lets the contact slide off the station window and keeps moving past the edge.
-    wan_shape: She keeps close to the station window while the contact trails off into the next step.
+    start_shape: She keeps close to the station window at night, one empty palm resting on the lower metal rail as she moves past it.
+    end_shape: She lets the empty palm lift from the station window rail and keeps moving past the edge.
+    wan_shape: She keeps close to the station window while the empty palm lifts from the lower rail into the next step.
   - name: pre_contact_before_commit
     story_function: entry
     ref_archetype: window_contact
     preferred_surface: station window
     prompt_contract: Hold the pre-commit beat on a literal glass contact near the wider opening; keep the body ready to continue and do not let the shot collapse into a static pose.
     preferred_pattern: same heroine + one palm on the station window + breath steadied without fully stopping + next commit imminent
-    start_shape: She keeps one palm on the station window and steadies her breath without fully stopping.
-    end_shape: She lets the palm contact soften on the station window and leaves the threshold commitment ready.
+    start_shape: She keeps one empty palm on the station window and steadies her breath without fully stopping.
+    end_shape: She lets the empty palm contact soften on the station window and leaves the threshold commitment ready.
     wan_shape: She keeps one palm on the station window while the contact softens into the next commitment.
   - name: sidewalk_route_entry
     story_function: entry
@@ -112,31 +112,31 @@ structures:
   - name: verse_bench_pause
     story_function: entry
     ref_archetype: bench_rest
-    preferred_surface: wet bench end
+    preferred_surface: wet bench seat
     prompt_contract: Put the beat on a literal wet bench end with one foot still planted so the seated state reads as a temporary compression rather than a completed rest.
     preferred_pattern: same heroine + wet bench end + one foot still planted + ready to rise again
-    start_shape: She sits at the end of the wet bench, one foot still planted as if she could rise again.
-    end_shape: She stays at the end of the wet bench with one foot planted and the route still waiting in front of her.
-    wan_shape: She holds at the end of the wet bench with one foot planted while the rise remains possible.
+    start_shape: She sits on the wet bench seat at night, one foot still planted on the ground as if she could rise again.
+    end_shape: She stays on the wet bench seat with one foot planted on the ground and the route still waiting in front of her.
+    wan_shape: She holds on the wet bench seat with one foot planted while the rise remains possible.
   - name: verse_bench_rise_ready
     story_function: handoff
     ref_archetype: bench_rest
     variant: rise_ready
-    preferred_surface: wet bench end
+    preferred_surface: wet bench seat
     prompt_contract: Keep the handoff at the bench end but tip the body forward so the next step already reads as forming before she fully stands.
     preferred_pattern: same heroine + wet bench end + body tipped forward + rise already forming
-    start_shape: She leans forward from the end of the wet bench and gathers her next step without fully settling.
-    end_shape: She tips forward from the end of the wet bench and leaves the rise already forming before the cut.
-    wan_shape: She leans forward from the end of the wet bench while the rise gathers into the next step.
+    start_shape: She leans forward from the wet bench seat at night, one foot still planted on the ground as the rise gathers into her next step.
+    end_shape: She tips forward from the wet bench seat and leaves the rise already forming before the cut.
+    wan_shape: She leans forward from the wet bench seat while the rise gathers into the next step.
   - name: bridge_bench_compression
     story_function: pressure
     ref_archetype: bench_rest
-    preferred_surface: wet bench end
+    preferred_surface: wet bench seat
     prompt_contract: Use a literal wet bench end for the bridge compression so the beat reads as a brief lived pause inside the world, not another route step or a dead static tableau.
     preferred_pattern: same heroine + wet bench end + one compressed seated beat + one foot still planted
-    start_shape: She sits at the end of the wet bench for one compressed beat, one foot still planted as if she could rise again.
-    end_shape: She holds the compressed seat at the end of the wet bench for one beat, still planted to rise again.
-    wan_shape: She holds one compressed seated beat at the end of the wet bench while the rise stays possible.
+    start_shape: She sits on the wet bench seat for one compressed beat, one foot still planted on the ground as if she could rise again.
+    end_shape: She holds the compressed seat on the wet bench seat for one beat, still planted to rise again.
+    wan_shape: She holds one compressed seated beat on the wet bench seat while the rise stays possible.
   - name: final_platform_push
     story_function: handoff
     ref_archetype: platform_edge

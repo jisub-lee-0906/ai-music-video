@@ -159,6 +159,68 @@ def test_quality_review_accepts_platform_edge_directional_step_patterns():
     assert out["prompt_execution_review"]["metrics"]["prompt_shape_match"] == 1.0
 
 
+def test_quality_review_accepts_incident_family_trace_and_blocking_contracts():
+    payload = {
+        "backend_preview": {
+            "ref_adapter": [
+                {
+                    "raw_prompt_clauses": {
+                        "story_function": "continuation",
+                        "primary_surface": "station window",
+                        "ref_archetype": "window_contact",
+                        "blocking_role": "center_carry",
+                        "entry_side": "center",
+                        "travel_axis": "forward",
+                        "frame_bias": "right_weighted",
+                        "arrival_side": "none",
+                        "dominant_action": "She keeps close to the station window at night, one empty palm resting on the lower metal rail as she moves past it.",
+                        "continuity_delta": "She lets the empty palm lift from the lower rail of the station window and keeps moving past the edge.",
+                        "content_trace": "one empty palm on the lower metal rail",
+                        "selected_prompt_shape": "same heroine + keeps close to the window edge or glass + one direct contact detail + forward continuation",
+                    },
+                    "start_prompt_preview": "The same Korean female idol keeps close to the station window at night, one empty palm resting on the lower metal rail as she moves past it.",
+                    "end_prompt_preview": "The same Korean female idol lets the empty palm lift from the lower rail of the station window and keeps moving past the edge.",
+                },
+                {
+                    "raw_prompt_clauses": {
+                        "story_function": "pressure",
+                        "primary_surface": "wet bench seat",
+                        "ref_archetype": "bench_rest",
+                        "blocking_role": "compressed_hold",
+                        "entry_side": "right",
+                        "travel_axis": "forward",
+                        "frame_bias": "right_weighted",
+                        "arrival_side": "none",
+                        "dominant_action": "She sits on the wet bench seat for one compressed beat, one foot still planted on the ground as if she could rise again.",
+                        "continuity_delta": "She holds the compressed seat on the wet bench seat for one beat, still planted to rise again.",
+                        "content_trace": "one foot still planted",
+                        "selected_prompt_shape": "same heroine + sits at the bench or seat end + one small rise-again continuation hint",
+                    },
+                    "start_prompt_preview": "The same Korean female idol sits on the wet bench seat for one compressed beat, one foot still planted on the ground as if she could rise again.",
+                    "end_prompt_preview": "The same Korean female idol holds the compressed seat on the wet bench seat for one beat, still planted to rise again.",
+                },
+            ],
+            "wan_adapter": [
+                {
+                    "raw_prompt_clauses": {
+                        "bridge_action": "She leans forward from the wet bench seat while the rise gathers into the next step.",
+                        "start_ref_shot_id": "verse_2_b1_S01",
+                        "end_ref_shot_id": "verse_2_b2_S01",
+                    },
+                    "positive_prompt_preview": "The same Korean female idol leans forward from the wet bench seat while the rise gathers into the next step.",
+                }
+            ],
+        }
+    }
+    out = build_quality_review({}, payload)
+    metrics = out["prompt_execution_review"]["metrics"]
+    assert metrics["story_function_match"] == 1.0
+    assert metrics["archetype_selection_match"] == 1.0
+    assert metrics["trace_detail_balance"] == 1.0
+    assert metrics["blocking_contract_match"] == 1.0
+    assert out["visual_generation_contracts"]["metrics"]["motion_readability"] == 1.0
+
+
 def test_quality_review_reports_rule_source_trace_without_scoring_dependency():
     payload = {
         "prompt_plan": {

@@ -1,5 +1,6 @@
 from ai_mv.core.stages.wan_interpolation import build_wan_plan
 from ai_mv.core.stages.backend_preview import build_backend_preview
+from ai_mv.core.stages.shot_density_refiner import build_wan_safe_scene_outline
 from ai_mv.engines.director_plan.planner import _infer_ref_archetype, _infer_ref_archetype_variant, _planner_primary_surface, build_direction_plan
 from ai_mv.engines.render_plan.planner import build_prompt_plan
 from ai_mv.engines.scene_plan.planner import build_scene_outline
@@ -36,6 +37,7 @@ def _config() -> dict:
             "anchor_avoid": "avoid costume styling",
         },
         "video": {"target": "1920x1080@24"},
+        "render": {"wan_safe_max_gap_sec": 4.0, "wan_max_frames": 40},
     }
 
 
@@ -71,7 +73,9 @@ def test_scene_direction_prompt_chain():
     assert scene["shot_packages"][1]["story_function"] in {"handoff", "continuation"}
     assert scene["section_progression"][0]["world_zone"]
 
-    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene})
+    dense = build_wan_safe_scene_outline(_config(), {"scene_outline": scene})
+    assert len(dense["shot_packages"]) == 3
+    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene, "wan_safe_scene_outline": dense})
     first = direction["shot_packages"][0]
     assert first["shot_function"]
     assert first["ref_archetype"]
@@ -310,7 +314,8 @@ def test_director_edge_handoff_uses_threshold_passage_exit_variant():
 
 def test_wan_plan_uses_adjacent_ref_pairs():
     scene = build_scene_outline(_config(), _payload())
-    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene})
+    dense = build_wan_safe_scene_outline(_config(), {"scene_outline": scene})
+    direction = build_direction_plan(_config(), {**_payload(), "scene_outline": scene, "wan_safe_scene_outline": dense})
     prompt = build_prompt_plan(_config(), {**_payload(), "direction_plan": direction})
     payload = {
         **_payload(),
@@ -327,6 +332,101 @@ def test_wan_plan_uses_adjacent_ref_pairs():
     assert wan["clips"][0]["end"] == "end2.png"
     assert wan["clips"][1]["start"] == "end2.png"
     assert wan["clips"][1]["end"] == "end3.png"
+
+
+def test_shot_density_refiner_splits_long_window_contact_beat():
+    config = _config()
+    payload = {
+        "scene_outline": {
+            "brief_name": "director_brief_example",
+            "story_premise": "p",
+            "world_rules": "w",
+            "heroine_arc": "a",
+            "section_story_roles": {"Verse 1": "goal"},
+            "section_progression": [],
+            "shot_packages": [
+                {
+                    "shot_id": "verse1_b2",
+                    "section_name": "Verse 1",
+                    "section_label": "Verse 1",
+                    "beat_refs": ["verse1_b2"],
+                    "line_refs": [2],
+                    "story_function": "handoff",
+                    "story_goal": "Verse 1 goal",
+                    "story_event": "She keeps close to the station window and moves forward, one hand trailing the metal edge.",
+                    "world_zone": "narrow_route",
+                    "heroine_state": "state",
+                    "story_visual_intent": "intent",
+                    "transition_need": "carry",
+                    "duration_sec": 13.66,
+                    "why": "why",
+                }
+            ],
+        }
+    }
+    dense = build_wan_safe_scene_outline(config, payload)
+    shots = dense["shot_packages"]
+    assert len(shots) == 4
+    assert all(float(row["duration_sec"]) <= 4.0 for row in shots)
+    assert shots[0]["story_function"] == "continuation"
+    assert shots[-1]["story_function"] == "handoff"
+    assert all("station window" in row["story_event"].lower() for row in shots)
+
+
+def test_dense_outline_reduces_wan_clip_duration_to_safe_range():
+    config = _config()
+    scene = {
+        "brief_name": "director_brief_example",
+        "story_premise": "p",
+        "world_rules": "w",
+        "heroine_arc": "a",
+        "section_story_roles": {"Verse 1": "goal"},
+        "section_progression": [],
+        "shot_packages": [
+            {
+                "shot_id": "verse1_b1",
+                "section_name": "Verse 1",
+                "section_label": "Verse 1",
+                "beat_refs": ["verse1_b1"],
+                "line_refs": [1],
+                "story_function": "entry",
+                "story_goal": "Verse 1 goal",
+                "story_event": "She steps onto the outside sidewalk route.",
+                "world_zone": "narrow_route",
+                "heroine_state": "state",
+                "story_visual_intent": "intent",
+                "transition_need": "carry",
+                "duration_sec": 13.66,
+                "why": "why",
+            },
+            {
+                "shot_id": "verse1_b2",
+                "section_name": "Verse 1",
+                "section_label": "Verse 1",
+                "beat_refs": ["verse1_b2"],
+                "line_refs": [2],
+                "story_function": "handoff",
+                "story_goal": "Verse 1 goal",
+                "story_event": "She keeps close to the station window and moves forward, one hand trailing the metal edge.",
+                "world_zone": "narrow_route",
+                "heroine_state": "state",
+                "story_visual_intent": "intent",
+                "transition_need": "carry",
+                "duration_sec": 13.66,
+                "why": "why",
+            },
+        ],
+    }
+    dense = build_wan_safe_scene_outline(config, {"scene_outline": scene})
+    direction = build_direction_plan(config, {"scene_outline": scene, "wan_safe_scene_outline": dense})
+    prompt = build_prompt_plan(config, {"direction_plan": direction})
+    flux = [
+        {"shot_id": row["shot_id"], "end": f"{row['shot_id']}.png", "timeline_index": idx}
+        for idx, row in enumerate(prompt["ref_items"], start=1)
+    ]
+    wan = build_wan_plan(config, {"prompt_plan": prompt, "flux2_ref_images": flux})
+    assert wan["clips"]
+    assert all(float(clip["duration_sec"]) <= 4.0 for clip in wan["clips"])
 
 
 def test_backend_preview_exposes_prompt_rule_trace():

@@ -220,7 +220,15 @@ def test_flux2_ref_mapper():
 
 
 def test_wan_mapper():
-    cfg = {"render": {"wan_size": "640x640"}, "video": {"target": "1920x1080@24"}}
+    cfg = {
+        "render": {
+            "wan_size": "640x640",
+            "wan_steps_low": 12,
+            "wan_steps_normal": 14,
+            "wan_steps_high": 16,
+        },
+        "video": {"target": "1920x1080@24"},
+    }
     clip = {
         "shot_id": "s_001",
         "start": "a.png",
@@ -237,5 +245,7 @@ def test_wan_mapper():
     nodes = out["node.inputs"]
     assert nodes["81"]["length"] == 96
     assert nodes["81"]["width"] == 640
+    assert nodes["84"]["steps"] == 14
+    assert nodes["87"]["steps"] == 14
     assert "start_image" not in nodes["81"]
     assert "end_image" not in nodes["81"]

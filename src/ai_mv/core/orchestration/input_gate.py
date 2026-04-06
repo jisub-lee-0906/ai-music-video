@@ -8,7 +8,8 @@ from ai_mv.core.contracts.errors import StageFailure
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
     "lyrics_timeline": ("audio_plan", "audio_map"),
     "scene_outline": ("audio_plan", "audio_map", "lyrics_timeline"),
-    "direction_plan": ("scene_outline",),
+    "shot_density_refiner": ("scene_outline",),
+    "direction_plan": ("wan_safe_scene_outline",),
     "prompt_plan": ("direction_plan",),
     "backend_preview": ("prompt_plan",),
     "tti_anchor": ("prompt_plan",),

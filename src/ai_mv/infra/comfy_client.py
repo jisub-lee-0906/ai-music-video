@@ -4,7 +4,13 @@ from copy import deepcopy
 import json
 from typing import Any
 
-from ai_mv.infra.comfy_transport import ping_comfy as transport_ping_comfy, submit_workflow
+from ai_mv.infra.comfy_transport import (
+    clear_queue as transport_clear_queue,
+    interrupt as transport_interrupt,
+    ping_comfy as transport_ping_comfy,
+    running_and_pending_counts as transport_running_and_pending_counts,
+    submit_workflow,
+)
 from ai_mv.infra.comfy_local import validate_local_comfy_config
 from ai_mv.infra.timeout_policy import resolve_timeout
 from ai_mv.infra.workflow_patcher import patch_workflow, preflight_workflow, validate_node_bindings
@@ -41,3 +47,15 @@ def submit(config: dict, workflow: dict[str, Any], timeout_override: int | None 
 
 def ping_comfy(base_url: str) -> bool:
     return transport_ping_comfy(base_url)
+
+
+def clear_comfy_queue(base_url: str) -> None:
+    transport_clear_queue(base_url)
+
+
+def interrupt_comfy(base_url: str) -> None:
+    transport_interrupt(base_url)
+
+
+def comfy_queue_counts(base_url: str) -> tuple[int, int]:
+    return transport_running_and_pending_counts(base_url)

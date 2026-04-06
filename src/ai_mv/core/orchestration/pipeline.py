@@ -15,6 +15,7 @@ from ai_mv.core.stages.lyrics_timeline import run_lyrics_timeline
 from ai_mv.core.stages.merge_mux import run_merge_mux
 from ai_mv.core.stages.render_plan import run_render_plan
 from ai_mv.core.stages.scene_plan import run_scene_plan
+from ai_mv.core.stages.shot_density_refiner import run_shot_density_refiner
 from ai_mv.core.stages.tti_anchor import run_tti_anchor
 from ai_mv.core.stages.wan_interpolation import run_wan_interpolation
 
@@ -54,6 +55,7 @@ def _ordered_stages() -> list[tuple[str, callable]]:
         ("acestep_music", run_acestep_music),
         ("lyrics_timeline", run_lyrics_timeline),
         ("scene_outline", run_scene_plan),
+        ("shot_density_refiner", run_shot_density_refiner),
         ("direction_plan", run_director_plan),
         ("prompt_plan", run_render_plan),
         ("backend_preview", run_backend_preview),

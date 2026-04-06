@@ -12,8 +12,13 @@ DEFAULT_CONFIG: dict = {
     "render": {
         "tti_size": "1280x720",
         "ref_size": "1024x576",
-        "wan_size": "896x512",
+        "wan_size": "768x432",
         "wan_max_clip_sec": 5.0,
+        "wan_safe_max_gap_sec": 4.0,
+        "wan_max_frames": 40,
+        "wan_steps_low": 12,
+        "wan_steps_normal": 14,
+        "wan_steps_high": 16,
         "wan_planner_batch_size": 20,
         "flux2_ref_planner_batch_size": 4,
     },
@@ -63,6 +68,8 @@ DEFAULT_CONFIG: dict = {
     "runtime": {
         "template_hash_lock": False,
         "template_hashes": {},
+        "interrupt_comfy_before_start": True,
+        "clear_comfy_queue_before_start": True,
     },
 }
 

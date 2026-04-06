@@ -42,6 +42,8 @@ def _audio_outline_output_contract() -> str:
         "Required lyrics_blocks item keys: section,label,style,line_count. "
         "For this planning step, do not write lyric lines yet. "
         "line_count must be the exact number of sung lyric lines wanted for that block. "
+        "line_count may be 0 only for instrumental Intro or instrumental Outro blocks. "
+        "bpm must be a positive integer. "
         "Treat lyrics_blocks as the future bracketed lyric markup skeleton that AceStep will receive. "
         "The exported lyrics may append a final [End] marker after the last block, so the final block must already feel like the true musical finish. "
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
@@ -54,16 +56,31 @@ def _audio_song_craft_brief(plan: dict) -> str:
     rules = [
         "Write a full song, not a fragment. ",
         "Prefer a commercially strong but artistically polished form, not a mechanical template. ",
+        "The song must have a readable dramatic arc, not just a sequence of attractive night images. ",
+        "Make the listener feel a clear progression such as setup, pressure, choice, complication, answer, and residue. ",
+        "At minimum, Verse 1 should establish distance or lack, Pre-Chorus should tighten into pressure, Chorus should make the first decisive emotional move, Verse 2 should add complication or cost instead of just new scenery, Bridge should create the lowest point or widest reframe, and Final Chorus should answer what changed. ",
+        "Do not let every section behave like another descriptive walk through the same night. ",
+        "For a concise Korean pop form, prefer a short two-line Bridge before Final Chorus over simply dropping the low point altogether. ",
+        "If you simplify the back half of the form, it is better to remove Chorus 2 than to remove the Bridge; keep one readable low-point or reframe section before the final answer. ",
+        "For this kind of concise station-night K-pop song, do not keep both Chorus 2 and Bridge unless the second chorus adds clearly new musical work. ",
+        "When the first chorus already lands cleanly, prefer Verse 2 -> Pre-Chorus 2 -> Bridge -> Final Chorus over Verse 2 -> Pre-Chorus 2 -> Chorus 2 -> Bridge -> Final Chorus. ",
         "Build the song around one dominant late-night city image and at most one or two supporting objects, instead of rotating through a long list of unrelated props. ",
+        "Keep the object system tightly curated: prefer station glass, ticket gate light, platform air, wet road, closing doors, footsteps, breath, and reflected neon over disposable filler props. ",
+        "Do not introduce weak one-off props like convenience-store snacks, random drinks, bus-stop details, phone-screen details, or throwaway street objects unless they are emotionally central and recur with purpose. ",
         "Do not make Verse 2 feel like a copy-paste replay of Verse 1. ",
-        "Let Verse 2 act like a lifted verse: keep the structure readable but raise the detail, melodic tension, lyrical angle, or arrangement energy slightly. ",
+        "Let Verse 2 act like a lifted verse: keep the structure readable but raise the stakes, contradiction, detail, or emotional cost, not just arrangement energy. ",
         "If you use a post-chorus, give it a real afterglow or rhythmic release function; do not insert one automatically if the chorus already resolves cleanly. ",
         "Make the final chorus unmistakably bigger or more complete than earlier choruses through lyric twist, melodic lift, harmony expansion, arrangement opening, or emotional escalation. ",
+        "The final chorus must sound like an answer or arrival, not just a brighter paraphrase of the first chorus. ",
+        "In Korean songs, the final chorus should usually get shorter, cleaner, and more decisive rather than more wordy. ",
         "Avoid a formula where every return block repeats the same function with only new words. ",
         "Prefer one or two smart form evolutions over needless extra sections. ",
         "Make every section melodically and lyrically legible; do not output corrupted text, broken symbols, or unreadable character noise. ",
         "Favor concise, memorable lyric lines with a clean hook shape over vague impressionistic fragments. ",
         "Prefer plain readable diction over rare, ornate, or hard-to-parse character choices. ",
+        "For Korean songs, prefer a Korean-led hook nucleus anchored in the song world over a generic English slogan. ",
+        "If an English fragment appears, it should act like a small accent, not the whole emotional center. ",
+        "Default Intro and Outro to instrumental unless one very short sung pickup or one very short sung tail is truly necessary. ",
     ]
     if bool(ending.get("final_chorus_required", True)):
         rules.append("Use a distinct final return. Keep that block section='chorus' and label it 'Final Chorus'. ")
@@ -134,6 +151,10 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
         "Prefer concrete musical language such as synth bass, bright piano melody, live drums, warm pads, clipped guitar, or euphoric chorus lift over vague mood-only writing. "
         "Keep genre_description compact and radio-usable rather than long-form criticism. "
         "If bpm or keyscale are provided, treat them as fixed musical targets and do not describe a contradictory tempo feel or tonal center. "
+        "If bpm is not provided, choose it yourself from the songform, line density, language breathing room, and tags. "
+        "Use a slower bpm when the form is sparse, the lines are short and open, or Intro and Outro are instrumental. "
+        "Use a faster bpm only when the hook energy, groove tags, and lyric density can still be sung cleanly. "
+        "The chosen bpm must fit both the vocal breathing room and the intended K-pop release energy. "
         "Keep camera language, visual direction, and film-shot wording out of genre_description. "
         + (f"Ending contract={ending_digest}. " if ending_digest else "")
     )
@@ -215,7 +236,9 @@ def _audio_language(audio: dict) -> str:
 
 def _target_bpm_clause(plan: dict) -> str:
     bpm = int(plan.get("bpm", 0))
-    return f"Target bpm={bpm}. " if bpm > 0 else ""
+    if bpm > 0:
+        return f"Target bpm={bpm}. "
+    return "Target bpm is not fixed. Choose bpm from the songform, line budgets, and tags so the vocal phrasing still breathes cleanly. "
 
 
 def _target_duration_clause(plan: dict) -> str:

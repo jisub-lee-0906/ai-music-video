@@ -27,6 +27,25 @@ def test_normalize_audio_fields_renders_lyrics_blocks():
     assert "[Chorus]" in out["lyrics"]
 
 
+def test_normalize_audio_fields_allows_instrumental_intro_and_outro_blocks():
+    raw = {
+        "genre_description": "K-pop with bright synths and clean drums.",
+        "bpm": 112,
+        "keyscale": "A major",
+        "seed": 42,
+        "duration": 160,
+        "lyrics_blocks": [
+            {"section": "intro", "label": "Intro", "style": "Instrumental Lift", "lines": []},
+            {"section": "verse_1", "label": "Verse 1", "style": "Pulse", "lines": ["개찰구 불빛 아래 숨을 고르고"]},
+            {"section": "outro", "label": "Outro", "style": "Tail", "lines": []},
+        ],
+    }
+    out = normalize_audio_fields(raw)
+    assert "[Intro]" not in out["lyrics"]
+    assert "[Verse 1]" in out["lyrics"]
+    assert "[Outro]" not in out["lyrics"]
+
+
 def test_normalize_audio_fields_normalizes_keyscale_case():
     raw = {
         "genre_description": "Bright city-pop with glossy synths.",

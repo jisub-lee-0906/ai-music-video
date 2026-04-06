@@ -101,7 +101,7 @@ def audio_schema() -> dict:
             "section": {"type": "string", "enum": ["intro", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"]},
             "label": {"type": "string"},
             "style": {"type": "string"},
-            "lines": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+            "lines": {"type": "array", "items": {"type": "string"}, "minItems": 0, "maxItems": 8},
         },
     }
     props = {
@@ -123,7 +123,7 @@ def audio_outline_schema() -> dict:
             "section": {"type": "string", "enum": ["intro", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"]},
             "label": {"type": "string"},
             "style": {"type": "string"},
-            "line_count": {"type": "integer", "minimum": 1, "maximum": 8},
+            "line_count": {"type": "integer", "minimum": 0, "maximum": 8},
         },
     }
     props = {
@@ -145,7 +145,7 @@ def audio_lyrics_fill_schema() -> dict:
             "section": {"type": "string", "enum": ["intro", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"]},
             "label": {"type": "string"},
             "style": {"type": "string"},
-            "lines": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8},
+            "lines": {"type": "array", "items": {"type": "string"}, "minItems": 0, "maxItems": 8},
         },
     }
     return {"type": "object", "required": ["lyrics_blocks"], "properties": {"lyrics_blocks": {"type": "array", "items": block, "minItems": 1, "maxItems": 16}}}
@@ -187,9 +187,9 @@ def _lyrics_section_schema() -> dict:
         "properties": {
             "section_name": {"type": "string"},
             "section_label": {"type": "string"},
-            "lines": {"type": "array", "items": _lyric_line_schema(), "minItems": 1, "maxItems": 12},
+            "lines": {"type": "array", "items": _lyric_line_schema(), "minItems": 0, "maxItems": 12},
             "hook_lines": {"type": "array", "items": {"type": "integer"}, "minItems": 0, "maxItems": 8},
-            "lyric_beats": {"type": "array", "items": _lyric_beat_schema(), "minItems": 1, "maxItems": 5},
+            "lyric_beats": {"type": "array", "items": _lyric_beat_schema(), "minItems": 0, "maxItems": 5},
         },
     }
 

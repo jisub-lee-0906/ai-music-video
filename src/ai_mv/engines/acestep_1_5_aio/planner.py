@@ -233,12 +233,15 @@ def _normalize_audio_outline(raw: dict) -> dict:
     for row in raw.get("lyrics_blocks", []):
         if not isinstance(row, dict):
             continue
+        section = str(row.get("section", "")).strip()
+        label = str(row.get("label", "")).strip()
+        line_count = int(row.get("line_count", 0))
         blocks.append(
             {
-                "section": str(row.get("section", "")).strip(),
-                "label": str(row.get("label", "")).strip(),
+                "section": section,
+                "label": label,
                 "style": str(row.get("style", "")).strip(),
-                "line_count": max(1, int(row.get("line_count", 1))),
+                "line_count": max(0, line_count),
             }
         )
     return {
@@ -259,10 +262,16 @@ def _validate_outline_labels(outline: dict) -> None:
         label = str(block.get("label", "")).strip()
         if label and label not in allowed:
             raise RuntimeError(f"invalid section label: {label}")
+        line_count = int(block.get("line_count", 0) or 0)
+        if line_count <= 0 and not _allows_zero_line_block(block):
+            raise RuntimeError(f"zero-line block allowed only for Intro or Outro: {label}")
 
 
 def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
     budgets = plan.get("line_budgets", {}) if isinstance(plan.get("line_budgets", {}), dict) else {}
+    bpm = int(outline.get("bpm", 0) or 0)
+    if bpm <= 0:
+        raise RuntimeError("bpm must be a positive integer")
     if not budgets:
         return
     for block in outline.get("lyrics_blocks", []):
@@ -270,9 +279,11 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
             continue
         label = str(block.get("label", "")).strip()
         max_lines = int(budgets.get(label, 0) or 0)
-        if max_lines <= 0:
-            continue
         line_count = int(block.get("line_count", 0) or 0)
+        if max_lines <= 0:
+            if label in budgets and line_count != 0:
+                raise RuntimeError(f"line_count must stay instrumental for {label}: {line_count} > 0")
+            continue
         if line_count > max_lines:
             raise RuntimeError(f"line_count too dense for {label}: {line_count} > {max_lines}")
 
@@ -289,6 +300,9 @@ def _hook_candidates_prompt(plan: dict) -> str:
         "Keep Korean dominant overall. "
         "English is optional and must stay within one to three words. "
         "Do not write long English sentences. "
+        "Prefer Korean-led hook nuclei tied to the song world, action, or emotional shift over generic English slogans. "
+        "Bad candidates: vague phrases like all night, forever, stay with me, call my name when they are not anchored to this song's image system. "
+        "Good candidates: short phrases that can become title-worthy because they belong to this exact night, place, or decision. "
         f"Hook intent={str(plan.get('hook_direction', '')).strip()}. "
         + (f"Preferred optional English fragments={fragment_text}. " if fragment_text else "")
         + "For each candidate, provide fragment, language_mode, placement, and why. "
@@ -366,14 +380,20 @@ def _score_hook_candidate(row: dict, plan: dict) -> int:
         score += 3
     elif len(fragment) <= 20:
         score += 1
-    if language_mode == "mixed_ko_en":
-        score += 2
-    if any(frag == lower for frag in english_fragments):
+    if language_mode == "ko_only":
         score += 4
+    elif language_mode == "mixed_ko_en":
+        score += 1
+    if any(frag == lower for frag in english_fragments):
+        score -= 2
     if len(words) <= 3:
         score += 2
     if "," not in fragment and "." not in fragment:
         score += 1
+    if re.search(r"[가-힣]", fragment):
+        score += 2
+    if any(token in fragment for token in ("역", "문", "불빛", "새벽", "플랫폼", "개찰구", "창", "숨", "발끝", "너머")):
+        score += 3
     return score
 
 
@@ -431,6 +451,13 @@ def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:
 
 
 def _generate_lyrics_block(config: dict, plan: dict, outline: dict, completed: list[dict], block: dict) -> dict:
+    if int(block.get("line_count", 0) or 0) == 0:
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": [],
+        }
     prompt = _audio_lyrics_block_prompt(plan, outline, completed, block)
     last_exc: Exception | None = None
     attempt_prompt = prompt
@@ -516,3 +543,9 @@ def _validate_ending_contract(plan: dict, normalized: dict) -> None:
             max_lines = 1
         if max_lines is not None and line_count > max_lines:
             raise RuntimeError(f"audio ending contract failed: outro too long for ending_vocal_density={density}")
+
+
+def _allows_zero_line_block(block: dict) -> bool:
+    section = str(block.get("section", "")).strip().lower()
+    label = str(block.get("label", "")).strip().lower()
+    return section in {"intro", "outro"} or label in {"intro", "outro"}

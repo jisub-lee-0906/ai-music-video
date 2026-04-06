@@ -37,6 +37,15 @@ _ACTION_TOKENS = (
     "follow",
     "carry",
     "run",
+    "sit",
+    "seated",
+    "holds",
+    "hold",
+    "steady",
+    "steadies",
+    "soften",
+    "lifts",
+    "lift",
 )
 
 _OPTICAL_TAKEOVER_TOKENS = (
@@ -114,12 +123,9 @@ def _evaluate_ref_rows(rows: list[dict]) -> dict:
             surface_anchor_strength += 1
         if any(token in action or token in continuity or token in text for token in _ACTION_TOKENS):
             motion_readability += 1
-        if not trace or (
-            any(token in trace for token in _TRACE_TOKENS + _SECONDARY_DETAIL_TOKENS)
-            and any(token in surface for token in ("platform", "edge", "threshold", "crosswalk", "stairs", "passage", "gate", "sidewalk"))
-        ):
+        if _trace_detail_is_balanced(archetype, surface, trace):
             trace_detail_balance += 1
-        if _matches_blocking_contract(blocking_role, entry_side, travel_axis, frame_bias, arrival_side, text):
+        if _matches_blocking_contract(archetype, blocking_role, entry_side, travel_axis, frame_bias, arrival_side, text):
             blocking_contract_match += 1
         if not any(token in text for token in _MULTI_SUBJECT_TOKENS):
             single_heroine += 1
@@ -258,10 +264,10 @@ def _evaluate_wan_rows(rows: list[dict]) -> dict:
 def _matches_story_function(story_function: str, action: str, continuity: str, surface: str) -> bool:
     text = f"{surface} {action} {continuity}"
     mapping = {
-        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to", "first committed stride", "path feel established", "steps in from", "entry side", "road opening ahead", "re-enters from", "road-side edge"),
-        "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing", "middle-right side", "keeps the crossing live", "road staying beside", "road still beside", "road still riding to her right", "same connected block", "without falling back to center"),
-        "pressure": ("shorter step", "brace", "tight", "close", "smaller", "compress", "yellow tactile line close", "edge geometry close"),
-        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "next sidewalk-side stride", "next longer step", "route forward", "immediate passage", "already formed", "already committed", "keeps close to", "same crossing stride carries forward", "traffic opening", "right edge", "open road held", "road still held beside", "road clearly beside", "curb held under", "road to her right", "road clearly to her right", "already chosen before the cut", "next crossing state already formed"),
+        "entry": ("enter", "inside", "cross", "clear", "gate", "threshold", "takes the route", "steps onto", "sets her line", "commits to", "first committed stride", "path feel established", "steps in from", "entry side", "road opening ahead", "re-enters from", "road-side edge", "keeps one empty palm on", "steadies her breath", "sits on the", "one foot still planted"),
+        "continuation": ("keep", "move", "step", "along", "forward", "next step", "same stride", "one step farther", "still aimed", "keeps crossing", "middle-right side", "keeps the crossing live", "road staying beside", "road still beside", "road still riding to her right", "same connected block", "without falling back to center", "keeps close to the station window", "palm resting on", "holds one compressed seated beat"),
+        "pressure": ("shorter step", "brace", "tight", "close", "smaller", "compress", "yellow tactile line close", "edge geometry close", "compressed beat", "holds the compressed seat", "still planted to rise again"),
+        "handoff": ("beyond", "through", "clear", "pass", "carries the next", "hands the route", "following beat", "next stride", "next step", "next sidewalk-side stride", "next longer step", "route forward", "immediate passage", "already formed", "already committed", "keeps close to", "same crossing stride carries forward", "traffic opening", "right edge", "open road held", "road still held beside", "road clearly beside", "curb held under", "road to her right", "road clearly to her right", "already chosen before the cut", "next crossing state already formed", "lets the empty palm lift", "leaves the rise already forming", "tips forward"),
         "payoff": ("far side", "opens", "release", "wider", "drive forward", "final", "far curb", "full release", "widest", "moves away", "open street surrounding", "walks away", "wider street"),
         "reflection": ("looks back", "over one shoulder", "turns back"),
     }
@@ -297,7 +303,7 @@ def _matches_ref_archetype(archetype: str, surface: str, action: str, continuity
     if archetype == "gate_pass":
         return any(token in text for token in ("gate", "turnstile", "gate line", "turnstile lane", "inside the station", "beyond"))
     if archetype == "window_contact":
-        return any(token in text for token in ("window", "glass", "shoulder", "touch", "trace", "press", "brush"))
+        return any(token in text for token in ("window", "glass", "shoulder", "touch", "trace", "press", "brush", "palm", "rail", "metal rail", "empty palm", "contact"))
     if archetype == "curb_crossing":
         return any(token in text for token in ("crosswalk", "curb", "far curb", "steps in from", "keeps close to", "moves away", "right edge", "middle-right side", "left edge", "open road held to her left", "without falling back to center"))
     if archetype == "sidewalk_continuation":
@@ -317,7 +323,25 @@ def _matches_ref_archetype(archetype: str, surface: str, action: str, continuity
     return bool(archetype)
 
 
+def _trace_detail_is_balanced(archetype: str, surface: str, trace: str) -> bool:
+    if not trace:
+        return True
+    low_surface = str(surface).lower()
+    low_trace = str(trace).lower()
+    if archetype == "window_contact":
+        return any(token in low_trace for token in ("palm", "rail", "metal rail", "contact")) and any(token in low_surface for token in ("window", "glass", "rail"))
+    if archetype == "bench_rest":
+        return any(token in low_trace for token in ("foot still planted", "rise again", "planted")) and any(token in low_surface for token in ("bench", "seat"))
+    if archetype == "brace_pause":
+        return any(token in low_trace for token in ("braced", "metal bar", "hand")) and any(token in low_surface for token in ("rail", "bar"))
+    return (
+        any(token in low_trace for token in _TRACE_TOKENS + _SECONDARY_DETAIL_TOKENS)
+        and any(token in low_surface for token in ("platform", "edge", "threshold", "crosswalk", "stairs", "passage", "gate", "sidewalk"))
+    )
+
+
 def _matches_blocking_contract(
+    archetype: str,
     blocking_role: str,
     entry_side: str,
     travel_axis: str,
@@ -326,9 +350,19 @@ def _matches_blocking_contract(
     text: str,
 ) -> bool:
     score = 0
+    if archetype == "window_contact":
+        if blocking_role == "edge_entry" and any(token in text for token in ("one empty palm on the station window", "station window", "steadies her breath")):
+            score += 1
+        if blocking_role == "center_carry" and any(token in text for token in ("keeps close to the station window", "empty palm resting on the lower metal rail", "moves past it")):
+            score += 1
+        if blocking_role == "side_handoff" and any(token in text for token in ("lets the empty palm lift", "leaves the threshold commitment ready", "moving past the edge")):
+            score += 1
+    if archetype == "bench_rest":
+        if blocking_role == "compressed_hold" and any(token in text for token in ("wet bench seat", "one foot still planted", "compressed beat", "rise again", "leans forward from the wet bench seat")):
+            score += 1
     if blocking_role == "edge_entry" and any(token in text for token in ("left edge", "right edge", "steps in from", "re-enters from", "enters the", "turnstile lane", "threshold")):
         score += 1
-    if blocking_role == "center_carry" and any(token in text for token in ("same stride", "keeps the crossing alive", "carries the same stride", "one step farther")):
+    if blocking_role == "center_carry" and any(token in text for token in ("same stride", "keeps the crossing alive", "carries the same stride", "one step farther", "through the station threshold", "carries the threshold crossing", "moving through the threshold")):
         score += 1
     if blocking_role == "side_handoff" and any(token in text for token in ("right edge", "next state", "already formed", "already committed")):
         score += 1
@@ -338,11 +372,11 @@ def _matches_blocking_contract(
         score += 1
     if entry_side == "left" and any(token in text for token in ("left edge", "left side")):
         score += 1
-    if entry_side == "right" and any(token in text for token in ("right edge", "right side", "road-side edge")):
+    if entry_side == "right" and any(token in text for token in ("right edge", "right side", "road-side edge", "wet bench seat", "lower metal rail")):
         score += 1
     if travel_axis == "away" and any(token in text for token in ("walks away", "moves away", "behind her")):
         score += 1
-    if frame_bias == "right_weighted" and any(token in text for token in ("right edge", "road to her right", "road still riding to her right")):
+    if frame_bias == "right_weighted" and any(token in text for token in ("right edge", "road to her right", "road still riding to her right", "wet bench seat", "station window", "lower metal rail")):
         score += 1
     if arrival_side == "far" and any(token in text for token in ("far side", "wider street", "open street")):
         score += 1

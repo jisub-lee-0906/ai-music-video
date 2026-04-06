@@ -1,0 +1,4 @@
+window_contact_a | The same Korean female idol with airy see-through bangs and a high ponytail keeps close to the station window at night and moves forward, her empty hand trailing the metal edge.
+window_contact_b | The same Korean female idol with airy see-through bangs and a high ponytail keeps one empty palm on the station window at night and steadies her breath without fully stopping.
+bench_rest_a | The same Korean female idol with airy see-through bangs and a high ponytail sits on the wet bench end at night, one foot still planted on the ground as if she could rise again.
+bench_rest_b | The same Korean female idol with airy see-through bangs and a high ponytail leans forward from the wet bench seat at night, one foot still planted on the ground as the rise gathers into her next step.
