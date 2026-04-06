@@ -10,33 +10,28 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Every lyric line must be valid readable text in the requested language, not mojibake, not corrupted Unicode, and not random symbol noise. "
         "Keep the exact section skeleton, exact line count, and exact header text. "
         "Favor singable, emotionally legible lines over ornate wording. "
-        "Choose one dominant song image for the chorus family and one or two supporting setup images for the verses. "
+        "Choose one dominant emotional or visual motif for the chorus family and one or two supporting setup motifs for the verses. "
         "Do not keep introducing brand-new unrelated objects every section; deepen the same small image system instead. "
         "Do not pad the song with generic filler or duplicate weak phrases across sections. "
         "Outside of one intentional hook line, do not repeat a full lyric line in another block. "
-        "Choose one short hook nucleus for the chorus family only, but that nucleus must be a short image fragment or phrase, not a full lyric sentence. "
-        "If a hook nucleus returns, change the verb, surrounding object, or sentence ending so it feels like a variation rather than a copy. "
-        "A hook nucleus should look like a small motif such as 'blue city', 'melted light', or 'cold key', not like a whole repeated line. "
-        "Do not place the chorus hook nucleus inside Intro, Verse, or Pre-Chorus blocks. "
+        "Choose one short chorus hook for the chorus family only, and do not place the chorus hook inside Intro, Verse, or Pre-Chorus blocks. "
         "The opening setup must evolve as the song moves forward: Intro, Verse 1, Pre-Chorus, and Chorus should not recycle the same full line. "
         "Intro lines must never recur verbatim later in the song; later blocks may only transform the image into new sentences. "
         "Verse lines should add concrete images, tactile objects, visible motions, or emotional detail. "
-        "Prefer a small recurring station-night object system over random new props. "
-        "Weak pattern: paper cup, convenience store, phone screen, bus stop, random taxi, random coffee, random alley object appearing once and never mattering again. "
-        "Strong pattern: gate light, station glass, wet road, platform air, closing door, footsteps, breath, last-train signal recurring with changed meaning. "
+        "Prefer a small recurring image system over random new props. "
+        "Avoid disposable filler props such as convenience stores, phone screens, random taxis, random drinks, or throwaway street objects unless they become central and recur with purpose. "
         "Pre-chorus lines should raise anticipation and momentum. "
         "Chorus lines should deliver one memorable hook image or title-worthy phrase cleanly. "
         "Bridge lines should reframe the song with a wider system, memory, or emotional shift. "
         "Chorus 2 must keep the same emotional center as Chorus but change at least four full lines. "
-        "Final Chorus must keep at most two reused lines from Chorus and rewrite the rest as the clearest payoff, warmest vow, or widest city-night resolution. "
+        "Final Chorus must keep at most two reused lines from Chorus and rewrite the rest as the clearest payoff or most complete answer. "
         "Chorus 2 and Final Chorus should each introduce fresh nouns, verbs, or images instead of just paraphrasing the first chorus. "
         "The whole song must change state over time: setup, pressure, decision, complication, answer. "
-        "Bad pattern: Verse 1, Verse 2, Bridge, and Final Chorus all describe different lights but none of them change the emotional situation. "
         "Good pattern: Verse 1 observes, Pre-Chorus tightens, Chorus chooses, Verse 2 complicates, Bridge breaks or reframes, Final Chorus resolves. "
         "If the form is compact, keep Bridge very short rather than deleting the low point entirely. "
         "If the form is compact, it is acceptable to skip Chorus 2 entirely and move from Pre-Chorus 2 into a short Bridge before Final Chorus. "
         "Bad pattern: repeating the same weak stock phrase across Verse, Chorus, and Final Chorus. "
-        "Good pattern: each section keeps one city-night motif but changes the angle, object, gesture, or emotional meaning. "
+        "Good pattern: each section keeps one motif but changes the angle, gesture, or emotional meaning. "
         f"{retry_clause}"
     )
     if lang == "ja":
@@ -44,21 +39,18 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
             "Write fluent modern Japanese lyric lines only. "
             "Use natural hiragana, katakana, and common-use kanji. "
             "Do not leave any Latin alphabet words, romanized spellings, or English production terms in the final Japanese lyrics. "
-            "Rewrite words like timetable, curb, platform, gate, or pocket into natural Japanese. "
-            "Prefer polished adult city-pop diction with concrete images such as train glass, ticket gate, wet curb, vending glow, reflected neon, station clock, and apartment windows. "
+            "Rewrite concrete nouns into natural Japanese. "
         )
     if lang == "ko":
         return common + (
             "Write fluent modern Korean lyric lines only. "
             "Use natural Hangul phrasing, natural particles, and singable endings. "
             "Avoid translationese and stiff written-language endings. "
-            "Prefer polished urban-pop diction with concrete images such as train window, ticket gate, wet curb, vending light, reflected neon, station clock, and apartment windows. "
             "Keep the voice intimate, authored, and easy to sing. "
             "A good chorus should sound like a real hook someone would remember after one listen. "
             "Do not end multiple sections with the same generic tomorrow, together, or keep-going slogan. "
             "Keep Korean lines especially short and breathable. Favor one clean image or one direct action per line. "
             "Avoid chaining two or three clauses into one Korean line. "
-            "Favor station-night images that can recur and deepen. Avoid disposable one-off props that pull the song sideways. "
             "A very short English hook fragment is allowed only when it is catchy, intentional, and blended into otherwise Korean-dominant lyrics. "
             "Do not let a weak English fragment become the title or whole payoff unless it is genuinely undeniable. "
             "Do not write long English sentences inside Korean lyrics. "
@@ -66,9 +58,7 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
     return common + (
         "Write fluent English lyric lines only. "
         "Use lyric-like cadence, not flat explanatory prose. "
-        "Prefer concrete city-night images, clear verbs, and memorable hook phrasing. "
-        "Bad pattern: the light keeps moving, the night goes on, footsteps echo repeated across many sections. "
-        "Good pattern: station glass catches the blue, wet pavement folds the neon back, a ticket warms inside my hand. "
+        "Prefer concrete images, clear verbs, and memorable hook phrasing. "
         "Avoid overly literal scene description and avoid generic filler choruses. "
     )
 
@@ -82,7 +72,7 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
     selected_hook_clause = ""
     if label in {"Chorus", "Chorus 2", "Final Chorus"} and selected_hook:
         selected_hook_clause = (
-            f"Center this block around the selected hook nucleus='{selected_hook}' or a close variation of it. "
+            f"Center this block around the selected hook='{selected_hook}' or a close variation of it. "
         )
     hook_fragment_clause = ""
     if str(plan.get("language", "")).strip().lower() == "ko" and label in {"Chorus", "Chorus 2", "Final Chorus"} and hook_fragments:
@@ -102,7 +92,7 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
         + "Do not output the header. Do not output numbering, bullets, explanations, or blank filler lines. "
         + f"Output exactly {line_count} finished lyric lines, one per line. "
         + "Do not copy earlier blocks verbatim. Keep narrative continuity through shared world and emotion, not through recycled lines. "
-        + "Before answering, silently check every line against earlier blocks and rewrite any exact match unless it is the one intentional hook nucleus. "
+        + "Before answering, silently check every line against earlier blocks and rewrite any exact match unless it is the one intentional hook line. "
     )
 
 
@@ -140,7 +130,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
     pre_1 = next((row for row in completed if str(row.get("label", "")).strip() == "Pre-Chorus"), None)
     chorus = next((row for row in completed if str(row.get("label", "")).strip() == "Chorus"), None)
     role_rules = {
-        "Intro": "Intro should set the scene with no sung line or one very short clean city-night image and no chorus-style payoff. ",
+        "Intro": "Intro should set the scene with no sung line or one very short clean setup image and no chorus-style payoff. ",
         "Verse 1": "Verse 1 should establish concrete city details, tactile objects, visible gestures, motion, and the initial lack or distance the song needs to overcome. ",
         "Pre-Chorus": "Pre-Chorus should raise anticipation and momentum without repeating the coming hook, and it should make a decision feel imminent. ",
         "Chorus": "Chorus should establish the central hook image in its clearest, most memorable, and most singable form, and it should feel like the first true decision or emotional commitment. ",
@@ -156,10 +146,10 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
         return base + (
             "Do not simply expand the Intro by repeating its exact image sentence. "
             "Keep the same night and same world, but move from the opening image into new objects, surfaces, or gestures. "
-            "Every Verse 1 line should push the camera one step deeper into the scene than Intro did. "
+            "Every Verse 1 line should push the song one step deeper into the scene than Intro did. "
             "Verse 1 must not use the future chorus hook line; it should prepare the world, not arrive at the refrain. "
             "The first two Verse 1 lines must not repeat or lightly paraphrase the Intro lines; they should introduce different objects, actions, or surfaces immediately. "
-            "Keep Verse 1 inside the same tight station-night object family instead of reaching for random convenience props, bus-stop imagery, phone-screen imagery, or generic neighborhood scenery. "
+            "Keep Verse 1 inside the same tight image family instead of reaching for random filler props or disconnected scenery. "
             f"Existing Intro lines to avoid copying verbatim: {intro_lines}. "
         )
     if label == "Pre-Chorus" and verse_1:
@@ -175,7 +165,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
         pre_lines = "; ".join(str(line).strip() for line in pre_1.get("lines", []) if str(line).strip())
         return base + (
             "Chorus must feel like the first true arrival of the hook, not a copy of the Pre-Chorus. "
-            "Keep one hook nucleus if needed, but the section should widen the image and make it more memorable than the setup blocks. "
+            "Keep one chorus hook if needed, but the section should widen the image and make it more memorable than the setup blocks. "
             "The most memorable line of the song should appear here first, not earlier. "
             "Do not copy any Intro line or Verse 1 line verbatim into Chorus; transform the motif into a new refrain sentence. "
             f"Existing Pre-Chorus lines to avoid copying verbatim: {pre_lines}. "
@@ -187,7 +177,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
             "Keep the same city and same night, but move to different objects, gestures, surfaces, thoughts, or consequences. "
             "Verse 2 must not feel like more B-roll. It should reveal what became harder, riskier, closer, or more honest after Chorus 1. "
             "At least one Verse 2 line should introduce tension, contradiction, or an action that changes the emotional situation. "
-            "Do not fall back to phone-screen imagery or generic outside-street filler; stay inside the station-night object system. "
+            "Do not fall back to generic filler imagery; stay inside the song's chosen image system. "
             f"Existing Verse 1 lines to avoid copying verbatim: {verse_lines}. "
         )
     if label == "Pre-Chorus 2" and pre_1:

@@ -8,15 +8,9 @@ from ai_mv.core.orchestration.stage_runs import run_result_stage
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 from ai_mv.core.stages.acestep_music import run_acestep_music
-from ai_mv.core.stages.backend_preview import run_backend_preview
-from ai_mv.core.stages.director_plan import run_director_plan
-from ai_mv.core.stages.flux2_ref_chain import run_flux2_ref_chain
-from ai_mv.core.stages.lyrics_timeline import run_lyrics_timeline
+from ai_mv.core.stages.keyframes import run_keyframes
 from ai_mv.core.stages.merge_mux import run_merge_mux
-from ai_mv.core.stages.render_plan import run_render_plan
-from ai_mv.core.stages.scene_plan import run_scene_plan
-from ai_mv.core.stages.shot_density_refiner import run_shot_density_refiner
-from ai_mv.core.stages.tti_anchor import run_tti_anchor
+from ai_mv.core.stages.storyboard import run_storyboard
 from ai_mv.core.stages.wan_interpolation import run_wan_interpolation
 
 
@@ -52,15 +46,9 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
 
 def _ordered_stages() -> list[tuple[str, callable]]:
     return [
-        ("acestep_music", run_acestep_music),
-        ("lyrics_timeline", run_lyrics_timeline),
-        ("scene_outline", run_scene_plan),
-        ("shot_density_refiner", run_shot_density_refiner),
-        ("direction_plan", run_director_plan),
-        ("prompt_plan", run_render_plan),
-        ("backend_preview", run_backend_preview),
-        ("tti_anchor", run_tti_anchor),
-        ("flux2_ref_chain", run_flux2_ref_chain),
-        ("wan_interpolation", run_wan_interpolation),
-        ("merge_mux", run_merge_mux),
+        ("audio", run_acestep_music),
+        ("storyboard", run_storyboard),
+        ("keyframes", run_keyframes),
+        ("clips", run_wan_interpolation),
+        ("merge", run_merge_mux),
     ]

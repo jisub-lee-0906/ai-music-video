@@ -31,6 +31,23 @@ def test_audio_mapper():
     assert plan["filename_prefix"] == "music/audio_run"
 
 
+def test_audio_mapper_passes_llm_generated_bpm_and_keyscale_directly():
+    plan = {
+        "genre_description": "Rock: Distorted guitars, punchy live drums, and a raw vocal that builds from tension to release.",
+        "lyrics": "[Verse 1]\nI run\n[end]",
+        "seed": 5,
+        "bpm": 146,
+        "duration": 180,
+        "keyscale": "E minor",
+        "filename_prefix": audio_prefix("run"),
+        "quality": "V0",
+    }
+    out = map_audio_workflow({}, plan)
+    node = out["node.inputs"]["94"]
+    assert node["bpm"] == 146
+    assert node["keyscale"] == "E minor"
+
+
 def test_audio_mapper_preserves_non_ascii_lyrics_and_language():
     plan = {
         "tags": "jpop",

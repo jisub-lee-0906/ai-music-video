@@ -1,100 +1,14 @@
-audio:
-  language: ko
-  genre_head: K-Pop
-  vocal_profile: female lead vocal
-  vocal_tone: airy and youthful
-  ending_mode: clean_resolve
-  outro_required: true
-  ending_vocal_density: low
-  section_bars:
-    outro: 2
-  tags:
-    - polished korean girl-group pop
-    - bright emotional female vocal
-    - glossy synth-pop pulse
-    - sparkling rhythm section
-  brief: >
-    Korean-language polished pop track with an immediate melodic hook, bright but emotional young adult female vocal,
-    sparkling drums, glossy synth lift, and a clean euphoric chorus that can support a premium live-action music video.
-    Keep the lyric image system centered on the last-train station night: ticket gate light, platform air, wet road,
-    station glass, and closing doors. Avoid throwaway convenience-store or paper-cup details unless they become central.
-    Avoid bus-stop, phone-screen, or generic street-object drift; keep the world inside one station-night route.
-  hook_brief: >
-    The hook should be immediately singable, title-worthy, youthful, emotionally direct, memorable after one listen,
-    and led by a Korean phrase that belongs to this exact station-night world rather than a generic English slogan.
-    Prefer a compact back half with one short emotional low-point bridge before the final answer.
-    If the first chorus already lands, skip Chorus 2 rather than dropping the bridge.
-visual:
-  story_premise: >
-    A cinematic live-action music video about one consistent Korean female idol heroine moving through one connected
-    late-night station-side city block until her direction becomes physically undeniable.
-  world_rules: >
-    One connected late-night station-side world where thresholds, gates, stairs, platform edges, sidewalks, passages,
-    and wet street surfaces always belong to the same walkable geography.
-  heroine_arc: >
-    She begins at a threshold, moves deeper through the same world, compresses without fully stopping, and ends by
-    crossing into the widest forward release the world can give her.
-  forbidden_story_moves: >
-    Avoid abrupt geography breaks, random extra characters, symbolic abstraction replacing physical action, fashion-shoot
-    emptiness, generic set-hopping, and any ending that turns into a static tableau instead of a concrete forward crossing.
-  section_story_roles:
-    Intro: The heroine crosses the first boundary into the connected night world.
-    Verse 1: She moves deeper into the same world and lets the route define her direction.
-    Verse 2: She varies her path inside the same world without breaking continuity.
-    Pre-Chorus: She hesitates at a wider opening before committing to the next move.
-    Chorus: She releases forward inside the same world with readable physical movement.
-    Bridge: She compresses briefly without fully stopping, then regains direction.
-    Final Chorus: She crosses into the widest forward release the world can hold.
-    Outro: The world keeps her after-image after she has already passed through.
-  section_event_scripts:
-    Intro:
-      - She enters through the first public gate and commits to the connected night world.
-      - She clears the threshold and leaves the outside behind in one readable step.
-    Verse 1:
-      - She steps onto the sidewalk route outside the station and lets the path claim her line.
-      - She keeps close to the station window and moves forward, one hand trailing the metal edge.
-      - She lets the window contact fall behind her and leaves the next step already chosen before the cut.
-    Verse 2:
-      - She sits at the end of the wet bench, one foot still planted as if she could rise again.
-      - She leans forward from the bench end and gathers her next step without fully settling.
-      - She steps away from the bench and lets the route feel physically inevitable again.
-    Pre-Chorus:
-      - She keeps one palm on the glass near the wider opening and steadies her breath without fully stopping.
-      - She commits beyond the threshold so the next move is already inevitable.
-    Chorus:
-      - She starts a visible crossing event instead of another neutral walk.
-      - She keeps the crossing alive inside the same open route.
-      - She carries the crossing into a readable next-state handoff.
-    Bridge:
-      - She sits at the end of the wet bench for one compressed beat, one foot still planted as if she could rise again.
-      - She regains a forward line inside the same compressed world.
-    Final Chorus:
-      - She enters the final release as a visible crossing event.
-      - She keeps the release alive instead of resetting to a centered walk.
-      - She carries the release to the next crossing state with the open road held beside her.
-      - She leaves the crossing behind in a wider forward departure.
-    Outro:
-      - She is already gone, but the route still holds the shape of her movement.
-character:
-  identity_core: >
-    same heroine, Korean female idol in her twenties, long dark hair with soft volume and a high ponytail,
-    airy see-through bangs, bright clear almond-shaped eyes, luminous natural makeup, balanced center-visual features,
-    softly slim oval face, clean small nose line, polished off-duty idol outfit built from a fitted light knit top,
-    a short clean casual outer layer, a soft short skirt or premium denim bottom, and premium everyday footwear in ivory,
-    navy, and silver tones with one subtle metallic accent
-  identity_hooks:
-    - airy see-through bangs with high ponytail
-    - soft face-framing strands around the jawline
-    - polished ivory and navy off-duty idol silhouette with a short casual outer layer
-    - subtle silver jewelry accent
-  ref_subject_intro: >
-    The same Korean female idol
-  anchor_wardrobe_guidance: >
-    Favor elevated off-duty idol styling such as a refined fitted knit or sleeveless top, a short clean casual jacket
-    or soft cardigan, a soft mini skirt or premium denim bottom, premium sneakers or slim ankle boots, subtle jewelry,
-    and airport-fashion-like coordination with polished casual luxury.
-  anchor_avoid: >
-    Avoid school-uniform prep, stiff formal blazers, office tailoring, loud graphic details, and costume-like stage styling.
-  ref_continuity_guidance: >
-    Keep the same heroine identity, realistic facial structure, consistent hair silhouette, stable wardrobe continuity,
-    and single-subject on-screen continuity.
+prompt: >
+  Korean-language late-night pop song about replaying the end of a relationship while walking through a wet city night.
+  The emotion starts restrained and lonely, grows more direct in the chorus, tightens briefly before the bridge,
+  and resolves with a clear forward release instead of collapsing into despair.
+genre: "k-pop synth pop"
+voice: "solo female, airy and emotional"
+language: "ko"
+anchor_subject: "pretty young Korean female idol in her 20s"
+anchor_hair: "long dark hair with soft volume and light face-framing strands"
+anchor_top: "clean fitted knit top with a short polished outer layer"
+anchor_bottom: "short skirt or slim premium denim bottom"
+anchor_shoes: "premium everyday sneakers or slim ankle boots"
+anchor_pose: "full-body standing pose, slight side angle, both hands visible, shoes fully visible"
+anchor_background: "plain neutral studio background, no props, no environmental elements"

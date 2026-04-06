@@ -46,6 +46,18 @@ def load_flux2_prompting() -> dict:
     return load_prompt_grammar("flux2_prompting")
 
 
+def load_director_rules() -> dict:
+    return load_prompt_grammar("director_rules")
+
+
+def load_render_plan_rules() -> dict:
+    return load_prompt_grammar("render_plan")
+
+
+def load_render_verbalizer_rules() -> dict:
+    return load_prompt_grammar("render_verbalizer")
+
+
 def ref_archetype_grammar(name: str) -> dict:
     raw = load_ref_archetype_grammars().get("archetypes", {})
     if not isinstance(raw, dict):

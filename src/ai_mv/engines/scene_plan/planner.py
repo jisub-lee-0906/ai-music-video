@@ -30,28 +30,35 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
             beat_id = str(beat.get("beat_id", "")).strip()
             if not beat_id:
                 continue
-            story_function = _story_function(section_label, beat_index, len(beats))
-            story_event = _story_event(section_label, beat_index, beat_count=len(beats), section_events=section_events, story_function=story_function)
-            transition_need = _transition_need(story_function)
-            heroine_state = _heroine_state(section_label, story_function, story_event)
-            shot_packages.append(
-                {
-                    "shot_id": beat_id,
-                    "section_name": section_name,
-                    "section_label": section_label,
-                    "beat_refs": [beat_id],
-                    "line_refs": [int(x) for x in beat.get("line_refs", []) if int(x) > 0],
-                    "story_function": story_function,
-                    "story_goal": story_goal,
-                    "story_event": story_event,
-                    "world_zone": world_zone,
-                    "heroine_state": heroine_state,
-                    "story_visual_intent": _story_visual_intent(section_label, story_function, world_zone, story_event),
-                    "transition_need": transition_need,
-                    "duration_sec": _duration(beat),
-                    "why": _why_line(section_label, story_function, story_goal, story_event),
-                }
-            )
+            base_story_function = _story_function(section_label, beat_index, len(beats))
+            base_story_event = _story_event(section_label, beat_index, beat_count=len(beats), section_events=section_events, story_function=base_story_function)
+            for segment in _beat_segments(config, beat, base_story_function):
+                story_function = _segment_story_function(base_story_function, segment["segment_index"], segment["segment_count"])
+                story_event = _segment_story_event(base_story_event, segment["segment_index"], segment["segment_count"])
+                transition_need = _transition_need(story_function)
+                heroine_state = _heroine_state(section_label, story_function, story_event)
+                shot_packages.append(
+                    {
+                        "shot_id": _segment_shot_id(beat_id, segment["segment_index"], segment["segment_count"]),
+                        "section_name": section_name,
+                        "section_label": section_label,
+                        "beat_refs": [beat_id],
+                        "line_refs": [int(x) for x in beat.get("line_refs", []) if int(x) > 0],
+                        "story_function": story_function,
+                        "story_goal": story_goal,
+                        "story_event": story_event,
+                        "world_zone": world_zone,
+                        "heroine_state": heroine_state,
+                        "story_visual_intent": _story_visual_intent(section_label, story_function, world_zone, story_event),
+                        "transition_need": transition_need,
+                        "duration_sec": segment["duration_sec"],
+                        "why": _why_line(section_label, story_function, story_goal, story_event),
+                        "segment_index": segment["segment_index"],
+                        "segment_count": segment["segment_count"],
+                        "start_sec": segment["start_sec"],
+                        "end_sec": segment["end_sec"],
+                    }
+                )
     return normalize_scene_outline(
         {
             "brief_name": brief["brief_name"],
@@ -192,3 +199,53 @@ def _duration(beat: dict) -> float:
     start = float(beat.get("start_sec", 0.0) or 0.0)
     end = float(beat.get("end_sec", 0.0) or 0.0)
     return max(0.5, end - start) if end > start else 2.0
+
+
+def _beat_segments(config: dict, beat: dict, story_function: str) -> list[dict]:
+    duration = _duration(beat)
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    wan_safe = float(render.get("wan_safe_max_gap_sec", 4.0) or 4.0)
+    target = max(2.0, min(wan_safe, 4.0 if story_function in {"continuation", "handoff"} else 3.5))
+    count = max(1, int(-(-duration // target)))
+    start = float(beat.get("start_sec", 0.0) or 0.0)
+    segment_span = duration / float(count)
+    out: list[dict] = []
+    for idx in range(count):
+        seg_start = round(start + segment_span * idx, 3)
+        seg_end = round(start + segment_span * (idx + 1), 3)
+        out.append(
+            {
+                "segment_index": idx + 1,
+                "segment_count": count,
+                "duration_sec": round(max(0.5, seg_end - seg_start), 3),
+                "start_sec": seg_start,
+                "end_sec": seg_end,
+            }
+        )
+    return out
+
+
+def _segment_story_function(base: str, segment_index: int, segment_count: int) -> str:
+    if segment_count <= 1:
+        return base
+    if segment_index == 1:
+        return "entry" if base == "entry" else "continuation"
+    if segment_index == segment_count:
+        return base
+    return "continuation"
+
+
+def _segment_story_event(base_event: str, segment_index: int, segment_count: int) -> str:
+    if segment_count <= 1:
+        return base_event
+    if segment_index == 1:
+        return f"{base_event} The moment begins here and sets the route."
+    if segment_index == segment_count:
+        return f"{base_event} The moment lands in a clear next state."
+    return f"{base_event} The route keeps carrying through the same connected movement."
+
+
+def _segment_shot_id(beat_id: str, segment_index: int, segment_count: int) -> str:
+    if segment_count <= 1:
+        return beat_id
+    return f"{beat_id}_s{segment_index}"

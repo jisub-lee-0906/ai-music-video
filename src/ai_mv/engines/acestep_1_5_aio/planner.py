@@ -112,8 +112,8 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["line_budgets"] = dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {}
     normalized["hook_candidates"] = list(planned.get("hook_candidates", [])) if isinstance(planned.get("hook_candidates", []), list) else []
     normalized["selected_hook_candidate"] = dict(planned.get("selected_hook_candidate", {})) if isinstance(planned.get("selected_hook_candidate", {}), dict) else {}
-    if not str(normalized.get("keyscale", "")).strip():
-        normalized["keyscale"] = str(plan.get("keyscale", "")).strip()
+    normalized["bpm"] = int(normalized.get("bpm", 0) or int(plan.get("bpm", 0) or 0))
+    normalized["keyscale"] = str(normalized.get("keyscale", "")).strip() or str(plan.get("keyscale", "")).strip()
     return normalized
 
 
@@ -173,14 +173,17 @@ def _render_final_lyrics(plan: dict, blocks: list[dict]) -> str:
     for row in blocks:
         label = str(row.get("label", "")).strip()
         body = [str(x).strip() for x in row.get("lines", []) if str(x).strip()]
-        if not label or not body:
+        if not label:
+            continue
+        if not body and label.lower() != "outro":
             continue
         lines.append(f"[{label}]")
-        lines.extend(body)
+        if body:
+            lines.extend(body)
         lines.append("")
     text = "\n".join(lines).strip()
     if bool(plan.get("terminal_end_tag", False)):
-        return f"{text}\n\n[End]" if text else "[End]"
+        return f"{text}\n\n[end]" if text else "[end]"
     return text
 
 
@@ -292,7 +295,7 @@ def _hook_candidates_prompt(plan: dict) -> str:
     fragments = [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
     fragment_text = ", ".join(fragments)
     return (
-        "Generate hook nucleus candidates for a Korean pop song. "
+        "Generate chorus hook candidates for a Korean pop song. "
         "Return JSON only. No markdown. "
         "Make 6 candidates for chorus-family use only. "
         "Each candidate must be a short hook fragment, not a full sentence. "
@@ -300,9 +303,9 @@ def _hook_candidates_prompt(plan: dict) -> str:
         "Keep Korean dominant overall. "
         "English is optional and must stay within one to three words. "
         "Do not write long English sentences. "
-        "Prefer Korean-led hook nuclei tied to the song world, action, or emotional shift over generic English slogans. "
-        "Bad candidates: vague phrases like all night, forever, stay with me, call my name when they are not anchored to this song's image system. "
-        "Good candidates: short phrases that can become title-worthy because they belong to this exact night, place, or decision. "
+        "Prefer Korean-led hooks tied to the song's emotional turn or central image over generic English slogans. "
+        "Bad candidates: vague phrases like all night, forever, stay with me, call my name when they are not anchored to this song's own meaning. "
+        "Good candidates: short phrases that can become title-worthy because they belong to this exact song. "
         f"Hook intent={str(plan.get('hook_direction', '')).strip()}. "
         + (f"Preferred optional English fragments={fragment_text}. " if fragment_text else "")
         + "For each candidate, provide fragment, language_mode, placement, and why. "
@@ -392,7 +395,7 @@ def _score_hook_candidate(row: dict, plan: dict) -> int:
         score += 1
     if re.search(r"[가-힣]", fragment):
         score += 2
-    if any(token in fragment for token in ("역", "문", "불빛", "새벽", "플랫폼", "개찰구", "창", "숨", "발끝", "너머")):
+    if any(token in fragment for token in ("밤", "심장", "불꽃", "기억", "끝", "너머", "숨", "빛")):
         score += 3
     return score
 
@@ -413,10 +416,10 @@ def _fallback_hook_state(plan: dict) -> dict:
     if not candidates:
         candidates.append(
             {
-                "fragment": "젖은 플랫폼",
+                "fragment": "남은 불빛",
                 "language_mode": "ko_only",
                 "placement": "chorus",
-                "why": "Fallback Korean hook nucleus from the song world.",
+                "why": "Fallback Korean chorus hook from the song profile.",
             }
         )
     return {

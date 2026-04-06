@@ -45,7 +45,8 @@ def _audio_outline_output_contract() -> str:
         "line_count may be 0 only for instrumental Intro or instrumental Outro blocks. "
         "bpm must be a positive integer. "
         "Treat lyrics_blocks as the future bracketed lyric markup skeleton that AceStep will receive. "
-        "The exported lyrics may append a final [End] marker after the last block, so the final block must already feel like the true musical finish. "
+        "The final exported text will use bracketed headers like [Verse 1], [Chorus], [Final Chorus], [Outro], and a terminal [end] marker. "
+        "The song must be able to end cleanly with [Outro] followed by [end]. "
         "Allowed section values only: intro,verse_1,verse_2,pre_chorus,chorus,post_chorus,bridge,outro. "
         "label is the internal section header and must use the canonical English song labels only. "
     )
@@ -59,14 +60,13 @@ def _audio_song_craft_brief(plan: dict) -> str:
         "The song must have a readable dramatic arc, not just a sequence of attractive night images. ",
         "Make the listener feel a clear progression such as setup, pressure, choice, complication, answer, and residue. ",
         "At minimum, Verse 1 should establish distance or lack, Pre-Chorus should tighten into pressure, Chorus should make the first decisive emotional move, Verse 2 should add complication or cost instead of just new scenery, Bridge should create the lowest point or widest reframe, and Final Chorus should answer what changed. ",
-        "Do not let every section behave like another descriptive walk through the same night. ",
-        "For a concise Korean pop form, prefer a short two-line Bridge before Final Chorus over simply dropping the low point altogether. ",
+        "Do not let every section behave like another descriptive replay of the same mood. ",
+        "For a concise pop form, prefer a short Bridge before Final Chorus over dropping the low point altogether. ",
         "If you simplify the back half of the form, it is better to remove Chorus 2 than to remove the Bridge; keep one readable low-point or reframe section before the final answer. ",
-        "For this kind of concise station-night K-pop song, do not keep both Chorus 2 and Bridge unless the second chorus adds clearly new musical work. ",
         "When the first chorus already lands cleanly, prefer Verse 2 -> Pre-Chorus 2 -> Bridge -> Final Chorus over Verse 2 -> Pre-Chorus 2 -> Chorus 2 -> Bridge -> Final Chorus. ",
-        "Build the song around one dominant late-night city image and at most one or two supporting objects, instead of rotating through a long list of unrelated props. ",
-        "Keep the object system tightly curated: prefer station glass, ticket gate light, platform air, wet road, closing doors, footsteps, breath, and reflected neon over disposable filler props. ",
-        "Do not introduce weak one-off props like convenience-store snacks, random drinks, bus-stop details, phone-screen details, or throwaway street objects unless they are emotionally central and recur with purpose. ",
+        "Build the song around one dominant emotional image system and at most one or two supporting motifs, instead of rotating through a long list of unrelated props. ",
+        "Do not introduce disposable one-off objects unless they are emotionally central and recur with purpose. ",
+        "Avoid disposable filler props such as convenience stores, phone screens, random taxis, random drinks, or throwaway street objects unless they become central and recur with purpose. ",
         "Do not make Verse 2 feel like a copy-paste replay of Verse 1. ",
         "Let Verse 2 act like a lifted verse: keep the structure readable but raise the stakes, contradiction, detail, or emotional cost, not just arrangement energy. ",
         "If you use a post-chorus, give it a real afterglow or rhythmic release function; do not insert one automatically if the chorus already resolves cleanly. ",
@@ -78,7 +78,7 @@ def _audio_song_craft_brief(plan: dict) -> str:
         "Make every section melodically and lyrically legible; do not output corrupted text, broken symbols, or unreadable character noise. ",
         "Favor concise, memorable lyric lines with a clean hook shape over vague impressionistic fragments. ",
         "Prefer plain readable diction over rare, ornate, or hard-to-parse character choices. ",
-        "For Korean songs, prefer a Korean-led hook nucleus anchored in the song world over a generic English slogan. ",
+        "For Korean songs, prefer a Korean-led chorus hook over a generic English slogan. ",
         "If an English fragment appears, it should act like a small accent, not the whole emotional center. ",
         "Default Intro and Outro to instrumental unless one very short sung pickup or one very short sung tail is truly necessary. ",
     ]
@@ -147,9 +147,9 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
     return (
         "AceStep tags should read like a compact English production brief, not a bag of loose keywords. "
         "Do not rely on artist-name shorthand such as 'in the style of' or celebrity comparisons; translate the sound into concrete production language instead. "
-        "Build genre_description in this order when possible: mix texture, lead vocal profile, genre or groove identity, arrangement highlights, and ending behavior. "
-        "Prefer concrete musical language such as synth bass, bright piano melody, live drums, warm pads, clipped guitar, or euphoric chorus lift over vague mood-only writing. "
-        "Keep genre_description compact and radio-usable rather than long-form criticism. "
+        "Write genre_description as a [tags] block body: start with a genre label and colon, then explain instrumentation, energy, arrangement, and vocal character in natural English. "
+        "Prefer concrete musical language such as distorted electric guitars, punchy live drums, glossy synth layers, warm pads, driving bassline, restrained piano, or explosive chorus lift over vague mood-only writing. "
+        "Keep genre_description compact and usable as one short production paragraph rather than long-form criticism. "
         "If bpm or keyscale are provided, treat them as fixed musical targets and do not describe a contradictory tempo feel or tonal center. "
         "If bpm is not provided, choose it yourself from the songform, line density, language breathing room, and tags. "
         "Use a slower bpm when the form is sparse, the lines are short and open, or Intro and Outro are instrumental. "
@@ -162,13 +162,10 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
 
 def _audio_description_rules(plan: dict) -> str:
     ending = _ending_policy(plan)
-    ending_tags = ", ".join(str(x).strip() for x in ending.get("ending_tags", []) if str(x).strip())
-    ending_clause = f"Encode the ending behavior in genre_description using short production phrases such as {ending_tags}. " if ending_tags else ""
     return (
-        "genre_description is the AceStep tags text field. Write it in English as a short production brief starting with a genre label and colon. "
+        "genre_description is the AceStep [tags] text field. Write it in English as a short production brief starting with a genre label and colon. "
         "Treat the provided audio intent and hook intent as the source of truth. "
-        + ("Aim for a short Outro followed by a terminal [End] close. " if bool(ending.get("terminal_end_tag", False)) else "")
-        + ending_clause
+        + ("Aim for a short Outro followed by a terminal [end] close. " if bool(ending.get("terminal_end_tag", False)) else "")
     )
 
 
@@ -189,7 +186,7 @@ def _language_style_rules(plan: dict) -> str:
             "Keep phrasing natural and singable. "
             "Keep lines easy to read at a glance. "
             "Use English sparingly and intentionally. "
-            "Prefer clear city-night imagery and avoid untranslated English nouns. "
+            "Prefer concrete images and avoid untranslated English nouns. "
             "Keep the canonical English section labels exactly as provided in the outline. "
         )
     if lang == "ko":
@@ -221,7 +218,14 @@ def _outline_label_clause_qwen(plan: dict) -> str:
 def _audio_tags(audio: dict) -> str:
     raw = audio.get("tags", []) if isinstance(audio, dict) else []
     vals = [str(x).strip() for x in raw if str(x).strip()]
-    return ", ".join(vals)
+    if vals:
+        return ", ".join(vals)
+    genre = str(audio.get("genre_head", "")).strip()
+    voice = _join_unique_parts(
+        str(audio.get("vocal_profile", "")).strip(),
+        str(audio.get("vocal_tone", "")).strip(),
+    )
+    return ", ".join(part for part in (genre, voice) if part)
 
 
 def _audio_config(config: dict) -> dict:
@@ -266,20 +270,14 @@ def _intent_clause(plan: dict) -> str:
             for x in intent.get("audio_hook_english_fragments", [])
             if str(x).strip()
         ] if isinstance(intent.get("audio_hook_english_fragments", []), list) else []
-    story_world = str(intent.get("story_world", "")).strip()
-    world_core = str(intent.get("world_core", "")).strip()
     merged_avoid = _merged_avoid_text(intent)
     parts = [
         _profile_line("Audio intent", intent.get("audio_brief", "")),
         _profile_line("Hook intent", intent.get("audio_hook_brief", "")),
         _profile_line("Hook English fragments", ", ".join(hook_fragments)),
-        _profile_line("Selected hook nucleus", str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip()),
-        _profile_line("Visual intent", intent.get("visual_brief", "")),
-        _profile_line("Story world", story_world),
-        _profile_line("World core", world_core if world_core and world_core != story_world else ""),
-        _profile_line("Payoff style", intent.get("payoff_style", "")),
-        _profile_line("Outro feel", intent.get("outro_feel", "")),
-        _profile_line("Character identity", intent.get("identity_core", "")),
+        _profile_line("Selected chorus hook", str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip()),
+        _profile_line("Genre", plan.get("genre_head", "")),
+        _profile_line("Voice", _join_unique_parts(plan.get("vocal_profile", ""), plan.get("vocal_tone", ""))),
         _profile_line("Avoid", merged_avoid),
     ]
     return "".join(parts)
@@ -299,6 +297,18 @@ def _merged_avoid_text(intent: dict) -> str:
             seen.add(text)
             parts.append(text)
     return " ".join(parts)
+
+
+def _join_unique_parts(*parts: object) -> str:
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in parts:
+        text = str(raw).strip()
+        low = text.lower()
+        if text and low not in seen:
+            seen.add(low)
+            out.append(text)
+    return ", ".join(out)
 
 
 def _ending_policy(plan: dict) -> dict:

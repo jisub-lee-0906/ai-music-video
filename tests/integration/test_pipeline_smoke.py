@@ -10,7 +10,8 @@ from ai_mv.core.orchestration.pipeline import run_pipeline
 
 
 def test_pipeline_smoke(monkeypatch):
-    monkeypatch.setattr(pipeline_mod, "schedule", _fake_schedule)
+    monkeypatch.setattr(pipeline_mod, "_ordered_stages", _fake_schedule)
+    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-config.yaml")
@@ -33,8 +34,9 @@ def test_pipeline_writes_initial_snapshot_before_first_stage(monkeypatch):
         assert seen["count"] == 2
         return StageOutput("fake_stage", "done", {"anchors": [], "flux2_ref_images": [], "clips": []}, [])
 
-    monkeypatch.setattr(pipeline_mod, "schedule", lambda: [("fake_stage", _fake_stage)])
+    monkeypatch.setattr(pipeline_mod, "_ordered_stages", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
+    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-snapshot-config.yaml")
@@ -54,8 +56,9 @@ def test_pipeline_writes_stage_name_before_stage_runs(monkeypatch):
         assert "fake_stage" in seen
         return StageOutput("fake_stage", "done", {"anchors": [], "flux2_ref_images": [], "clips": []}, [])
 
-    monkeypatch.setattr(pipeline_mod, "schedule", lambda: [("fake_stage", _fake_stage)])
+    monkeypatch.setattr(pipeline_mod, "_ordered_stages", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
+    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-stage-config.yaml")

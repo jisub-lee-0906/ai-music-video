@@ -7,6 +7,9 @@ def _prompt_plan(**extra):
     plan = {
         "tags": "cinematic pop, female vocal",
         "language": "ko",
+        "genre_head": "K-Pop",
+        "vocal_profile": "solo female",
+        "vocal_tone": "airy and emotional",
         "director_brief_intent": {
             "audio_brief": "glossy pop production with late-night momentum",
             "audio_hook_brief": "rain-light hook with a clean forward lift",
@@ -52,15 +55,14 @@ def test_audio_prompt_focuses_on_outline_planning_not_lyrics_dump():
     assert "Do not rely on artist-name shorthand" in prompt
     assert "Protect vocal breathing room" in prompt
     assert "Final Chorus<= 4 lines" in prompt
-    assert "final [End] marker" in prompt
+    assert "terminal [end] marker" in prompt or "[end]" in prompt
     assert "instrumental-friendly by default" in prompt
     assert "readable dramatic arc" in prompt
     assert "Verse 2 should add complication or cost" in prompt
-    assert "Korean-led hook nucleus" in prompt
+    assert "Korean-led chorus hook" in prompt
     assert "line_count may be 0 only for instrumental Intro or instrumental Outro blocks" in prompt
-    assert "Do not introduce weak one-off props like convenience-store snacks" in prompt
     assert "the final chorus should usually get shorter, cleaner, and more decisive" in prompt
-    assert "prefer a short two-line Bridge before Final Chorus" in prompt
+    assert "prefer a short Bridge before Final Chorus" in prompt
     assert "prefer Verse 2 -> Pre-Chorus 2 -> Bridge -> Final Chorus" in prompt
 
 
@@ -69,7 +71,8 @@ def test_audio_outline_prompt_keeps_language_direction():
     assert "Lyrics language=ko." in prompt
     assert "Write fluent modern Korean lyrics" in prompt
     assert "canonical English section labels exactly as provided in the outline" in prompt
-    assert "Character identity=Korean female idol in her twenties." in prompt
+    assert "Genre=" in prompt
+    assert "Voice=" in prompt
     assert "future bracketed lyric markup skeleton" in prompt
     assert "Hook English fragments=all night, call my name." in prompt
 
@@ -135,7 +138,7 @@ def test_build_audio_plan_exposes_direction_fields_and_ending_contract():
     assert plan["line_budgets"]["Final Chorus"] == 4
 
 
-def test_audio_intent_clause_dedupes_world_and_avoid_text():
+def test_audio_intent_clause_keeps_generic_fields_and_dedupes_avoid_text():
     prompt = audio_planner._audio_prompt(
         _prompt_plan(
             director_brief_intent={
@@ -149,11 +152,16 @@ def test_audio_intent_clause_dedupes_world_and_avoid_text():
                 "identity_core": "Korean female idol in her twenties.",
                 "visual_negative": "avoid spectacle clutter.",
                 "avoid": "avoid spectacle clutter.",
-            }
+            },
+            genre_head="K-Pop",
+            vocal_profile="solo female",
+            vocal_tone="airy and emotional",
         )
     )
-    assert prompt.count("Story world=") == 1
+    assert "Story world=" not in prompt
     assert "World core=" not in prompt
+    assert "Genre=K-Pop." in prompt
+    assert "Voice=solo female, airy and emotional." in prompt
     assert prompt.count("Avoid=avoid spectacle clutter.") == 1
 
 
@@ -208,3 +216,29 @@ def test_parse_audio_lyrics_block_lines_requires_exact_count():
         "first\nsecond\nthird",
     )
     assert lines == ["first", "second", "third"]
+
+
+def test_normalize_and_validate_keeps_llm_generated_bpm_and_keyscale(monkeypatch):
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_with_llm",
+        lambda _config, _plan: {
+            "genre_description": "Rock: Distorted electric guitars, punchy live drums, and a raw modern vocal with dynamic lift.",
+            "bpm": 146,
+            "keyscale": "E minor",
+            "seed": 31,
+            "duration": 180,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "drive", "lines": ["붉은 불꽃", "거친 숨결", "뜨거운 심장", "깨어난 밤"]},
+                {"section": "pre_chorus", "label": "Pre-Chorus", "style": "lift", "lines": ["더 크게 울려", "멈추지 않아", "문을 열어"]},
+                {"section": "chorus", "label": "Chorus", "style": "impact", "lines": ["지금 뛰어", "끝까지 가", "모든 걸 태워", "나를 외쳐"]},
+                {"section": "bridge", "label": "Bridge", "style": "drop", "lines": ["정적이 와", "다시 깨어"]},
+                {"section": "chorus", "label": "Final Chorus", "style": "impact", "lines": ["지금 뛰어", "두려움 없이", "벽을 넘어", "나를 외쳐"]},
+                {"section": "outro", "label": "Outro", "style": "close", "lines": []},
+            ],
+        },
+    )
+    plan = _prompt_plan(bpm=108, keyscale="A major")
+    out = audio_planner._normalize_and_validate({}, plan)
+    assert out["bpm"] == 146
+    assert out["keyscale"] == "E minor"

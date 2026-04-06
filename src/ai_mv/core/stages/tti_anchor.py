@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.prompt_grammar import load_flux2_prompting, tti_anchor_families
 from ai_mv.core.stages.payload_views import merge_planner_prompt
 from ai_mv.engines.flux_2_dev_tti.runner import run_tti
 
@@ -104,43 +103,28 @@ def build_tti_anchor_plan(config: dict, payload: dict) -> dict:
 
 def build_tti_anchor_master_prompt(config: dict) -> str:
     brief = build_director_brief_intent(config)
-    flux_rules = load_flux2_prompting().get("tti", {})
-    hooks = ", ".join(brief.get("identity_hooks", []))
-    wardrobe_guidance = str(brief.get("anchor_wardrobe_guidance", "")).strip()
-    anchor_avoid = str(brief.get("anchor_avoid", "")).strip()
-    grammar = tti_anchor_families()
-    grammar_contract = " ".join(str(row.get("contract", "")).strip() for row in grammar if str(row.get("contract", "")).strip())
-    identity_priority = ", ".join(
-        str(item).strip()
-        for row in grammar
-        for item in row.get("identity_priority", [])
-        if str(item).strip()
-    )
-    body_framing = " ".join(str(row.get("body_framing", "")).strip() for row in grammar if str(row.get("body_framing", "")).strip())
-    background_policy = " ".join(str(row.get("background_policy", "")).strip() for row in grammar if str(row.get("background_policy", "")).strip())
-    suppression = " ".join(str(row.get("suppression", "")).strip() for row in grammar if str(row.get("suppression", "")).strip())
-    flux_tti_block = " ".join(
-        str(flux_rules.get(key, "")).strip()
-        for key in ("natural_language_contract", "hierarchy", "emphasis", "suppression")
-        if str(flux_rules.get(key, "")).strip()
-    )
-    return " ".join(
-        part
-        for part in [
-            f"{brief['style_contract']}.",
-            f"{brief['identity_core']}.",
-            f"Identity hooks: {hooks}." if hooks else "",
-            "Create a production-ready master anchor for downstream reference matching.",
-            grammar_contract,
-            f"Identity priority: {identity_priority}." if identity_priority else "",
-            body_framing,
-            background_policy,
-            flux_tti_block,
-            "Wardrobe should read as polished everyday idol styling rather than a costume.",
-            wardrobe_guidance,
-            anchor_avoid,
-            suppression,
-            "High-end casting still, neutral continuity anchor, realistic skin detail, clean fabric response, and no dramatic scene action baked into the frame.",
-        ]
-        if str(part).strip()
-    )
+    anchor_parts = [
+        str(brief.get("anchor_subject", "")).strip(),
+        str(brief.get("anchor_hair", "")).strip(),
+    ]
+    wardrobe_parts = [
+        str(brief.get("anchor_top", "")).strip(),
+        str(brief.get("anchor_bottom", "")).strip(),
+        str(brief.get("anchor_shoes", "")).strip(),
+    ]
+    anchor_description = ", ".join(part for part in anchor_parts if part)
+    wardrobe_description = ", ".join(part for part in wardrobe_parts if part)
+    pose = str(brief.get("anchor_pose", "")).strip()
+    background = str(brief.get("anchor_background", "")).strip()
+    clauses = [
+        anchor_description,
+        f"wearing {wardrobe_description}" if wardrobe_description else "",
+        pose,
+        background,
+        "soft controlled lighting",
+        "clean silhouette",
+        "clear face readability",
+        "readable outfit and footwear",
+        "designed as a reusable identity anchor for later reference images",
+    ]
+    return ", ".join(part for part in clauses if str(part).strip()) + "."

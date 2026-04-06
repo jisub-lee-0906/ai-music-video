@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from ai_mv.core.contracts.errors import PipelineError
-from ai_mv.core.director_brief import validate_director_brief_config
+from ai_mv.core.director_brief import materialize_profile_config, validate_director_brief_config
 from ai_mv.core.workflow_names import WORKFLOW_FILES
 from ai_mv.utils.path_utils import resolve_project_path
 from ai_mv.utils.bool_utils import parse_bool
@@ -24,6 +24,7 @@ def apply_director_brief(config: dict) -> None:
     if not isinstance(brief, dict):
         raise PipelineError(f"invalid director brief config: {path.as_posix()}")
     _deep_merge(config, brief)
+    materialize_profile_config(config)
     config["brief"] = name
     try:
         validate_director_brief_config(config)

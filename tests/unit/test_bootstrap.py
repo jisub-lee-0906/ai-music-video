@@ -48,21 +48,22 @@ def test_apply_director_brief_merges_example_style_input(tmp_path, monkeypatch):
     bootstrap_guard.apply_director_brief(cfg)
 
     assert cfg["audio"]["brief"] == "Director audio brief"
-    assert cfg["character"]["identity_core"] == "Korean female idol"
-    assert cfg["visual"]["story_premise"] == "A heroine crosses the first connected night threshold."
+    assert cfg["character"]["identity_core"] == "same vocalist, solo female, airy and emotional"
+    assert cfg["visual"]["story_premise"] == "Director audio brief"
+    assert cfg["anchor_subject"] == "pretty young Korean female idol in her 20s"
 
 
 def _director_brief_yaml() -> str:
     return (
-        "audio:\n"
-        "  language: ko\n"
-        "  brief: Director audio brief\n"
-        "  hook_brief: Director hook brief\n"
-        "visual:\n"
-        "  story_premise: A heroine crosses the first connected night threshold.\n"
-        "  world_rules: One connected night block with readable physical continuity.\n"
-        "  heroine_arc: She gains direction through forward movement.\n"
-        "  forbidden_story_moves: Avoid drift, random spectacle, or extra characters.\n"
-        "character:\n"
-        "  identity_core: Korean female idol\n"
+        "prompt: Director audio brief\n"
+        "genre: k-pop synth pop\n"
+        "voice: solo female, airy and emotional\n"
+        "language: ko\n"
+        "anchor_subject: pretty young Korean female idol in her 20s\n"
+        "anchor_hair: long dark hair with soft volume\n"
+        "anchor_top: fitted knit top with a short polished outer layer\n"
+        "anchor_bottom: short skirt or slim premium denim bottom\n"
+        "anchor_shoes: premium everyday sneakers\n"
+        "anchor_pose: full-body standing pose, slight side angle, both hands visible, shoes fully visible\n"
+        "anchor_background: plain neutral studio background, no props, no environmental elements\n"
     )

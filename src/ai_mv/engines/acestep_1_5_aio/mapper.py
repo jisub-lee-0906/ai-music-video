@@ -211,10 +211,14 @@ def _audio_conditioning_text(plan: dict) -> str:
 
 
 def _locked_audio_contract(plan: dict) -> dict:
+    vocal_profile = _normalize_vocal_profile(str(plan.get("vocal_profile", "")).strip())
+    vocal_tone = _normalize_vocal_tone(str(plan.get("vocal_tone", "")).strip())
+    if vocal_profile.lower() == vocal_tone.lower():
+        vocal_tone = ""
     return {
         "genre_head": _normalize_genre_label(str(plan.get("genre_head", "")).strip()),
-        "vocal_profile": _normalize_vocal_profile(str(plan.get("vocal_profile", "")).strip()),
-        "vocal_tone": _normalize_vocal_tone(str(plan.get("vocal_tone", "")).strip()),
+        "vocal_profile": vocal_profile,
+        "vocal_tone": vocal_tone,
     }
 
 
@@ -248,7 +252,7 @@ def _normalize_vocal_tone(text: str) -> str:
 def _merge_locked_vocal_contract(body: str, locked_vocal: str, locked_tone: str) -> str:
     compact = _trim_sentence(body)
     clauses = [part.strip() for part in compact.split(",") if part.strip()]
-    filtered = [part for part in clauses if not _looks_like_vocal_clause(part)]
+    filtered = [part for part in clauses if not _matches_locked_vocal_clause(part, locked_vocal, locked_tone)]
     prefix: list[str] = []
     if locked_vocal:
         prefix.append(locked_vocal)
@@ -264,6 +268,24 @@ def _merge_locked_vocal_contract(body: str, locked_vocal: str, locked_tone: str)
 def _contains_clause(clauses: list[str], target: str) -> bool:
     needle = _trim_sentence(target).lower()
     return any(_trim_sentence(part).lower() == needle for part in clauses)
+
+
+def _matches_locked_vocal_clause(text: str, locked_vocal: str, locked_tone: str) -> bool:
+    low = _trim_sentence(text).lower()
+    if not low:
+        return False
+    vocal = _trim_sentence(locked_vocal).lower()
+    tone = _trim_sentence(locked_tone).lower()
+    if vocal and low == vocal:
+        return True
+    if tone and low == tone:
+        return True
+    if vocal and vocal in low:
+        if not tone or tone in low:
+            return True
+    if tone and tone in low and _looks_like_vocal_clause(low):
+        return True
+    return _looks_like_vocal_clause(low)
 
 
 def _looks_like_vocal_clause(text: str) -> bool:
@@ -309,6 +331,10 @@ def _normalize_genre_label(text: str) -> str:
         return ""
     low = cleaned.lower().replace("_", " ").replace("/", " / ")
     low = " ".join(low.split())
+    if any(sep in low for sep in (" ", "-", "/")) and low not in GENRE_ALIASES:
+        direct = _normalize_explicit_genre_phrase(low)
+        if direct:
+            return direct
     embedded = _embedded_genre_alias(low)
     if embedded:
         return embedded
@@ -358,6 +384,28 @@ def _normalize_genre_segment(text: str) -> str:
             continue
         out.append(_normalize_genre_token(word))
     return " ".join(out)
+
+
+def _normalize_explicit_genre_phrase(text: str) -> str:
+    parts = []
+    for raw in text.replace("/", " / ").split():
+        if raw == "/":
+            parts.append("/")
+            continue
+        normalized = GENRE_ALIASES.get(raw, "")
+        if normalized:
+            parts.append(normalized)
+            continue
+        if raw in GENRE_STOPWORDS:
+            parts.append(raw)
+            continue
+        if "-" in raw:
+            pieces = [_normalize_genre_token(piece) for piece in raw.split("-") if piece]
+            parts.append("-".join(pieces))
+            continue
+        parts.append(_normalize_genre_token(raw))
+    compact = " ".join(parts).replace(" / ", "/").strip()
+    return compact
 
 
 def _normalize_genre_token(word: str) -> str:

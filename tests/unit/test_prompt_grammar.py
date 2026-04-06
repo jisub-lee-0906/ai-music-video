@@ -75,6 +75,8 @@ def test_platform_edge_grammar_uses_directional_foot_change_shape():
 def test_tti_master_prompt_uses_grammar_memory():
     prompt = build_tti_anchor_master_prompt(_config())
     lowered = prompt.lower()
-    assert "neutral continuity anchor" in lowered
-    assert "wardrobe should read as polished everyday idol styling" in lowered
-    assert "identity priority" in lowered
+    assert "reusable identity anchor" in lowered
+    assert "soft controlled lighting" in lowered
+    assert "clear face readability" in lowered
+    assert "identity priority" not in lowered
+    assert "subject first" not in lowered

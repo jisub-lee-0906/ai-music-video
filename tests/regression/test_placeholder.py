@@ -11,7 +11,8 @@ from ai_mv.utils.json_utils import read_json
 
 
 def test_pipeline_failure_writes_failure_artifacts(monkeypatch):
-    monkeypatch.setattr(pipeline_mod, "schedule", _failing_schedule)
+    monkeypatch.setattr(pipeline_mod, "_ordered_stages", _failing_schedule)
+    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-fail-config.yaml")

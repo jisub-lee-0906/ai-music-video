@@ -6,15 +6,10 @@ from ai_mv.core.contracts.errors import StageFailure
 
 
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
-    "lyrics_timeline": ("audio_plan", "audio_map"),
-    "scene_outline": ("audio_plan", "audio_map", "lyrics_timeline"),
-    "shot_density_refiner": ("scene_outline",),
-    "direction_plan": ("wan_safe_scene_outline",),
-    "prompt_plan": ("direction_plan",),
-    "backend_preview": ("prompt_plan",),
-    "tti_anchor": ("prompt_plan",),
-    "flux2_ref_chain": ("prompt_plan", "master_anchor"),
-    "wan_interpolation": ("prompt_plan", "flux2_ref_images", "clip_routes"),
+    "storyboard": ("audio_plan", "audio_map"),
+    "keyframes": ("prompt_plan",),
+    "clips": ("prompt_plan", "flux2_ref_images", "clip_routes"),
+    "merge": ("clips", "music_file"),
     "merge_mux": ("clips", "music_file"),
 }
 
@@ -45,7 +40,7 @@ def validate_stage_input(stage: str, payload: dict) -> None:
 
 
 def _validate_stage_shape(stage: str, payload: dict) -> None:
-    if stage == "merge_mux":
+    if stage in {"merge", "merge_mux"}:
         _validate_merge_inputs(payload)
 
 
