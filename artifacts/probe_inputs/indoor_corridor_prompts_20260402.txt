@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail walks down the quiet indoor corridor at night, one hand trailing the wall rail.
-v02|The same Korean female idol with a high ponytail moves forward through the narrow indoor corridor at night, the wall staying close at her side.
-v03|The same Korean female idol with a high ponytail keeps to the indoor corridor wall at night and moves forward, one hand brushing the rail.
-v04|The same Korean female idol with a high ponytail walks past the indoor corridor lights at night, her next step carrying her down the hall.
-v05|The same Korean female idol with a high ponytail follows the narrow corridor at night, one arm swinging free while the wall stays close beside her.

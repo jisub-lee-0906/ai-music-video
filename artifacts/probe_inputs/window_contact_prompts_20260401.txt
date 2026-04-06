@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail leans toward the station window at night, one hand sliding along the metal edge.
-v02|The same Korean female idol with a high ponytail keeps close to the station window at night and moves forward, one hand trailing the metal edge.
-v03|The same Korean female idol with a high ponytail moves past the station window at night, one hand sliding along the lower metal rail.
-v04|The same Korean female idol with a high ponytail draws closer to the rain-streaked station window at night, one hand resting on the metal edge.
-v05|The same Korean female idol with a high ponytail leaves the station window behind her at night, one hand lifting from the metal edge.

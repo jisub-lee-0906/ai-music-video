@@ -1,5 +1,0 @@
-w01	The same Korean female idol keeps close to the station window edge at night, one hand trailing the metal frame while she keeps moving forward.
-w02	The same Korean female idol moves past the station window edge at night with one hand still tracing the metal frame.
-w03	The same Korean female idol keeps her shoulder close to the station window at night and carries the next step forward, one hand touching the metal edge.
-w04	The same Korean female idol keeps close to the glass edge of the station window at night, one palm sliding along the frame while the same stride stays alive.
-w05	The same Korean female idol lets one hand trace the station window edge at night and carries the same forward line past it.

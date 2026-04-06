@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail steps off the curb into the wet crosswalk at night, one hand leaving the street rail.
-v02|The same Korean female idol with a high ponytail crosses the wet crosswalk toward the far curb at night, one arm swinging free.
-v03|The same Korean female idol with a high ponytail moves across the wet street at night, the far curb drawing closer under the city lights.
-v04|The same Korean female idol with a high ponytail reaches the far curb from the wet crosswalk at night, one foot finding the dry edge.
-v05|The same Korean female idol with a high ponytail steps through the crosswalk at night and closes the distance to the far curb.

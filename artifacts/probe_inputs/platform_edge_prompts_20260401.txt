@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail walks along the wet platform edge at night, one hand trailing the rail.
-v02|The same Korean female idol with a high ponytail keeps to the wet platform edge at night and moves forward, one hand brushing the yellow line rail.
-v03|The same Korean female idol with a high ponytail steps forward beside the wet platform edge at night, one hand sliding along the guard rail.
-v04|The same Korean female idol with a high ponytail moves past the wet platform edge at night, the yellow line staying close at her feet.
-v05|The same Korean female idol with a high ponytail clears the wet platform edge and keeps walking, one hand leaving the guard rail behind her.

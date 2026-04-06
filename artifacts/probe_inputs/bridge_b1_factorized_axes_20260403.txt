@@ -1,9 +1,0 @@
-motion_only_01|The same Korean female idol takes a crossing step at night.
-motion_only_02|The same Korean female idol drops into a shorter step at night.
-motion_only_03|The same Korean female idol drives a longer step at night.
-background_only_01|The same Korean female idol stands on the wet platform edge at night, the yellow line close at her feet.
-background_only_02|The same Korean female idol stands on the wet platform edge at night beside the yellow line and the dark rails.
-background_only_03|The same Korean female idol stands on the wet platform edge at night, the yellow line and the platform rail fixed beside her.
-content_only_01|The same Korean female idol keeps moving at night, her footprints widening behind her.
-content_only_02|The same Korean female idol takes the next step at night, the footprint trail widening behind her.
-content_only_03|The same Korean female idol keeps going at night, one fresh footprint breaking away from the trail behind her.

@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail steps through the station gate opening at night, one hand brushing the metal edge.
-v02|The same Korean female idol with a high ponytail crosses the wet curb beyond the station exit line at night, one hand trailing the rail.
-v03|The same Korean female idol with a high ponytail passes the station threshold into the wet street at night, one hand sliding off the gate rail.
-v04|The same Korean female idol with a high ponytail steps off the station threshold onto the wet street at night, one hand leaving the gate rail.
-v05|The same Korean female idol with a high ponytail crosses out from the station exit onto the wet sidewalk at night, one hand trailing the metal rail.

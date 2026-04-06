@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail keeps walking along the wet sidewalk at night, the curb staying close at her side.
-v02|The same Korean female idol with a high ponytail moves forward along the wet sidewalk at night, one arm swinging free beside the curb.
-v03|The same Korean female idol with a high ponytail walks past the curb line on the wet sidewalk at night, city lights stretching ahead.
-v04|The same Korean female idol with a high ponytail follows the wet sidewalk at night, her next step carrying her beyond the curb shadow.
-v05|The same Korean female idol with a high ponytail keeps to the outer sidewalk at night and moves forward, the wet curb close at her feet.

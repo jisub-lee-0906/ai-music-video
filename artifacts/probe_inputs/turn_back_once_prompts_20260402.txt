@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail turns back once on the wet sidewalk at night, her body still moving forward.
-v02|The same Korean female idol with a high ponytail looks back over one shoulder on the wet street at night while her next step keeps going.
-v03|The same Korean female idol with a high ponytail glances back once at night as she moves along the wet curb.
-v04|The same Korean female idol with a high ponytail turns her head back once at night while her body keeps moving along the wet pavement.
-v05|The same Korean female idol with a high ponytail looks back once from the wet crosswalk at night, one foot still carrying her forward.

@@ -1,6 +1,0 @@
-# label|prompt
-v01|The same Korean female idol with a high ponytail steps through the narrow doorway at night, one hand leaving the metal frame.
-v02|The same Korean female idol with a high ponytail moves past the doorway at night, one hand trailing the frame edge as she goes forward.
-v03|The same Korean female idol with a high ponytail clears the doorway at night and carries her next step into the wet passage beyond.
-v04|The same Korean female idol with a high ponytail crosses the doorway line at night, the wet pavement opening just beyond her feet.
-v05|The same Korean female idol with a high ponytail keeps moving beyond the doorway at night, one hand lifting from the metal edge.
