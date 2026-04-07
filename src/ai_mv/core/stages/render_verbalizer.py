@@ -125,6 +125,8 @@ def _detail_sentence(literal_image: str) -> str:
     return _sentence(_literal_clause(literal_image))
 
 
+
+
 def _cinematic_finish(brief: dict, place: str, section_label: str) -> str:
     genre = str(brief.get("profile_genre", "")).lower()
     low_place = place.lower()
