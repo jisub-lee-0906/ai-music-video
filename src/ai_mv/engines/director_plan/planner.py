@@ -135,10 +135,10 @@ def _clean(text: str) -> str:
 
 def _literal_place(text: str) -> str:
     low = text.lower()
-    if any(token in low for token in ("diner", "cafe", "booth", "mug", "window")):
-        return "dim late-night diner"
-    if any(token in low for token in ("crosswalk", "asphalt", "headlight", "sidewalk", "street", "intersection")):
+    if any(token in low for token in ("crosswalk", "asphalt", "headlight", "sidewalk", "street", "intersection", "storefront", "shop window", "shuttered storefronts")):
         return "wet city street at night"
+    if any(token in low for token in ("diner", "cafe", "booth", "mug", "counter", "table")):
+        return "dim late-night diner"
     if any(token in low for token in ("club", "synthesizer", "cables", "stage")):
         return "cramped rehearsal room"
     if any(token in low for token in ("rooftop", "skyline", "dawn", "fog")):

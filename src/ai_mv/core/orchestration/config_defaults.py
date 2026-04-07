@@ -22,9 +22,7 @@ DEFAULT_CONFIG: dict = {
         "wan_planner_batch_size": 20,
         "flux2_ref_planner_batch_size": 4,
         "ref_naturalize": True,
-        "ref_naturalize_batch_size": 12,
         "wan_naturalize": True,
-        "wan_naturalize_batch_size": 12,
     },
     "limits": {
         "timeout_seconds": 0,

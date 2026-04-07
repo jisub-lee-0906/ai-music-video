@@ -149,16 +149,16 @@ def _audio_source(config: dict) -> dict:
     profile, tone = _split_voice(voice or str(audio.get("vocal_profile", "")).strip())
     merged = dict(audio)
     if language:
-        merged["language"] = str(audio.get("language", "")).strip() or language
+        merged["language"] = language
     if prompt:
-        merged["brief"] = str(audio.get("brief", "")).strip() or prompt
+        merged["brief"] = prompt
         merged["hook_brief"] = str(audio.get("hook_brief", "")).strip() or prompt
     if genre:
-        merged["genre_head"] = str(audio.get("genre_head", "")).strip() or genre
+        merged["genre_head"] = genre
     if profile:
-        merged["vocal_profile"] = str(audio.get("vocal_profile", "")).strip() or profile
+        merged["vocal_profile"] = profile
     if tone:
-        merged["vocal_tone"] = str(audio.get("vocal_tone", "")).strip() or tone
+        merged["vocal_tone"] = tone
     return merged
 
 

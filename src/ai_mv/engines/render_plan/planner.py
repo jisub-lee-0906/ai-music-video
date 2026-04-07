@@ -53,7 +53,12 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
             }
         )
     _verbalize_wan_items(config, wan_items)
-    _naturalize_wan_items(config, wan_items)
+    ref_by_id = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in ref_items
+        if str(row.get("shot_id", "")).strip()
+    }
+    _naturalize_wan_items(config, wan_items, ref_by_id)
 
     return normalize_prompt_plan(
         {
@@ -97,18 +102,14 @@ def _naturalize_ref_items(config: dict, ref_items: list[dict]) -> None:
     rows = [row for row in ref_items if str(row.get("shot_id", "")).strip() and str(row.get("ref_prompt_text", "")).strip()]
     if not rows:
         return
-    batch_size = max(1, int(render.get("ref_naturalize_batch_size", 12) or 12))
-    for start in range(0, len(rows), batch_size):
-        batch = rows[start : start + batch_size]
+    for row in rows:
         try:
-            rewritten = generate_structured(config, _ref_naturalize_prompt(batch), _ref_naturalize_schema(batch), attempts=1)
+            rewritten = generate_structured(config, _ref_naturalize_prompt(row), _ref_naturalize_schema(row), attempts=1)
         except Exception:
             continue
-        prompt_map = _normalize_ref_naturalize_result(rewritten, batch)
-        for row in batch:
-            text = str(prompt_map.get(str(row.get("shot_id", "")).strip(), "")).strip()
-            if text:
-                row["ref_prompt_text"] = text
+        text = _normalize_ref_naturalize_result(rewritten, row)
+        if text:
+            row["ref_prompt_text"] = text
 
 
 def _verbalize_wan_items(config: dict, wan_items: list[dict]) -> None:
@@ -117,25 +118,26 @@ def _verbalize_wan_items(config: dict, wan_items: list[dict]) -> None:
         row["wan_positive_prompt_text"] = str(prompts.get(row["shot_id"], "")).strip()
 
 
-def _naturalize_wan_items(config: dict, wan_items: list[dict]) -> None:
+def _naturalize_wan_items(config: dict, wan_items: list[dict], ref_by_id: dict[str, dict]) -> None:
     render = config.get("render", {}) if isinstance(config, dict) else {}
     if not isinstance(render, dict) or not bool(render.get("wan_naturalize", False)):
         return
     rows = [row for row in wan_items if str(row.get("shot_id", "")).strip() and str(row.get("wan_positive_prompt_text", "")).strip()]
     if not rows:
         return
-    batch_size = max(1, int(render.get("wan_naturalize_batch_size", 12) or 12))
-    for start in range(0, len(rows), batch_size):
-        batch = rows[start : start + batch_size]
+    for row in rows:
         try:
-            rewritten = generate_structured(config, _wan_naturalize_prompt(batch), _wan_naturalize_schema(batch), attempts=1)
+            rewritten = generate_structured(
+                config,
+                _wan_naturalize_prompt(row, ref_by_id),
+                _wan_naturalize_schema(row),
+                attempts=1,
+            )
         except Exception:
             continue
-        prompt_map = _normalize_wan_naturalize_result(rewritten, batch)
-        for row in batch:
-            text = str(prompt_map.get(str(row.get("shot_id", "")).strip(), "")).strip()
-            if text:
-                row["wan_positive_prompt_text"] = text
+        text = _normalize_wan_naturalize_result(rewritten, row)
+        if text:
+            row["wan_positive_prompt_text"] = text
 
 
 def _bridge_action(previous: dict, current: dict) -> str:
@@ -148,75 +150,54 @@ def _bridge_action(previous: dict, current: dict) -> str:
     return "continuing through the same place with one readable movement"
 
 
-def _ref_naturalize_prompt(rows: list[dict]) -> str:
-    chunks: list[str] = []
-    for idx, row in enumerate(rows, start=1):
-        shot_id = str(row.get("shot_id", "")).strip()
-        section_label = str(row.get("section_label", "")).strip()
-        place = str(row.get("place", "")).strip()
-        action = str(row.get("action", "")).strip()
-        carry = str(row.get("carry", "")).strip()
-        framing = str(row.get("framing", "")).strip()
-        literal_image = str(row.get("literal_image", "")).strip()
-        base = str(row.get("ref_prompt_text", "")).strip()
-        chunks.append(
-            f"{idx}. shot_id={shot_id} | section={section_label} | place={place} | action={action} | carry={carry} | framing={framing} | detail={literal_image} | base_prompt={base}"
-        )
+def _ref_naturalize_prompt(row: dict) -> str:
+    shot_id = str(row.get("shot_id", "")).strip()
+    section_label = str(row.get("section_label", "")).strip()
+    place = str(row.get("place", "")).strip()
+    action = str(row.get("action", "")).strip()
+    carry = str(row.get("carry", "")).strip()
+    framing = str(row.get("framing", "")).strip()
+    literal_image = str(row.get("literal_image", "")).strip()
+    base = str(row.get("ref_prompt_text", "")).strip()
     return (
-        "Rewrite each REF prompt into more natural cinematic English while preserving the same exact shot meaning. "
+        "Rewrite this REF prompt into more natural cinematic English while preserving the same exact shot meaning. "
         "Do not invent new people, props, places, actions, camera setups, or story beats. "
-        "Keep the sequence continuity implied by the order of shots. "
+        "Do not change the subject identity or introduce gendered terms that are not already present in the base prompt. "
         "Make each prompt read like a fluent image-generation prompt instead of a mechanical summary. "
-        "Make adjacent shots feel meaningfully distinct in action, emphasis, or image focus so the sequence does not flatten into repeated paraphrases. "
-        "Do not restate the same object twice in two consecutive sentences unless the carry is truly necessary for continuity. "
-        "Let the detail sentence and the carry sentence do different jobs: one should deepen the image, the other should preserve continuity. "
+        "Do not restate the same object twice in consecutive sentences unless the carry is truly necessary for continuity. "
+        "Let the detail sentence and the carry sentence do different jobs: one should deepen the image, and the other should preserve continuity. "
         "Prefer one clear action and one clear physical image per shot over stacking multiple similar phrases. "
         "Keep the tone grounded and cinematic, not explanatory or analytical. "
-        "Preserve the final face-lock sentence exactly as it already appears in each base prompt. "
+        "Preserve the final face-lock sentence exactly as it already appears in the base prompt. "
         "Return strict JSON only. "
-        "Shots: "
-        + " || ".join(chunks)
+        f"Shot: shot_id={shot_id} | section={section_label} | place={place} | action={action} | carry={carry} | framing={framing} | detail={literal_image} | base_prompt={base}"
     )
 
 
-def _ref_naturalize_schema(rows: list[dict]) -> dict:
-    allowed = [str(row.get("shot_id", "")).strip() for row in rows if str(row.get("shot_id", "")).strip()]
+def _ref_naturalize_schema(row: dict) -> dict:
+    shot_id = str(row.get("shot_id", "")).strip()
     return {
         "type": "object",
-        "required": ["items"],
+        "required": ["shot_id", "prompt_text"],
         "properties": {
-            "items": {
-                "type": "array",
-                "minItems": len(allowed),
-                "maxItems": len(allowed),
-                "items": {
-                    "type": "object",
-                    "required": ["shot_id", "prompt_text"],
-                    "properties": {
-                        "shot_id": {"type": "string", "enum": allowed},
-                        "prompt_text": {"type": "string"},
-                    },
-                },
-            }
+            "shot_id": {"type": "string", "enum": [shot_id]},
+            "prompt_text": {"type": "string"},
         },
     }
 
 
-def _normalize_ref_naturalize_result(raw: dict, rows: list[dict]) -> dict[str, str]:
-    allowed = {str(row.get("shot_id", "")).strip(): str(row.get("ref_prompt_text", "")).strip() for row in rows}
-    out: dict[str, str] = {}
-    for item in raw.get("items", []) if isinstance(raw, dict) else []:
-        if not isinstance(item, dict):
-            continue
-        shot_id = str(item.get("shot_id", "")).strip()
-        prompt_text = str(item.get("prompt_text", "")).strip()
-        if not shot_id or shot_id not in allowed or not prompt_text:
-            continue
-        face_lock = _face_lock_suffix(allowed[shot_id])
-        if face_lock and not prompt_text.endswith(face_lock):
-            continue
-        out[shot_id] = prompt_text
-    return out
+def _normalize_ref_naturalize_result(raw: dict, row: dict) -> str:
+    if not isinstance(raw, dict):
+        return ""
+    shot_id = str(raw.get("shot_id", "")).strip()
+    expected = str(row.get("shot_id", "")).strip()
+    prompt_text = str(raw.get("prompt_text", "")).strip()
+    if not shot_id or shot_id != expected or not prompt_text:
+        return ""
+    face_lock = _face_lock_suffix(str(row.get("ref_prompt_text", "")).strip())
+    if face_lock and not prompt_text.endswith(face_lock):
+        return ""
+    return prompt_text
 
 
 def _face_lock_suffix(prompt_text: str) -> str:
@@ -228,65 +209,51 @@ def _face_lock_suffix(prompt_text: str) -> str:
     return ""
 
 
-def _wan_naturalize_prompt(rows: list[dict]) -> str:
-    chunks: list[str] = []
-    for idx, row in enumerate(rows, start=1):
-        shot_id = str(row.get("shot_id", "")).strip()
-        section_label = str(row.get("section_label", "")).strip()
-        start_ref = str(row.get("start_ref_shot_id", "")).strip()
-        end_ref = str(row.get("end_ref_shot_id", "")).strip()
-        place = str(row.get("place", "")).strip()
-        action = str(row.get("bridge_action", "")).strip()
-        carry = str(row.get("carry", "")).strip()
-        base = str(row.get("wan_positive_prompt_text", "")).strip()
-        chunks.append(
-            f"{idx}. shot_id={shot_id} | section={section_label} | pair={start_ref}->{end_ref} | place={place} | action={action} | carry={carry} | base_prompt={base}"
-        )
+def _wan_naturalize_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
+    shot_id = str(row.get("shot_id", "")).strip()
+    section_label = str(row.get("section_label", "")).strip()
+    start_ref = str(row.get("start_ref_shot_id", "")).strip()
+    end_ref = str(row.get("end_ref_shot_id", "")).strip()
+    place = str(row.get("place", "")).strip()
+    action = str(row.get("bridge_action", "")).strip()
+    carry = str(row.get("carry", "")).strip()
+    base = str(row.get("wan_positive_prompt_text", "")).strip()
+    start_ref_text = str(ref_by_id.get(start_ref, {}).get("ref_prompt_text", "")).strip()
+    end_ref_text = str(ref_by_id.get(end_ref, {}).get("ref_prompt_text", "")).strip()
     return (
-        "Rewrite each WAN bridge prompt into more natural cinematic English while preserving the same exact transition meaning. "
+        "Rewrite this WAN bridge prompt into more natural cinematic English while preserving the same exact transition meaning. "
         "Do not invent new places, props, actions, camera setups, or story beats. "
+        "Do not change the subject identity or introduce gendered terms that are not already present in the base prompt. "
         "Keep the prompt focused on continuity between adjacent keyframes rather than restating the whole scene. "
         "Make the bridge feel like a readable transition from one keyframe to the next, not a duplicate of the REF prompt. "
         "Prefer one clear motion and one continuity detail. "
+        "Use the start_ref and end_ref context to emphasize what changes between the two keyframes. "
+        "Do not add a face-lock line such as 'Keep the face.' or any lens, lighting, or film-finish sentence unless it is already present in the base prompt. "
         "Keep the tone grounded and cinematic, not analytical. "
         "Return strict JSON only. "
-        "Items: "
-        + " || ".join(chunks)
+        f"Item: shot_id={shot_id} | section={section_label} | pair={start_ref}->{end_ref} | place={place} | action={action} | carry={carry} | "
+        f"start_ref={start_ref_text} | end_ref={end_ref_text} | base_prompt={base}"
     )
 
 
-def _wan_naturalize_schema(rows: list[dict]) -> dict:
-    allowed = [str(row.get("shot_id", "")).strip() for row in rows if str(row.get("shot_id", "")).strip()]
+def _wan_naturalize_schema(row: dict) -> dict:
+    shot_id = str(row.get("shot_id", "")).strip()
     return {
         "type": "object",
-        "required": ["items"],
+        "required": ["shot_id", "prompt_text"],
         "properties": {
-            "items": {
-                "type": "array",
-                "minItems": len(allowed),
-                "maxItems": len(allowed),
-                "items": {
-                    "type": "object",
-                    "required": ["shot_id", "prompt_text"],
-                    "properties": {
-                        "shot_id": {"type": "string", "enum": allowed},
-                        "prompt_text": {"type": "string"},
-                    },
-                },
-            }
+            "shot_id": {"type": "string", "enum": [shot_id]},
+            "prompt_text": {"type": "string"},
         },
     }
 
 
-def _normalize_wan_naturalize_result(raw: dict, rows: list[dict]) -> dict[str, str]:
-    allowed = {str(row.get("shot_id", "")).strip(): str(row.get("wan_positive_prompt_text", "")).strip() for row in rows}
-    out: dict[str, str] = {}
-    for item in raw.get("items", []) if isinstance(raw, dict) else []:
-        if not isinstance(item, dict):
-            continue
-        shot_id = str(item.get("shot_id", "")).strip()
-        prompt_text = str(item.get("prompt_text", "")).strip()
-        if not shot_id or shot_id not in allowed or not prompt_text:
-            continue
-        out[shot_id] = prompt_text
-    return out
+def _normalize_wan_naturalize_result(raw: dict, row: dict) -> str:
+    if not isinstance(raw, dict):
+        return ""
+    shot_id = str(raw.get("shot_id", "")).strip()
+    expected = str(row.get("shot_id", "")).strip()
+    prompt_text = str(raw.get("prompt_text", "")).strip()
+    if not shot_id or shot_id != expected or not prompt_text:
+        return ""
+    return prompt_text

@@ -112,8 +112,8 @@ def test_scene_outline_splits_long_beats_by_wan_safe_duration():
         }
     }
     scene = build_scene_outline(config, payload)
-    assert [row["shot_id"] for row in scene["shot_packages"]] == ["verse1_b1_s1", "verse1_b1_s2", "verse1_b1_s3"]
-    assert max(float(row["duration_sec"]) for row in scene["shot_packages"]) <= 4.0
+    assert [row["shot_id"] for row in scene["shot_packages"]] == ["verse1_b1_s1", "verse1_b1_s2"]
+    assert max(float(row["duration_sec"]) for row in scene["shot_packages"]) <= 5.0
 
 
 def test_wan_plan_uses_adjacent_ref_pairs():

@@ -121,14 +121,35 @@ def _section_lines_json(sections: list[dict]) -> str:
 
 
 def _attach_time_ranges(timeline: dict, sections: list[dict]) -> None:
-    section_map = {
-        str(section.get("name", "")).strip(): section
-        for section in sections
-        if isinstance(section, dict)
-    }
-    for section in timeline.get("sections", []):
+    source_sections = [section for section in sections if isinstance(section, dict)]
+    indexed_by_name: dict[str, list[dict]] = {}
+    indexed_by_name_and_label: dict[tuple[str, str], list[dict]] = {}
+    for section in source_sections:
+        section_name = str(section.get("name", "")).strip()
+        section_label = str(section.get("label", section.get("name", ""))).strip()
+        indexed_by_name.setdefault(section_name, []).append(section)
+        indexed_by_name_and_label.setdefault((section_name, section_label), []).append(section)
+    name_counts: dict[str, int] = {}
+    name_and_label_counts: dict[tuple[str, str], int] = {}
+    for section_index, section in enumerate(timeline.get("sections", [])):
         section_name = str(section.get("section_name", "")).strip()
-        row = section_map.get(section_name, {})
+        section_label = str(section.get("section_label", section_name)).strip()
+        row = {}
+        label_key = (section_name, section_label)
+        label_bucket = indexed_by_name_and_label.get(label_key, [])
+        if label_bucket:
+            label_idx = name_and_label_counts.get(label_key, 0)
+            if label_idx < len(label_bucket):
+                row = label_bucket[label_idx]
+                name_and_label_counts[label_key] = label_idx + 1
+        if not row:
+            name_bucket = indexed_by_name.get(section_name, [])
+            name_idx = name_counts.get(section_name, 0)
+            if name_idx < len(name_bucket):
+                row = name_bucket[name_idx]
+                name_counts[section_name] = name_idx + 1
+        if not row and section_index < len(source_sections):
+            row = source_sections[section_index]
         start = float(row.get("start_sec", row.get("start", 0.0)))
         end = float(row.get("end_sec", row.get("end", start)))
         beats = [beat for beat in section.get("lyric_beats", []) if isinstance(beat, dict)]

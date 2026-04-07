@@ -108,7 +108,8 @@ def _beat_segments(config: dict, beat: dict, shot_role: str) -> list[dict]:
     duration = _duration(beat)
     render = config.get("render", {}) if isinstance(config, dict) else {}
     wan_safe = float(render.get("wan_safe_max_gap_sec", 4.0) or 4.0)
-    target = max(2.0, min(wan_safe, 4.0 if shot_role in {"carry", "handoff"} else 3.5))
+    wan_max = float(render.get("wan_max_clip_sec", 5.0) or 5.0)
+    target = max(wan_safe, min(wan_max, 4.5 if shot_role in {"carry", "handoff"} else 5.0))
     count = max(1, int(-(-duration // target)))
     start = float(beat.get("start_sec", 0.0) or 0.0)
     segment_span = duration / float(count)
