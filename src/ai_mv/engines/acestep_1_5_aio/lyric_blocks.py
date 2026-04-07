@@ -11,6 +11,9 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Do not output headers, numbering, notes, or blank filler lines. "
         "Avoid exact repeats across blocks except one short chorus hook if needed. "
         "Stay inside the exact emotional situation and progression described by Audio intent; do not drift into a safer generic pop song. "
+        "Prefer one or two concrete personal details over broad generic breakup wording. "
+        "When possible, let physical details carry emotion: phone screen, umbrella trace, wet shoes, traffic light, rain on glass, breath in cold air. "
+        "Avoid vague filler lines about love, pain, heart, or night unless the line also contains a concrete image or action. "
         "Verse 2 must change the situation, Bridge must reframe, and Final Chorus must resolve. "
         "Keep lines short and memorable. "
     )
@@ -35,12 +38,20 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
         hook_clause = f"Use the selected hook '{selected_hook}' or a close variation. "
     elif label in {"Chorus", "Chorus 2", "Final Chorus"} and hook_fragments:
         hook_clause = f"If useful, use one short hook fragment from: {', '.join(hook_fragments)}. "
+    motif_clause = (
+        "Keep recurring image family consistent across the song. "
+        "Prefer repeating and varying the same few details already implied by Audio intent: rain, wet street, signal light, glass, footsteps, phone screen, breath, leftover light. "
+        "Do not introduce random new places or props unless they clearly belong to that same night-walk breakup world. "
+        "Do not let the exact same object dominate every section. "
+        "If one object anchors Verse 1, shift the main focus in Verse 2, Bridge, and Final Chorus to a different detail from the same image family. "
+    )
     return (
         _audio_lyrics_rules_qwen(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
         + f"Current block=[{label}] line_count={line_count}. "
         + _current_block_constraints(completed, block)
+        + motif_clause
         + hook_clause
         + f"Output exactly {line_count} lyric lines, one per line. "
     )
