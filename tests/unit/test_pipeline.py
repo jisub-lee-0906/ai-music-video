@@ -37,8 +37,8 @@ def test_pipeline_runs_ordered_stages(monkeypatch):
         ("audio", _stage("audio", {"audio_plan": {"genre_description": "x"}, "audio_map": {"sections": [{"name": "verse"}]}, "music_file": "music.mp3"})),
         ("storyboard", _stage("storyboard", {
             "lyrics_timeline": {"sections": [{"section_name": "Verse 1", "lyric_beats": [{"beat_id": "b1", "start_sec": 0.0, "end_sec": 2.0}]}]},
-            "scene_outline": {"shot_packages": [{"shot_id": "b1", "world_zone": "entry_zone", "story_function": "entry"}]},
-            "direction_plan": {"shot_packages": [{"shot_id": "b1", "ref_style_tag": "entry_pass"}]},
+            "scene_outline": {"shot_packages": [{"shot_id": "b1", "payoff_role": "setup", "shot_role": "setup"}]},
+            "direction_plan": {"shot_packages": [{"shot_id": "b1", "shot_function": "setup", "place": "street", "action": "walking", "carry": "notebook"}]},
             "prompt_plan": {"ref_items": [{"shot_id": "b1"}], "wan_items": []},
             "storyboard": {"shot_count": 1},
         })),

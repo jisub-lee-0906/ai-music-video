@@ -19,8 +19,6 @@ def _build_payload(payload: dict, plan: dict, config: dict) -> dict:
     workflow_inputs = dict(payload.get("workflow_inputs", {}))
     workflow_inputs["scene_outline"] = {
         "story_premise": plan["story_premise"],
-        "world_rules": plan["world_rules"],
-        "section_progression": list(plan.get("section_progression", [])),
         "shot_packages": list(plan.get("shot_packages", [])),
     }
     return {

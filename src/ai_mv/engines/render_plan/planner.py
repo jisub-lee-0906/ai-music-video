@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.visual_plan_normalize import normalize_prompt_plan
 from ai_mv.core.director_brief import build_director_brief_intent
-from ai_mv.core.stages.render_verbalizer import verbalize_ref_prompt_pairs, verbalize_wan_prompts
+from ai_mv.core.stages.render_verbalizer import verbalize_ref_prompts, verbalize_wan_prompts
 
 
 def build_prompt_plan(config: dict, payload: dict) -> dict:
@@ -23,17 +23,12 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "continuity_anchor": str(shot.get("continuity_anchor", "")).strip(),
                 "payoff_role": str(shot.get("payoff_role", "")).strip(),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
-                "story_function": str(shot.get("story_function", "")).strip(),
-                "story_goal": str(shot.get("story_goal", "")).strip(),
-                "story_event": str(shot.get("story_event", "")).strip(),
-                "world_zone": str(shot.get("world_zone", "")).strip(),
                 "shot_function": str(shot.get("shot_function", "")).strip(),
                 "place": str(shot.get("place", "")).strip(),
                 "action": str(shot.get("action", "")).strip(),
                 "carry": str(shot.get("carry", "")).strip(),
-                "why": str(shot.get("why", "")).strip(),
-                "ref_start_prompt_text": "",
-                "ref_end_prompt_text": "",
+                "framing": str(shot.get("framing", "")).strip(),
+                "ref_prompt_text": "",
             }
         )
     _verbalize_ref_items(config, ref_items)
@@ -49,12 +44,9 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "start_ref_shot_id": str(previous.get("shot_id", "")).strip(),
                 "end_ref_shot_id": str(current.get("shot_id", "")).strip(),
                 "duration_sec": float(current.get("duration_sec", 2.0) or 2.0),
-                "story_function": str(current.get("story_function", "")).strip(),
-                "story_event": str(current.get("story_event", "")).strip(),
                 "place": str(current.get("place", "")).strip() or str(previous.get("place", "")).strip(),
                 "bridge_action": _bridge_action(previous, current),
                 "carry": str(current.get("carry", "")).strip() or str(previous.get("carry", "")).strip(),
-                "why": f"Bridge {previous.get('shot_id', '')} to {current.get('shot_id', '')} in the same visual thread.",
                 "wan_positive_prompt_text": "",
             }
         )
@@ -90,11 +82,9 @@ def build_render_plan_preview_prompt(config: dict, payload: dict) -> str:
 
 
 def _verbalize_ref_items(config: dict, ref_items: list[dict]) -> None:
-    prompts = verbalize_ref_prompt_pairs(config, ref_items)
+    prompts = verbalize_ref_prompts(config, ref_items)
     for row in ref_items:
-        prompt = prompts.get(row["shot_id"], {})
-        row["ref_start_prompt_text"] = str(prompt.get("start_prompt_text", "")).strip()
-        row["ref_end_prompt_text"] = str(prompt.get("end_prompt_text", "")).strip()
+        row["ref_prompt_text"] = str(prompts.get(row["shot_id"], "")).strip()
 
 
 def _verbalize_wan_items(config: dict, wan_items: list[dict]) -> None:

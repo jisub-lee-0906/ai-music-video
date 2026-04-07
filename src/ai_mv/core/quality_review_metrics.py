@@ -87,12 +87,12 @@ def plan_metrics(payload: dict) -> dict:
     scene_shots = [row for row in scene_outline.get("shot_packages", []) if isinstance(row, dict)]
     direction_shots = [row for row in direction_plan.get("shot_packages", []) if isinstance(row, dict)]
     ref_items = [row for row in prompt_plan.get("ref_items", []) if isinstance(row, dict)]
-    world_zones = {str(row.get("world_zone", "")).strip() for row in scene_shots if str(row.get("world_zone", "")).strip()}
-    story_functions = {str(row.get("story_function", "")).strip() for row in scene_shots if str(row.get("story_function", "")).strip()}
-    style_tags = {str(row.get("ref_style_tag", "")).strip() for row in direction_shots if str(row.get("ref_style_tag", "")).strip()}
+    payoff_roles = {str(row.get("payoff_role", "")).strip() for row in scene_shots if str(row.get("payoff_role", "")).strip()}
+    shot_functions = {str(row.get("shot_function", "")).strip() for row in direction_shots if str(row.get("shot_function", "")).strip()}
+    places = {str(row.get("place", "")).strip() for row in direction_shots if str(row.get("place", "")).strip()}
     return {
         "shot_package_count": len(ref_items or direction_shots or scene_shots),
-        "world_zone_count": len(world_zones),
-        "story_function_count": len(story_functions),
-        "style_tag_count": len(style_tags),
+        "payoff_role_count": len(payoff_roles),
+        "shot_function_count": len(shot_functions),
+        "place_count": len(places),
     }

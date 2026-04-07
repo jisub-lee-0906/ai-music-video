@@ -31,19 +31,19 @@ def test_run_summary_includes_minimal_plan_metrics():
         "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
         "scene_outline": {
             "shot_packages": [
-                {"shot_id": "b1", "section_label": "Intro", "world_zone": "entry_zone", "story_function": "entry"},
-                {"shot_id": "b2", "section_label": "Chorus", "world_zone": "open_peak", "story_function": "payoff"},
+                {"shot_id": "b1", "section_label": "Intro", "payoff_role": "setup"},
+                {"shot_id": "b2", "section_label": "Chorus", "payoff_role": "release"},
             ]
         },
-        "direction_plan": {"shot_packages": [{"shot_id": "b1", "ref_style_tag": "entry_pass"}, {"shot_id": "b2", "ref_style_tag": "forward_crossing"}]},
+        "direction_plan": {"shot_packages": [{"shot_id": "b1", "shot_function": "setup", "place": "diner"}, {"shot_id": "b2", "shot_function": "release", "place": "street"}]},
         "prompt_plan": {"ref_items": [{"shot_id": "b1"}, {"shot_id": "b2"}]},
     }
     summary = build_run_summary(state, payload, {})
     assert summary["pipeline_version"] == "minimal"
     assert summary["shot_package_count"] == 2
-    assert summary["world_zone_count"] == 2
-    assert summary["story_function_count"] == 2
-    assert summary["style_tag_count"] == 2
+    assert summary["payoff_role_count"] == 2
+    assert summary["shot_function_count"] == 2
+    assert summary["place_count"] == 2
     assert "repeated_hook_variation" not in summary
 
 
@@ -57,8 +57,8 @@ def test_quality_review_is_minimal_and_runtime_focused():
         },
         "scene_outline": {
             "shot_packages": [
-                {"shot_id": "intro_b1", "section_label": "Intro", "world_zone": "entry_zone", "story_function": "entry", "beat_refs": ["intro_b1"], "line_refs": [1]},
-                {"shot_id": "chorus_b1", "section_label": "Chorus", "world_zone": "open_peak", "story_function": "payoff", "beat_refs": ["chorus_b1"], "line_refs": [1]},
+                {"shot_id": "intro_b1", "section_label": "Intro", "payoff_role": "setup", "beat_refs": ["intro_b1"], "line_refs": [1]},
+                {"shot_id": "chorus_b1", "section_label": "Chorus", "payoff_role": "release", "beat_refs": ["chorus_b1"], "line_refs": [1]},
             ]
         },
         "clip_routes": [{"shot_id": "chorus_b1", "section_label": "Chorus", "use_ref": True}],

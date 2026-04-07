@@ -52,19 +52,13 @@ def test_flux2_ref_plan_uses_literal_scene_description_for_ref_prompts():
             "ref_items": [
                 {
                     "shot_id": "S001",
-                    "primary_surface": "narrow side street after rain with one raised curb edge",
-                    "content_trace": "shallow roadside water catching storefront spill light",
-                    "ref_start_prompt_text": "The same performer moves along a narrow side street after rain with one raised curb edge.",
-                    "ref_end_prompt_text": "The same performer carries the next step along a narrow side street after rain with one raised curb edge.",
+                    "ref_prompt_text": "The same performer moves along a narrow side street after rain with one raised curb edge.",
                     "section_name": "Verse 1",
                     "section_label": "Verse 1",
                 },
                 {
                     "shot_id": "S002",
-                    "primary_surface": "broad wet roadway after rain with shallow puddles",
-                    "content_trace": "painted lane markings and reflective asphalt",
-                    "ref_start_prompt_text": "The same performer enters a broad wet roadway after rain with shallow puddles.",
-                    "ref_end_prompt_text": "The same performer crosses a broad wet roadway after rain with shallow puddles.",
+                    "ref_prompt_text": "The same performer crosses a broad wet roadway after rain with shallow puddles.",
                     "section_name": "Verse 1",
                     "section_label": "Verse 1",
                 },
@@ -74,6 +68,6 @@ def test_flux2_ref_plan_uses_literal_scene_description_for_ref_prompts():
 
     plan = build_flux2_ref_plan(config, payload)
 
-    assert "narrow side street after rain" in plan["items"][0]["start_prompt_text"]
-    assert "broad wet roadway after rain" in plan["items"][1]["end_prompt_text"]
-    assert plan["items"][0]["scene_detail"] == "narrow side street after rain with one raised curb edge"
+    assert "narrow side street after rain" in plan["items"][0]["prompt_text"]
+    assert "broad wet roadway after rain" in plan["items"][1]["prompt_text"]
+    assert plan["items"][0]["prompt_text"].startswith("The same performer moves")

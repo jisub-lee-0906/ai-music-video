@@ -43,14 +43,7 @@ def _normalize_outline_shot(shot: dict) -> dict:
         "emotional_turn",
         "continuity_anchor",
         "payoff_role",
-        "story_function",
-        "story_goal",
-        "story_event",
-        "world_zone",
-        "performer_state",
-        "story_visual_intent",
-        "transition_need",
-        "why",
+        "shot_role",
     ):
         shot[key] = str(shot.get(key, "")).strip()
     shot["duration_sec"] = float(shot.get("duration_sec", 2.0) or 2.0)
@@ -59,7 +52,7 @@ def _normalize_outline_shot(shot: dict) -> dict:
 
 def _normalize_direction_shot(shot: dict) -> dict:
     shot = _normalize_outline_shot(shot)
-    for key in ("shot_function", "place", "action", "carry"):
+    for key in ("shot_function", "place", "action", "carry", "framing"):
         shot[key] = str(shot.get(key, "")).strip()
     return shot
 
@@ -77,17 +70,12 @@ def _normalize_prompt_ref_item(row: dict) -> dict:
         "emotional_turn",
         "continuity_anchor",
         "payoff_role",
-        "story_function",
-        "story_goal",
-        "story_event",
-        "world_zone",
         "shot_function",
         "place",
         "action",
         "carry",
-        "why",
-        "ref_start_prompt_text",
-        "ref_end_prompt_text",
+        "framing",
+        "ref_prompt_text",
     ):
         row[key] = str(row.get(key, "")).strip()
     return row
@@ -101,13 +89,10 @@ def _normalize_prompt_wan_item(row: dict) -> dict:
         "section_label",
         "start_ref_shot_id",
         "end_ref_shot_id",
-        "story_function",
-        "story_event",
         "place",
         "bridge_action",
         "carry",
         "wan_positive_prompt_text",
-        "why",
     ):
         row[key] = str(row.get(key, "")).strip()
     return row

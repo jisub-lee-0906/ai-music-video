@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.payload_views import build_stage_payload
-from ai_mv.core.visual_pipeline import build_mv_directives, build_section_semantics
 from ai_mv.engines.acestep_1_5_aio.mapper import AUDIO_TEXT, map_audio_workflow
 from ai_mv.engines.acestep_1_5_aio.planner import build_audio_plan, build_audio_preview_prompt
 from ai_mv.engines.acestep_1_5_aio.runner import run_audio_split
@@ -41,8 +40,6 @@ def _audio_context(config: dict, audio_map: dict, plan: dict) -> dict:
         "audio_direction": str(plan.get("audio_direction", "")).strip(),
         "hook_direction": str(plan.get("hook_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
-        "section_semantics": build_section_semantics(config, list(audio_map.get("sections", []))),
-        "mv_directives": build_mv_directives(config),
     }
 
 

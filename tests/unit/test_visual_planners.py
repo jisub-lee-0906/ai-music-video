@@ -72,14 +72,15 @@ def test_storyboard_chain_uses_minimal_ref_fields():
     assert "writing in a worn notebook" in first["action"].lower()
     assert "worn notebook" in first["carry"].lower()
     assert first["shot_function"] == "setup"
+    assert first["framing"]
 
     prompt = build_prompt_plan(_config(), {**_payload(), "direction_plan": direction})
     first_ref = prompt["ref_items"][0]
     assert first_ref["place"] == "dim late-night diner"
     assert first_ref["action"]
     assert first_ref["carry"]
-    assert first_ref["ref_start_prompt_text"].endswith("Keep the face.")
-    assert first_ref["ref_end_prompt_text"].endswith("Keep the face.")
+    assert first_ref["framing"]
+    assert first_ref["ref_prompt_text"].endswith("Keep the face.")
     assert len(prompt["wan_items"]) == 1
     assert prompt["wan_items"][0]["bridge_action"]
     assert prompt["wan_items"][0]["wan_positive_prompt_text"]

@@ -7,14 +7,14 @@ SCENE_OUTLINE_REQUIRED_FIELDS = (
     "section_label",
     "beat_refs",
     "line_refs",
-    "story_function",
-    "story_goal",
-    "story_event",
-    "world_zone",
-    "performer_state",
-    "story_visual_intent",
-    "transition_need",
-    "why",
+    "lyric_lines",
+    "literal_image",
+    "visible_action",
+    "emotional_turn",
+    "continuity_anchor",
+    "payoff_role",
+    "shot_role",
+    "duration_sec",
 )
 
 DIRECTOR_REQUIRED_FIELDS = (
@@ -23,6 +23,7 @@ DIRECTOR_REQUIRED_FIELDS = (
     "place",
     "action",
     "carry",
+    "framing",
 )
 
 PROMPT_REQUIRED_REF_FIELDS = (
@@ -37,17 +38,12 @@ PROMPT_REQUIRED_REF_FIELDS = (
     "emotional_turn",
     "continuity_anchor",
     "payoff_role",
-    "story_function",
-    "story_goal",
-    "story_event",
-    "world_zone",
     "shot_function",
     "place",
     "action",
     "carry",
-    "why",
-    "ref_start_prompt_text",
-    "ref_end_prompt_text",
+    "framing",
+    "ref_prompt_text",
 )
 
 PROMPT_REQUIRED_WAN_FIELDS = (
@@ -57,13 +53,10 @@ PROMPT_REQUIRED_WAN_FIELDS = (
     "start_ref_shot_id",
     "end_ref_shot_id",
     "duration_sec",
-    "story_function",
-    "story_event",
     "place",
     "bridge_action",
     "carry",
     "wan_positive_prompt_text",
-    "why",
 )
 
 MASTER_ANCHOR_REQUIRED_FIELDS = (

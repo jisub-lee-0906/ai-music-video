@@ -15,11 +15,11 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
         carry = _resolve_carry(brief, current)
         current.update(
             {
-                "shot_function": _shot_function(str(current.get("story_function", "")).strip()),
+                "shot_function": _shot_function(str(current.get("shot_role", "")).strip(), str(current.get("payoff_role", "")).strip()),
                 "place": place,
                 "action": action,
                 "carry": carry,
-                "why": _why_line(current, place, action),
+                "framing": _resolve_framing(current, place),
             }
         )
         shot_packages.append(current)
@@ -27,7 +27,6 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
         {
             "brief_name": brief["brief_name"],
             "story_premise": brief["story_premise"],
-            "world_rules": brief["world_rules"],
             "shot_packages": shot_packages,
         }
     )
@@ -50,15 +49,17 @@ def build_director_plan_preview_prompt(config: dict, payload: dict) -> str:
     return build_direction_plan_preview_prompt(config, payload)
 
 
-def _shot_function(story_function: str) -> str:
+def _shot_function(shot_role: str, payoff_role: str) -> str:
     mapping = {
-        "entry": "setup",
-        "continuation": "carry",
-        "pressure": "tighten",
+        "setup": "setup",
+        "carry": "carry",
+        "tighten": "tighten",
         "handoff": "handoff",
-        "payoff": "release",
+        "release": "release",
     }
-    return mapping.get(story_function, "carry")
+    if payoff_role == "release":
+        return "release"
+    return mapping.get(shot_role, "carry")
 
 
 def _resolve_place(brief: dict, shot: dict) -> str:
@@ -68,13 +69,13 @@ def _resolve_place(brief: dict, shot: dict) -> str:
         return inferred
     locations = [str(x).strip() for x in brief.get("profile_locations", []) if str(x).strip()]
     section = str(shot.get("section_label", "")).strip().lower()
-    story_function = str(shot.get("story_function", "")).strip().lower()
+    story_function = str(shot.get("shot_role", "")).strip().lower()
     if locations:
         if "intro" in section or "verse 1" in section:
             return locations[0]
         if ("bridge" in section or "final chorus" in section or "outro" in section) and len(locations) >= 3:
             return locations[2]
-        if ("chorus" in section or story_function == "payoff") and len(locations) >= 2:
+        if ("chorus" in section or story_function == "release") and len(locations) >= 2:
             return locations[1]
         if len(locations) >= 2:
             return locations[1]
@@ -86,13 +87,13 @@ def _resolve_action(shot: dict) -> str:
     visible_action = _clean(str(shot.get("visible_action", "")).strip())
     if visible_action:
         return _to_ing(_strip_subject(visible_action))
-    story_function = str(shot.get("story_function", "")).strip()
+    story_function = str(shot.get("shot_role", "")).strip()
     fallback = {
-        "entry": "moving into the frame naturally",
-        "continuation": "continuing forward through the same place",
-        "pressure": "holding a tighter, shorter pause",
+        "setup": "moving into the frame naturally",
+        "carry": "continuing forward through the same place",
+        "tighten": "holding a tighter, shorter pause",
         "handoff": "landing in the next readable state",
-        "payoff": "opening into the clearest release",
+        "release": "opening into the clearest release",
     }
     return fallback.get(story_function, "continuing through the same place")
 
@@ -108,10 +109,16 @@ def _resolve_carry(brief: dict, shot: dict) -> str:
     return literal_image
 
 
-def _why_line(shot: dict, place: str, action: str) -> str:
-    section = str(shot.get("section_label", "")).strip() or "section"
-    role = str(shot.get("story_goal", "")).strip()
-    return f"{section} keeps the beat grounded in {place} while the performer is {action}. {role}".strip()
+def _resolve_framing(shot: dict, place: str) -> str:
+    shot_function = str(shot.get("shot_function", "") or shot.get("shot_role", "")).strip().lower()
+    low_place = place.lower()
+    if shot_function == "tighten":
+        return "medium close framing"
+    if shot_function == "release":
+        return "medium-wide full-body framing"
+    if any(token in low_place for token in ("street", "crosswalk", "intersection", "road", "sidewalk", "rooftop")):
+        return "medium-wide full-body framing"
+    return "three-quarter medium framing"
 
 
 def _strip_subject(text: str) -> str:

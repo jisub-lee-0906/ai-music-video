@@ -3,20 +3,17 @@ from __future__ import annotations
 from ai_mv.core.director_brief import build_director_brief_intent
 
 
-def verbalize_ref_prompt_pairs(config: dict, rows: list[dict]) -> dict[str, dict]:
+def verbalize_ref_prompts(config: dict, rows: list[dict]) -> dict[str, str]:
     if not rows:
         return {}
     brief = build_director_brief_intent(config) if isinstance(config, dict) and config else {}
-    out: dict[str, dict] = {}
+    out: dict[str, str] = {}
     previous: dict | None = None
     for row in rows:
         shot_id = str(row.get("shot_id", "")).strip()
         if not shot_id:
             continue
-        out[shot_id] = {
-            "start_prompt_text": _build_ref_prompt(brief, row, previous, phase="start"),
-            "end_prompt_text": _build_ref_prompt(brief, row, previous, phase="end"),
-        }
+        out[shot_id] = _build_ref_prompt(brief, row, previous)
         previous = row
     return out
 
@@ -34,25 +31,23 @@ def verbalize_wan_prompts(config: dict, rows: list[dict]) -> dict[str, str]:
     return out
 
 
-def _build_ref_prompt(brief: dict, row: dict, previous: dict | None, phase: str) -> str:
+def _build_ref_prompt(brief: dict, row: dict, previous: dict | None) -> str:
     subject = _subject_phrase(brief)
     place = _clean(row.get("place", ""))
     action = _clean(row.get("action", ""))
     carry = _clean(row.get("carry", ""))
+    framing = _clean(row.get("framing", ""))
     literal_image = _clean(row.get("literal_image", ""))
-    emotional_turn = _clean(row.get("emotional_turn", ""))
-    if phase == "end" and carry:
-        action = _end_action(action, carry)
     sentences: list[str] = []
-    lead = _lead_sentence(subject, action, place)
+    lead = _lead_sentence(subject, action, place, framing)
     if lead:
         sentences.append(lead)
+    detail_sentence = _detail_sentence(literal_image)
+    if detail_sentence:
+        sentences.append(detail_sentence)
     carry_sentence = _carry_sentence(carry, previous)
     if carry_sentence:
         sentences.append(carry_sentence)
-    detail_sentence = _detail_sentence(literal_image, emotional_turn)
-    if detail_sentence:
-        sentences.append(detail_sentence)
     finish = _cinematic_finish(brief, place, str(row.get("section_label", "")).strip())
     if finish:
         sentences.append(finish)
@@ -76,20 +71,23 @@ def _build_wan_prompt(brief: dict, row: dict) -> str:
             else f"{subject} keeps moving forward"
         ),
         _carry_sentence(carry, None, prefix="The same "),
+        _cinematic_finish(brief, place, str(row.get("section_label", "")).strip()),
     ]
     return " ".join(piece for piece in pieces if piece).strip()
 
 
-def _lead_sentence(subject: str, action: str, place: str) -> str:
+def _lead_sentence(subject: str, action: str, place: str, framing: str) -> str:
     be = _be_verb(subject)
     remain = _remain_verb(subject)
     if not action and not place:
         return ""
     if action and place:
-        return _sentence(_lead_clause(subject, be, action, place))
+        return _sentence(_lead_clause(subject, be, action, place, framing))
     if action:
-        return _sentence(f"{subject} {be} {action}")
-    return _sentence(f"{subject} {remain}{_place_tail(place)}")
+        tail = f", {framing}" if framing else ""
+        return _sentence(f"{subject} {be} {action}{tail}")
+    tail = f", {framing}" if framing else ""
+    return _sentence(f"{subject} {remain}{_place_tail(place)}{tail}")
 
 
 def _place_tail(place: str) -> str:
@@ -116,23 +114,15 @@ def _carry_sentence(carry: str, previous: dict | None, prefix: str = "") -> str:
     subject = carry if lowered.startswith(("the ", "a ", "an ")) else f"the {carry}"
     if prefix and subject.lower().startswith("the "):
         subject = subject[4:]
-    text = f"{prefix}{subject} remain in view".strip()
+    verb = "stay" if prefix else "remain"
+    text = f"{prefix}{subject} {verb} in view".strip()
     return _sentence(_capitalize(text))
 
 
-def _detail_sentence(literal_image: str, emotional_turn: str) -> str:
-    pieces: list[str] = []
-    if literal_image:
-        pieces.append(_literal_clause(literal_image))
-    if emotional_turn and _looks_like_english_clause(emotional_turn):
-        pieces.append(_capitalize(emotional_turn))
-    return " ".join(_sentence(piece) for piece in pieces if piece).strip()
-
-
-def _end_action(action: str, carry: str) -> str:
-    if not action:
-        return "settling into the next readable state"
-    return action
+def _detail_sentence(literal_image: str) -> str:
+    if not literal_image:
+        return ""
+    return _sentence(_literal_clause(literal_image))
 
 
 def _cinematic_finish(brief: dict, place: str, section_label: str) -> str:
@@ -153,11 +143,12 @@ def _cinematic_finish(brief: dict, place: str, section_label: str) -> str:
     return _sentence(f"{_capitalize(lighting)}, {texture}, {dof}, {lens}")
 
 
-def _lead_clause(subject: str, be: str, action: str, place: str) -> str:
+def _lead_clause(subject: str, be: str, action: str, place: str, framing: str) -> str:
+    tail = f", {framing}" if framing else ""
     if " and " in action:
         first, second = action.split(" and ", 1)
-        return f"{subject} {be} {first}{_place_tail(place)}, {second}"
-    return f"{subject} {be} {action}{_place_tail(place)}"
+        return f"{subject} {be} {first}{_place_tail(place)}, {second}{tail}"
+    return f"{subject} {be} {action}{_place_tail(place)}{tail}"
 
 
 def _subject_phrase(brief: dict) -> str:

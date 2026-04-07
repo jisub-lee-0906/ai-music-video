@@ -25,7 +25,7 @@ def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "flux2_ref_chain",
-                {"prompt": "Render scene-specific Flux2 reference images from prompt_plan while preserving the same subject continuity."},
+                {"prompt": "Render Flux2 reference images from prompt_plan.ref_items using only the final REF prompt text."},
             ),
         },
         [],
@@ -46,9 +46,7 @@ def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
                 "anchor": master_anchor,
                 "ref": master_anchor,
                 "style_ref": "",
-                "prompt_text": str(shot.get("ref_end_prompt_text", "")).strip(),
-                "start_prompt_text": str(shot.get("ref_start_prompt_text", "")).strip(),
-                "end_prompt_text": str(shot.get("ref_end_prompt_text", "")).strip(),
+                "prompt_text": str(shot.get("ref_prompt_text", "")).strip(),
                 "style_clause": "",
                 "subject_clause": str(brief.get("ref_subject_intro", "")).strip(),
                 "action_clause": "",
@@ -62,22 +60,7 @@ def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
                 "section_name": str(shot.get("section_name", "")).strip(),
                 "section_label": str(shot.get("section_label", "")).strip(),
                 "is_chorus": "chorus" in str(shot.get("section_label", "")).lower(),
-                "camera_language": "",
-                "pose_delta": str(shot.get("action", "")).strip(),
-                "emotion": str(shot.get("emotional_turn", "")).strip(),
-                "scene_detail": _literal_scene_description(shot),
-                "environment_family": "",
-                "camera_distance_band": "",
-                "contact_intent": str(shot.get("carry", "")).strip(),
-                "motion_hint": str(shot.get("action", "")).strip(),
-                "space_relation": str(shot.get("world_zone", "")).strip(),
                 "kinetic_transition": "carry",
-                "lighting_fx": "",
-                "kinetic_intensity": "medium",
-                "route_reason": "ref_pair",
-                "scene_change_level": "evolve",
-                "anchor_strategy": "refine_anchor",
-                "continuity_basis": "subject",
             }
         )
     return {"items": items}
@@ -94,39 +77,17 @@ def _clip_routes_from_prompt_plan(payload: dict, flux2_ref_images: list[dict]) -
             {
                 "shot_id": shot_id,
                 "lyric_beat_id": shot_id,
-                "anchor": str(payload.get("master_anchor", "")).strip(),
                 "duration_sec": float(shot.get("duration_sec", 2.0) or 2.0),
                 "use_ref": True,
-                "route_reason": "ref_pair",
-                "mv_function": str(shot.get("story_goal", "")).strip(),
-                "hero_frame_score": 2,
-                "consistency_need": "high",
                 "section_name": str(shot.get("section_name", "")).strip(),
                 "section_label": str(shot.get("section_label", "")).strip(),
-                "prompt_focus": "space",
-                "face_exposure_level": "soft",
-                "continuity_priority": "high",
                 "clip_index": idx,
                 "clip_count": len(shots),
                 "timeline_index": idx,
                 "chain_key": f"{shot_id}:{idx}",
                 "end": str(ref_row.get("end", "")),
+                "start_ref_shot_id": shot_id,
+                "end_ref_shot_id": shot_id,
             }
         )
     return routes
-
-
-def _literal_scene_description(shot: dict) -> str:
-    place = " ".join(str(shot.get("place", "")).strip().rstrip(".").split())
-    if place:
-        return place
-    primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().rstrip(".").split())
-    if primary_surface:
-        return primary_surface
-    trace = " ".join(str(shot.get("literal_image", "")).strip().rstrip(".").split())
-    if trace:
-        return trace
-    legacy_trace = " ".join(str(shot.get("content_trace", "")).strip().rstrip(".").split())
-    if legacy_trace:
-        return legacy_trace
-    return "a grounded real-world location"

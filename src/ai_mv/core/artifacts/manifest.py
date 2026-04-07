@@ -74,10 +74,10 @@ def _route_rows(payload: dict) -> list[dict]:
                 "shot_id": str(row.get("shot_id", "")),
                 "lyric_beat_id": str(row.get("lyric_beat_id", "")),
                 "use_ref": bool(row.get("use_ref", False)),
-                "route_reason": str(row.get("route_reason", "")),
-                "mv_function": str(row.get("mv_function", "")),
-                "hero_frame_score": int(row.get("hero_frame_score", 0)),
-                "consistency_need": str(row.get("consistency_need", "")),
+                "section_label": str(row.get("section_label", "")),
+                "duration_sec": float(row.get("duration_sec", 0.0) or 0.0),
+                "start_ref_shot_id": str(row.get("start_ref_shot_id", "")),
+                "end_ref_shot_id": str(row.get("end_ref_shot_id", "")),
             }
         )
     return out
