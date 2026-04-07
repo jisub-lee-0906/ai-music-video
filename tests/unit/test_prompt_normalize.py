@@ -6,7 +6,7 @@ def test_normalize_flux2_ref_preserves_long_optional_clauses():
     raw_items = [
         {
             "shot_id": "S001",
-            "prompt_text": "The same anime girl, now hero turns and smiles. Neon city skyline. Flat cel shading, thick clean outlines.",
+            "prompt_text": "The same performer turns and smiles. Neon city skyline. Flat cel shading, thick clean outlines.",
             "subject_clause": " ".join([f"word{i}" for i in range(1, 30)]),
             "action_clause": "hero turns and smiles",
             "camera_clause": "neon city skyline",
@@ -37,10 +37,10 @@ def test_normalize_lyrics_timeline_allows_empty_intro_and_outro_sections():
                     {
                         "beat_id": "verse_1_b1",
                         "line_refs": [1],
-                        "literal_image": "ticket gate light",
-                        "visible_action": "she slows under the gate light",
+                        "literal_image": "entry light",
+                        "visible_action": "she slows under the entry light",
                         "emotional_turn": "distance becomes active",
-                        "continuity_anchor": "wet station threshold",
+                        "continuity_anchor": "wet entry walkway",
                         "payoff_role": "setup",
                         "repeat_variant_of": "",
                     }

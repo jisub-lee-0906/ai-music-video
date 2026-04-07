@@ -5,9 +5,9 @@ import ai_mv.engines.acestep_1_5_aio.planner as audio_planner
 
 def _prompt_plan(**extra):
     plan = {
-        "tags": "K-Pop, solo female, airy and emotional",
+        "tags": "Synth-Pop, solo female, airy and emotional",
         "language": "ko",
-        "genre_head": "K-Pop",
+        "genre_head": "Synth-Pop",
         "vocal_profile": "solo female",
         "vocal_tone": "airy and emotional",
         "audio_direction": "late-night breakup song that grows from restraint to direct release",
@@ -32,7 +32,7 @@ def _prompt_plan(**extra):
             "Outro": 0,
         },
         "terminal_end_tag": True,
-        "final_chorus_required": True,
+        "final_chorus_required": False,
         "outro_required": False,
     }
     plan.update(extra)
@@ -43,10 +43,11 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
     prompt = audio_planner._audio_prompt(_prompt_plan())
     assert "strict JSON only" in prompt
     assert "genre_description,bpm,keyscale,seed,duration,lyrics_blocks" in prompt
+    assert "section,label,style,role,change,line_count" in prompt
     assert "The final render format is [tags], then bracketed lyrics, then [Outro], then [end]" in prompt
     assert "genre_description is the future [tags] block" in prompt
     assert "core instruments, arrangement energy, and vocal character" in prompt
-    assert "Prefer Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus 2 -> Bridge -> Final Chorus" in prompt
+    assert "Use a songform that fits the genre and duration instead of forcing one fixed template." in prompt
     assert "director_brief_intent" not in prompt
     assert len(prompt) < 2600
 
@@ -55,7 +56,7 @@ def test_audio_prompt_uses_flattened_profile_fields():
     prompt = audio_planner._audio_prompt(_prompt_plan())
     assert "Audio intent=late-night breakup song that grows from restraint to direct release." in prompt
     assert "Hook intent=short wet-city hook with a clear final lift." in prompt
-    assert "Genre=K-Pop." in prompt
+    assert "Genre=Synth-Pop." in prompt
     assert "Voice=solo female, airy and emotional." in prompt
     assert "Avoid=avoid spectacle clutter." in prompt
     assert "director_brief_intent" not in prompt
@@ -69,9 +70,16 @@ def test_audio_prompt_lets_llm_choose_bpm_when_unlocked():
 
 def test_hook_scoring_prefers_world_anchored_korean_hook_over_generic_english():
     plan = _prompt_plan(hook_english_fragments=["all night", "call my name"])
-    korean = {"fragment": "새벽 너머", "language_mode": "ko_only", "placement": "chorus"}
-    english = {"fragment": "all night", "language_mode": "mixed_ko_en", "placement": "chorus"}
+    korean = {"fragment": "새벽 너머", "language_mode": "primary_only", "placement": "chorus"}
+    english = {"fragment": "all night", "language_mode": "mixed_language", "placement": "chorus"}
     assert audio_planner._score_hook_candidate(korean, plan) > audio_planner._score_hook_candidate(english, plan)
+
+
+def test_hook_scoring_penalizes_generic_slogan_like_fragments():
+    plan = _prompt_plan(audio_direction="late-night breakup song about remaining light and walking forward")
+    anchored = {"fragment": "남은 불빛", "language_mode": "primary_only", "placement": "chorus"}
+    generic = {"fragment": "run it back", "language_mode": "mixed_language", "placement": "chorus"}
+    assert audio_planner._score_hook_candidate(anchored, plan) > audio_planner._score_hook_candidate(generic, plan)
 
 
 def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
@@ -79,7 +87,7 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
         audio_planner,
         "_plan_with_llm",
         lambda _config, _plan: {
-            "genre_description": "K-Pop: glossy synth layers, tight electronic drums, and a solo female vocal with an airy emotional tone.",
+            "genre_description": "Synth-Pop: glossy synth layers, tight electronic drums, and a solo female vocal with an airy emotional tone.",
             "bpm": 108,
             "keyscale": "A major",
             "seed": 31,
@@ -95,13 +103,13 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
     )
     cfg = {
         "prompt": "late-night breakup song that grows from restraint to direct release",
-        "genre": "k-pop synth pop",
+        "genre": "synth pop",
         "voice": "solo female, airy and emotional",
         "language": "ko",
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
     assert plan["language"] == "ko"
-    assert plan["genre_head"] == "k-pop synth pop"
+    assert plan["genre_head"] == "synth pop"
     assert plan["vocal_profile"] == "solo female"
     assert plan["vocal_tone"] == "airy and emotional"
     assert plan["audio_direction"] == "late-night breakup song that grows from restraint to direct release"
@@ -116,10 +124,219 @@ def test_validate_outline_line_budgets_rejects_overpacked_blocks():
         )
 
 
+def test_validate_outline_labels_rejects_duplicate_final_chorus():
+    with pytest.raises(RuntimeError, match="Final Chorus may appear only once"):
+        audio_planner._validate_outline_labels(
+            {
+                "lyrics_blocks": [
+                    {"section": "chorus", "label": "Chorus", "role": "state the hook", "change": "opens up", "line_count": 4},
+                    {"section": "chorus", "label": "Final Chorus", "role": "deliver the answer", "change": "gets bigger", "line_count": 4},
+                    {"section": "chorus", "label": "Final Chorus", "role": "repeat the answer", "change": "stays big", "line_count": 4},
+                ]
+            }
+        )
+
+
+def test_validate_outline_labels_requires_final_chorus_to_be_last_chorus_family_block():
+    with pytest.raises(RuntimeError, match="Final Chorus must be the last chorus-family block"):
+        audio_planner._validate_outline_labels(
+            {
+                "lyrics_blocks": [
+                    {"section": "chorus", "label": "Final Chorus", "role": "deliver the answer", "change": "gets bigger", "line_count": 4},
+                    {"section": "chorus", "label": "Chorus 2", "role": "restate the hook", "change": "widens", "line_count": 4},
+                ]
+            }
+        )
+
+
 def test_generate_lyrics_block_skips_llm_for_zero_line_intro():
     block = {"section": "intro", "label": "Intro", "style": "open", "line_count": 0}
     out = audio_planner._generate_lyrics_block({}, _prompt_plan(), {"lyrics_blocks": [block]}, [], block)
     assert out["lines"] == []
+
+
+def test_generate_lyrics_draft_parses_full_song_and_only_rewrites_invalid_block(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "chorus", "label": "Chorus", "style": "release", "line_count": 4},
+            {"section": "chorus", "label": "Final Chorus", "style": "answer", "line_count": 4},
+        ]
+    }
+    drafted = "\n".join(
+        [
+            "[Verse 1]",
+            "젖은 유리 위로 밤이 번져",
+            "늦은 숨결만 손끝에 남아",
+            "[Chorus]",
+            "밤을 건너 네게 가",
+            "남은 불빛이 반짝여",
+            "도시의 끝이 열려",
+            "오늘 밤 숨이 차올라",
+            "[Final Chorus]",
+            "밤을 건너 네게 가",
+            "남은 불빛이 반짝여",
+            "도시의 끝이 열려",
+            "오늘 밤 숨이 차올라",
+        ]
+    )
+
+    monkeypatch.setattr(audio_planner, "generate_text", lambda _config, _prompt: drafted)
+    called: list[str] = []
+
+    def _rewrite(_config, _plan, _outline, completed, block):
+        called.append(str(block.get("label", "")).strip())
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["밤을 지나 내가 가", "남은 불빛 끝에 서", "도시의 문이 열려", "오늘 밤 내가 간다"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block", _rewrite)
+    monkeypatch.setattr(audio_planner, "_polish_lyrics_sections", lambda _config, _plan, _outline, blocks: blocks)
+    out = audio_planner._generate_lyrics_draft({}, _prompt_plan(), outline)
+    assert [row["label"] for row in out] == ["Verse 1", "Chorus", "Final Chorus"]
+    assert called == ["Final Chorus"]
+    assert out[-1]["lines"] == ["밤을 지나 내가 가", "남은 불빛 끝에 서", "도시의 문이 열려", "오늘 밤 내가 간다"]
+
+
+def test_refresh_overused_imagery_rewrites_late_blocks_only(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "verse_2", "label": "Verse 2", "style": "change", "line_count": 2},
+            {"section": "bridge", "label": "Bridge", "style": "reframe", "line_count": 2},
+        ]
+    }
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 불빛 아래 서 있어", "번진 유리 끝을 바라봐"]},
+        {"section": "verse_2", "label": "Verse 2", "style": "change", "lines": ["젖은 불빛 속을 다시 가", "번진 유리 앞에 또 서"]},
+        {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["젖은 불빛이 멀어져", "번진 유리 대신 숨을 쉬어"]},
+    ]
+    rewritten_labels: list[str] = []
+    revision_notes: list[str] = []
+
+    def _rewrite(_config, _plan, _outline, completed, block, revision_note):
+        rewritten_labels.append(str(block.get("label", "")).strip())
+        revision_notes.append(revision_note)
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["마른 새벽 쪽으로 걸어", "꺼진 골목 뒤로 숨을 쉬어"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block_with_note", _rewrite)
+    out = audio_planner._refresh_overused_imagery({}, _prompt_plan(), outline, blocks)
+    assert rewritten_labels == ["Verse 2", "Bridge"]
+    assert any("Do not invent a brand-new place, prop, or scene object" in note for note in revision_notes)
+    assert any("젖은" in note and "불빛" in note for note in revision_notes)
+    assert out[0]["lines"] == ["젖은 불빛 아래 서 있어", "번진 유리 끝을 바라봐"]
+    assert out[1]["lines"] == ["마른 새벽 쪽으로 걸어", "꺼진 골목 뒤로 숨을 쉬어"]
+
+
+def test_refresh_hook_fit_rewrites_korean_chorus_with_disconnected_english_fragment(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "style": "release", "line_count": 4},
+            {"section": "chorus", "label": "Final Chorus", "style": "answer", "line_count": 4},
+        ]
+    }
+    plan = _prompt_plan(
+        selected_hook_candidate={"fragment": "남은 불빛"},
+        hook_english_fragments=["run it back"],
+        language="ko",
+    )
+    blocks = [
+        {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["run it back, 심장이 먼저 알아", "네가 없는데도 난 네 쪽을 봐", "비에 씻겨 가게", "같은 상처를 돌아"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["남은 불빛 따라, 난 앞으로 가", "젖은 밤도 지나", "내 숨을 켜", "혼자도 걸어가"]},
+    ]
+    rewritten: list[str] = []
+
+    def _rewrite(_config, _plan, _outline, completed, block, revision_note):
+        rewritten.append(str(block.get("label", "")).strip())
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["남은 불빛 아래", "내 발끝이 먼저 가", "지워진 밤을 지나", "나는 앞으로 가"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block_with_note", _rewrite)
+    out = audio_planner._refresh_hook_fit({}, plan, outline, blocks)
+    assert rewritten == ["Chorus"]
+    assert out[0]["lines"] == ["남은 불빛 아래", "내 발끝이 먼저 가", "지워진 밤을 지나", "나는 앞으로 가"]
+
+
+def test_polish_lyrics_sections_rewrites_only_llm_targets(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "bridge", "label": "Bridge", "style": "reframe", "line_count": 2},
+            {"section": "chorus", "label": "Final Chorus", "style": "answer", "line_count": 2},
+        ]
+    }
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 밤을 걷고", "이름을 지워"]},
+        {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["끝을 본다", "다시 간다"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["남은 불빛 아래", "앞으로 간다"]},
+    ]
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_lyrics_rewrite_targets_with_llm",
+        lambda _config, _plan, _blocks: [{"label": "Bridge", "reason": "make the reframe feel more specific"}],
+    )
+    rewritten: list[str] = []
+
+    def _rewrite(_config, _plan, _outline, completed, block, revision_note):
+        rewritten.append(str(block.get("label", "")).strip())
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["끝이 나서 보이는 길", "나는 그 길로 다시 가"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block_with_note", _rewrite)
+    out = audio_planner._polish_lyrics_sections({}, _prompt_plan(), outline, blocks)
+    assert rewritten == ["Bridge"]
+    assert out[0]["lines"] == ["젖은 밤을 걷고", "이름을 지워"]
+    assert out[1]["lines"] == ["끝이 나서 보이는 길", "나는 그 길로 다시 가"]
+
+
+def test_polish_lyrics_sections_can_handle_artist_style_targets(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "final_chorus", "label": "Final Chorus", "style": "answer", "line_count": 2},
+        ]
+    }
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 밤을 걷고", "이름을 지워"]},
+        {"section": "final_chorus", "label": "Final Chorus", "style": "answer", "lines": ["남은 불빛 아래", "앞으로 간다"]},
+    ]
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_lyrics_rewrite_targets_with_llm",
+        lambda _config, _plan, _blocks: [{"label": "Final Chorus", "reason": "make the payoff feel more personal and less generic"}],
+    )
+    rewritten: list[str] = []
+
+    def _rewrite(_config, _plan, _outline, completed, block, revision_note):
+        rewritten.append(str(block.get("label", "")).strip())
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["남은 불빛 끝에서", "이제 난 내 이름으로 가"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block_with_note", _rewrite)
+    out = audio_planner._polish_lyrics_sections({}, _prompt_plan(), outline, blocks)
+    assert rewritten == ["Final Chorus"]
+    assert out[0]["lines"] == ["젖은 밤을 걷고", "이름을 지워"]
+    assert out[1]["lines"] == ["남은 불빛 끝에서", "이제 난 내 이름으로 가"]
 
 
 def test_normalize_and_validate_keeps_llm_generated_bpm_and_keyscale(monkeypatch):

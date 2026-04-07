@@ -31,11 +31,11 @@ def test_run_summary_includes_minimal_plan_metrics():
         "audio_map": {"language": "ko", "sections": [{"name": "intro", "label": "Intro"}]},
         "scene_outline": {
             "shot_packages": [
-                {"shot_id": "b1", "section_label": "Intro", "world_zone": "threshold", "story_function": "entry"},
+                {"shot_id": "b1", "section_label": "Intro", "world_zone": "entry_zone", "story_function": "entry"},
                 {"shot_id": "b2", "section_label": "Chorus", "world_zone": "open_peak", "story_function": "payoff"},
             ]
         },
-        "direction_plan": {"shot_packages": [{"shot_id": "b1", "ref_archetype": "gate_pass"}, {"shot_id": "b2", "ref_archetype": "curb_crossing"}]},
+        "direction_plan": {"shot_packages": [{"shot_id": "b1", "ref_style_tag": "entry_pass"}, {"shot_id": "b2", "ref_style_tag": "forward_crossing"}]},
         "prompt_plan": {"ref_items": [{"shot_id": "b1"}, {"shot_id": "b2"}]},
     }
     summary = build_run_summary(state, payload, {})
@@ -43,7 +43,7 @@ def test_run_summary_includes_minimal_plan_metrics():
     assert summary["shot_package_count"] == 2
     assert summary["world_zone_count"] == 2
     assert summary["story_function_count"] == 2
-    assert summary["archetype_count"] == 2
+    assert summary["style_tag_count"] == 2
     assert "repeated_hook_variation" not in summary
 
 
@@ -57,7 +57,7 @@ def test_quality_review_is_minimal_and_runtime_focused():
         },
         "scene_outline": {
             "shot_packages": [
-                {"shot_id": "intro_b1", "section_label": "Intro", "world_zone": "threshold", "story_function": "entry", "beat_refs": ["intro_b1"], "line_refs": [1]},
+                {"shot_id": "intro_b1", "section_label": "Intro", "world_zone": "entry_zone", "story_function": "entry", "beat_refs": ["intro_b1"], "line_refs": [1]},
                 {"shot_id": "chorus_b1", "section_label": "Chorus", "world_zone": "open_peak", "story_function": "payoff", "beat_refs": ["chorus_b1"], "line_refs": [1]},
             ]
         },

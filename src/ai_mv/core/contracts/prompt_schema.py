@@ -89,11 +89,13 @@ def audio_schema() -> dict:
 def audio_outline_schema() -> dict:
     block = {
         "type": "object",
-        "required": ["section", "label", "style", "line_count"],
+        "required": ["section", "label", "style", "role", "change", "line_count"],
         "properties": {
             "section": {"type": "string", "enum": ["intro", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"]},
             "label": {"type": "string"},
             "style": {"type": "string"},
+            "role": {"type": "string"},
+            "change": {"type": "string"},
             "line_count": {"type": "integer", "minimum": 0, "maximum": 8},
         },
     }

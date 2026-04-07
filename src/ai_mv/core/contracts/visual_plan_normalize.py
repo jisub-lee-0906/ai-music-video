@@ -47,7 +47,7 @@ def _normalize_outline_shot(shot: dict) -> dict:
         "story_goal",
         "story_event",
         "world_zone",
-        "heroine_state",
+        "performer_state",
         "story_visual_intent",
         "transition_need",
         "why",

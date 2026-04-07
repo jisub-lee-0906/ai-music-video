@@ -16,7 +16,7 @@ def visual_pipeline_settings(config: dict) -> dict:
     hero_types = node.get("hero_shot_types", policy.get("hero_shot_types", ["EMOTION_CLOSE"]))
     sections = node.get("reference_priority_sections", policy.get("priority_sections", ["Final Chorus", "Chorus 2", "Chorus 1"]))
     location_budget = node.get("location_budget", {}) if isinstance(node.get("location_budget", {}), dict) else {}
-    location_examples = node.get("location_family_examples", ["reflective threshold", "lit passage", "open night lane", "sheltered edge"])
+    location_examples = node.get("location_family_examples", ["reflective walkway", "lit passage", "open lane", "sheltered edge"])
     shot_guidance = node.get("shot_type_guidance", {}) if isinstance(node.get("shot_type_guidance", {}), dict) else {}
     grammar = node.get("mv_grammar", {}) if isinstance(node.get("mv_grammar", {}), dict) else {}
     return {

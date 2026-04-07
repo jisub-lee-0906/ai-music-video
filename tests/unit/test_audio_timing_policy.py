@@ -21,7 +21,7 @@ def test_audio_policy_populates_default_ending_contract():
     out = audio_policy({"audio": {"bpm": 108, "language": "ko"}})
     assert out["ending_mode"] == "clean_resolve"
     assert out["terminal_end_tag"] is True
-    assert out["final_chorus_required"] is True
+    assert out["final_chorus_required"] is False
     assert out["outro_required"] is False
     assert out["ending_vocal_density"] == "medium"
     assert "clean ending" in out["ending_tags"]

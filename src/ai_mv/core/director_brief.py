@@ -8,66 +8,65 @@ _LEGACY_REQUIRED_FIELDS = (
     ("audio", "hook_brief"),
     ("visual", "story_premise"),
     ("visual", "world_rules"),
-    ("visual", "heroine_arc"),
     ("visual", "forbidden_story_moves"),
     ("character", "identity_core"),
 )
 
 _DEFAULT_SECTION_STORY_ROLES = {
-    "Intro": "The heroine crosses the first boundary into the connected night world.",
-    "Verse 1": "She moves deeper into the same world and lets the route define her direction.",
-    "Verse 2": "She varies her path inside the same world without breaking continuity.",
-    "Pre-Chorus": "She hesitates at a wider opening before committing to the next move.",
-    "Chorus": "She releases forward inside the same world with readable physical movement.",
-    "Bridge": "She compresses briefly without fully stopping, then regains direction.",
-    "Final Chorus": "She crosses into the widest forward release the world can hold.",
-    "Outro": "The world keeps her after-image after she has already passed through.",
+    "Intro": "The performer enters the first grounded image of the sequence.",
+    "Verse 1": "The performer settles into the world and establishes a readable direction.",
+    "Verse 2": "The performer varies the route without breaking continuity.",
+    "Pre-Chorus": "The performer hesitates at a wider opening before committing to the next move.",
+    "Chorus": "The performer releases forward with a readable physical change.",
+    "Bridge": "The performer compresses briefly without fully stopping, then regains direction.",
+    "Final Chorus": "The performer reaches the widest and clearest release image.",
+    "Outro": "The world keeps the after-image after the performer has already moved through.",
 }
 
 _DEFAULT_SECTION_EVENT_SCRIPTS = {
     "Intro": [
-        "She enters through the first public boundary and commits to the connected night world.",
-        "She clears the threshold and leaves the outside behind in one readable step.",
+        "The performer enters the first grounded location and commits to the sequence.",
+        "The performer clears the first transition in one readable step.",
     ],
     "Verse 1": [
-        "She takes the route outside the station and lets the street-side path claim her line.",
-        "She keeps the same route alive on the sidewalk edge instead of drifting into the road.",
-        "She arrives at the next sidewalk-side beat with the road still held beside her.",
+        "The performer takes the first readable route through the location.",
+        "The performer keeps the route alive instead of resetting to a neutral pose.",
+        "The performer arrives at the next beat with the same direction intact.",
     ],
     "Verse 2": [
-        "She re-enters the route from a slightly changed street-side angle without breaking continuity.",
-        "She keeps the sidewalk-side carry alive through the same connected block.",
-        "She sets the next sidewalk-side stride so the path already feels chosen before the cut.",
+        "The performer re-enters the route from a slightly changed angle without breaking continuity.",
+        "The performer keeps the carry alive through the same connected place.",
+        "The performer sets the next move so the path already feels chosen before the cut.",
     ],
     "Pre-Chorus": [
-        "She reaches a gate or threshold where the route could widen.",
-        "She commits past the threshold so the next move is already inevitable.",
+        "The performer reaches a point where the route could widen.",
+        "The performer commits so the next move is already inevitable.",
     ],
     "Chorus": [
-        "She begins a visible crossing event instead of another neutral walk.",
-        "She keeps the crossing alive inside the same open space.",
-        "She carries the crossing into a readable next-state handoff.",
+        "The performer begins a visible release event instead of another neutral walk.",
+        "The performer keeps the release alive inside the same open space.",
+        "The performer carries the release into a readable next-state handoff.",
     ],
     "Bridge": [
-        "She compresses her movement into a shorter, tighter step without fully stopping.",
-        "She regains a forward line inside the same compressed world.",
+        "The performer compresses the movement into a shorter, tighter beat without fully stopping.",
+        "The performer regains a forward line inside the same compressed world.",
     ],
     "Final Chorus": [
-        "She enters the final release as a visible crossing event.",
-        "She keeps the crossing alive instead of resetting to a centered walk.",
-        "She carries the release to the next crossing state with the open road held beside her.",
-        "She leaves the crossing behind in a wider forward departure.",
+        "The performer enters the final release as a visible physical event.",
+        "The performer keeps the release alive instead of resetting to a centered walk.",
+        "The performer carries the release to the next state with stronger momentum.",
+        "The performer leaves the release behind in a wider forward departure.",
     ],
     "Outro": [
-        "She is already gone, but the route still holds the shape of her movement.",
+        "The performer is already gone, but the route still holds the shape of the movement.",
     ],
 }
 
 _DEFAULT_IDENTITY_HOOKS = [
-    "airy see-through bangs with high ponytail",
-    "soft face-framing strands around the jawline",
-    "polished ivory and navy off-duty idol silhouette with a short casual outer layer",
-    "subtle silver jewelry accent",
+    "consistent hair silhouette",
+    "stable face framing",
+    "clean everyday wardrobe silhouette",
+    "small repeatable accessory detail",
 ]
 
 _DEFAULT_WAN_NEGATIVE = (
@@ -82,6 +81,8 @@ def validate_director_brief_config(config: dict) -> None:
             raise ValueError(f"director brief fields missing: {', '.join(missing)}")
         return
     missing = [f"{section}.{key}" for section, key in _LEGACY_REQUIRED_FIELDS if not _text(_section(config, section), key)]
+    if not _text(_section(config, "visual"), "performer_arc"):
+        missing.append("visual.performer_arc")
     if missing:
         raise ValueError(f"director brief fields missing: {', '.join(missing)}")
 
@@ -103,18 +104,18 @@ def build_director_brief_intent(config: dict) -> dict:
         "identity_hooks": _str_list(character.get("identity_hooks", [])) or list(_DEFAULT_IDENTITY_HOOKS),
         "anchor_wardrobe_guidance": _text(character, "anchor_wardrobe_guidance"),
         "anchor_avoid": _text(character, "anchor_avoid"),
-        "ref_subject_intro": _text(character, "ref_subject_intro") or "The same Korean female idol",
+        "ref_subject_intro": _text(character, "ref_subject_intro") or "The same performer",
         "ref_continuity_guidance": _text(
             character,
             "ref_continuity_guidance",
         )
-        or "Keep the same heroine identity, realistic facial structure, consistent hair silhouette, and stable wardrobe continuity.",
+        or "Keep the same performer identity, realistic facial structure, consistent hair silhouette, and stable wardrobe continuity.",
         "style_contract": style,
         "world_core": world_rules,
         "time_anchor": _time_anchor(_text(visual, "story_premise"), world_rules),
         "story_premise": _text(visual, "story_premise"),
         "world_rules": world_rules,
-        "heroine_arc": _text(visual, "heroine_arc"),
+        "performer_arc": _text(visual, "performer_arc"),
         "forbidden_story_moves": _text(visual, "forbidden_story_moves"),
         "section_story_roles": section_roles,
         "section_event_scripts": section_event_scripts,
@@ -147,7 +148,7 @@ def _compose_style_contract(audio: dict, visual: dict) -> str:
     audio_style = _text(audio, "brief")
     visual_premise = _text(visual, "story_premise")
     parts = [
-        "cinematic live-action Korean pop music video with premium realism and stable human continuity",
+        "cinematic live-action music video with premium realism and stable human continuity",
         visual_premise,
         audio_style,
         ", ".join(tags[:3]) if tags else "",
@@ -278,7 +279,7 @@ def _build_minimal_brief_intent(config: dict) -> dict:
         "time_anchor": "at night" if "night" in prompt.lower() else "",
         "story_premise": visual_concept or prompt,
         "world_rules": "",
-        "heroine_arc": "Keep one readable direction across the song.",
+        "performer_arc": "Keep one readable direction across the song.",
         "forbidden_story_moves": "",
         "section_story_roles": section_roles,
         "section_event_scripts": section_events,
@@ -321,6 +322,10 @@ def _build_minimal_brief_intent(config: dict) -> dict:
 
 def _ref_subject_intro_from_voice(voice: str) -> str:
     low = voice.lower()
+    if "solo female" in low:
+        return "The same solo female vocalist"
+    if "solo male" in low:
+        return "The same solo male vocalist"
     if "female" in low:
         return "The same female vocalist"
     if "male" in low:
@@ -346,11 +351,17 @@ def _anchor_subject(config: dict) -> str:
     if explicit:
         return explicit
     voice = _top_text(config, "voice").lower()
+    if "solo female" in voice:
+        return "young adult female vocalist"
+    if "solo male" in voice:
+        return "young adult male vocalist"
     if "female" in voice:
-        return "pretty young Korean female idol in her 20s"
+        return "young adult female vocalist"
     if "male" in voice:
-        return "handsome young Korean male idol in his 20s"
-    return "young Korean idol performer in their 20s"
+        return "young adult male vocalist"
+    if "duo" in voice or "group" in voice or "mixed" in voice:
+        return "vocal performer"
+    return "young adult vocalist"
 
 
 def _anchor_wardrobe_guidance(config: dict) -> str:

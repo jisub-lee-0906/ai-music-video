@@ -33,7 +33,7 @@ def _audio_outline_output_contract() -> str:
     return (
         "Plan an AceStep song as strict JSON only. "
         "Return keys genre_description,bpm,keyscale,seed,duration,lyrics_blocks. "
-        "Each lyrics_blocks item must contain section,label,style,line_count. "
+        "Each lyrics_blocks item must contain section,label,style,role,change,line_count. "
         "Do not write lyric lines in this step. "
         "line_count may be 0 only for Intro or Outro. "
         "The final render format is [tags], then bracketed lyrics, then [Outro], then [end]. "
@@ -57,14 +57,15 @@ def _audio_songform_rules(plan: dict) -> str:
     ending = _ending_policy(plan)
     rules = [
         "Write a full song, not a fragment. ",
-        "Keep a clear arc: Verse 1 sets the state, Pre-Chorus tightens, Chorus opens, Verse 2 changes the situation, Bridge reframes, Final Chorus resolves. ",
-        "Prefer Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Pre-Chorus 2 -> Bridge -> Final Chorus. ",
+        "Keep a clear arc across the song: early sections establish the state, middle sections develop or tighten it, and later sections resolve or release it. ",
+        "Use a songform that fits the genre and duration instead of forcing one fixed template. ",
+        "For each section, role should say what that section must do, and change should say what becomes different from the previous section. ",
         "Use Chorus 2 only if it is clearly needed. ",
         "Do not make Verse 2 a copy of Verse 1. ",
-        "Make Final Chorus feel like an answer, not a repeat. ",
+        "If you use Final Chorus, make it feel like an answer, not a repeat. ",
         "Keep Intro and Outro instrumental unless a very short sung line is clearly necessary. ",
     ]
-    if bool(ending.get("final_chorus_required", True)):
+    if bool(ending.get("final_chorus_required", False)):
         rules.append("Use a distinct final return labeled Final Chorus. ")
     if bool(ending.get("outro_required", False)):
         rules.append("If you include Outro, keep it very short and terminal. ")
@@ -89,7 +90,7 @@ def _audio_line_budget_rules(plan: dict) -> str:
         "Outro",
     ]
     pairs = [f"{label}<= {int(budgets[label])}" for label in ordered if label in budgets]
-    return "Respect these maximum line counts: " + ", ".join(pairs) + ". Prefer fewer stronger lines over dense blocks. "
+    return "Respect these maximum line counts: " + ", ".join(pairs) + ". Prefer fewer stronger lines. "
 
 
 def _language_style_rules(plan: dict) -> str:
@@ -149,7 +150,12 @@ def _language_clause(plan: dict) -> str:
     return f"Lyrics language={lang}. " if lang else ""
 
 
-def _intent_clause(plan: dict) -> str:
+def _intent_clause(
+    plan: dict,
+    *,
+    include_selected_hook: bool = True,
+    include_hook_fragments: bool = True,
+) -> str:
     hook_fragments = (
         [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
         if isinstance(plan.get("hook_english_fragments", []), list)
@@ -160,8 +166,11 @@ def _intent_clause(plan: dict) -> str:
     parts = [
         _profile_line("Audio intent", audio_intent),
         _profile_line("Hook intent", hook_intent if hook_intent and hook_intent != audio_intent else ""),
-        _profile_line("Hook English fragments", ", ".join(hook_fragments)),
-        _profile_line("Selected chorus hook", str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip()),
+        _profile_line("Hook English fragments", ", ".join(hook_fragments) if include_hook_fragments else ""),
+        _profile_line(
+            "Selected chorus hook",
+            str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip() if include_selected_hook else "",
+        ),
         _profile_line("Genre", plan.get("genre_head", "")),
         _profile_line("Voice", _join_unique_parts(plan.get("vocal_profile", ""), plan.get("vocal_tone", ""))),
         _profile_line("Avoid", _merged_avoid_text(plan)),

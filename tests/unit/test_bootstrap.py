@@ -48,18 +48,18 @@ def test_apply_director_brief_merges_example_style_input(tmp_path, monkeypatch):
     bootstrap_guard.apply_director_brief(cfg)
 
     assert cfg["prompt"] == "Director audio brief"
-    assert cfg["genre"] == "k-pop synth pop"
+    assert cfg["genre"] == "synth pop"
     assert cfg["voice"] == "solo female, airy and emotional"
     assert cfg["visual_concept"] == "Realistic cinematic city-night breakup video."
     assert cfg["locations"] == ["dim retro diner", "wet city street at night"]
     assert cfg["props"] == ["worn notebook", "coffee mug"]
-    assert cfg["anchor_subject"] == "pretty young Korean female idol in her 20s"
+    assert "anchor_subject" not in cfg
 
 
 def _director_brief_yaml() -> str:
     return (
         "prompt: Director audio brief\n"
-        "genre: k-pop synth pop\n"
+        "genre: synth pop\n"
         "voice: solo female, airy and emotional\n"
         "language: ko\n"
         "visual_concept: Realistic cinematic city-night breakup video.\n"
@@ -69,7 +69,6 @@ def _director_brief_yaml() -> str:
         "props:\n"
         "  - worn notebook\n"
         "  - coffee mug\n"
-        "anchor_subject: pretty young Korean female idol in her 20s\n"
         "anchor_hair: long dark hair with soft volume\n"
         "anchor_top: fitted knit top with a short polished outer layer\n"
         "anchor_bottom: short skirt or slim premium denim bottom\n"

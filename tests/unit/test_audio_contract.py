@@ -10,7 +10,7 @@ from ai_mv.core.contracts.prompt_normalize import (
 
 def test_normalize_audio_fields_renders_lyrics_blocks():
     raw = {
-        "genre_description": "J-pop idol track with bright synth layers and punchy drums.",
+        "genre_description": "J-pop track with bright synth layers and punchy drums.",
         "bpm": 128,
         "keyscale": "A minor",
         "seed": 42,
@@ -29,7 +29,7 @@ def test_normalize_audio_fields_renders_lyrics_blocks():
 
 def test_normalize_audio_fields_allows_instrumental_intro_and_outro_blocks():
     raw = {
-        "genre_description": "K-pop with bright synths and clean drums.",
+        "genre_description": "Synth pop with bright synths and clean drums.",
         "bpm": 112,
         "keyscale": "A major",
         "seed": 42,
@@ -67,7 +67,7 @@ def test_validate_audio_lyrics_language_accepts_japanese_dominant_lyrics():
 
 
 def test_validate_audio_lyrics_language_accepts_korean_dominant_lyrics():
-    lyrics = "[Verse 1]\n개찰구 불빛이 젖은 바닥에 번진다\n주머니 속 표 끝이 손끝에서 미지근해진다"
+    lyrics = "[Verse 1]\n젖은 불빛이 바닥 위로 번진다\n주머니 속 메모 끝이 손끝에서 미지근해진다"
     validate_audio_lyrics_language(lyrics, "ko")
 
 
@@ -111,7 +111,7 @@ def test_validate_audio_lyrics_quality_rejects_duplicate_chorus_growth():
 
 def test_validate_audio_lyrics_quality_accepts_english_growth():
     blocks = [
-        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["Station glass catches the blue", "Wet pavement folds the neon back"]},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["Window glass catches the blue", "Wet pavement folds the neon back"]},
         {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["The city keeps my pulse awake", "Streetlight silver on the lane", "I carry your name through the smoke", "We keep moving through the rain"]},
         {"section": "chorus", "label": "Chorus 2", "style": "lift", "lines": ["The city lifts my pulse again", "Taxi windows comb the rain", "I keep your echo in my coat", "We move brighter through the rain"]},
         {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["The whole night opens in my chest", "Streetlight halos crown the lane", "I call your name into the blue", "We move homeward through the rain"]},
@@ -121,9 +121,9 @@ def test_validate_audio_lyrics_quality_accepts_english_growth():
 
 def test_validate_audio_lyrics_quality_rejects_overdense_korean_line():
     blocks = [
-        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은개찰구불빛아래서나는아무숨도고르지못한채너의이름을너무길게불러보네"]},
-        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "개찰구 너머로", "너의 쪽이 환해져"]},
-        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["젖은 빛이 더 커져", "밤을 건너 네게 가", "개찰구를 지나", "우리 이름이 빛나"]},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은불빛아래서나는아무숨도고르지못한채너의이름을너무길게불러보네"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "불빛 너머로", "너의 쪽이 환해져"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["젖은 빛이 더 커져", "밤을 건너 네게 가", "빛을 지나", "우리 이름이 빛나"]},
     ]
     with pytest.raises(RuntimeError, match="line too dense for singing"):
         validate_audio_lyrics_quality(blocks, "ko")
@@ -131,8 +131,8 @@ def test_validate_audio_lyrics_quality_rejects_overdense_korean_line():
 
 def test_validate_audio_lyrics_quality_allows_short_english_hook_in_korean():
     blocks = [
-        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛 아래 숨을 고르고", "젖은 바닥 위로 발끝이 먼저 가"]},
-        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["Super shy, 네 이름이 번져", "젖은 플랫폼 위로 마음이 가", "초록 불빛 따라 더 가까워져", "오늘 밤 끝에서 네게 닿아"]},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은 불빛 아래 숨을 고르고", "젖은 바닥 위로 발끝이 먼저 가"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["Super shy, 네 이름이 번져", "젖은 거리 위로 마음이 가", "초록 불빛 따라 더 가까워져", "오늘 밤 끝에서 네게 닿아"]},
         {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["Super shy, 밤이 더 열려", "젖은 불빛 끝에 두 손이 닿아", "도시의 끝에서 네온이 번져", "오늘 밤 끝내 너를 안아"]},
     ]
     validate_audio_lyrics_quality(blocks, "ko")
@@ -140,9 +140,9 @@ def test_validate_audio_lyrics_quality_allows_short_english_hook_in_korean():
 
 def test_validate_audio_lyrics_quality_rejects_long_english_sentence_in_korean():
     blocks = [
-        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛 아래 숨을 고르고", "젖은 바닥 위로 발끝이 먼저 가"]},
-        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["I will always run to you through the city tonight", "젖은 플랫폼 위로 마음이 가", "초록 불빛 따라 더 가까워져", "오늘 밤 끝에서 네게 닿아"]},
-        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "개찰구가 열려", "우리 이름이 빛나"]},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은 불빛 아래 숨을 고르고", "젖은 바닥 위로 발끝이 먼저 가"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["I will always run to you through the city tonight", "젖은 거리 위로 마음이 가", "초록 불빛 따라 더 가까워져", "오늘 밤 끝에서 네게 닿아"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "불빛이 열려", "우리 이름이 빛나"]},
     ]
     with pytest.raises(RuntimeError, match="expected readable Korean lines|too much English"):
         validate_audio_lyrics_quality(blocks, "ko")
@@ -150,7 +150,7 @@ def test_validate_audio_lyrics_quality_rejects_long_english_sentence_in_korean()
 
 def test_validate_audio_lyrics_quality_rejects_chorus_without_short_hook_line():
     blocks = [
-        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["개찰구 불빛이 손끝에 스치고", "젖은 바닥 위로 발자국이 번져", "유리문에 숨을 고르고", "밤의 끝을 천천히 따라가"]},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은 불빛이 손끝에 스치고", "젖은 바닥 위로 발자국이 번져", "유리문에 숨을 고르고", "밤의 끝을 천천히 따라가"]},
         {
             "section": "chorus",
             "label": "Chorus",
@@ -162,7 +162,7 @@ def test_validate_audio_lyrics_quality_rejects_chorus_without_short_hook_line():
                 "너를 향한 모든 마음이 늦은 불빛 속에서 겨우 또렷해져",
             ],
         },
-        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "개찰구가 열려", "우리 이름이 빛나"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["밤을 건너 네게 가", "젖은 빛이 반짝여", "불빛이 열려", "우리 이름이 빛나"]},
     ]
     with pytest.raises(RuntimeError, match="lacks a short memorable hook line"):
         validate_audio_lyrics_quality(blocks, "ko")

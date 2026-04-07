@@ -25,7 +25,7 @@ def run_flux2_ref_chain(stage_input: StageInput) -> StageOutput:
             "planner_prompts": merge_planner_prompt(
                 stage_input.payload,
                 "flux2_ref_chain",
-                {"prompt": "Render scene-specific Flux2 reference images from prompt_plan while preserving the same heroine."},
+                {"prompt": "Render scene-specific Flux2 reference images from prompt_plan while preserving the same subject continuity."},
             ),
         },
         [],
@@ -77,7 +77,7 @@ def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
                 "route_reason": "ref_pair",
                 "scene_change_level": "evolve",
                 "anchor_strategy": "refine_anchor",
-                "continuity_basis": "heroine",
+                "continuity_basis": "subject",
             }
         )
     return {"items": items}

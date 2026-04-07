@@ -42,7 +42,7 @@ def build_direction_plan_preview_prompt(config: dict, payload: dict) -> str:
     return (
         "Resolve each lyric-driven scene beat into only three visual decisions: place, visible action, and carry-over detail. "
         f"Story premise={brief['story_premise']}. "
-        "Do not classify archetypes or write final prompts here."
+        "Do not classify style families or write final prompts here."
     )
 
 
@@ -111,12 +111,12 @@ def _resolve_carry(brief: dict, shot: dict) -> str:
 def _why_line(shot: dict, place: str, action: str) -> str:
     section = str(shot.get("section_label", "")).strip() or "section"
     role = str(shot.get("story_goal", "")).strip()
-    return f"{section} keeps the beat grounded in {place} while the woman is {action}. {role}".strip()
+    return f"{section} keeps the beat grounded in {place} while the performer is {action}. {role}".strip()
 
 
 def _strip_subject(text: str) -> str:
     low = text.lower()
-    for prefix in ("she is ", "she ", "the woman is ", "the woman "):
+    for prefix in ("she is ", "she ", "he is ", "he ", "they are ", "they ", "the woman is ", "the woman ", "the man is ", "the man ", "the performer is ", "the performer "):
         if low.startswith(prefix):
             return text[len(prefix):].strip()
     return text

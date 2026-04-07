@@ -48,7 +48,7 @@ def _planner_prompt(config: dict, audio_plan: dict, sections: list[dict]) -> str
         "Never invent a line_index that is not present in the source section. "
         "Never output an empty line text when a line exists. "
         "literal_image must stay close to the lyric image and name concrete physical things the camera can actually show. "
-        "visible_action must be screen-readable and describe exactly what the woman is doing in that beat. "
+        "visible_action must be screen-readable and describe exactly what the performer is doing in that beat. "
         "emotional_turn must describe the feeling shift in plain cinematic language, not abstract criticism or analysis. "
         "continuity_anchor must name the specific person/place/prop/detail that should carry into the next beat. "
         "payoff_role must explain what that beat does in the sequence: setup, carry, tighten, release, payoff, or residue. "

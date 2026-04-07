@@ -24,16 +24,18 @@ def verbalize_ref_prompt_pairs(config: dict, rows: list[dict]) -> dict[str, dict
 def verbalize_wan_prompts(config: dict, rows: list[dict]) -> dict[str, str]:
     if not rows:
         return {}
+    brief = build_director_brief_intent(config) if isinstance(config, dict) and config else {}
     out: dict[str, str] = {}
     for row in rows:
         shot_id = str(row.get("shot_id", "")).strip()
         if not shot_id:
             continue
-        out[shot_id] = _build_wan_prompt(row)
+        out[shot_id] = _build_wan_prompt(brief, row)
     return out
 
 
 def _build_ref_prompt(brief: dict, row: dict, previous: dict | None, phase: str) -> str:
+    subject = _subject_phrase(brief)
     place = _clean(row.get("place", ""))
     action = _clean(row.get("action", ""))
     carry = _clean(row.get("carry", ""))
@@ -42,7 +44,7 @@ def _build_ref_prompt(brief: dict, row: dict, previous: dict | None, phase: str)
     if phase == "end" and carry:
         action = _end_action(action, carry)
     sentences: list[str] = []
-    lead = _lead_sentence(action, place)
+    lead = _lead_sentence(subject, action, place)
     if lead:
         sentences.append(lead)
     carry_sentence = _carry_sentence(carry, previous)
@@ -54,35 +56,40 @@ def _build_ref_prompt(brief: dict, row: dict, previous: dict | None, phase: str)
     finish = _cinematic_finish(brief, place, str(row.get("section_label", "")).strip())
     if finish:
         sentences.append(finish)
-    sentences.append("Keep the face.")
+    sentences.append(_face_lock(brief))
     return " ".join(sentence for sentence in sentences if sentence).strip()
 
 
-def _build_wan_prompt(row: dict) -> str:
+def _build_wan_prompt(brief: dict, row: dict) -> str:
+    subject = _subject_phrase(brief)
+    be = _be_verb(subject)
+    remain = _remain_verb(subject)
     place = _clean(row.get("place", ""))
     action = _clean(row.get("bridge_action", ""))
     carry = _clean(row.get("carry", ""))
     pieces = [
         _sentence(
-            f"The woman is {action}{_place_tail(place)}"
+            f"{subject} {be} {action}{_place_tail(place)}"
             if action
-            else f"The woman remains{_place_tail(place)}"
+            else f"{subject} {remain}{_place_tail(place)}"
             if place
-            else "The woman keeps moving forward"
+            else f"{subject} keeps moving forward"
         ),
         _carry_sentence(carry, None, prefix="The same "),
     ]
     return " ".join(piece for piece in pieces if piece).strip()
 
 
-def _lead_sentence(action: str, place: str) -> str:
+def _lead_sentence(subject: str, action: str, place: str) -> str:
+    be = _be_verb(subject)
+    remain = _remain_verb(subject)
     if not action and not place:
         return ""
     if action and place:
-        return _sentence(_lead_clause(action, place))
+        return _sentence(_lead_clause(subject, be, action, place))
     if action:
-        return _sentence(f"The woman is {action}")
-    return _sentence(f"The woman remains{_place_tail(place)}")
+        return _sentence(f"{subject} {be} {action}")
+    return _sentence(f"{subject} {remain}{_place_tail(place)}")
 
 
 def _place_tail(place: str) -> str:
@@ -95,7 +102,7 @@ def _place_tail(place: str) -> str:
         core = f"a {place}"
     if any(token in lowered for token in ("street", "crosswalk", "intersection", "road", "sidewalk")):
         return f" on {core}"
-    if any(token in lowered for token in ("rooftop", "platform")):
+    if any(token in lowered for token in ("rooftop", "elevated deck")):
         return f" on {core}"
     return f" in {core}"
 
@@ -146,11 +153,33 @@ def _cinematic_finish(brief: dict, place: str, section_label: str) -> str:
     return _sentence(f"{_capitalize(lighting)}, {texture}, {dof}, {lens}")
 
 
-def _lead_clause(action: str, place: str) -> str:
+def _lead_clause(subject: str, be: str, action: str, place: str) -> str:
     if " and " in action:
         first, second = action.split(" and ", 1)
-        return f"The woman is {first}{_place_tail(place)}, {second}"
-    return f"The woman is {action}{_place_tail(place)}"
+        return f"{subject} {be} {first}{_place_tail(place)}, {second}"
+    return f"{subject} {be} {action}{_place_tail(place)}"
+
+
+def _subject_phrase(brief: dict) -> str:
+    voice = str(brief.get("profile_voice", "")).lower()
+    if "duo" in voice or "group" in voice or "mixed" in voice:
+        return "The performers"
+    return "The performer"
+
+
+def _face_lock(brief: dict) -> str:
+    voice = str(brief.get("profile_voice", "")).lower()
+    if "duo" in voice or "group" in voice or "mixed" in voice:
+        return "Keep the faces consistent."
+    return "Keep the face."
+
+
+def _be_verb(subject: str) -> str:
+    return "are" if subject.endswith("s") else "is"
+
+
+def _remain_verb(subject: str) -> str:
+    return "remain" if subject.endswith("s") else "remains"
 
 
 def _literal_clause(text: str) -> str:

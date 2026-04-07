@@ -21,7 +21,7 @@ def test_run_flux2_ref_renders_one_keyframe_per_shot_from_master_reference(monke
             {
                 "shot_id": "S001_C01",
                 "ref": "master.png",
-                "prompt_text": "The same anime girl, now steps forward. Off-center platform shot. Flat cel shading, thick clean outlines.",
+                "prompt_text": "The same performer steps forward. Off-center transit shot. Flat cel shading, thick clean outlines.",
                 "duration_sec": 2.0,
                 "clip_index": 1,
                 "clip_count": 2,
@@ -32,7 +32,7 @@ def test_run_flux2_ref_renders_one_keyframe_per_shot_from_master_reference(monke
             {
                 "shot_id": "S001_C02",
                 "ref": "master.png",
-                "prompt_text": "The same anime girl, now turns toward the gate. Off-center platform shot. Flat cel shading, thick clean outlines.",
+                "prompt_text": "The same performer turns toward the passage. Off-center transit shot. Flat cel shading, thick clean outlines.",
                 "duration_sec": 2.0,
                 "clip_index": 2,
                 "clip_count": 2,
@@ -70,7 +70,7 @@ def test_run_flux2_ref_keeps_master_reference_across_sections_for_single_keyfram
             {
                 "shot_id": "S001",
                 "ref": "master.png",
-                "prompt_text": "The same anime girl, now waits by the window. Wide shot. Flat cel shading, thick clean outlines.",
+                "prompt_text": "The same performer waits by the window. Wide shot. Flat cel shading, thick clean outlines.",
                 "duration_sec": 2.0,
                 "clip_index": 1,
                 "clip_count": 1,
@@ -81,7 +81,7 @@ def test_run_flux2_ref_keeps_master_reference_across_sections_for_single_keyfram
             {
                 "shot_id": "S002",
                 "ref": "master.png",
-                "prompt_text": "The same anime girl, now walks into verse space. Wide shot. Flat cel shading, thick clean outlines.",
+                "prompt_text": "The same performer walks into verse space. Wide shot. Flat cel shading, thick clean outlines.",
                 "duration_sec": 2.0,
                 "clip_index": 1,
                 "clip_count": 1,

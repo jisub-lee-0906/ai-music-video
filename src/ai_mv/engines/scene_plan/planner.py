@@ -39,7 +39,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
                 story_function = _segment_story_function(base_story_function, segment["segment_index"], segment["segment_count"])
                 story_event = _segment_story_event(base_story_event, segment["segment_index"], segment["segment_count"])
                 transition_need = _transition_need(story_function)
-                heroine_state = _heroine_state(section_label, story_function, story_event)
+                performer_state = _performer_state(section_label, story_function, story_event)
                 shot_packages.append(
                     {
                         "shot_id": _segment_shot_id(beat_id, segment["segment_index"], segment["segment_count"]),
@@ -57,7 +57,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
                         "story_goal": story_goal,
                         "story_event": story_event,
                         "world_zone": world_zone,
-                        "heroine_state": heroine_state,
+                        "performer_state": performer_state,
                         "story_visual_intent": _story_visual_intent(section_label, story_function, world_zone, story_event),
                         "transition_need": transition_need,
                         "duration_sec": segment["duration_sec"],
@@ -73,7 +73,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
             "brief_name": brief["brief_name"],
             "story_premise": brief["story_premise"],
             "world_rules": brief["world_rules"],
-            "heroine_arc": brief["heroine_arc"],
+            "performer_arc": brief["performer_arc"],
             "section_story_roles": brief["section_story_roles"],
             "shot_packages": shot_packages,
             "section_progression": section_progression,
@@ -92,7 +92,7 @@ def build_scene_outline_preview_prompt(config: dict, payload: dict) -> str:
         f"Story premise={brief['story_premise']}. "
         "Use lyrics as the source of what is happening now. "
         "Use the profile only as world context for connected places and carry-over props. "
-        "For each lyric beat, decide only story function, story goal, world zone, heroine state, and transition need. "
+        "For each lyric beat, decide only story function, story goal, world zone, performer state, and transition need. "
         "Do not create final prompt prose."
     )
 
@@ -134,9 +134,9 @@ def _transition_need(story_function: str) -> str:
 def _world_zone_for_section(section_label: str, section_index: int) -> str:
     low = section_label.lower()
     if "intro" in low:
-        return "threshold"
+        return "entry_zone"
     if "pre" in low:
-        return "edge"
+        return "transition_edge"
     if "bridge" in low:
         return "compression"
     if "final chorus" in low:
@@ -148,42 +148,42 @@ def _world_zone_for_section(section_label: str, section_index: int) -> str:
     return "narrow_route" if section_index <= 2 else "transit_route"
 
 
-def _heroine_state(section_label: str, story_function: str, story_event: str) -> str:
+def _performer_state(section_label: str, story_function: str, story_event: str) -> str:
     if story_event:
         return story_event
     base = {
         "entry": "commits to the route",
         "continuation": "keeps moving through the same world",
-        "pressure": "tightens her movement without fully stopping",
+        "pressure": "tightens the movement without fully stopping",
         "handoff": "reaches a readable next state for the following shot",
         "payoff": "crosses into a wider forward release",
     }
     if "bridge" in section_label.lower() and story_function == "pressure":
-        return "tightens her route and regains direction"
+        return "tightens the route and regains direction"
     return base.get(story_function, "keeps moving through the same world")
 
 
 def _story_visual_intent(section_label: str, story_function: str, world_zone: str, story_event: str) -> str:
     low = section_label.lower()
     if story_function == "entry":
-        if "intro" in low or world_zone == "threshold":
+        if "intro" in low or world_zone == "entry_zone":
             return f"Show the first committed boundary crossing that makes the connected world physically real. Event: {story_event}".strip()
         if world_zone in {"open_route", "open_peak"}:
             return f"Show forward release beginning in a space that has already opened wider. Event: {story_event}".strip()
         return f"Show the first committed move into the route without flattening into generic walking. Event: {story_event}".strip()
     if story_function == "continuation":
-        return f"Show the same route carrying forward without resetting the heroine or the world. Event: {story_event}".strip()
+        return f"Show the same route carrying forward without resetting the performer or the world. Event: {story_event}".strip()
     if story_function == "pressure":
         return f"Show a tightened route and a shorter physical progression without fully stopping. Event: {story_event}".strip()
     if story_function == "handoff":
-        if world_zone in {"threshold", "edge"}:
-            return f"Show the next state already committed beyond the threshold before the cut. Event: {story_event}".strip()
+        if world_zone in {"entry_zone", "transition_edge"}:
+            return f"Show the next state already committed beyond the transition before the cut. Event: {story_event}".strip()
         return f"Show the next state already formed so the following shot feels physically inevitable. Event: {story_event}".strip()
     if story_function == "payoff":
         if "final chorus" in low or world_zone == "open_peak":
             return f"Show the widest forward release with unmistakable arrival and larger directional commitment. Event: {story_event}".strip()
         return f"Show a decisive forward release rather than another neutral continuation. Event: {story_event}".strip()
-    return f"Keep the heroine moving through one connected world with a readable physical change. Event: {story_event}".strip()
+    return f"Keep the performer moving through one connected world with a readable physical change. Event: {story_event}".strip()
 
 
 def _why_line(section_label: str, story_function: str, story_goal: str, story_event: str) -> str:
@@ -204,13 +204,13 @@ def _story_event(brief: dict, section_label: str, beat: dict, story_goal: str, s
     if continuity_anchor:
         return continuity_anchor
     fallback = {
-        "entry": "She commits to the next readable beat in the same world.",
-        "continuation": "She carries the same visual thread forward without resetting.",
-        "pressure": "She tightens the motion without fully stopping.",
-        "handoff": "She lands in the next state before the cut.",
-        "payoff": "She opens into the clearest release beat.",
+        "entry": "The performer commits to the next readable beat in the same world.",
+        "continuation": "The performer carries the same visual thread forward without resetting.",
+        "pressure": "The performer tightens the motion without fully stopping.",
+        "handoff": "The performer lands in the next state before the cut.",
+        "payoff": "The performer opens into the clearest release beat.",
     }
-    role = fallback.get(story_function, "She continues through the same connected world.")
+    role = fallback.get(story_function, "The performer continues through the same connected world.")
     return f"{role} {story_goal}".strip()
 
 

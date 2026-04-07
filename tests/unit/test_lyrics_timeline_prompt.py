@@ -4,7 +4,7 @@ from ai_mv.engines.lyrics_timeline import planner
 def test_lyrics_timeline_prompt_includes_visual_context_and_concrete_shot_rules():
     config = {
         "prompt": "Rainy city-night breakup song.",
-        "genre": "k-pop synth pop",
+        "genre": "synth pop",
         "voice": "solo female, airy and emotional",
         "language": "ko",
         "visual_concept": "Realistic cinematic music video across diner, street, and intersection.",

@@ -105,7 +105,7 @@ def test_build_clip_routes_does_not_force_ref_for_low_consistency_kinetic_covera
             "emotion": "focus",
             "scene_detail": "glass-lit street",
             "motion_hint": "walking through crowd",
-            "space_relation": "heroine foreground center, strangers background blur",
+            "space_relation": "performer foreground center, strangers background blur",
             "hero_frame_score": 1,
             "consistency_need": "low",
             "mv_function": "coverage",
@@ -154,8 +154,8 @@ def test_build_clip_routes_keeps_kinetic_ref_for_high_priority_endpoints():
 def test_build_clip_routes_obeys_profile_direct_face_policy():
     cfg = {
         "video": {"target": "1920x1080@24"},
-        "visual": {"brief": "selective extreme close-ups with readable heroine"},
-        "mv": {"story_world": "same heroine and same night", "payoff_style": "one extreme close-up in the final chorus"},
+        "visual": {"brief": "selective extreme close-ups with readable performer"},
+        "mv": {"story_world": "same performer and same night", "payoff_style": "one extreme close-up in the final chorus"},
         "visual_policy": {"face_policy": "payoff_only", "direct_face_sections": ["Final Chorus"], "ref_policy": "identity_sensitive_only"},
     }
     anchors = [

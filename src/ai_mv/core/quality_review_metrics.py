@@ -89,10 +89,10 @@ def plan_metrics(payload: dict) -> dict:
     ref_items = [row for row in prompt_plan.get("ref_items", []) if isinstance(row, dict)]
     world_zones = {str(row.get("world_zone", "")).strip() for row in scene_shots if str(row.get("world_zone", "")).strip()}
     story_functions = {str(row.get("story_function", "")).strip() for row in scene_shots if str(row.get("story_function", "")).strip()}
-    archetypes = {str(row.get("ref_archetype", "")).strip() for row in direction_shots if str(row.get("ref_archetype", "")).strip()}
+    style_tags = {str(row.get("ref_style_tag", "")).strip() for row in direction_shots if str(row.get("ref_style_tag", "")).strip()}
     return {
         "shot_package_count": len(ref_items or direction_shots or scene_shots),
         "world_zone_count": len(world_zones),
         "story_function_count": len(story_functions),
-        "archetype_count": len(archetypes),
+        "style_tag_count": len(style_tags),
     }

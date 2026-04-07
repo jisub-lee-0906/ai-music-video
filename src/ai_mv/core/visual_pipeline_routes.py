@@ -55,7 +55,7 @@ def should_use_ref(shot: dict, config: dict) -> tuple[bool, str]:
     ref_triggers = policy.get("ref_triggers", {}) if isinstance(policy, dict) else {}
     direct_face_sections = {str(x).strip().lower() for x in policy.get("direct_face_sections", [])} if isinstance(policy, dict) else set()
     is_priority_section = any(ref in label for ref in settings["reference_priority_sections"])
-    if anchor_strategy == "refine_anchor" and continuity_basis in {"heroine", "motif", "world"} and phase != "advance":
+    if anchor_strategy == "refine_anchor" and continuity_basis in {"subject", "motif", "world"} and phase != "advance":
         return True, f"refine anchor for {continuity_basis} continuity"
     if anchor_strategy == "reuse_anchor" and continuity_basis in {"none", "motif"} and face_exposure not in {"direct", "soft"}:
         return False, "reuse anchor hold beat"

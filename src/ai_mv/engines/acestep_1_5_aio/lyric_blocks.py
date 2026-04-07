@@ -11,9 +11,6 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Do not output headers, numbering, notes, or blank filler lines. "
         "Avoid exact repeats across blocks except one short chorus hook if needed. "
         "Stay inside the exact emotional situation and progression described by Audio intent; do not drift into a safer generic pop song. "
-        "Prefer one or two concrete personal details over broad generic breakup wording. "
-        "When possible, let physical details carry emotion: phone screen, umbrella trace, wet shoes, traffic light, rain on glass, breath in cold air. "
-        "Avoid vague filler lines about love, pain, heart, or night unless the line also contains a concrete image or action. "
         "Verse 2 must change the situation, Bridge must reframe, and Final Chorus must resolve. "
         "Keep lines short and memorable. "
     )
@@ -38,20 +35,12 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
         hook_clause = f"Use the selected hook '{selected_hook}' or a close variation. "
     elif label in {"Chorus", "Chorus 2", "Final Chorus"} and hook_fragments:
         hook_clause = f"If useful, use one short hook fragment from: {', '.join(hook_fragments)}. "
-    motif_clause = (
-        "Keep recurring image family consistent across the song. "
-        "Prefer repeating and varying the same few details already implied by Audio intent: rain, wet street, signal light, glass, footsteps, phone screen, breath, leftover light. "
-        "Do not introduce random new places or props unless they clearly belong to that same night-walk breakup world. "
-        "Do not let the exact same object dominate every section. "
-        "If one object anchors Verse 1, shift the main focus in Verse 2, Bridge, and Final Chorus to a different detail from the same image family. "
-    )
     return (
         _audio_lyrics_rules_qwen(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
         + f"Current block=[{label}] line_count={line_count}. "
         + _current_block_constraints(completed, block)
-        + motif_clause
         + hook_clause
         + f"Output exactly {line_count} lyric lines, one per line. "
     )
@@ -68,6 +57,59 @@ def _audio_lyrics_block_system_prompt(plan: dict, block: dict) -> str:
     )
 
 
+def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
+    sections = []
+    for block in outline.get("lyrics_blocks", []):
+        if not isinstance(block, dict):
+            continue
+        label = str(block.get("label", "")).strip()
+        line_count = int(block.get("line_count", 0) or 0)
+        role = str(block.get("role", "")).strip()
+        change = str(block.get("change", "")).strip()
+        if not label:
+            continue
+        summary = f"[{label}]={line_count} lines"
+        if role or change:
+            details = []
+            if role:
+                details.append(f"role:{role}")
+            if change:
+                details.append(f"change:{change}")
+            summary += " (" + "; ".join(details) + ")"
+        sections.append(summary)
+    return (
+        _audio_lyrics_rules_qwen(plan)
+        + _language_clause(plan)
+        + _intent_clause(plan, include_selected_hook=False, include_hook_fragments=False)
+        + "Write the full lyrics draft for the entire song in one pass so section progression feels connected. "
+        + "Keep the locked section order and exact line counts from the outline. "
+        + "Let early sections establish the state, middle sections develop or tighten it, and later sections release or resolve it. "
+        + "Make Verse 2 change perspective, cost, or direction instead of restating Verse 1. "
+        + "Make Bridge compress or reframe so the final return lands harder. "
+        + "Keep each section distinct while preserving one shared emotional thread across the whole song. "
+        + "Stay inside the world already implied by the audio intent. "
+        + "Do not invent a sharply specific new everyday place, shop, vehicle, storefront, transit stop, or prop unless the song draft has already grounded it. "
+        + "Avoid dropping in random urban nouns just to create detail. "
+        + "Output bracketed section headers and lyric lines only. "
+        + "Do not add [end], notes, numbering, or any text outside the song. "
+        + "Locked outline: "
+        + ", ".join(sections)
+        + ". "
+    )
+
+
+def _audio_lyrics_draft_system_prompt(plan: dict, outline: dict) -> str:
+    lang = str(plan.get("language", "")).strip().lower()
+    lang_name = {"ja": "Japanese", "ko": "Korean", "en": "English"}.get(lang, "the requested language")
+    section_count = len([row for row in outline.get("lyrics_blocks", []) if isinstance(row, dict)])
+    return (
+        f"Write the full song lyrics in natural {lang_name} for {section_count} locked sections. "
+        "Use bracketed headers exactly as provided by the outline. "
+        "After each header, write exactly the required number of lyric lines. "
+        "No explanation. No markdown fences. No extra sections. No [end]. "
+    )
+
+
 def _parse_audio_lyrics_block_lines(block: dict, text: str) -> list[str]:
     lines = [line.strip() for line in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")]
     out = [line for line in lines if line]
@@ -77,6 +119,45 @@ def _parse_audio_lyrics_block_lines(block: dict, text: str) -> list[str]:
     if len(out) != expected:
         raise RuntimeError(f"audio lyrics fill line count mismatch under [{str(block.get('label', '')).strip()}]")
     return out
+
+
+def _parse_audio_lyrics_draft(outline: dict, text: str) -> list[dict]:
+    lines = [line.rstrip() for line in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    blocks = [row for row in outline.get("lyrics_blocks", []) if isinstance(row, dict)]
+    parsed: list[dict] = []
+    cursor = 0
+    for spec in blocks:
+        label = str(spec.get("label", "")).strip()
+        line_count = int(spec.get("line_count", 0) or 0)
+        while cursor < len(lines) and not str(lines[cursor]).strip():
+            cursor += 1
+        expected_header = f"[{label}]"
+        if cursor >= len(lines) or str(lines[cursor]).strip() != expected_header:
+            raise RuntimeError(f"audio lyrics draft missing expected header {expected_header}")
+        cursor += 1
+        body: list[str] = []
+        while cursor < len(lines) and len(body) < line_count:
+            current = str(lines[cursor]).strip()
+            cursor += 1
+            if not current:
+                continue
+            if current.startswith("[") and current.endswith("]"):
+                raise RuntimeError(f"audio lyrics draft entered next section before filling {expected_header}")
+            body.append(current)
+        if len(body) != line_count:
+            raise RuntimeError(f"audio lyrics draft line count mismatch under {expected_header}")
+        parsed.append(
+            {
+                "section": str(spec.get("section", "")).strip(),
+                "label": label,
+                "style": str(spec.get("style", "")).strip(),
+                "lines": body,
+            }
+        )
+    trailing = [str(line).strip() for line in lines[cursor:] if str(line).strip()]
+    if trailing:
+        raise RuntimeError("audio lyrics draft contained unexpected trailing text")
+    return parsed
 
 
 def _current_block_constraints(completed: list[dict], block: dict) -> str:

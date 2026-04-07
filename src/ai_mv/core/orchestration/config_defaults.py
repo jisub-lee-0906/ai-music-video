@@ -31,9 +31,9 @@ DEFAULT_CONFIG: dict = {
         "allow_face_drift_in_nonhero": True,
         "location_budget": {"min": 2, "max": 3},
         "location_family_examples": [
-            "reflective threshold",
+            "reflective walkway",
             "lit passage",
-            "open night lane",
+            "open lane",
             "sheltered edge",
         ],
         "shot_type_guidance": {

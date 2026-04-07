@@ -84,7 +84,7 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
         "shot_package_count": int(summary_metrics.get("shot_package_count", 0)),
         "world_zone_count": int(summary_metrics.get("world_zone_count", 0)),
         "story_function_count": int(summary_metrics.get("story_function_count", 0)),
-        "archetype_count": int(summary_metrics.get("archetype_count", 0)),
+        "style_tag_count": int(summary_metrics.get("style_tag_count", 0)),
         "failure_reason": str(state.get("failure_reason", "")).strip(),
         "completed_stages": list(state.get("completed_stages", [])),
         "current_stage": str(state.get("current_stage", "")).strip(),
@@ -97,4 +97,3 @@ def _ref_ratio_by_section(rows: list[dict]) -> dict[str, float]:
         label = str(shot.get("section_label", "")).strip() or "section"
         buckets[label] = buckets.get(label, 0) + 1
     return {label: 1.0 for label in buckets}
-

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 
 from ai_mv.core.output_paths import audio_prefix
 from ai_mv.core.contracts.prompt_normalize import (
@@ -23,9 +24,12 @@ from ai_mv.engines.acestep_1_5_aio.prompting import (
     _language_clause,
 )
 from ai_mv.engines.acestep_1_5_aio.lyric_blocks import (
+    _audio_lyrics_draft_prompt,
+    _audio_lyrics_draft_system_prompt,
     _audio_lyrics_block_prompt,
     _audio_lyrics_block_system_prompt,
     _audio_lyrics_rules_qwen,
+    _parse_audio_lyrics_draft,
     _audio_retry_clause,
     _current_block_constraints,
     _normalize_lyric_line,
@@ -249,9 +253,7 @@ def _plan_hook_candidates_with_llm(config: dict, plan: dict) -> dict:
 
 
 def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
-    completed: list[dict] = []
-    for block in outline.get("lyrics_blocks", []):
-        completed.append(_generate_lyrics_block(config, plan, outline, completed, dict(block)))
+    completed = _generate_lyrics_draft(config, plan, outline)
     return _merge_audio_outline_and_lyrics(outline, {"lyrics_blocks": completed})
 
 
@@ -268,6 +270,8 @@ def _normalize_audio_outline(raw: dict) -> dict:
                 "section": section,
                 "label": label,
                 "style": str(row.get("style", "")).strip(),
+                "role": str(row.get("role", "")).strip(),
+                "change": str(row.get("change", "")).strip(),
                 "line_count": max(0, line_count),
             }
         )
@@ -283,15 +287,36 @@ def _normalize_audio_outline(raw: dict) -> dict:
 
 def _validate_outline_labels(outline: dict) -> None:
     allowed = {str(row["label"]).strip() for row in preferred_songform_rows()}
+    labels: list[str] = []
     for block in outline.get("lyrics_blocks", []):
         if not isinstance(block, dict):
             continue
         label = str(block.get("label", "")).strip()
         if label and label not in allowed:
             raise RuntimeError(f"invalid section label: {label}")
+        if label:
+            labels.append(label)
+        if not str(block.get("role", "")).strip():
+            raise RuntimeError(f"outline role missing for {label}")
+        if not str(block.get("change", "")).strip():
+            raise RuntimeError(f"outline change missing for {label}")
         line_count = int(block.get("line_count", 0) or 0)
         if line_count <= 0 and not _allows_zero_line_block(block):
             raise RuntimeError(f"zero-line block allowed only for Intro or Outro: {label}")
+    _validate_outline_special_label_shape(outline.get("lyrics_blocks", []), labels)
+
+
+def _validate_outline_special_label_shape(blocks: object, labels: list[str]) -> None:
+    final_count = sum(1 for label in labels if label == "Final Chorus")
+    if final_count > 1:
+        raise RuntimeError("invalid section label sequence: Final Chorus may appear only once")
+    chorus_family = [
+        str(block.get("label", "")).strip()
+        for block in blocks
+        if isinstance(block, dict) and str(block.get("section", "")).strip().lower() == "chorus"
+    ]
+    if "Final Chorus" in chorus_family and chorus_family[-1] != "Final Chorus":
+        raise RuntimeError("invalid section label sequence: Final Chorus must be the last chorus-family block")
 
 
 def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
@@ -318,22 +343,25 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
 def _hook_candidates_prompt(plan: dict) -> str:
     fragments = [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
     fragment_text = ", ".join(fragments)
+    language = str(plan.get("language", "")).strip() or "the requested language"
+    genre = str(plan.get("genre", "")).strip() or "the requested genre"
     return (
-        "Generate chorus hook candidates for a Korean pop song. "
+        "Generate chorus hook candidates for a song. "
         "Return JSON only. No markdown. "
         "Make 6 candidates for chorus-family use only. "
         "Each candidate must be a short hook fragment, not a full sentence. "
         "Good candidates are easy to chant, easy to remember, and can sit at the start of a chorus line. "
-        "Keep Korean dominant overall. "
-        "English is optional and must stay within one to three words. "
-        "Do not write long English sentences. "
-        "Prefer Korean-led hooks tied to the song's emotional turn or central image over generic English slogans. "
+        f"Keep the requested language dominant overall. Requested language={language}. "
+        "A secondary language is optional and, if used, must stay within one to three words. "
+        "Do not write long cross-language phrases. "
+        "Prefer hooks tied to the song's emotional turn or central image over generic slogans. "
         "Bad candidates: vague phrases like all night, forever, stay with me, call my name when they are not anchored to this song's own meaning. "
         "Good candidates: short phrases that can become title-worthy because they belong to this exact song. "
+        f"Genre={genre}. "
         f"Hook intent={str(plan.get('hook_direction', '')).strip()}. "
         + (f"Preferred optional English fragments={fragment_text}. " if fragment_text else "")
         + "For each candidate, provide fragment, language_mode, placement, and why. "
-        + "language_mode must be one of ko_only or mixed_ko_en. "
+        + "language_mode must be one of primary_only or mixed_language. "
         + "placement must be one of chorus, chorus2, final_chorus. "
     )
 
@@ -344,7 +372,7 @@ def _hook_candidates_schema() -> dict:
         "required": ["fragment", "language_mode", "placement", "why"],
         "properties": {
             "fragment": {"type": "string"},
-            "language_mode": {"type": "string", "enum": ["ko_only", "mixed_ko_en"]},
+            "language_mode": {"type": "string", "enum": ["primary_only", "mixed_language"]},
             "placement": {"type": "string", "enum": ["chorus", "chorus2", "final_chorus"]},
             "why": {"type": "string"},
         },
@@ -367,7 +395,7 @@ def _normalize_hook_candidates(raw: dict) -> list[dict]:
         language_mode = str(row.get("language_mode", "")).strip()
         placement = str(row.get("placement", "")).strip()
         why = " ".join(str(row.get("why", "")).strip().split())
-        if not fragment or language_mode not in {"ko_only", "mixed_ko_en"} or placement not in {"chorus", "chorus2", "final_chorus"}:
+        if not fragment or language_mode not in {"primary_only", "mixed_language"} or placement not in {"chorus", "chorus2", "final_chorus"}:
             continue
         out.append(
             {
@@ -408,9 +436,9 @@ def _score_hook_candidate(row: dict, plan: dict) -> int:
         score += 3
     elif len(fragment) <= 20:
         score += 1
-    if language_mode == "ko_only":
+    if language_mode == "primary_only":
         score += 4
-    elif language_mode == "mixed_ko_en":
+    elif language_mode == "mixed_language":
         score += 1
     if any(frag == lower for frag in english_fragments):
         score -= 2
@@ -424,7 +452,34 @@ def _score_hook_candidate(row: dict, plan: dict) -> int:
         score += 3
     if any(keyword and keyword in fragment for keyword in intent_keywords):
         score += 5
+    score -= _generic_hook_penalty(fragment, plan)
     return score
+
+
+def _generic_hook_penalty(fragment: str, plan: dict) -> int:
+    lower = str(fragment).strip().lower()
+    tokens = [token for token in re.findall(r"[가-힣]{1,}|[a-z]+", lower) if token]
+    penalty = 0
+    generic_phrases = {
+        "all night", "forever", "stay with me", "call my name", "hold on", "let it go", "run it back",
+        "baby", "tonight", "my heart",
+        "사랑해", "영원히", "다시 다시", "놓지 마", "돌아와", "잊지 마",
+    }
+    if lower in generic_phrases:
+        penalty += 6
+    generic_tokens = {
+        "baby", "tonight", "forever", "heart", "love", "all", "night", "hold", "stay", "call",
+        "다시", "영원", "사랑", "마음", "너", "우리",
+    }
+    generic_count = sum(1 for token in tokens if token in generic_tokens)
+    if generic_count >= max(2, len(tokens)):
+        penalty += 4
+    intent_keywords = set(_intent_keywords(str(plan.get("audio_direction", "")).strip()))
+    if intent_keywords and not any(token in intent_keywords for token in tokens):
+        penalty += 1
+    if len(tokens) >= 2 and len(set(tokens)) == 1:
+        penalty += 3
+    return penalty
 
 
 def _intent_keywords(text: str) -> list[str]:
@@ -454,7 +509,7 @@ def _fallback_hook_state(plan: dict) -> dict:
         candidates.append(
             {
                 "fragment": fragment,
-                "language_mode": "mixed_ko_en",
+                "language_mode": "mixed_language",
                 "placement": placement,
                 "why": "Profile-guided short English hook fragment.",
             }
@@ -463,7 +518,7 @@ def _fallback_hook_state(plan: dict) -> dict:
         candidates.append(
             {
                 "fragment": "남은 불빛",
-                "language_mode": "ko_only",
+                "language_mode": "primary_only",
                 "placement": "chorus",
                 "why": "Fallback Korean chorus hook from the song profile.",
             }
@@ -483,12 +538,14 @@ def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:
         section = str(row.get("section", "")).strip()
         label = str(row.get("label", "")).strip()
         style = str(row.get("style", "")).strip()
+        role = str(spec.get("role", "")).strip()
+        change = str(spec.get("change", "")).strip()
         if section != spec["section"] or label != spec["label"] or style != spec["style"]:
             raise RuntimeError("audio lyrics fill diverged from locked outline")
         lines = [str(x).strip() for x in row.get("lines", []) if str(x).strip()]
         if len(lines) != int(spec["line_count"]):
             raise RuntimeError("audio lyrics fill line count mismatch")
-        blocks.append({"section": section, "label": label, "style": style, "lines": lines})
+        blocks.append({"section": section, "label": label, "style": style, "role": role, "change": change, "lines": lines})
     return {
         "genre_description": outline["genre_description"],
         "bpm": outline["bpm"],
@@ -500,6 +557,17 @@ def _merge_audio_outline_and_lyrics(outline: dict, filled: dict) -> dict:
 
 
 def _generate_lyrics_block(config: dict, plan: dict, outline: dict, completed: list[dict], block: dict) -> dict:
+    return _generate_lyrics_block_with_note(config, plan, outline, completed, block, "")
+
+
+def _generate_lyrics_block_with_note(
+    config: dict,
+    plan: dict,
+    outline: dict,
+    completed: list[dict],
+    block: dict,
+    revision_note: str,
+) -> dict:
     if int(block.get("line_count", 0) or 0) == 0:
         return {
             "section": str(block.get("section", "")).strip(),
@@ -508,6 +576,8 @@ def _generate_lyrics_block(config: dict, plan: dict, outline: dict, completed: l
             "lines": [],
         }
     prompt = _audio_lyrics_block_prompt(plan, outline, completed, block)
+    if revision_note:
+        prompt += revision_note.strip() + " "
     last_exc: Exception | None = None
     attempt_prompt = prompt
     for _ in range(4):
@@ -537,6 +607,317 @@ def _generate_lyrics_block(config: dict, plan: dict, outline: dict, completed: l
     if last_exc is not None:
         raise last_exc
     raise RuntimeError("audio lyrics block fill failed without a captured error")
+
+
+def _generate_lyrics_draft(config: dict, plan: dict, outline: dict) -> list[dict]:
+    prompt = _audio_lyrics_draft_prompt(plan, outline)
+    last_exc: Exception | None = None
+    attempt_prompt = prompt
+    parsed: list[dict] | None = None
+    for _ in range(4):
+        drafted = generate_text(
+            config,
+            _audio_lyrics_draft_system_prompt(plan, outline) + "\n\n" + attempt_prompt,
+        )
+        try:
+            parsed = _parse_audio_lyrics_draft(outline, drafted)
+            break
+        except RuntimeError as exc:
+            last_exc = exc
+            previous_attempt = "\n".join(line.strip() for line in str(drafted).splitlines() if line.strip())
+            attempt_prompt = (
+                prompt
+                + f"\nCorrection note: your previous full draft failed validation with this exact error: {exc}. "
+                + (f"\nPrevious invalid attempt:\n{previous_attempt}\n" if previous_attempt else "")
+                + "\nRewrite the full song from scratch using the exact locked headers and exact line counts."
+            )
+    if parsed is None:
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("audio lyrics draft failed without a captured error")
+    completed: list[dict] = []
+    for spec, candidate in zip(outline.get("lyrics_blocks", []), parsed):
+        block = dict(spec)
+        if int(block.get("line_count", 0) or 0) == 0:
+            completed.append(candidate)
+            continue
+        try:
+            _validate_generated_block(plan, completed, candidate)
+            completed.append(candidate)
+        except RuntimeError:
+            completed.append(_generate_lyrics_block(config, plan, outline, completed, block))
+    refreshed = _refresh_overused_imagery(config, plan, outline, completed)
+    refined = _refresh_hook_fit(config, plan, outline, refreshed)
+    return _polish_lyrics_sections(config, plan, outline, refined)
+
+
+def _refresh_overused_imagery(config: dict, plan: dict, outline: dict, blocks: list[dict]) -> list[dict]:
+    overused = _find_overused_image_tokens(plan, blocks)
+    if not overused:
+        return blocks
+    refreshed: list[dict] = []
+    refreshable_labels = {"Verse 2", "Pre-Chorus 2", "Chorus 2", "Bridge", "Final Chorus"}
+    rewrites = 0
+    for block in blocks:
+        label = str(block.get("label", "")).strip()
+        repeated = _block_overused_tokens(block, overused)
+        if rewrites < 2 and label in refreshable_labels and len(repeated) >= 2:
+            block_spec = next(
+                (
+                    dict(row)
+                    for row in outline.get("lyrics_blocks", [])
+                    if str(row.get("label", "")).strip() == label
+                ),
+                {
+                    "section": str(block.get("section", "")).strip(),
+                    "label": label,
+                    "style": str(block.get("style", "")).strip(),
+                    "line_count": len([str(x).strip() for x in block.get("lines", []) if str(x).strip()]),
+                },
+            )
+            carry = _carry_world_tokens(blocks, block)
+            note = (
+                "Refresh this section with more varied concrete imagery. "
+                f"Avoid leaning again on these overused words or image anchors: {', '.join(repeated)}. "
+                + (f"Stay inside the established world and reuse only already-grounded image anchors such as: {', '.join(carry)}. " if carry else "")
+                + "Do not invent a brand-new place, prop, or scene object that has not already been grounded by the song draft. "
+                "Keep the same emotional role and section function. "
+            )
+            rewritten = _generate_lyrics_block_with_note(config, plan, outline, refreshed, block_spec, note)
+            refreshed.append(rewritten)
+            rewrites += 1
+            continue
+        refreshed.append(block)
+    return refreshed
+
+
+def _find_overused_image_tokens(plan: dict, blocks: list[dict]) -> set[str]:
+    counts: Counter[str] = Counter()
+    for block in blocks:
+        counts.update(set(_block_image_tokens(plan, block)))
+    return {
+        token
+        for token, count in counts.items()
+        if count >= 3
+    }
+
+
+def _block_overused_tokens(block: dict, overused: set[str]) -> list[str]:
+    found: list[str] = []
+    for token in _block_image_tokens({}, block):
+        if token in overused and token not in found:
+            found.append(token)
+    return found
+
+
+def _block_image_tokens(plan: dict, block: dict) -> list[str]:
+    text = " ".join(str(line).strip().lower() for line in block.get("lines", []) if str(line).strip())
+    hook = str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip().lower()
+    excluded = set(_intent_keywords(hook))
+    excluded.update(
+        {
+            "나는", "너를", "너의", "이제는", "아직도", "오늘은", "오늘의", "다시", "마음", "사랑", "도시",
+            "walk", "night", "heart", "love", "city", "again", "still", "into", "through",
+        }
+    )
+    tokens: list[str] = []
+    for token in re.findall(r"[가-힣]{2,}|[a-z]{3,}", text):
+        if token in excluded:
+            continue
+        tokens.append(token)
+    return tokens
+
+
+def _carry_world_tokens(blocks: list[dict], current_block: dict) -> list[str]:
+    current_label = str(current_block.get("label", "")).strip()
+    carry: list[str] = []
+    for block in blocks:
+        label = str(block.get("label", "")).strip()
+        if label == current_label:
+            break
+        for token in _block_image_tokens({}, block):
+            if token not in carry:
+                carry.append(token)
+    return carry[:8]
+
+
+def _refresh_hook_fit(config: dict, plan: dict, outline: dict, blocks: list[dict]) -> list[dict]:
+    selected_hook = str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip()
+    if not selected_hook:
+        return blocks
+    refreshed = list(blocks)
+    rewrites = 0
+    for idx, block in enumerate(refreshed):
+        label = str(block.get("label", "")).strip()
+        if label not in {"Chorus", "Chorus 2", "Final Chorus"}:
+            continue
+        if not _chorus_hook_fit_needs_refresh(plan, block):
+            continue
+        if rewrites >= 2:
+            break
+        carry = _carry_world_tokens(refreshed, block)
+        block_spec = next(
+            (
+                dict(row)
+                for row in outline.get("lyrics_blocks", [])
+                if str(row.get("label", "")).strip() == label
+            ),
+            {
+                "section": str(block.get("section", "")).strip(),
+                "label": label,
+                "style": str(block.get("style", "")).strip(),
+                "line_count": len([str(x).strip() for x in block.get("lines", []) if str(x).strip()]),
+            },
+        )
+        note = (
+            f"Refresh this {label} so the hook feels native to this song's world. "
+            f"If you use the selected hook '{selected_hook}', make it feel emotionally and sonically natural instead of slogan-like. "
+            "Do not drop in an imported catchphrase that feels disconnected from the rest of the lyric language. "
+            + (f"Keep continuity with these already-grounded image anchors: {', '.join(carry)}. " if carry else "")
+            + "Keep the same section function and exact line count. "
+        )
+        refreshed[idx] = _generate_lyrics_block_with_note(
+            config,
+            plan,
+            outline,
+            refreshed[:idx],
+            block_spec,
+            note,
+        )
+        rewrites += 1
+    return refreshed
+
+
+def _chorus_hook_fit_needs_refresh(plan: dict, block: dict) -> bool:
+    lines = [str(line).strip() for line in block.get("lines", []) if str(line).strip()]
+    if not lines:
+        return False
+    text = " ".join(lines).lower()
+    selected_hook = str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip().lower()
+    english_fragments = [str(x).strip().lower() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+    if selected_hook and selected_hook in text:
+        return False
+    if str(plan.get("language", "")).strip().lower() != "ko":
+        return False
+    if any(fragment and fragment in text for fragment in english_fragments):
+        return True
+    return False
+
+
+def _polish_lyrics_sections(config: dict, plan: dict, outline: dict, blocks: list[dict]) -> list[dict]:
+    targets = _plan_lyrics_rewrite_targets_with_llm(config, plan, blocks)
+    if not targets:
+        return blocks
+    refreshed = list(blocks)
+    target_map = {str(row.get("label", "")).strip(): str(row.get("reason", "")).strip() for row in targets if str(row.get("label", "")).strip()}
+    for idx, block in enumerate(refreshed):
+        label = str(block.get("label", "")).strip()
+        reason = target_map.get(label, "")
+        if not reason:
+            continue
+        block_spec = next(
+            (
+                dict(row)
+                for row in outline.get("lyrics_blocks", [])
+                if str(row.get("label", "")).strip() == label
+            ),
+            {
+                "section": str(block.get("section", "")).strip(),
+                "label": label,
+                "style": str(block.get("style", "")).strip(),
+                "line_count": len([str(x).strip() for x in block.get("lines", []) if str(x).strip()]),
+            },
+        )
+        note = (
+            f"Polish this {label}. "
+            f"Primary goal: {reason}. "
+            "Keep the exact line count, section function, and established song world. "
+            "Make the language feel more natural and connected to the rest of the song. "
+            "Prefer lines that feel more lived-in, specific, and memorable over safe generic phrasing. "
+            "Replace explanation with stronger lyric detail where possible, but keep the song singable. "
+        )
+        refreshed[idx] = _generate_lyrics_block_with_note(
+            config,
+            plan,
+            outline,
+            refreshed[:idx],
+            block_spec,
+            note,
+        )
+    return refreshed
+
+
+def _plan_lyrics_rewrite_targets_with_llm(config: dict, plan: dict, blocks: list[dict]) -> list[dict]:
+    allowed_labels = [str(row.get("label", "")).strip() for row in blocks if isinstance(row, dict) and str(row.get("label", "")).strip()]
+    if not allowed_labels:
+        return []
+    try:
+        raw = generate_structured(config, _lyrics_rewrite_targets_prompt(plan, blocks), _lyrics_rewrite_targets_schema(allowed_labels))
+        return _normalize_lyrics_rewrite_targets(raw, allowed_labels)
+    except Exception:
+        return []
+
+
+def _lyrics_rewrite_targets_prompt(plan: dict, blocks: list[dict]) -> str:
+    rendered: list[str] = []
+    for block in blocks:
+        label = str(block.get("label", "")).strip()
+        lines = [str(x).strip() for x in block.get("lines", []) if str(x).strip()]
+        if not label:
+            continue
+        rendered.append(f"[{label}] " + " / ".join(lines))
+    return (
+        "Review these song sections and choose at most 2 sections that would most benefit from a rewrite. "
+        "Focus only on hook naturalness, section-role contrast, lyrical specificity, world consistency, final payoff, and artist-level distinctiveness. "
+        "Flag sections that invent a new sharply specific place, shop, vehicle, or prop without grounding it elsewhere in the song. "
+        "Flag sections that use a catchy English phrase that feels imported from outside the song rather than growing naturally from the lyric language. "
+        "Flag sections whose lines feel generic, over-explained, too familiar, or not memorable enough. "
+        "Prefer sections that would benefit from more lived-in detail, stronger physicality, or a more personal final payoff. "
+        "Do not choose sections that already work. "
+        "Prefer rewriting the minimum number of sections needed. "
+        + _language_clause(plan)
+        + _intent_clause(plan)
+        + "Return strict JSON only. "
+        + "Sections: "
+        + " || ".join(rendered)
+    )
+
+
+def _lyrics_rewrite_targets_schema(allowed_labels: list[str]) -> dict:
+    return {
+        "type": "object",
+        "required": ["rewrites"],
+        "properties": {
+            "rewrites": {
+                "type": "array",
+                "maxItems": 2,
+                "items": {
+                    "type": "object",
+                    "required": ["label", "reason"],
+                    "properties": {
+                        "label": {"type": "string", "enum": allowed_labels},
+                        "reason": {"type": "string"},
+                    },
+                },
+            }
+        },
+    }
+
+
+def _normalize_lyrics_rewrite_targets(raw: dict, allowed_labels: list[str]) -> list[dict]:
+    allowed = set(allowed_labels)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for row in raw.get("rewrites", []) if isinstance(raw, dict) else []:
+        if not isinstance(row, dict):
+            continue
+        label = str(row.get("label", "")).strip()
+        reason = " ".join(str(row.get("reason", "")).strip().split())
+        if not label or label not in allowed or label in seen or not reason:
+            continue
+        seen.add(label)
+        out.append({"label": label, "reason": reason})
+    return out
 
 
 

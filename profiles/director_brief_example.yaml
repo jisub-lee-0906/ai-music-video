@@ -1,8 +1,8 @@
 prompt: >
-  Korean-language late-night pop song about replaying the end of a relationship while walking through a wet city night.
+  Late-night pop song about replaying the end of a relationship while walking through a wet city night.
   The emotion starts restrained and lonely, grows more direct in the chorus, tightens briefly before the bridge,
   and resolves with a clear forward release instead of collapsing into despair.
-genre: "k-pop synth pop"
+genre: "synth pop"
 voice: "solo female, airy and emotional"
 language: "ko"
 visual_concept: >
@@ -16,7 +16,7 @@ props:
   - worn notebook
   - half-empty coffee mug
   - studio headphones
-anchor_subject: "pretty young Korean female idol in her 20s"
+anchor_subject: "young adult female vocalist"
 anchor_hair: "long dark hair with soft volume and light face-framing strands"
 anchor_top: "clean fitted knit top with a short polished outer layer"
 anchor_bottom: "short skirt or slim premium denim bottom"

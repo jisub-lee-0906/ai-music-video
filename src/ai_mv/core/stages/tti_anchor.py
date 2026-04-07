@@ -90,8 +90,18 @@ def _anchor_subject(config: dict, voice: str) -> str:
     if isinstance(config, dict) and str(config.get("anchor_subject", "")).strip():
         return str(config.get("anchor_subject", "")).strip()
     low = voice.lower()
+    if "duo" in low:
+        return "young adult vocal duo"
+    if "group" in low or "mixed" in low:
+        return "young adult vocal group"
+    if "solo female" in low:
+        return "young adult female vocalist"
+    if "solo male" in low:
+        return "young adult male vocalist"
     if "female" in low:
-        return "pretty young Korean female idol in her 20s"
+        return "young adult female vocalist"
     if "male" in low:
-        return "handsome young Korean male idol in his 20s"
-    return "young Korean idol performer in their 20s"
+        return "young adult male vocalist"
+    if "duo" in low or "group" in low or "mixed" in low:
+        return "vocal group"
+    return "young adult vocalist"

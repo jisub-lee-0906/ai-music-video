@@ -18,8 +18,8 @@ def test_run_tti_uses_master_anchor_for_all_shots(monkeypatch):
             "seed": 101,
         },
         "shots": [
-            {"shot_id": "S001", "shot_type": "CHAR_MASTER", "section_name": "verse", "duration_sec": 4.0, "is_chorus": False, "prompt_text": "same heroine, verse frame", "seed": 201},
-            {"shot_id": "S002", "shot_type": "PERF_WIDE", "section_name": "chorus", "duration_sec": 4.0, "is_chorus": True, "prompt_text": "same heroine, chorus frame", "seed": 202},
+            {"shot_id": "S001", "shot_type": "CHAR_MASTER", "section_name": "verse", "duration_sec": 4.0, "is_chorus": False, "prompt_text": "same performer, verse frame", "seed": 201},
+            {"shot_id": "S002", "shot_type": "PERF_WIDE", "section_name": "chorus", "duration_sec": 4.0, "is_chorus": True, "prompt_text": "same performer, chorus frame", "seed": 202},
         ],
     }
     out = tti_runner.run_tti(cfg, plan)

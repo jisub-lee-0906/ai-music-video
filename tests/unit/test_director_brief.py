@@ -7,7 +7,7 @@ def _brief() -> dict:
     return {
         "brief": "director_brief_example",
         "prompt": "A lonely night walk after a breakup that grows more direct in the chorus.",
-        "genre": "k-pop synth pop",
+        "genre": "synth pop",
         "voice": "solo female, airy and emotional",
         "language": "ko",
         "visual_concept": "Realistic cinematic city-night breakup video.",
@@ -26,8 +26,8 @@ def test_build_director_brief_intent_returns_writer_layer_fields():
     assert intent["identity_core"] == "same vocalist, solo female, airy and emotional"
     assert intent["story_premise"]
     assert intent["audio_brief"]
-    assert intent["heroine_arc"]
-    assert intent["anchor_subject"] == "pretty young Korean female idol in her 20s"
+    assert intent["performer_arc"]
+    assert intent["anchor_subject"] == "young adult female vocalist"
     assert intent["anchor_pose"]
     assert intent["anchor_background"]
     assert intent["visual_concept"] == "Realistic cinematic city-night breakup video."

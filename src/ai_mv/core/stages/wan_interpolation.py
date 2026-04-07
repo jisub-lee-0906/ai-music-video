@@ -88,7 +88,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "palette_mode": "",
                 "character_render_mode": "",
                 "face_exposure_level": "soft",
-                "heroine_visibility": "clear",
+                "subject_visibility": "clear",
                 "continuity_priority": "high",
                 "wardrobe_read": "high",
                 "continuity_lock": "",
@@ -123,7 +123,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
 
 def _wan_positive_prompt(brief: dict, chain: dict) -> str:
     parts = [
-        "The woman",
+        "The performer",
         str(chain.get("place", "")).strip(),
         str(chain.get("bridge_action", "")).strip(),
     ]

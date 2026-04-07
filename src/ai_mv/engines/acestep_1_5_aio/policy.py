@@ -74,7 +74,7 @@ def audio_policy(config: dict) -> dict:
         "keyscale": str(audio.get("keyscale", "")).strip(),
         "ending_mode": _ending_mode(audio),
         "terminal_end_tag": _terminal_end_tag(audio),
-        "final_chorus_required": _coerce_bool(audio.get("final_chorus_required"), default=True),
+        "final_chorus_required": _coerce_bool(audio.get("final_chorus_required"), default=False),
         "outro_required": _coerce_bool(audio.get("outro_required"), default=False),
         "ending_vocal_density": _ending_vocal_density(audio),
         "ending_tags": _ending_tags(audio),

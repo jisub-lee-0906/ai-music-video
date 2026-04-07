@@ -28,7 +28,7 @@ class LyricsTimelineContract:
 class VisualStoryBible:
     hero_identity_lock: str = ""
     world_rules: str = ""
-    heroine_invariants: str = ""
+    performer_invariants: str = ""
     world_invariants: str = ""
     location_family_rules: list[str] = field(default_factory=list)
     closeup_rules: str = ""

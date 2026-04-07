@@ -8,7 +8,7 @@ def _config() -> dict:
     return {
         "brief": "director_brief_example",
         "prompt": "비 오는 도시의 밤을 걸으며 끝난 관계를 곱씹는 노래",
-        "genre": "k-pop synth pop",
+        "genre": "synth pop",
         "voice": "solo female, airy and emotional",
         "language": "ko",
         "visual_concept": "grounded cinematic night-world",

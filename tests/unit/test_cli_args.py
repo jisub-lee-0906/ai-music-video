@@ -38,12 +38,12 @@ def test_ref_probe_accepts_required_inputs():
             "--ref",
             "anchor.png",
             "--prompt",
-            "The same heroine crosses the wet curb.",
+            "The same performer crosses the wet street.",
         ]
     )
     assert args.brief == "director_brief_example"
     assert args.ref == "anchor.png"
-    assert args.prompt == "The same heroine crosses the wet curb."
+    assert args.prompt == "The same performer crosses the wet street."
 
 
 def test_ref_probe_batch_accepts_required_inputs():

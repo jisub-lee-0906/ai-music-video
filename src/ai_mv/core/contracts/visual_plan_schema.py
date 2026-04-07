@@ -11,7 +11,7 @@ SCENE_OUTLINE_REQUIRED_FIELDS = (
     "story_goal",
     "story_event",
     "world_zone",
-    "heroine_state",
+    "performer_state",
     "story_visual_intent",
     "transition_need",
     "why",
