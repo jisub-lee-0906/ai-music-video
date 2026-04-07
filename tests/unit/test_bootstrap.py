@@ -25,7 +25,7 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     out = bootstrap_config(cfg, tmp_path / "artifacts")
     assert out["video"]["target"] == "1920x1080@24"
     assert out["render"]["wan_size"] == "768x432"
-    assert out["audio"]["language"] == "ko"
+    assert out["language"] == "ko"
 
 
 def test_apply_director_brief_merges_example_style_input(tmp_path, monkeypatch):
@@ -47,11 +47,12 @@ def test_apply_director_brief_merges_example_style_input(tmp_path, monkeypatch):
 
     bootstrap_guard.apply_director_brief(cfg)
 
-    assert cfg["audio"]["brief"] == "Director audio brief"
-    assert cfg["character"]["identity_core"] == "same vocalist, solo female, airy and emotional"
-    assert cfg["visual"]["story_premise"] == "Realistic cinematic city-night breakup video."
-    assert cfg["visual"]["locations"] == ["dim retro diner", "wet city street at night"]
-    assert cfg["visual"]["props"] == ["worn notebook", "coffee mug"]
+    assert cfg["prompt"] == "Director audio brief"
+    assert cfg["genre"] == "k-pop synth pop"
+    assert cfg["voice"] == "solo female, airy and emotional"
+    assert cfg["visual_concept"] == "Realistic cinematic city-night breakup video."
+    assert cfg["locations"] == ["dim retro diner", "wet city street at night"]
+    assert cfg["props"] == ["worn notebook", "coffee mug"]
     assert cfg["anchor_subject"] == "pretty young Korean female idol in her 20s"
 
 

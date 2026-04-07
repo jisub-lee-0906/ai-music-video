@@ -106,11 +106,11 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "end_ref_shot_id": end_ref_shot_id,
                 "duration_sec": duration_sec,
                 "lighting_intent": "",
-                "location_description": str(chain.get("wan_prompt_atoms", {}).get("primary_surface", "")).strip(),
+                "location_description": str(chain.get("place", "")).strip(),
                 "literal_image": "",
-                "visible_action": str(chain.get("wan_prompt_atoms", {}).get("bridge_action", "")).strip(),
-                "subject_action": str(chain.get("wan_prompt_atoms", {}).get("bridge_action", "")).strip(),
-                "wan_action_line": str(chain.get("wan_prompt_atoms", {}).get("bridge_action", "")).strip(),
+                "visible_action": str(chain.get("bridge_action", "")).strip(),
+                "subject_action": str(chain.get("bridge_action", "")).strip(),
+                "wan_action_line": str(chain.get("bridge_action", "")).strip(),
                 "wan_transition_family": transition_family,
                 "wan_transition_contract": str(chain.get("wan_prompt_contract", "")).strip(),
                 "positive_prompt": str(chain.get("wan_positive_prompt_text", "")).strip() or _wan_positive_prompt(brief, chain),
@@ -122,11 +122,10 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
 
 
 def _wan_positive_prompt(brief: dict, chain: dict) -> str:
-    atoms = dict(chain.get("wan_prompt_atoms", {}))
     parts = [
-        str(atoms.get("subject_intro", "")).strip(),
-        str(atoms.get("location", "")).strip(),
-        str(atoms.get("bridge_action", "")).strip(),
+        "The woman",
+        str(chain.get("place", "")).strip(),
+        str(chain.get("bridge_action", "")).strip(),
     ]
     return " ".join(f"{part.rstrip('.')}." for part in parts if part)
 

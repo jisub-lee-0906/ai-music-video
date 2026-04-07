@@ -142,43 +142,6 @@ def build_director_brief_intent(config: dict) -> dict:
     }
 
 
-def materialize_profile_config(config: dict) -> None:
-    if not _has_minimal_profile(config):
-        return
-    prompt = _top_text(config, "prompt")
-    genre = _top_text(config, "genre")
-    voice = _top_text(config, "voice")
-    language = _top_text(config, "language") or "ko"
-    visual_concept = _top_text(config, "visual_concept")
-    locations = _top_list(config, "locations")
-    props = _top_list(config, "props")
-    audio = config.setdefault("audio", {})
-    if isinstance(audio, dict):
-        audio["language"] = language
-        audio["brief"] = prompt
-        audio["hook_brief"] = prompt
-        audio.setdefault("genre_head", genre)
-        audio.setdefault("vocal_profile", voice)
-        audio.setdefault("vocal_tone", voice)
-    visual = config.setdefault("visual", {})
-    if isinstance(visual, dict):
-        visual.setdefault("story_premise", visual_concept or prompt)
-        visual.setdefault("world_rules", "")
-        visual.setdefault("heroine_arc", "Keep one readable direction across the song.")
-        visual.setdefault("forbidden_story_moves", "")
-        if locations:
-            visual.setdefault("locations", list(locations))
-        if props:
-            visual.setdefault("props", list(props))
-    character = config.setdefault("character", {})
-    if isinstance(character, dict):
-        character.setdefault("identity_core", _identity_core_from_voice(voice))
-        character.setdefault("ref_subject_intro", _ref_subject_intro_from_voice(voice))
-        character.setdefault("identity_hooks", [])
-        character.setdefault("anchor_wardrobe_guidance", _anchor_wardrobe_guidance(config))
-        character.setdefault("anchor_avoid", "")
-
-
 def _compose_style_contract(audio: dict, visual: dict) -> str:
     tags = _str_list(audio.get("tags", []))
     audio_style = _text(audio, "brief")

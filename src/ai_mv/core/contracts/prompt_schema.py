@@ -1,31 +1,6 @@
 from __future__ import annotations
 
-SHOT_TYPES = [
-    "CHAR_MASTER",
-    "PERF_WIDE",
-    "EMOTION_CLOSE",
-    "DETAIL_INSERT",
-    "ENV_TRANSITION",
-    "SYMBOLIC_INSERT",
-    "GRAPHIC_EVENT",
-    "WORLD_EVENT",
-    "TRANSITIONAL_ABSTRACT",
-    "RHYTHM_DETAIL",
-]
-KINETIC_TRANSITIONS = [
-    "snap_zoom_in",
-    "snap_zoom_out",
-    "whip_pan_left",
-    "whip_pan_right",
-    "crash_push_in",
-    "smash_reframe",
-    "strobe_jump",
-    "match_cut_pose",
-]
-KINETIC_INTENSITIES = ["low", "medium", "high", "max"]
-SCENE_CHANGE_LEVELS = ["hold", "evolve", "shift", "reset"]
-ANCHOR_STRATEGIES = ["reuse_anchor", "refine_anchor", "new_anchor"]
-CONTINUITY_BASES = ["heroine", "motif", "world", "none"]
+SHOT_TYPES = ["DETAIL_INSERT"]
 
 
 def lyrics_timeline_schema() -> dict:
@@ -71,24 +46,20 @@ def _tti_shot_schema() -> dict:
         "required": [
             "shot_id",
             "shot_type",
+            "section_name",
+            "section_label",
+            "duration_sec",
             "is_chorus",
-            "camera_language",
-            "pose_delta",
-            "emotion",
-            "scene_detail",
-            "motion_hint",
-            "space_relation",
+            "seed",
         ],
         "properties": {
             "shot_id": {"type": "string"},
             "shot_type": {"type": "string", "enum": SHOT_TYPES},
+            "section_name": {"type": "string"},
+            "section_label": {"type": "string"},
+            "duration_sec": {"type": "number"},
             "is_chorus": {"type": "boolean"},
-            "camera_language": {"type": "string"},
-            "pose_delta": {"type": "string"},
-            "emotion": {"type": "string"},
-            "scene_detail": {"type": "string"},
-            "motion_hint": {"type": "string"},
-            "space_relation": {"type": "string"},
+            "seed": {"type": "integer"},
         },
     }
 

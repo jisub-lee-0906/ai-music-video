@@ -3,14 +3,7 @@ from __future__ import annotations
 import re
 import string
 
-from ai_mv.core.contracts.prompt_schema import (
-    ANCHOR_STRATEGIES,
-    CONTINUITY_BASES,
-    KINETIC_INTENSITIES,
-    KINETIC_TRANSITIONS,
-    SCENE_CHANGE_LEVELS,
-    SHOT_TYPES,
-)
+from ai_mv.core.contracts.prompt_schema import SHOT_TYPES
 
 
 def normalize_tti_shot(raw: dict, idx: int) -> dict:
@@ -20,18 +13,13 @@ def normalize_tti_shot(raw: dict, idx: int) -> dict:
     out = {
         "shot_id": str(raw["shot_id"]).strip(),
         "shot_type": stype,
+        "section_name": str(raw["section_name"]).strip(),
+        "section_label": str(raw["section_label"]).strip(),
+        "duration_sec": float(raw["duration_sec"]),
         "is_chorus": bool(raw["is_chorus"]),
-        "camera_language": str(raw["camera_language"]).strip(),
-        "pose_delta": str(raw["pose_delta"]).strip(),
-        "emotion": str(raw["emotion"]).strip(),
-        "scene_detail": str(raw["scene_detail"]).strip(),
-        "motion_hint": str(raw["motion_hint"]).strip(),
-        "space_relation": str(raw["space_relation"]).strip(),
+        "seed": int(raw["seed"]),
     }
-    if not all(
-        out[key]
-        for key in ("shot_id", "camera_language", "pose_delta", "emotion", "scene_detail", "motion_hint", "space_relation")
-    ):
+    if not all(out[key] for key in ("shot_id", "section_name", "section_label")):
         raise RuntimeError(f"incomplete TTI shot blueprint at {idx}")
     return out
 

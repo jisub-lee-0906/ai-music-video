@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.output_paths import audio_prefix
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
@@ -38,17 +37,15 @@ from ai_mv.infra.codex_cli_client import generate_structured, generate_text
 
 
 def build_audio_plan(config: dict, payload: dict) -> dict:
-    audio = _audio_config(config)
+    audio = _audio_source(config)
     tags = _audio_tags(audio)
-    intent = build_director_brief_intent(config)
     plan = {
         "tags": tags,
-        "director_brief_intent": intent,
         "filename_prefix": audio_prefix(payload["run_id"]),
     }
     plan.update(_audio_fixed_fields(audio))
-    plan.update(_audio_intent_fields(intent))
-    plan.update(audio_policy(config))
+    plan.update(_audio_intent_fields(audio))
+    plan.update(audio_policy({"audio": audio}))
     return _plan_once(config, plan)
 
 
@@ -57,7 +54,7 @@ def build_audio_preview_prompt(plan: dict) -> str:
 
 
 def _plan_with_llm(config: dict, plan: dict) -> dict:
-    hook_state = _plan_hook_candidates_with_llm(config, plan)
+    hook_state = _fallback_hook_state(plan)
     hooked_plan = dict(plan)
     hooked_plan.update(hook_state)
     outline = _plan_outline_with_llm(config, hooked_plan)
@@ -126,25 +123,54 @@ def _audio_fixed_fields(audio: dict) -> dict:
     }
 
 
-def _audio_intent_fields(intent: dict) -> dict:
+def _audio_intent_fields(audio: dict) -> dict:
     return {
-        "audio_direction": str(intent.get("audio_brief", "")).strip(),
-        "hook_direction": str(intent.get("audio_hook_brief", "")).strip(),
-        "hook_english_fragments": list(intent.get("audio_hook_english_fragments", []))
-        if isinstance(intent.get("audio_hook_english_fragments", []), list)
+        "audio_direction": str(audio.get("brief", "")).strip(),
+        "hook_direction": str(audio.get("hook_brief", "")).strip() or str(audio.get("brief", "")).strip(),
+        "hook_english_fragments": list(audio.get("hook_english_fragments", []))
+        if isinstance(audio.get("hook_english_fragments", []), list)
         else [],
-        "visual_direction": str(intent.get("visual_brief", "")).strip(),
         "negative_direction": " ".join(
-            part for part in [str(intent.get("visual_negative", "")).strip(), str(intent.get("avoid", "")).strip()] if part
+            part for part in [str(audio.get("negative_direction", "")).strip(), str(audio.get("avoid", "")).strip()] if part
             ).strip(),
-        "style_guidance": str(intent.get("style_contract", "")).strip(),
     }
+
+
+def _audio_source(config: dict) -> dict:
+    audio = _audio_config(config)
+    prompt = str(config.get("prompt", "")).strip() if isinstance(config, dict) else ""
+    genre = str(config.get("genre", "")).strip() if isinstance(config, dict) else ""
+    voice = str(config.get("voice", "")).strip() if isinstance(config, dict) else ""
+    language = str(config.get("language", "")).strip() if isinstance(config, dict) else ""
+    profile, tone = _split_voice(voice or str(audio.get("vocal_profile", "")).strip())
+    merged = dict(audio)
+    if language:
+        merged["language"] = str(audio.get("language", "")).strip() or language
+    if prompt:
+        merged["brief"] = str(audio.get("brief", "")).strip() or prompt
+        merged["hook_brief"] = str(audio.get("hook_brief", "")).strip() or prompt
+    if genre:
+        merged["genre_head"] = str(audio.get("genre_head", "")).strip() or genre
+    if profile:
+        merged["vocal_profile"] = str(audio.get("vocal_profile", "")).strip() or profile
+    if tone:
+        merged["vocal_tone"] = str(audio.get("vocal_tone", "")).strip() or tone
+    return merged
+
+
+def _split_voice(text: str) -> tuple[str, str]:
+    cleaned = " ".join(str(text).strip().split())
+    if not cleaned:
+        return "", ""
+    parts = [part.strip() for part in cleaned.split(",") if part.strip()]
+    if len(parts) <= 1:
+        return cleaned, ""
+    return parts[0], ", ".join(parts[1:])
 
 
 def _audio_runtime_context(plan: dict) -> dict:
     return {
         "tags": plan["tags"],
-        "director_brief_intent": dict(plan.get("director_brief_intent", {})),
         "language": str(plan.get("language", "")).strip(),
         "filename_prefix": str(plan.get("filename_prefix", "")).strip(),
         "genre_head": str(plan.get("genre_head", "")).strip(),
@@ -162,9 +188,7 @@ def _audio_runtime_context(plan: dict) -> dict:
         "selected_hook_candidate": dict(plan.get("selected_hook_candidate", {}))
         if isinstance(plan.get("selected_hook_candidate", {}), dict)
         else {},
-        "visual_direction": str(plan.get("visual_direction", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
-        "style_guidance": str(plan.get("style_guidance", "")).strip(),
     }
 
 
@@ -373,6 +397,7 @@ def _score_hook_candidate(row: dict, plan: dict) -> int:
     placement = str(row.get("placement", "")).strip()
     lower = fragment.lower()
     english_fragments = [str(x).strip().lower() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
+    intent_keywords = _intent_keywords(str(plan.get("audio_direction", "")).strip())
     words = [token for token in re.split(r"\s+", fragment) if token]
     score = 0
     if placement == "chorus":
@@ -397,7 +422,28 @@ def _score_hook_candidate(row: dict, plan: dict) -> int:
         score += 2
     if any(token in fragment for token in ("밤", "심장", "불꽃", "기억", "끝", "너머", "숨", "빛")):
         score += 3
+    if any(keyword and keyword in fragment for keyword in intent_keywords):
+        score += 5
     return score
+
+
+def _intent_keywords(text: str) -> list[str]:
+    lowered = str(text).strip().lower()
+    if not lowered:
+        return []
+    blocked = {
+        "song", "about", "that", "with", "from", "into", "through", "while", "the", "and", "late", "night",
+        "emotion", "starts", "start", "grows", "more", "direct", "before", "bridge", "resolves", "clear", "forward",
+        "release", "instead", "collapsing", "despair", "relationship", "walking",
+        "song", "pop", "korean", "language",
+    }
+    found: list[str] = []
+    for token in re.findall(r"[가-힣]{2,}|[a-z]{3,}", lowered):
+        if token in blocked:
+            continue
+        if token not in found:
+            found.append(token)
+    return found[:8]
 
 
 def _fallback_hook_state(plan: dict) -> dict:

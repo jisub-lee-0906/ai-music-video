@@ -10,12 +10,10 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
     sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
     shot_packages: list[dict] = []
     section_progression: list[dict] = []
-    event_scripts = brief.get("section_event_scripts", {})
     for section_index, section in enumerate(sections, start=1):
         section_name = str(section.get("section_name", "")).strip()
         section_label = str(section.get("section_label", section_name)).strip() or section_name or f"Section {section_index}"
-        story_goal = brief["section_story_roles"].get(section_label, brief["section_story_roles"].get(section_name, ""))
-        section_events = list(event_scripts.get(section_label, event_scripts.get(section_name, [])))
+        story_goal = _story_goal(brief, section_label, section_name)
         world_zone = _world_zone_for_section(section_label, section_index)
         line_map = {
             int(row.get("line_index", 0)): str(row.get("text", "")).strip()
@@ -36,7 +34,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
             if not beat_id:
                 continue
             base_story_function = _story_function(section_label, beat_index, len(beats))
-            base_story_event = _story_event(section_label, beat_index, beat_count=len(beats), section_events=section_events, story_function=base_story_function)
+            base_story_event = _story_event(brief, section_label, beat, story_goal, base_story_function)
             for segment in _beat_segments(config, beat, base_story_function):
                 story_function = _segment_story_function(base_story_function, segment["segment_index"], segment["segment_count"])
                 story_event = _segment_story_event(base_story_event, segment["segment_index"], segment["segment_count"])
@@ -92,9 +90,10 @@ def build_scene_outline_preview_prompt(config: dict, payload: dict) -> str:
     return (
         "Create a story-only scene outline from the lyric timeline. "
         f"Story premise={brief['story_premise']}. "
-        f"World rules={brief['world_rules']}. "
-        "For each lyric beat, decide only the story function, story goal, world zone, heroine state, and transition need. "
-        "Do not create prompt prose, environment anchors, motifs, or literal scene descriptions."
+        "Use lyrics as the source of what is happening now. "
+        "Use the profile only as world context for connected places and carry-over props. "
+        "For each lyric beat, decide only story function, story goal, world zone, heroine state, and transition need. "
+        "Do not create final prompt prose."
     )
 
 
@@ -191,19 +190,33 @@ def _why_line(section_label: str, story_function: str, story_goal: str, story_ev
     return f"{section_label} uses a {story_function} beat to serve: {story_goal} Event: {story_event}".strip()
 
 
-def _story_event(section_label: str, beat_index: int, beat_count: int, section_events: list[str], story_function: str) -> str:
-    events = [str(x).strip() for x in section_events if str(x).strip()]
-    if events:
-        idx = min(max(beat_index - 1, 0), len(events) - 1)
-        return events[idx]
+def _story_event(brief: dict, section_label: str, beat: dict, story_goal: str, story_function: str) -> str:
+    visible_action = str(beat.get("visible_action", "")).strip()
+    literal_image = str(beat.get("literal_image", "")).strip()
+    emotional_turn = str(beat.get("emotional_turn", "")).strip()
+    continuity_anchor = str(beat.get("continuity_anchor", "")).strip()
+    if visible_action:
+        return visible_action
+    if literal_image and emotional_turn:
+        return f"{literal_image}. {emotional_turn}"
+    if literal_image:
+        return literal_image
+    if continuity_anchor:
+        return continuity_anchor
     fallback = {
-        "entry": "She commits to the next physical route.",
-        "continuation": "She keeps the current route alive without resetting.",
-        "pressure": "She compresses the route into a tighter physical beat.",
-        "handoff": "She leaves the next state already formed before the cut.",
-        "payoff": "She turns the route into a wider forward release.",
+        "entry": "She commits to the next readable beat in the same world.",
+        "continuation": "She carries the same visual thread forward without resetting.",
+        "pressure": "She tightens the motion without fully stopping.",
+        "handoff": "She lands in the next state before the cut.",
+        "payoff": "She opens into the clearest release beat.",
     }
-    return fallback.get(story_function, f"{section_label} continues as a readable physical event.")
+    role = fallback.get(story_function, "She continues through the same connected world.")
+    return f"{role} {story_goal}".strip()
+
+
+def _story_goal(brief: dict, section_label: str, section_name: str) -> str:
+    roles = brief.get("section_story_roles", {})
+    return str(roles.get(section_label, roles.get(section_name, ""))).strip()
 
 
 def _duration(beat: dict) -> float:

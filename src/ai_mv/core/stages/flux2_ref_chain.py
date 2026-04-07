@@ -63,13 +63,13 @@ def build_flux2_ref_plan(config: dict, payload: dict) -> dict:
                 "section_label": str(shot.get("section_label", "")).strip(),
                 "is_chorus": "chorus" in str(shot.get("section_label", "")).lower(),
                 "camera_language": "",
-                "pose_delta": str(shot.get("dominant_action", "")).strip(),
-                "emotion": str(shot.get("continuity_delta", "")).strip(),
+                "pose_delta": str(shot.get("action", "")).strip(),
+                "emotion": str(shot.get("emotional_turn", "")).strip(),
                 "scene_detail": _literal_scene_description(shot),
-                "environment_family": str(shot.get("ref_archetype", "")).strip(),
+                "environment_family": "",
                 "camera_distance_band": "",
-                "contact_intent": str(shot.get("content_trace", "")).strip(),
-                "motion_hint": str(shot.get("dominant_action", "")).strip(),
+                "contact_intent": str(shot.get("carry", "")).strip(),
+                "motion_hint": str(shot.get("action", "")).strip(),
                 "space_relation": str(shot.get("world_zone", "")).strip(),
                 "kinetic_transition": "carry",
                 "lighting_fx": "",
@@ -117,10 +117,16 @@ def _clip_routes_from_prompt_plan(payload: dict, flux2_ref_images: list[dict]) -
 
 
 def _literal_scene_description(shot: dict) -> str:
+    place = " ".join(str(shot.get("place", "")).strip().rstrip(".").split())
+    if place:
+        return place
     primary_surface = " ".join(str(shot.get("primary_surface", "")).strip().rstrip(".").split())
     if primary_surface:
         return primary_surface
-    trace = " ".join(str(shot.get("content_trace", "")).strip().rstrip(".").split())
+    trace = " ".join(str(shot.get("literal_image", "")).strip().rstrip(".").split())
     if trace:
-        return f"a readable station-side place at night with {trace}"
-    return "a readable station-side place at night with clear physical depth around her"
+        return trace
+    legacy_trace = " ".join(str(shot.get("content_trace", "")).strip().rstrip(".").split())
+    if legacy_trace:
+        return legacy_trace
+    return "a grounded real-world location"
