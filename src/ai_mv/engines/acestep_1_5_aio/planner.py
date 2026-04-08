@@ -11,7 +11,7 @@ from ai_mv.core.contracts.prompt_normalize import (
     validate_audio_lyrics_quality,
 )
 from ai_mv.core.contracts.prompt_schema import audio_outline_schema
-from ai_mv.engines.acestep_1_5_aio.policy import audio_policy, preferred_songform_rows
+from ai_mv.engines.acestep_1_5_aio.policy import audio_policy, bar_lane_summary, preferred_songform_rows
 from ai_mv.engines.acestep_1_5_aio.prompting import (
     _audio_config,
     _audio_language,
@@ -58,14 +58,8 @@ def build_audio_preview_prompt(plan: dict) -> str:
 
 
 def _plan_with_llm(config: dict, plan: dict) -> dict:
-    hook_state = _fallback_hook_state(plan)
-    hooked_plan = dict(plan)
-    hooked_plan.update(hook_state)
-    outline = _plan_outline_with_llm(config, hooked_plan)
-    merged = _plan_lyrics_with_llm(config, hooked_plan, outline)
-    merged["hook_candidates"] = list(hook_state.get("hook_candidates", []))
-    merged["selected_hook_candidate"] = dict(hook_state.get("selected_hook_candidate", {}))
-    return merged
+    outline = _plan_outline_with_llm(config, plan)
+    return _plan_lyrics_with_llm(config, plan, outline)
 
 
 def _plan_once(config: dict, plan: dict) -> dict:
@@ -103,7 +97,10 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized.update(_audio_runtime_context(plan))
     normalized["beats_per_bar"] = int(plan.get("beats_per_bar", 4))
     normalized["section_bars"] = dict(plan.get("section_bars", {}))
-    normalized["bar_lane"] = str(plan.get("bar_lane", "")).strip()
+    normalized["bar_lane"] = bar_lane_summary(
+        normalized.get("lyrics_blocks", []),
+        dict(plan.get("section_bars", {})) if isinstance(plan.get("section_bars", {}), dict) else {},
+    )
     normalized["ending_mode"] = str(plan.get("ending_mode", "")).strip()
     normalized["terminal_end_tag"] = bool(plan.get("terminal_end_tag", False))
     normalized["final_chorus_required"] = bool(plan.get("final_chorus_required", False))
@@ -111,8 +108,6 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["ending_vocal_density"] = str(plan.get("ending_vocal_density", "")).strip()
     normalized["ending_tags"] = list(plan.get("ending_tags", [])) if isinstance(plan.get("ending_tags", []), list) else []
     normalized["line_budgets"] = dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {}
-    normalized["hook_candidates"] = list(planned.get("hook_candidates", [])) if isinstance(planned.get("hook_candidates", []), list) else []
-    normalized["selected_hook_candidate"] = dict(planned.get("selected_hook_candidate", {})) if isinstance(planned.get("selected_hook_candidate", {}), dict) else {}
     normalized["bpm"] = int(normalized.get("bpm", 0) or int(plan.get("bpm", 0) or 0))
     normalized["keyscale"] = str(normalized.get("keyscale", "")).strip() or str(plan.get("keyscale", "")).strip()
     return normalized
@@ -130,10 +125,6 @@ def _audio_fixed_fields(audio: dict) -> dict:
 def _audio_intent_fields(audio: dict) -> dict:
     return {
         "audio_direction": str(audio.get("brief", "")).strip(),
-        "hook_direction": str(audio.get("hook_brief", "")).strip() or str(audio.get("brief", "")).strip(),
-        "hook_english_fragments": list(audio.get("hook_english_fragments", []))
-        if isinstance(audio.get("hook_english_fragments", []), list)
-        else [],
         "negative_direction": " ".join(
             part for part in [str(audio.get("negative_direction", "")).strip(), str(audio.get("avoid", "")).strip()] if part
             ).strip(),
@@ -143,16 +134,19 @@ def _audio_intent_fields(audio: dict) -> dict:
 def _audio_source(config: dict) -> dict:
     audio = _audio_config(config)
     prompt = str(config.get("prompt", "")).strip() if isinstance(config, dict) else ""
+    concept_text = str(config.get("concept_text", "")).strip() if isinstance(config, dict) else ""
     genre = str(config.get("genre", "")).strip() if isinstance(config, dict) else ""
     voice = str(config.get("voice", "")).strip() if isinstance(config, dict) else ""
-    language = str(config.get("language", "")).strip() if isinstance(config, dict) else ""
     profile, tone = _split_voice(voice or str(audio.get("vocal_profile", "")).strip())
     merged = dict(audio)
-    if language:
-        merged["language"] = language
+    if not prompt and concept_text:
+        prompt = concept_text
+    merged["language"] = "ja"
     if prompt:
         merged["brief"] = prompt
         merged["hook_brief"] = str(audio.get("hook_brief", "")).strip() or prompt
+    if not genre and _looks_like_citypop(concept_text):
+        genre = "city pop"
     if genre:
         merged["genre_head"] = genre
     if profile:
@@ -172,6 +166,11 @@ def _split_voice(text: str) -> tuple[str, str]:
     return parts[0], ", ".join(parts[1:])
 
 
+def _looks_like_citypop(text: str) -> bool:
+    low = str(text).strip().lower()
+    return "city pop" in low or "citypop" in low
+
+
 def _audio_runtime_context(plan: dict) -> dict:
     return {
         "tags": plan["tags"],
@@ -182,16 +181,6 @@ def _audio_runtime_context(plan: dict) -> dict:
         "vocal_tone": str(plan.get("vocal_tone", "")).strip(),
         "quality": plan["quality"],
         "audio_direction": str(plan.get("audio_direction", "")).strip(),
-        "hook_direction": str(plan.get("hook_direction", "")).strip(),
-        "hook_english_fragments": list(plan.get("hook_english_fragments", []))
-        if isinstance(plan.get("hook_english_fragments", []), list)
-        else [],
-        "hook_candidates": list(plan.get("hook_candidates", []))
-        if isinstance(plan.get("hook_candidates", []), list)
-        else [],
-        "selected_hook_candidate": dict(plan.get("selected_hook_candidate", {}))
-        if isinstance(plan.get("selected_hook_candidate", {}), dict)
-        else {},
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
     }
 
@@ -258,12 +247,20 @@ def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
 
 
 def _normalize_audio_outline(raw: dict) -> dict:
+    raw_rows = [row for row in raw.get("lyrics_blocks", []) if isinstance(row, dict)]
+    chorus_indexes = [idx for idx, row in enumerate(raw_rows) if str(row.get("section", "")).strip() == "chorus"]
+    pre_count = 0
+    chorus_seen = 0
     blocks = []
-    for row in raw.get("lyrics_blocks", []):
+    for idx, row in enumerate(raw_rows):
         if not isinstance(row, dict):
             continue
         section = str(row.get("section", "")).strip()
-        label = str(row.get("label", "")).strip()
+        if section == "pre_chorus":
+            pre_count += 1
+        if section == "chorus":
+            chorus_seen += 1
+        label = _canonical_outline_label(section, str(row.get("label", "")).strip(), idx, chorus_indexes, pre_count, chorus_seen)
         line_count = int(row.get("line_count", 0))
         blocks.append(
             {
@@ -285,8 +282,49 @@ def _normalize_audio_outline(raw: dict) -> dict:
     }
 
 
+def _canonical_outline_label(
+    section: str,
+    label: str,
+    idx: int,
+    chorus_indexes: list[int],
+    pre_count: int,
+    chorus_seen: int,
+) -> str:
+    if section == "intro":
+        return "Intro"
+    if section == "verse_1":
+        return "Verse 1"
+    if section == "verse_2":
+        return "Verse 2"
+    if section == "pre_chorus":
+        return "Pre-Chorus" if pre_count <= 1 else "Pre-Chorus 2"
+    if section == "chorus":
+        if chorus_indexes and idx == chorus_indexes[-1] and len(chorus_indexes) >= 2:
+            return "Final Chorus"
+        return "Chorus" if chorus_seen <= 1 else "Chorus 2"
+    if section == "post_chorus":
+        return "Post-Chorus"
+    if section == "bridge":
+        return "Bridge"
+    if section == "outro":
+        return "Outro"
+    return label
+
+
 def _validate_outline_labels(outline: dict) -> None:
-    allowed = {str(row["label"]).strip() for row in preferred_songform_rows()}
+    allowed = {
+        "Intro",
+        "Verse 1",
+        "Verse 2",
+        "Pre-Chorus",
+        "Pre-Chorus 2",
+        "Chorus",
+        "Chorus 2",
+        "Post-Chorus",
+        "Bridge",
+        "Final Chorus",
+        "Outro",
+    }
     labels: list[str] = []
     for block in outline.get("lyrics_blocks", []):
         if not isinstance(block, dict):
@@ -515,12 +553,21 @@ def _fallback_hook_state(plan: dict) -> dict:
             }
         )
     if not candidates:
+        language = str(plan.get("language", "")).strip().lower()
+        fallback_fragment = "残る灯り" if language == "ja" else "남은 불빛" if language == "ko" else "remaining light"
+        fallback_why = (
+            "Fallback Japanese chorus hook from the song profile."
+            if language == "ja"
+            else "Fallback Korean chorus hook from the song profile."
+            if language == "ko"
+            else "Fallback English chorus hook from the song profile."
+        )
         candidates.append(
             {
-                "fragment": "남은 불빛",
+                "fragment": fallback_fragment,
                 "language_mode": "primary_only",
                 "placement": "chorus",
-                "why": "Fallback Korean chorus hook from the song profile.",
+                "why": fallback_why,
             }
         )
     return {
@@ -646,9 +693,7 @@ def _generate_lyrics_draft(config: dict, plan: dict, outline: dict) -> list[dict
             completed.append(candidate)
         except RuntimeError:
             completed.append(_generate_lyrics_block(config, plan, outline, completed, block))
-    refreshed = _refresh_overused_imagery(config, plan, outline, completed)
-    refined = _refresh_hook_fit(config, plan, outline, refreshed)
-    return _polish_lyrics_sections(config, plan, outline, refined)
+    return completed
 
 
 def _refresh_overused_imagery(config: dict, plan: dict, outline: dict, blocks: list[dict]) -> list[dict]:
@@ -753,7 +798,7 @@ def _refresh_hook_fit(config: dict, plan: dict, outline: dict, blocks: list[dict
             continue
         if not _chorus_hook_fit_needs_refresh(plan, block):
             continue
-        if rewrites >= 2:
+        if rewrites >= 3:
             break
         carry = _carry_world_tokens(refreshed, block)
         block_spec = next(
@@ -771,7 +816,18 @@ def _refresh_hook_fit(config: dict, plan: dict, outline: dict, blocks: list[dict
         )
         note = (
             f"Refresh this {label} so the hook feels native to this song's world. "
-            f"If you use the selected hook '{selected_hook}', make it feel emotionally and sonically natural instead of slogan-like. "
+            f"Use the exact selected hook '{selected_hook}' once in this section. "
+            + (
+                "Put it in the first line or the last line so the section lands clearly. "
+                if label == "Chorus"
+                else "Keep the exact hook center while rewriting the surrounding lines so this section still evolves. "
+            )
+            + (
+                "This final return should still contain the exact hook once, but the surrounding lines must feel like resolution rather than repetition. "
+                if label == "Final Chorus"
+                else ""
+            )
+            + "Make the hook feel emotionally and sonically natural instead of slogan-like. "
             "Do not drop in an imported catchphrase that feels disconnected from the rest of the lyric language. "
             + (f"Keep continuity with these already-grounded image anchors: {', '.join(carry)}. " if carry else "")
             + "Keep the same section function and exact line count. "
@@ -795,11 +851,9 @@ def _chorus_hook_fit_needs_refresh(plan: dict, block: dict) -> bool:
     text = " ".join(lines).lower()
     selected_hook = str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip().lower()
     english_fragments = [str(x).strip().lower() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
-    if selected_hook and selected_hook in text:
-        return False
-    if str(plan.get("language", "")).strip().lower() != "ko":
-        return False
-    if any(fragment and fragment in text for fragment in english_fragments):
+    if selected_hook and selected_hook not in text:
+        return True
+    if str(plan.get("language", "")).strip().lower() == "ko" and any(fragment and fragment in text for fragment in english_fragments):
         return True
     return False
 
@@ -936,16 +990,13 @@ def _resolved_duration(plan: dict, normalized: dict) -> int:
     if bool(plan.get("duration_override")):
         return int(plan["duration"])
     duration = int(normalized.get("duration", 0) or 0)
-    if duration > 0:
-        return duration
-    from ai_mv.engines.acestep_1_5_aio.policy import compute_duration_from_blocks, resolve_section_bars
-
-    return compute_duration_from_blocks(
-        normalized.get("lyrics_blocks", []),
-        int(normalized.get("bpm", 0)),
-        int(plan.get("beats_per_bar", 4)),
-        resolve_section_bars({"section_bars": plan.get("section_bars", {})}),
-    )
+    if duration <= 0:
+        duration = 165
+    min_sec = int(plan.get("duration_min_sec", 150) or 150)
+    max_sec = int(plan.get("duration_max_sec", 180) or 180)
+    if max_sec < min_sec:
+        max_sec = min_sec
+    return max(min_sec, min(duration, max_sec))
 
 
 def _validate_ending_contract(plan: dict, normalized: dict) -> None:

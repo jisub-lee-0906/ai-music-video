@@ -16,38 +16,35 @@ DEFAULT_ENDING_TAGS: dict[str, list[str]] = {
 }
 DEFAULT_LINE_BUDGETS: dict[str, int] = {
     "Intro": 0,
-    "Verse 1": 6,
-    "Verse 2": 6,
-    "Pre-Chorus": 4,
-    "Pre-Chorus 2": 4,
-    "Chorus": 6,
-    "Chorus 2": 6,
-    "Final Chorus": 6,
-    "Post-Chorus": 3,
-    "Bridge": 4,
+    "Verse 1": 5,
+    "Verse 2": 5,
+    "Pre-Chorus": 3,
+    "Pre-Chorus 2": 3,
+    "Chorus": 5,
+    "Chorus 2": 5,
+    "Final Chorus": 5,
+    "Post-Chorus": 2,
+    "Bridge": 3,
     "Outro": 0,
 }
 DEFAULT_SECTION_BARS: dict[str, int] = {
     "intro": 4,
-    "verse": 12,
-    "verse_1": 12,
-    "verse_2": 12,
-    "pre_chorus": 8,
-    "chorus": 12,
+    "verse": 10,
+    "verse_1": 10,
+    "verse_2": 10,
+    "pre_chorus": 6,
+    "chorus": 10,
     "post_chorus": 4,
-    "bridge": 8,
+    "bridge": 6,
     "outro": 4,
-    "final_chorus_bonus": 4,
+    "final_chorus_bonus": 2,
 }
 PREFERRED_SONGFORM: tuple[tuple[str, str], ...] = (
     ("intro", "Intro"),
     ("verse_1", "Verse 1"),
     ("pre_chorus", "Pre-Chorus"),
     ("chorus", "Chorus"),
-    ("post_chorus", "Post-Chorus"),
     ("verse_2", "Verse 2"),
-    ("pre_chorus", "Pre-Chorus 2"),
-    ("chorus", "Chorus 2"),
     ("bridge", "Bridge"),
     ("chorus", "Final Chorus"),
     ("outro", "Outro"),
@@ -65,6 +62,8 @@ def audio_policy(config: dict) -> dict:
     return {
         "duration": int(duration),
         "duration_override": override_duration is not None,
+        "duration_min_sec": _coerce_positive_int(audio.get("target_duration_min_sec"), default=150),
+        "duration_max_sec": _coerce_positive_int(audio.get("target_duration_max_sec"), default=180),
         "bar_lane": bar_lane_summary(preferred_rows, section_bars),
         "beats_per_bar": beats_per_bar,
         "section_bars": section_bars,
@@ -216,6 +215,18 @@ def resolve_line_budgets(audio: dict) -> dict[str, int]:
         resolved["Chorus 2"] = 4
         resolved["Final Chorus"] = 4
         resolved["Bridge"] = 2
+        resolved["Intro"] = 0
+        resolved["Outro"] = 0
+    if language == "ja":
+        resolved["Verse 1"] = 5
+        resolved["Verse 2"] = 5
+        resolved["Pre-Chorus"] = 3
+        resolved["Pre-Chorus 2"] = 3
+        resolved["Chorus"] = 5
+        resolved["Chorus 2"] = 5
+        resolved["Final Chorus"] = 5
+        resolved["Post-Chorus"] = 2
+        resolved["Bridge"] = 3
         resolved["Intro"] = 0
         resolved["Outro"] = 0
     if ending_mode == "clean_resolve":

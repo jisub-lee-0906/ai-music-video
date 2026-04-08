@@ -3,38 +3,27 @@ from __future__ import annotations
 import hashlib
 
 from ai_mv.core.contracts.errors import PipelineError
-from ai_mv.core.director_brief import validate_director_brief_config
 from ai_mv.core.workflow_names import WORKFLOW_FILES
-from ai_mv.utils.path_utils import resolve_project_path
 from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import ensure_16_9, ensure_positive_size, parse_size, parse_target
+from ai_mv.utils.path_utils import resolve_project_path
 
-def apply_director_brief(config: dict) -> None:
-    name = str(config.get("brief", "")).strip() or "director_brief_example"
-    fname = name if name.endswith(".yaml") else f"{name}.yaml"
-    profiles_root = resolve_project_path("profiles")
-    path = (profiles_root / fname).resolve()
-    if profiles_root not in path.parents:
-        raise PipelineError("brief path escapes profiles directory")
-    if not path.exists():
-        raise PipelineError(f"missing director brief config: {path.as_posix()}")
-    import yaml
+DEFAULT_CONCEPT = "Japanese 80s city pop song and music video with a distinct emotional theme"
 
-    brief = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(brief, dict):
-        raise PipelineError(f"invalid director brief config: {path.as_posix()}")
-    _deep_merge(config, brief)
-    config["brief"] = name
-    try:
-        validate_director_brief_config(config)
-    except ValueError as exc:
-        raise PipelineError(str(exc)) from exc
+
+def apply_citypop_defaults(config: dict) -> None:
+    concept_text = str(config.get("concept_text", "")).strip()
+    if not concept_text:
+        config["concept_text"] = DEFAULT_CONCEPT
+    audio = config.get("audio", {}) if isinstance(config.get("audio", {}), dict) else {}
+    audio["language"] = "ja"
+    config["audio"] = audio
 
 
 def validate_sizes(config: dict) -> None:
     w, h, _ = parse_target(config["video"]["target"])
     ensure_16_9(w, h)
-    for key in ("tti_size", "ref_size", "wan_size"):
+    for key in ("qwen_size", "ltx_i2v_size", "ltx_ia2v_size", "ltx_flf2v_size"):
         rw, rh = parse_size(str(config["render"][key]))
         ensure_positive_size(rw, rh)
 
@@ -54,11 +43,3 @@ def validate_templates(config: dict) -> None:
         actual = hashlib.sha256(p.read_bytes()).hexdigest()
         if str(expected) and actual != str(expected):
             raise PipelineError(f"template hash mismatch: {name}")
-
-
-def _deep_merge(base: dict, patch: dict) -> None:
-    for key, val in patch.items():
-        if isinstance(val, dict) and isinstance(base.get(key), dict):
-            _deep_merge(base[key], val)
-        else:
-            base[key] = val

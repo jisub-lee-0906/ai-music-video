@@ -1,17 +1,26 @@
 from __future__ import annotations
 
-from ai_mv.core.artifacts.llm_review import write_llm_review
 from ai_mv.core.artifacts.manifest import write_manifest
-from ai_mv.core.artifacts.quality_review import write_quality_review
 from ai_mv.core.artifacts.run_summary import write_run_summary
-from ai_mv.core.llm_review import build_llm_review
-from ai_mv.core.quality_review import build_quality_review, build_run_summary
 
 
 def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     write_manifest(state, payload)
-    quality_review = build_quality_review(config, payload)
-    llm_review = build_llm_review(config, payload)
-    write_quality_review(state, quality_review)
-    write_llm_review(state, llm_review)
-    write_run_summary(state, build_run_summary(state, payload, quality_review))
+    summary = {
+        "run_id": state["run_id"],
+        "scope": str(state.get("scope", "run")),
+        "status": str(state.get("status", "")),
+        "current_stage": str(state.get("current_stage", "")),
+        "failure_reason": str(state.get("failure_reason", "")),
+        "completed_stages": list(state.get("completed_stages", [])),
+        "concept_text": str(payload.get("concept_text", "")).strip(),
+        "final_video": str(payload.get("final_video", "")).strip(),
+        "music_file": str(payload.get("music_file", "")).strip(),
+        "review_status": str(payload.get("review_report", {}).get("status", "")).strip()
+        if isinstance(payload.get("review_report"), dict)
+        else "",
+        "rerender_target_count": len(payload.get("review_report", {}).get("rerender_targets", []))
+        if isinstance(payload.get("review_report"), dict)
+        else 0,
+    }
+    write_run_summary(state, summary)

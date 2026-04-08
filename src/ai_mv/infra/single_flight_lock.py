@@ -9,6 +9,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from ai_mv.core.state.state_store import runs_root
+
 DEFAULT_STALE_SECONDS = 5 * 60
 HEARTBEAT_INTERVAL_SECONDS = 30
 _LOCKS: dict[Path, "LockHandle"] = {}
@@ -27,7 +29,7 @@ class LockHandle:
 
 def acquire_lock(name: str, run_id: str = "") -> Path:
     _install_cleanup_hooks()
-    lock = Path(f"artifacts/runs_state/{name}.lock")
+    lock = runs_root("run") / f"{name}.lock"
     lock.parent.mkdir(parents=True, exist_ok=True)
     owner = _owner_meta(run_id)
     for _ in range(2):

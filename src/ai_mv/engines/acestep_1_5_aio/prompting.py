@@ -12,7 +12,7 @@ def _audio_outline_prompt(plan: dict) -> str:
         _audio_prompt_rules(plan)
         + _target_duration_clause(plan)
         + _target_bpm_clause(plan)
-        + f"Seed={int(plan.get('seed', 31))}. "
+        + f"Planner seed={int(plan.get('seed', 31))}. This is a planning hint, not the workflow execution seed. "
         + _language_clause(plan)
         + _intent_clause(plan)
         + _outline_label_clause_qwen(plan)
@@ -58,9 +58,10 @@ def _audio_songform_rules(plan: dict) -> str:
     rules = [
         "Write a full song, not a fragment. ",
         "Keep a clear arc across the song: early sections establish the state, middle sections develop or tighten it, and later sections resolve or release it. ",
-        "Use a songform that fits the genre and duration instead of forcing one fixed template. ",
+        "Choose a songform that fits modern short-form Japanese city pop around two and a half to three minutes instead of forcing one fixed template. ",
+        "Prefer compact, natural section flow over mechanically using every available section label. ",
         "For each section, role should say what that section must do, and change should say what becomes different from the previous section. ",
-        "Use Chorus 2 only if it is clearly needed. ",
+        "Use Chorus 2, Pre-Chorus 2, or Post-Chorus only if the song truly needs them. ",
         "Do not make Verse 2 a copy of Verse 1. ",
         "If you use Final Chorus, make it feel like an answer, not a repeat. ",
         "Keep Intro and Outro instrumental unless a very short sung line is clearly necessary. ",
@@ -96,7 +97,12 @@ def _audio_line_budget_rules(plan: dict) -> str:
 def _language_style_rules(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
     if lang == "ja":
-        return "Write fluent modern Japanese lyrics later. Keep them natural, compact, and singable. "
+        return (
+            "Write fluent modern Japanese lyrics later. Keep them natural, compact, singable, and emotionally precise. "
+            "Favor concrete, lived-in visual detail over abstract explanation. "
+            "Let the song choose whether it leans toward romance, breakup, longing, self-recovery, urban loneliness, or another fitting city-pop mood. "
+            "Avoid Korean-style direct confession phrasing, overpacked literary metaphor, and awkward slogan-like hooks. "
+        )
     if lang == "ko":
         return "Write fluent modern Korean lyrics later. Keep them short, singable, and direct. "
     if lang == "en":
@@ -106,8 +112,16 @@ def _language_style_rules(plan: dict) -> str:
 
 def _outline_label_clause_qwen(plan: dict) -> str:
     rows = preferred_songform_rows()
-    pairs = [f"{row['section']}=>{str(row['label']).strip()}" for row in rows]
-    return "Canonical labels: " + ", ".join(pairs) + ". "
+    labels: list[str] = []
+    for row in rows:
+        label = str(row["label"]).strip()
+        if label and label not in labels:
+            labels.append(label)
+    optional = ["Pre-Chorus 2", "Chorus 2", "Post-Chorus"]
+    for label in optional:
+        if label not in labels:
+            labels.append(label)
+    return "Available canonical labels: " + ", ".join(labels) + ". "
 
 
 def _audio_tags(audio: dict) -> str:
@@ -129,8 +143,8 @@ def _audio_config(config: dict) -> dict:
 
 
 def _audio_language(audio: dict) -> str:
-    raw = str(audio.get("language", "en")).strip().lower() if isinstance(audio, dict) else "en"
-    return raw if raw in {"en", "ja", "ko"} else "en"
+    raw = str(audio.get("language", "ja")).strip().lower() if isinstance(audio, dict) else "ja"
+    return raw if raw in {"en", "ja", "ko"} else "ja"
 
 
 def _target_bpm_clause(plan: dict) -> str:
@@ -142,6 +156,10 @@ def _target_bpm_clause(plan: dict) -> str:
 
 def _target_duration_clause(plan: dict) -> str:
     duration = int(plan.get("duration", 0) or 0)
+    min_sec = int(plan.get("duration_min_sec", 0) or 0)
+    max_sec = int(plan.get("duration_max_sec", 0) or 0)
+    if min_sec > 0 and max_sec >= min_sec:
+        return f"Target duration between {min_sec} and {max_sec} sec. "
     return f"Target duration={duration} sec. " if duration > 0 else ""
 
 
@@ -156,21 +174,9 @@ def _intent_clause(
     include_selected_hook: bool = True,
     include_hook_fragments: bool = True,
 ) -> str:
-    hook_fragments = (
-        [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
-        if isinstance(plan.get("hook_english_fragments", []), list)
-        else []
-    )
     audio_intent = str(plan.get("audio_direction", "")).strip()
-    hook_intent = str(plan.get("hook_direction", "")).strip()
     parts = [
         _profile_line("Audio intent", audio_intent),
-        _profile_line("Hook intent", hook_intent if hook_intent and hook_intent != audio_intent else ""),
-        _profile_line("Hook English fragments", ", ".join(hook_fragments) if include_hook_fragments else ""),
-        _profile_line(
-            "Selected chorus hook",
-            str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip() if include_selected_hook else "",
-        ),
         _profile_line("Genre", plan.get("genre_head", "")),
         _profile_line("Voice", _join_unique_parts(plan.get("vocal_profile", ""), plan.get("vocal_tone", ""))),
         _profile_line("Avoid", _merged_avoid_text(plan)),

@@ -461,7 +461,7 @@ def _validate_chorus_growth(blocks: list[dict], language: str) -> None:
 
 
 def _validate_line_density(blocks: list[dict], language: str) -> None:
-    max_chars = 52 if language == "en" else 22 if language == "ko" else 34
+    max_chars = 52 if language == "en" else 22 if language == "ko" else 28
     max_commas = 2 if language == "en" else 1
     for row in blocks:
         label = str(row.get("label", "")).strip() or str(row.get("section", "")).strip()
@@ -478,7 +478,7 @@ def _validate_line_density(blocks: list[dict], language: str) -> None:
 
 
 def _validate_hook_quality(blocks: list[dict], language: str) -> None:
-    short_limit = 28 if language == "en" else 14 if language == "ko" else 18
+    short_limit = 28 if language == "en" else 14 if language == "ko" else 16
     for row in blocks:
         label = str(row.get("label", "")).strip()
         if label not in {"Chorus", "Chorus 2", "Final Chorus"}:

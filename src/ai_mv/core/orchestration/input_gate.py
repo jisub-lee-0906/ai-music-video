@@ -6,24 +6,17 @@ from ai_mv.core.contracts.errors import StageFailure
 
 
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
-    "storyboard": ("audio_plan", "audio_map"),
-    "keyframes": ("prompt_plan",),
-    "clips": ("prompt_plan", "flux2_ref_images", "clip_routes"),
-    "merge": ("clips", "music_file"),
-    "merge_mux": ("clips", "music_file"),
+    "plan": ("audio_plan", "audio_map"),
+    "stills": ("shot_plan", "render_plan", "citypop_bible"),
+    "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
+    "assemble": ("clip_results", "music_file"),
+    "review": ("review_inputs",),
 }
 
 
 class ClipOutput(TypedDict):
     shot_id: str
     video: str
-
-
-class ClipRoute(TypedDict, total=False):
-    shot_id: str
-    anchor: str
-    duration_sec: float
-    use_ref: bool
 
 
 def validate_stage_input(stage: str, payload: dict) -> None:
@@ -40,17 +33,24 @@ def validate_stage_input(stage: str, payload: dict) -> None:
 
 
 def _validate_stage_shape(stage: str, payload: dict) -> None:
-    if stage in {"merge", "merge_mux"}:
-        _validate_merge_inputs(payload)
+    if stage == "assemble":
+        _validate_assemble_inputs(payload)
+    if stage == "review":
+        _validate_review_inputs(payload)
 
 
-def _validate_merge_inputs(payload: dict) -> None:
-    clips = _require_list(payload.get("clips"), "merge_mux clips")
+def _validate_assemble_inputs(payload: dict) -> None:
+    clips = _require_list(payload.get("clip_results"), "assemble clip_results")
     for idx, row in enumerate(clips, start=1):
-        item: ClipOutput = _require_dict(row, f"merge_mux clips[{idx}]")
-        _require_non_empty_str(item.get("shot_id"), f"merge_mux clips[{idx}].shot_id")
-        _require_non_empty_str(item.get("video"), f"merge_mux clips[{idx}].video")
-    _require_non_empty_str(payload.get("music_file"), "merge_mux music_file")
+        item: ClipOutput = _require_dict(row, f"assemble clip_results[{idx}]")
+        _require_non_empty_str(item.get("shot_id"), f"assemble clip_results[{idx}].shot_id")
+        _require_non_empty_str(item.get("video"), f"assemble clip_results[{idx}].video")
+    _require_non_empty_str(payload.get("music_file"), "assemble music_file")
+
+
+def _validate_review_inputs(payload: dict) -> None:
+    review_inputs = _require_dict(payload.get("review_inputs"), "review review_inputs")
+    _require_non_empty_str(review_inputs.get("music_file"), "review review_inputs.music_file")
 
 
 def _require_list(value: object, label: str) -> list:

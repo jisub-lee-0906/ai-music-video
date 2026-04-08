@@ -10,74 +10,23 @@ def write_manifest(state: dict, payload: dict) -> None:
         "run_id": state["run_id"],
         "status": state["status"],
         "failure_reason": state["failure_reason"],
-        "selected_brief": str(payload.get("selected_brief", "")),
-        "lyrics_timeline": dict(payload.get("lyrics_timeline", {})),
-        "scene_outline": dict(payload.get("scene_outline", {})),
-        "direction_plan": dict(payload.get("direction_plan", {})),
-        "prompt_plan": dict(payload.get("prompt_plan", {})),
-        "storyboard": dict(payload.get("storyboard", {})),
-        "keyframes": dict(payload.get("keyframes", {})),
-        "anchors": _anchor_rows(payload),
-        "clip_routes": _route_rows(payload),
-        "flux2_ref_images": _flux2_ref_rows(payload),
-        "clips": list(payload.get("clips", [])),
-        "merge_status": str(payload.get("merge_status", "")),
+        "concept_text": str(payload.get("concept_text", "")),
+        "planner_prompts": dict(payload.get("planner_prompts", {})),
+        "workflow_inputs": dict(payload.get("workflow_inputs", {})),
+        "workflow_inputs_preview": dict(payload.get("workflow_inputs_preview", {})),
+        "render_inputs": dict(payload.get("render_inputs", {})),
+        "audio_plan": dict(payload.get("audio_plan", {})),
+        "audio_map": dict(payload.get("audio_map", {})),
+        "citypop_bible": dict(payload.get("citypop_bible", {})),
+        "shot_plan": list(payload.get("shot_plan", [])),
+        "render_plan": list(payload.get("render_plan", [])),
+        "still_results": list(payload.get("still_results", [])),
+        "clip_results": list(payload.get("clip_results", [])),
+        "review_report": dict(payload.get("review_report", {})),
         "final_video": str(payload.get("final_video", "")),
+        "music_file": str(payload.get("music_file", "")),
     }
     write_json(run_file(state["run_id"], "manifest.json", scope), out)
     write_json(latest_file("manifest.json", scope), out)
     if str(state.get("status", "")) == "done":
         write_json(latest_success_file("manifest.json", scope), out)
-
-
-def _anchor_rows(payload: dict) -> list[dict]:
-    out: list[dict] = []
-    for row in payload.get("anchors", []):
-        if not isinstance(row, dict):
-            continue
-        out.append(
-            {
-                "shot_id": str(row.get("shot_id", "")),
-                "lyric_beat_id": str(row.get("lyric_beat_id", "")),
-                "anchor": str(row.get("anchor", "")),
-                "retry": int(row.get("retry", 0)),
-                "error_body": str(row.get("error_body", "")),
-            }
-        )
-    return out
-
-
-def _flux2_ref_rows(payload: dict) -> list[dict]:
-    out: list[dict] = []
-    for row in payload.get("flux2_ref_images", []):
-        if not isinstance(row, dict):
-            continue
-        out.append(
-            {
-                "shot_id": str(row.get("shot_id", "")),
-                "start": str(row.get("start", "")),
-                "end": str(row.get("end", "")),
-                "retry": int(row.get("retry", 0)),
-                "error_body": str(row.get("error_body", "")),
-            }
-        )
-    return out
-
-
-def _route_rows(payload: dict) -> list[dict]:
-    out: list[dict] = []
-    for row in payload.get("clip_routes", []):
-        if not isinstance(row, dict):
-            continue
-        out.append(
-            {
-                "shot_id": str(row.get("shot_id", "")),
-                "lyric_beat_id": str(row.get("lyric_beat_id", "")),
-                "use_ref": bool(row.get("use_ref", False)),
-                "section_label": str(row.get("section_label", "")),
-                "duration_sec": float(row.get("duration_sec", 0.0) or 0.0),
-                "start_ref_shot_id": str(row.get("start_ref_shot_id", "")),
-                "end_ref_shot_id": str(row.get("end_ref_shot_id", "")),
-            }
-        )
-    return out

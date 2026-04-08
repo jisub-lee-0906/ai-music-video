@@ -9,7 +9,7 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
         "Keep the exact block label and exact line count. "
         "Write singable finished lyric lines only. "
         "Do not output headers, numbering, notes, or blank filler lines. "
-        "Avoid exact repeats across blocks except one short chorus hook if needed. "
+        "Avoid exact repeats across blocks unless a brief refrain is musically necessary. "
         "Stay inside the exact emotional situation and progression described by Audio intent; do not drift into a safer generic pop song. "
         "Verse 2 must change the situation, Bridge must reframe, and Final Chorus must resolve. "
         "Keep lines short and memorable. "
@@ -21,27 +21,25 @@ def _audio_lyrics_rules_qwen(plan: dict) -> str:
             "Use English only as one very short hook fragment inside the chorus family if truly needed. "
         )
     if lang == "ja":
-        return base + "Write fluent modern Japanese only. Keep it natural and singable. "
+        return base + (
+            "Write fluent modern Japanese only. "
+            "Keep it natural, singable, and precise. "
+            "Favor concrete, lived-in visual detail over abstract explanation. "
+            "The song may be romance, breakup, memory, self-recovery, urban loneliness, or another coherent city-pop emotional mode. "
+            "Avoid Korean-style direct confession, awkward slogan-like hooks, and dense literary phrasing. "
+        )
     return base + "Write fluent English only. Keep it lyric-like and compact. "
 
 
 def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict], block: dict) -> str:
     label = str(block.get("label", "")).strip()
     line_count = int(block.get("line_count", 1))
-    selected_hook = str(plan.get("selected_hook_candidate", {}).get("fragment", "")).strip()
-    hook_fragments = [str(x).strip() for x in plan.get("hook_english_fragments", []) if str(x).strip()]
-    hook_clause = ""
-    if label in {"Chorus", "Chorus 2", "Final Chorus"} and selected_hook:
-        hook_clause = f"Use the selected hook '{selected_hook}' or a close variation. "
-    elif label in {"Chorus", "Chorus 2", "Final Chorus"} and hook_fragments:
-        hook_clause = f"If useful, use one short hook fragment from: {', '.join(hook_fragments)}. "
     return (
         _audio_lyrics_rules_qwen(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
         + f"Current block=[{label}] line_count={line_count}. "
         + _current_block_constraints(completed, block)
-        + hook_clause
         + f"Output exactly {line_count} lyric lines, one per line. "
     )
 
@@ -88,8 +86,7 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         + "Make Bridge compress or reframe so the final return lands harder. "
         + "Keep each section distinct while preserving one shared emotional thread across the whole song. "
         + "Stay inside the world already implied by the audio intent. "
-        + "Do not invent a sharply specific new everyday place, shop, vehicle, storefront, transit stop, or prop unless the song draft has already grounded it. "
-        + "Avoid dropping in random urban nouns just to create detail. "
+        + "Do not invent random nouns just to fake atmosphere. "
         + "Output bracketed section headers and lyric lines only. "
         + "Do not add [end], notes, numbering, or any text outside the song. "
         + "Locked outline: "

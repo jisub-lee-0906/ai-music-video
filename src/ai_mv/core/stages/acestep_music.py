@@ -22,7 +22,7 @@ def run_acestep_music(stage_input: StageInput) -> StageOutput:
             planner_key="audio",
             planner_value={"prompt": build_audio_preview_prompt(plan)},
             workflow_key="audio",
-            workflow_value={"text_inputs": _audio_text_inputs(stage_input.config, plan)},
+            workflow_value=_audio_preview_inputs(stage_input.config, plan),
             audio_plan=dict(plan),
             audio_map=audio_map,
             music_file=music_file,
@@ -48,6 +48,15 @@ def _audio_text_inputs(config: dict, plan: dict) -> dict:
     return dict(wf["node.inputs"][AUDIO_TEXT])
 
 
+def _audio_preview_inputs(config: dict, plan: dict) -> dict:
+    text_inputs = _audio_text_inputs(config, plan)
+    return {
+        "planner_seed": int(plan.get("seed", 0) or 0),
+        "workflow_seed": int(text_inputs.get("seed", 0) or 0),
+        "text_inputs": text_inputs,
+    }
+
+
 def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dict:
     plan = build_audio_plan(config, dict(payload, run_id=run_id))
     audio_map = build_audio_preview_map(plan)
@@ -57,7 +66,7 @@ def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dic
         planner_key="audio",
         planner_value={"prompt": build_audio_preview_prompt(plan)},
         workflow_key="audio",
-        workflow_value={"text_inputs": _audio_text_inputs(config, plan)},
+        workflow_value=_audio_preview_inputs(config, plan),
         audio_plan=dict(plan),
         audio_map=audio_map,
         music_file="",

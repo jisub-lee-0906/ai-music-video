@@ -11,7 +11,6 @@ from ai_mv.core.orchestration.pipeline import run_pipeline
 
 def test_pipeline_smoke(monkeypatch):
     monkeypatch.setattr(pipeline_mod, "_ordered_stages", _fake_schedule)
-    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-config.yaml")
@@ -22,6 +21,7 @@ def test_pipeline_smoke(monkeypatch):
     Path("artifacts/latest/run_summary.json").unlink(missing_ok=True)
     rid = run_pipeline(cfg, "test-smoke")
     assert rid == "test-smoke"
+    assert Path("artifacts/runs/test-smoke/snapshot.json").exists()
 
 
 def test_pipeline_writes_initial_snapshot_before_first_stage(monkeypatch):
@@ -32,17 +32,17 @@ def test_pipeline_writes_initial_snapshot_before_first_stage(monkeypatch):
 
     def _fake_stage(_stage_input):
         assert seen["count"] == 2
-        return StageOutput("fake_stage", "done", {"anchors": [], "flux2_ref_images": [], "clips": []}, [])
+        return StageOutput("fake_stage", "done", {"clip_results": []}, [])
 
     monkeypatch.setattr(pipeline_mod, "_ordered_stages", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
-    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-snapshot-config.yaml")
     temp_cfg.parent.mkdir(parents=True, exist_ok=True)
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")
     shutil.rmtree(Path("artifacts/runs_state/test-smoke-snapshot"), ignore_errors=True)
+    shutil.rmtree(Path("artifacts/runs/test-smoke-snapshot"), ignore_errors=True)
     run_pipeline(cfg, "test-smoke-snapshot")
 
 
@@ -54,16 +54,16 @@ def test_pipeline_writes_stage_name_before_stage_runs(monkeypatch):
 
     def _fake_stage(_stage_input):
         assert "fake_stage" in seen
-        return StageOutput("fake_stage", "done", {"anchors": [], "flux2_ref_images": [], "clips": []}, [])
+        return StageOutput("fake_stage", "done", {"clip_results": []}, [])
 
     monkeypatch.setattr(pipeline_mod, "_ordered_stages", lambda: [("fake_stage", _fake_stage)])
     monkeypatch.setattr(pipeline_mod, "save_snapshot", _fake_save_snapshot)
-    monkeypatch.setattr(pipeline_mod, "build_director_brief_intent", lambda _cfg: {"brief_name": "test"})
     cfg = default_config()
     cfg["runtime"]["template_hash_lock"] = False
     temp_cfg = Path("artifacts/reports/test-smoke-stage-config.yaml")
     temp_cfg.write_text(yaml.safe_dump(cfg), encoding="utf-8")
     shutil.rmtree(Path("artifacts/runs_state/test-smoke-stage"), ignore_errors=True)
+    shutil.rmtree(Path("artifacts/runs/test-smoke-stage"), ignore_errors=True)
     run_pipeline(cfg, "test-smoke-stage")
 
 
@@ -73,10 +73,8 @@ def _fake_schedule():
 
 def _fake_stage(_stage_input):
     payload = {
-        "anchors": [],
-        "flux2_ref_images": [],
-        "clips": [],
-        "merge_status": "done",
+        "clip_results": [],
+        "review_report": {"status": "ok"},
         "final_video": "x.mp4",
     }
     return StageOutput("fake_stage", "done", payload, [])

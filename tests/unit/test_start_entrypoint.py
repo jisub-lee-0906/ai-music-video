@@ -1,10 +1,11 @@
 import ai_mv.entrypoints.start as entry
+from pathlib import Path
 
 
 def test_run_start_entry_reports_done(monkeypatch, capsys):
     monkeypatch.setattr(entry, "acquire_lock", lambda _name: object())
     monkeypatch.setattr(entry, "release_lock", lambda _lock: None)
-    monkeypatch.setattr(entry, "_load_prepared_config", lambda brief: {"brief": brief or "director_brief_example"})
+    monkeypatch.setattr(entry, "_load_prepared_config", lambda concept_text: {"concept_text": concept_text or "city pop night drive"})
     monkeypatch.setattr(entry, "run_doctor", lambda _cfg: 0)
     monkeypatch.setattr(entry, "_prepare_comfy_queue", lambda _cfg: None)
     monkeypatch.setattr(entry, "_prepare_run_brief", lambda _cfg, _run_id: "run-123")
@@ -15,7 +16,7 @@ def test_run_start_entry_reports_done(monkeypatch, capsys):
         lambda _rid: {"status": "done", "failure_reason": ""},
     )
 
-    rc = entry.run_start(brief="director_brief_example")
+    rc = entry.run_start(concept_text="city pop night drive")
     out = capsys.readouterr().out
 
     assert rc == 0
@@ -52,3 +53,14 @@ def test_prepare_comfy_queue_raises_when_not_empty(monkeypatch):
         assert "queue is not empty" in str(exc)
     assert raised
 
+
+def test_prepare_run_brief_writes_concept_text_to_state_and_artifacts(monkeypatch, tmp_path):
+    state_dir = tmp_path / "runs_state" / "run-123"
+    artifact_file = tmp_path / "runs" / "run-123" / "inputs" / "concept_text.txt"
+    state_dir.mkdir(parents=True)
+    monkeypatch.setattr(entry, "ensure_run_dir", lambda _run_id, allow_existing=False: state_dir)
+    monkeypatch.setattr(entry, "run_file", lambda run_id, name: tmp_path / "runs" / run_id / Path(name))
+    rid = entry._prepare_run_brief({"concept_text": "city pop night drive"}, "run-123")
+    assert rid == "run-123"
+    assert (state_dir / "concept_text.txt").read_text(encoding="utf-8") == "city pop night drive"
+    assert artifact_file.read_text(encoding="utf-8") == "city pop night drive"

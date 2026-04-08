@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from ai_mv.core.artifacts.publish import write_pipeline_artifacts
 from ai_mv.core.contracts.stage_io import StageInput
-from ai_mv.core.director_brief import build_director_brief_intent
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.stage_runs import run_result_stage
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 from ai_mv.core.stages.acestep_music import run_acestep_music
-from ai_mv.core.stages.keyframes import run_keyframes
-from ai_mv.core.stages.merge_mux import run_merge_mux
-from ai_mv.core.stages.storyboard import run_storyboard
-from ai_mv.core.stages.wan_interpolation import run_wan_interpolation
+from ai_mv.core.stages.assemble_mv import run_assemble_mv
+from ai_mv.core.stages.plan_citypop_mv import run_plan_citypop_mv
+from ai_mv.core.stages.render_clips import run_render_clips
+from ai_mv.core.stages.render_stills import run_render_stills
+from ai_mv.core.stages.review_outputs import run_review_outputs
 
 
 def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = False) -> str:
@@ -21,8 +21,7 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
         run_id=state["run_id"],
         config=cfg,
         payload={
-            "selected_brief": str(cfg.get("brief", "")).strip(),
-            "story_profile": build_director_brief_intent(cfg),
+            "concept_text": str(cfg.get("concept_text", "")).strip(),
             "workflow_inputs": {},
         },
     )
@@ -47,8 +46,9 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
 def _ordered_stages() -> list[tuple[str, callable]]:
     return [
         ("audio", run_acestep_music),
-        ("storyboard", run_storyboard),
-        ("keyframes", run_keyframes),
-        ("clips", run_wan_interpolation),
-        ("merge", run_merge_mux),
+        ("plan", run_plan_citypop_mv),
+        ("stills", run_render_stills),
+        ("clips", run_render_clips),
+        ("assemble", run_assemble_mv),
+        ("review", run_review_outputs),
     ]

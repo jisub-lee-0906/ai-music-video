@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from ai_mv.core.artifacts.paths import run_root as artifact_run_root
 from ai_mv.utils.json_utils import read_json
 from ai_mv.utils.project_root import project_root
 
@@ -45,9 +46,9 @@ def read_snapshot(run_id: str, scope: str = "auto") -> dict[str, Any]:
     _validate_run_id(str(run_id))
     scopes = ("run", "preflight") if str(scope).strip().lower() == "auto" else (_scope_name(scope),)
     for item in scopes:
-        snap = runs_root(item) / run_id / "snapshot.json"
-        if snap.exists():
-            return read_json(snap)
+        for snap in (artifact_run_root(run_id, item) / "snapshot.json", runs_root(item) / run_id / "snapshot.json"):
+            if snap.exists():
+                return read_json(snap)
     return {
         "run_id": run_id,
         "scope": _scope_name(scope) if str(scope).strip().lower() != "auto" else "",
@@ -63,9 +64,11 @@ def _explicit_run_dir(run_id: str, allow_existing: bool, scope: str) -> Path:
     out = runs_root(scope) / run_id
     if out.exists():
         if allow_existing and out.is_dir():
+            artifact_run_root(run_id, scope)
             return out
         raise RuntimeError(f"run_id already exists: {run_id}")
     out.mkdir(parents=True, exist_ok=False)
+    artifact_run_root(run_id, scope)
     return out
 
 
@@ -81,6 +84,7 @@ def _generated_run_dir(scope: str) -> Path:
         out = runs_root(scope) / f"{stamp}{suffix}"
         try:
             out.mkdir(parents=True, exist_ok=False)
+            artifact_run_root(out.name, scope)
             return out
         except FileExistsError:
             continue

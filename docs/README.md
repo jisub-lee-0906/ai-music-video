@@ -28,6 +28,12 @@ M1 최소 구현 범위, path 규칙, review 최소 계약
 8. [m3-flf2v-spec.md](/D:/workspace/ai-music-video/docs/m3-flf2v-spec.md)
 `flf2v` 브리지 선정과 입력/검수 규칙
 
+9. [first-run-checklist.md](/D:/workspace/ai-music-video/docs/first-run-checklist.md)
+모델 다운로드 완료 후 첫 실제 샘플 런 전에 확인할 체크리스트
+
+10. [sample-config.yaml](/D:/workspace/ai-music-video/docs/sample-config.yaml)
+첫 샘플 런에 쓸 수 있는 최소 설정 예시
+
 운영 원칙:
 
 - 범용성보다 결과물 일관성을 우선한다.

@@ -6,26 +6,35 @@ from ai_mv.core.orchestration.input_gate import validate_stage_input
 
 def test_gate_rejects_empty_merge_inputs():
     with pytest.raises(StageFailure):
-        validate_stage_input("merge_mux", {"clips": [], "music_file": ""})
+        validate_stage_input("assemble", {"clip_results": [], "music_file": ""})
 
 
 def test_gate_accepts_planning_chain():
     validate_stage_input(
-        "storyboard",
+        "plan",
         {
             "audio_plan": {"genre_description": "x"},
             "audio_map": {"sections": [{"name": "verse"}]},
+            "music_file": "music.mp3",
         },
     )
-    validate_stage_input("keyframes", {"prompt_plan": {"ref_items": [{"shot_id": "b1"}]}})
+    validate_stage_input(
+        "stills",
+        {
+            "shot_plan": [{"shot_id": "S001"}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "citypop_bible": {"style": "citypop"},
+        },
+    )
 
 
 def test_gate_accepts_render_chain():
     validate_stage_input(
         "clips",
         {
-            "prompt_plan": {"wan_items": [{"shot_id": "b2"}]},
-            "flux2_ref_images": [{"shot_id": "b1", "end": "b.png"}],
-            "clip_routes": [{"shot_id": "b2", "anchor": "a.png", "duration_sec": 2.0}],
+            "shot_plan": [{"shot_id": "S001"}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
+            "music_file": "music.mp3",
         },
     )

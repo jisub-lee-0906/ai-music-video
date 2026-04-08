@@ -56,10 +56,14 @@ def latest_success_root(scope: str = "run") -> Path:
     return root
 
 
-def run_file(run_id: str, name: str, scope: str = "run") -> Path:
+def run_root(run_id: str, scope: str = "run") -> Path:
     root = scoped_runs_root(scope) / str(run_id).strip()
     root.mkdir(parents=True, exist_ok=True)
-    return root / name
+    return root
+
+
+def run_file(run_id: str, name: str, scope: str = "run") -> Path:
+    return run_root(run_id, scope) / name
 
 
 def latest_file(name: str, scope: str = "run") -> Path:

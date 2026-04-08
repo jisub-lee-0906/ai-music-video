@@ -152,8 +152,8 @@ def audio_required_inputs() -> dict[str, list[str]]:
 
 
 def _audio_language(plan: dict) -> str:
-    raw = str(plan.get("language", "en")).strip().lower()
-    return raw if raw in {"en", "ja", "ko"} else "en"
+    raw = str(plan.get("language", "ja")).strip().lower()
+    return raw if raw in {"en", "ja", "ko"} else "ja"
 
 
 def _audio_seed(plan: dict) -> int:
@@ -165,40 +165,11 @@ def _audio_seed(plan: dict) -> int:
 
 
 def _audio_conditioning_text(plan: dict) -> str:
-    tags = _split_tags(str(plan.get("tags", "")).strip())
     desc = compact_sentences(plan.get("genre_description", ""), 2)
-    locked = _locked_audio_contract(plan)
-    locked_head = locked["genre_head"]
-    locked_vocal = locked["vocal_profile"]
-    locked_tone = locked["vocal_tone"]
-    body = _trim_sentence(desc)
-    if locked_head and body:
-        compact = _dedupe_genre_prefix(body, locked_head)
-        merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
-        return f"{locked_head}: {merged}".strip()
-    if locked_head:
-        merged = _merge_locked_vocal_contract("", locked_vocal, locked_tone)
-        return f"{locked_head}: {merged}".strip() if merged else locked_head
-    if ":" in desc:
-        explicit = _trim_sentence(desc)
-        head, tail = explicit.split(":", 1)
-        normalized_head = _normalize_genre_label(head)
-        if normalized_head:
-            compact = _dedupe_genre_prefix(tail.strip(), normalized_head)
-            merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
-            return f"{normalized_head}: {merged}".strip()
-    genre = _genre_label(tags, desc)
-    if genre and body:
-        prefix = f"{genre}:"
-        if body.lower().startswith(prefix.lower()):
-            compact = body[len(prefix) :].strip()
-            merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
-            return f"{genre}: {merged}".strip()
-        compact = _dedupe_genre_prefix(body, genre)
-        merged = _merge_locked_vocal_contract(compact, locked_vocal, locked_tone)
-        return f"{prefix} {merged}".strip()
-    merged = _merge_locked_vocal_contract(body, locked_vocal, locked_tone)
-    return merged or genre
+    desc = _trim_sentence(desc)
+    if desc:
+        return desc
+    return str(plan.get("tags", "")).strip()
 
 
 def _locked_audio_contract(plan: dict) -> dict:

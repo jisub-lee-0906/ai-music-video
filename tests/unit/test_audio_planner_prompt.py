@@ -44,10 +44,12 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
     assert "strict JSON only" in prompt
     assert "genre_description,bpm,keyscale,seed,duration,lyrics_blocks" in prompt
     assert "section,label,style,role,change,line_count" in prompt
+    assert "Planner seed=31." in prompt
+    assert "not the workflow execution seed" in prompt
     assert "The final render format is [tags], then bracketed lyrics, then [Outro], then [end]" in prompt
     assert "genre_description is the future [tags] block" in prompt
     assert "core instruments, arrangement energy, and vocal character" in prompt
-    assert "Use a songform that fits the genre and duration instead of forcing one fixed template." in prompt
+    assert "Choose a songform that fits modern short-form Japanese city pop around two and a half to three minutes" in prompt
     assert "director_brief_intent" not in prompt
     assert len(prompt) < 2600
 
@@ -55,7 +57,6 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
 def test_audio_prompt_uses_flattened_profile_fields():
     prompt = audio_planner._audio_prompt(_prompt_plan())
     assert "Audio intent=late-night breakup song that grows from restraint to direct release." in prompt
-    assert "Hook intent=short wet-city hook with a clear final lift." in prompt
     assert "Genre=Synth-Pop." in prompt
     assert "Voice=solo female, airy and emotional." in prompt
     assert "Avoid=avoid spectacle clutter." in prompt
@@ -82,6 +83,11 @@ def test_hook_scoring_penalizes_generic_slogan_like_fragments():
     assert audio_planner._score_hook_candidate(anchored, plan) > audio_planner._score_hook_candidate(generic, plan)
 
 
+def test_fallback_hook_state_uses_japanese_hook_when_language_is_ja():
+    out = audio_planner._fallback_hook_state(_prompt_plan(language="ja", hook_english_fragments=[]))
+    assert out["selected_hook_candidate"]["fragment"] == "残る灯り"
+
+
 def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
@@ -93,11 +99,11 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
             "seed": 31,
             "duration": 150,
             "lyrics_blocks": [
-                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 불빛", "늦은 숨결", "비어 있는 길", "남은 이름"]},
-                {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["더 가까워", "숨이 차올라", "문이 열린다"]},
-                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["젖은 도시 끝", "나는 너를 봐", "꺼지지 않아", "끝내 나아가"]},
-                {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["멈춘 듯한 밤", "다시 숨을 쉬어"]},
-                {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["젖은 도시 끝", "이제 나를 봐", "흔들리지 않아", "끝내 나아가"]},
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["濡れた灯り", "遅い吐息", "空いた道", "残る名前"]},
+                {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["少し近く", "息が上がる", "ドアが開く"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
+                {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["止まったような夜", "もう一度息をする"]},
+                {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["濡れた街の果て", "いま私を見て", "揺らぎはしない", "最後まで進む"]},
             ],
         },
     )
@@ -108,12 +114,37 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
         "language": "ko",
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
-    assert plan["language"] == "ko"
+    assert plan["language"] == "ja"
     assert plan["genre_head"] == "synth pop"
     assert plan["vocal_profile"] == "solo female"
     assert plan["vocal_tone"] == "airy and emotional"
     assert plan["audio_direction"] == "late-night breakup song that grows from restraint to direct release"
-    assert plan["hook_direction"] == "late-night breakup song that grows from restraint to direct release"
+
+
+def test_build_audio_plan_uses_concept_text_as_citypop_fallback(monkeypatch):
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_with_llm",
+        lambda _config, _plan: {
+            "genre_description": "City Pop: warm electric piano, soft bass groove, and bittersweet lead vocal over neon-night drums.",
+            "bpm": 108,
+            "keyscale": "A major",
+            "seed": 31,
+            "duration": 150,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["濡れた灯り", "遅い吐息", "空いた道", "残る名前"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
+            ],
+        },
+    )
+    cfg = {
+        "concept_text": "Japanese 80s city pop night drive, neon coast, bittersweet summer romance",
+        "language": "ko",
+    }
+    plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+    assert plan["language"] == "ja"
+    assert plan["genre_head"] == "city pop"
+    assert plan["audio_direction"] == cfg["concept_text"]
 
 
 def test_validate_outline_line_budgets_rejects_overpacked_blocks():
@@ -147,6 +178,42 @@ def test_validate_outline_labels_requires_final_chorus_to_be_last_chorus_family_
                 ]
             }
         )
+
+
+def test_normalize_audio_outline_canonicalizes_repeated_citypop_labels():
+    out = audio_planner._normalize_audio_outline(
+        {
+            "genre_description": "City Pop: warm electric piano and soft bass.",
+            "bpm": 102,
+            "keyscale": "E major",
+            "seed": 31,
+            "duration": 172,
+            "lyrics_blocks": [
+                {"section": "intro", "label": "Intro", "style": "instrumental", "role": "open", "change": "start", "line_count": 0},
+                {"section": "verse_1", "label": "Verse", "style": "narrative", "role": "set", "change": "enter", "line_count": 5},
+                {"section": "pre_chorus", "label": "Pre", "style": "lift", "role": "raise", "change": "tighten", "line_count": 3},
+                {"section": "chorus", "label": "Chorus", "style": "hook", "role": "land", "change": "open", "line_count": 5},
+                {"section": "verse_2", "label": "Verse", "style": "develop", "role": "shift", "change": "deepen", "line_count": 5},
+                {"section": "pre_chorus", "label": "Pre", "style": "lift", "role": "raise again", "change": "sharpen", "line_count": 3},
+                {"section": "chorus", "label": "Chorus", "style": "hook", "role": "return", "change": "grow", "line_count": 5},
+                {"section": "bridge", "label": "Bridge", "style": "contrast", "role": "reframe", "change": "strip back", "line_count": 3},
+                {"section": "chorus", "label": "Chorus", "style": "hook", "role": "resolve", "change": "settle", "line_count": 5},
+                {"section": "outro", "label": "Outro", "style": "instrumental", "role": "fade", "change": "release", "line_count": 0},
+            ],
+        }
+    )
+    assert [row["label"] for row in out["lyrics_blocks"]] == [
+        "Intro",
+        "Verse 1",
+        "Pre-Chorus",
+        "Chorus",
+        "Verse 2",
+        "Pre-Chorus 2",
+        "Chorus 2",
+        "Bridge",
+        "Final Chorus",
+        "Outro",
+    ]
 
 
 def test_generate_lyrics_block_skips_llm_for_zero_line_intro():
@@ -267,6 +334,39 @@ def test_refresh_hook_fit_rewrites_korean_chorus_with_disconnected_english_fragm
     out = audio_planner._refresh_hook_fit({}, plan, outline, blocks)
     assert rewritten == ["Chorus"]
     assert out[0]["lines"] == ["남은 불빛 아래", "내 발끝이 먼저 가", "지워진 밤을 지나", "나는 앞으로 가"]
+
+
+def test_refresh_hook_fit_rewrites_japanese_chorus_without_selected_hook(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "chorus", "label": "Chorus", "style": "release", "line_count": 4},
+            {"section": "chorus", "label": "Final Chorus", "style": "answer", "line_count": 4},
+        ]
+    }
+    plan = _prompt_plan(
+        language="ja",
+        selected_hook_candidate={"fragment": "残る灯り"},
+        hook_english_fragments=[],
+    )
+    blocks = [
+        {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["窓の外で波が揺れる", "夏の影がまだ残る", "君の気配が遠く光る", "夜明け前に息をのむ"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["残る灯りだけを見つめ", "この夜を抜けていく", "濡れた道はほどけていく", "もう迷わず進める"]},
+    ]
+    rewritten: list[str] = []
+
+    def _rewrite(_config, _plan, _outline, completed, block, revision_note):
+        rewritten.append(str(block.get("label", "")).strip())
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["残る灯りが胸に揺れる", "波の匂いを追いかける", "君のいない道を抜けて", "夜明け前へ走り出す"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block_with_note", _rewrite)
+    out = audio_planner._refresh_hook_fit({}, plan, outline, blocks)
+    assert rewritten == ["Chorus"]
+    assert out[0]["lines"][0] == "残る灯りが胸に揺れる"
 
 
 def test_polish_lyrics_sections_rewrites_only_llm_targets(monkeypatch):
