@@ -29,11 +29,13 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
                 "action": str(shot.get("action", "")).strip(),
                 "carry": str(shot.get("carry", "")).strip(),
                 "framing": str(shot.get("framing", "")).strip(),
+                "segment_focus": str(shot.get("segment_focus", "")).strip(),
                 "ref_prompt_text": "",
             }
         )
     _verbalize_ref_items(config, ref_items)
-    _naturalize_ref_items(config, ref_items)
+    _draft_ref_items(config, ref_items)
+    _polish_ref_items(config, ref_items)
 
     wan_items: list[dict] = []
     for index, current in enumerate(ref_items[1:], start=2):
@@ -58,7 +60,8 @@ def build_prompt_plan(config: dict, payload: dict) -> dict:
         for row in ref_items
         if str(row.get("shot_id", "")).strip()
     }
-    _naturalize_wan_items(config, wan_items, ref_by_id)
+    _draft_wan_items(config, wan_items, ref_by_id)
+    _polish_wan_items(config, wan_items)
 
     return normalize_prompt_plan(
         {
@@ -95,7 +98,7 @@ def _verbalize_ref_items(config: dict, ref_items: list[dict]) -> None:
         row["ref_prompt_text"] = str(prompts.get(row["shot_id"], "")).strip()
 
 
-def _naturalize_ref_items(config: dict, ref_items: list[dict]) -> None:
+def _draft_ref_items(config: dict, ref_items: list[dict]) -> None:
     render = config.get("render", {}) if isinstance(config, dict) else {}
     if not isinstance(render, dict) or not bool(render.get("ref_naturalize", False)):
         return
@@ -104,10 +107,27 @@ def _naturalize_ref_items(config: dict, ref_items: list[dict]) -> None:
         return
     for row in rows:
         try:
-            rewritten = generate_structured(config, _ref_naturalize_prompt(row), _ref_naturalize_schema(row), attempts=1)
+            rewritten = generate_structured(config, _ref_draft_prompt(row), _ref_draft_schema(row), attempts=1)
         except Exception:
             continue
-        text = _normalize_ref_naturalize_result(rewritten, row)
+        text = _normalize_ref_draft_result(rewritten, row)
+        if text:
+            row["ref_prompt_text"] = text
+
+
+def _polish_ref_items(config: dict, ref_items: list[dict]) -> None:
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    if not isinstance(render, dict) or not bool(render.get("ref_polish", False)):
+        return
+    rows = [row for row in ref_items if str(row.get("shot_id", "")).strip() and str(row.get("ref_prompt_text", "")).strip()]
+    if not rows:
+        return
+    for row in rows:
+        try:
+            rewritten = generate_structured(config, _ref_polish_prompt(row), _ref_polish_schema(row), attempts=1)
+        except Exception:
+            continue
+        text = _normalize_ref_polish_result(rewritten, row)
         if text:
             row["ref_prompt_text"] = text
 
@@ -118,7 +138,7 @@ def _verbalize_wan_items(config: dict, wan_items: list[dict]) -> None:
         row["wan_positive_prompt_text"] = str(prompts.get(row["shot_id"], "")).strip()
 
 
-def _naturalize_wan_items(config: dict, wan_items: list[dict], ref_by_id: dict[str, dict]) -> None:
+def _draft_wan_items(config: dict, wan_items: list[dict], ref_by_id: dict[str, dict]) -> None:
     render = config.get("render", {}) if isinstance(config, dict) else {}
     if not isinstance(render, dict) or not bool(render.get("wan_naturalize", False)):
         return
@@ -129,13 +149,30 @@ def _naturalize_wan_items(config: dict, wan_items: list[dict], ref_by_id: dict[s
         try:
             rewritten = generate_structured(
                 config,
-                _wan_naturalize_prompt(row, ref_by_id),
-                _wan_naturalize_schema(row),
+                _wan_draft_prompt(row, ref_by_id),
+                _wan_draft_schema(row),
                 attempts=1,
             )
         except Exception:
             continue
-        text = _normalize_wan_naturalize_result(rewritten, row)
+        text = _normalize_wan_draft_result(rewritten, row)
+        if text:
+            row["wan_positive_prompt_text"] = text
+
+
+def _polish_wan_items(config: dict, wan_items: list[dict]) -> None:
+    render = config.get("render", {}) if isinstance(config, dict) else {}
+    if not isinstance(render, dict) or not bool(render.get("wan_polish", False)):
+        return
+    rows = [row for row in wan_items if str(row.get("shot_id", "")).strip() and str(row.get("wan_positive_prompt_text", "")).strip()]
+    if not rows:
+        return
+    for row in rows:
+        try:
+            rewritten = generate_structured(config, _wan_polish_prompt(row), _wan_polish_schema(row), attempts=1)
+        except Exception:
+            continue
+        text = _normalize_wan_polish_result(rewritten, row)
         if text:
             row["wan_positive_prompt_text"] = text
 
@@ -150,31 +187,38 @@ def _bridge_action(previous: dict, current: dict) -> str:
     return "continuing through the same place with one readable movement"
 
 
-def _ref_naturalize_prompt(row: dict) -> str:
+def _ref_draft_prompt(row: dict) -> str:
     shot_id = str(row.get("shot_id", "")).strip()
     section_label = str(row.get("section_label", "")).strip()
     place = str(row.get("place", "")).strip()
     action = str(row.get("action", "")).strip()
     carry = str(row.get("carry", "")).strip()
     framing = str(row.get("framing", "")).strip()
+    segment_focus = str(row.get("segment_focus", "")).strip()
     literal_image = str(row.get("literal_image", "")).strip()
     base = str(row.get("ref_prompt_text", "")).strip()
     return (
-        "Rewrite this REF prompt into more natural cinematic English while preserving the same exact shot meaning. "
+        "Write a final REF prompt in natural cinematic English from this shot card. "
         "Do not invent new people, props, places, actions, camera setups, or story beats. "
         "Do not change the subject identity or introduce gendered terms that are not already present in the base prompt. "
+        "Keep the same exact shot meaning and continuity anchor. "
+        "Write the full prompt directly rather than editing the base prompt line by line. "
         "Make each prompt read like a fluent image-generation prompt instead of a mechanical summary. "
+        "If nearby shots in the same location would otherwise feel too similar, make this prompt distinguish itself through a different immediate action emphasis, body focus, or physical detail focus without changing the underlying event. "
+        "Prefer one dominant moment per shot instead of describing the whole beat the same way every time. "
+        "Use complete, grammatically fluent English sentences rather than fragments or note-like phrases. "
         "Do not restate the same object twice in consecutive sentences unless the carry is truly necessary for continuity. "
         "Let the detail sentence and the carry sentence do different jobs: one should deepen the image, and the other should preserve continuity. "
+        "Prefer concrete physical details over abstract emotional commentary; let mood emerge from the image instead of explaining it directly. "
         "Prefer one clear action and one clear physical image per shot over stacking multiple similar phrases. "
         "Keep the tone grounded and cinematic, not explanatory or analytical. "
-        "Preserve the final face-lock sentence exactly as it already appears in the base prompt. "
+        "End with the exact face-lock sentence from the base prompt. "
         "Return strict JSON only. "
-        f"Shot: shot_id={shot_id} | section={section_label} | place={place} | action={action} | carry={carry} | framing={framing} | detail={literal_image} | base_prompt={base}"
+        f"Shot: shot_id={shot_id} | section={section_label} | place={place} | action={action} | carry={carry} | framing={framing} | segment_focus={segment_focus} | detail={literal_image} | base_prompt={base}"
     )
 
 
-def _ref_naturalize_schema(row: dict) -> dict:
+def _ref_draft_schema(row: dict) -> dict:
     shot_id = str(row.get("shot_id", "")).strip()
     return {
         "type": "object",
@@ -186,7 +230,7 @@ def _ref_naturalize_schema(row: dict) -> dict:
     }
 
 
-def _normalize_ref_naturalize_result(raw: dict, row: dict) -> str:
+def _normalize_ref_draft_result(raw: dict, row: dict) -> str:
     if not isinstance(raw, dict):
         return ""
     shot_id = str(raw.get("shot_id", "")).strip()
@@ -200,6 +244,27 @@ def _normalize_ref_naturalize_result(raw: dict, row: dict) -> str:
     return prompt_text
 
 
+def _ref_polish_prompt(row: dict) -> str:
+    shot_id = str(row.get("shot_id", "")).strip()
+    base = str(row.get("ref_prompt_text", "")).strip()
+    return (
+        "Polish this REF prompt lightly. "
+        "Keep the exact same shot meaning, identity, place, action, continuity, and face-lock. "
+        "Do not invent anything new. "
+        "Fix grammar, remove awkward phrasing, and smooth sentence flow only. "
+        "Return strict JSON only. "
+        f"Shot: shot_id={shot_id} | prompt_text={base}"
+    )
+
+
+def _ref_polish_schema(row: dict) -> dict:
+    return _ref_draft_schema(row)
+
+
+def _normalize_ref_polish_result(raw: dict, row: dict) -> str:
+    return _normalize_ref_draft_result(raw, row)
+
+
 def _face_lock_suffix(prompt_text: str) -> str:
     text = str(prompt_text).strip()
     if text.endswith("Keep the face."):
@@ -209,7 +274,7 @@ def _face_lock_suffix(prompt_text: str) -> str:
     return ""
 
 
-def _wan_naturalize_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
+def _wan_draft_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
     shot_id = str(row.get("shot_id", "")).strip()
     section_label = str(row.get("section_label", "")).strip()
     start_ref = str(row.get("start_ref_shot_id", "")).strip()
@@ -221,12 +286,16 @@ def _wan_naturalize_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
     start_ref_text = str(ref_by_id.get(start_ref, {}).get("ref_prompt_text", "")).strip()
     end_ref_text = str(ref_by_id.get(end_ref, {}).get("ref_prompt_text", "")).strip()
     return (
-        "Rewrite this WAN bridge prompt into more natural cinematic English while preserving the same exact transition meaning. "
+        "Write a final WAN bridge prompt in natural cinematic English from this transition card. "
         "Do not invent new places, props, actions, camera setups, or story beats. "
         "Do not change the subject identity or introduce gendered terms that are not already present in the base prompt. "
+        "Keep the same exact transition meaning between the two keyframes. "
+        "Write the full bridge prompt directly rather than editing the base prompt line by line. "
         "Keep the prompt focused on continuity between adjacent keyframes rather than restating the whole scene. "
         "Make the bridge feel like a readable transition from one keyframe to the next, not a duplicate of the REF prompt. "
+        "Use complete, grammatically fluent English sentences rather than fragments or note-like phrases. "
         "Prefer one clear motion and one continuity detail. "
+        "Prefer concrete physical continuity details over abstract mood description. "
         "Use the start_ref and end_ref context to emphasize what changes between the two keyframes. "
         "Do not add a face-lock line such as 'Keep the face.' or any lens, lighting, or film-finish sentence unless it is already present in the base prompt. "
         "Keep the tone grounded and cinematic, not analytical. "
@@ -236,7 +305,7 @@ def _wan_naturalize_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
     )
 
 
-def _wan_naturalize_schema(row: dict) -> dict:
+def _wan_draft_schema(row: dict) -> dict:
     shot_id = str(row.get("shot_id", "")).strip()
     return {
         "type": "object",
@@ -248,7 +317,7 @@ def _wan_naturalize_schema(row: dict) -> dict:
     }
 
 
-def _normalize_wan_naturalize_result(raw: dict, row: dict) -> str:
+def _normalize_wan_draft_result(raw: dict, row: dict) -> str:
     if not isinstance(raw, dict):
         return ""
     shot_id = str(raw.get("shot_id", "")).strip()
@@ -257,3 +326,24 @@ def _normalize_wan_naturalize_result(raw: dict, row: dict) -> str:
     if not shot_id or shot_id != expected or not prompt_text:
         return ""
     return prompt_text
+
+
+def _wan_polish_prompt(row: dict) -> str:
+    shot_id = str(row.get("shot_id", "")).strip()
+    base = str(row.get("wan_positive_prompt_text", "")).strip()
+    return (
+        "Polish this WAN bridge prompt lightly. "
+        "Keep the exact same transition meaning, identity, place, action, and continuity. "
+        "Do not invent anything new. "
+        "Fix grammar, remove awkward phrasing, and smooth sentence flow only. "
+        "Return strict JSON only. "
+        f"Item: shot_id={shot_id} | prompt_text={base}"
+    )
+
+
+def _wan_polish_schema(row: dict) -> dict:
+    return _wan_draft_schema(row)
+
+
+def _normalize_wan_polish_result(raw: dict, row: dict) -> str:
+    return _normalize_wan_draft_result(raw, row)

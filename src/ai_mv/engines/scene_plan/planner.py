@@ -41,6 +41,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
                         "duration_sec": segment["duration_sec"],
                         "segment_index": segment["segment_index"],
                         "segment_count": segment["segment_count"],
+                        "segment_focus": _segment_focus(segment["segment_index"], segment["segment_count"], shot_role),
                         "start_sec": segment["start_sec"],
                         "end_sec": segment["end_sec"],
                     }
@@ -137,6 +138,20 @@ def _segment_shot_role(base: str, segment_index: int, segment_count: int) -> str
     if segment_index == segment_count:
         return base
     return "carry"
+
+
+def _segment_focus(segment_index: int, segment_count: int, shot_role: str) -> str:
+    if segment_count <= 1:
+        return "balanced moment"
+    if segment_index == 1:
+        return "entry gesture"
+    if segment_index == segment_count:
+        if shot_role in {"release", "handoff"}:
+            return "next-state release"
+        return "carry-forward state"
+    if shot_role == "tighten":
+        return "physical tension detail"
+    return "body detail or object detail"
 
 
 def _segment_shot_id(beat_id: str, segment_index: int, segment_count: int) -> str:

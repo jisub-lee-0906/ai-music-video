@@ -20,6 +20,7 @@ def build_direction_plan(config: dict, payload: dict) -> dict:
                 "action": action,
                 "carry": carry,
                 "framing": _resolve_framing(current, place),
+                "segment_focus": str(current.get("segment_focus", "")).strip(),
             }
         )
         shot_packages.append(current)
