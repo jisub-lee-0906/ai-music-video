@@ -16,6 +16,18 @@
 4. [legacy-deletion-plan.md](/D:/workspace/ai-music-video/docs/legacy-deletion-plan.md)
 삭제 대상, 보류 대상, 제거 순서, 완료 기준
 
+5. [workflow-binding-notes.md](/D:/workspace/ai-music-video/docs/workflow-binding-notes.md)
+workflow JSON을 수정하지 않고 mapper에서 어떤 node/input만 바인딩할지 정리
+
+6. [m1-implementation-spec.md](/D:/workspace/ai-music-video/docs/m1-implementation-spec.md)
+M1 최소 구현 범위, path 규칙, review 최소 계약
+
+7. [m2-ia2v-spec.md](/D:/workspace/ai-music-video/docs/m2-ia2v-spec.md)
+`ia2v` 샷 선정, audio trim, fallback 규칙
+
+8. [m3-flf2v-spec.md](/D:/workspace/ai-music-video/docs/m3-flf2v-spec.md)
+`flf2v` 브리지 선정과 입력/검수 규칙
+
 운영 원칙:
 
 - 범용성보다 결과물 일관성을 우선한다.
