@@ -28,7 +28,7 @@ DEFAULT_CONFIG: dict = {
         "wan_timeout_seconds": 0,
     },
     "integrations": {
-        "comfyui_base_url": "http://127.0.0.1:8188",
+        "comfyui_base_url": "http://127.0.0.1:8000",
         "comfyui_input_dir": r"C:\Users\Desktop\Documents\ComfyUI\input",
         "comfyui_output_dir": r"C:\Users\Desktop\Documents\ComfyUI\output",
         "codex_cli_path": "",

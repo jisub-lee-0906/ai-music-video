@@ -41,7 +41,7 @@ Optional visual support:
 ## Requirements
 
 - Python `>=3.11`
-- local ComfyUI at `http://127.0.0.1:8188`
+- local ComfyUI at `http://127.0.0.1:8000`
 - Codex CLI installed and logged in
 - `ffmpeg` and `ffprobe` on `PATH`
 - workflow JSON templates in `workflows/`

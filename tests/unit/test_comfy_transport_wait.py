@@ -6,7 +6,7 @@ import ai_mv.infra.comfy_transport as ct
 def test_wait_history_times_out(monkeypatch):
     monkeypatch.setattr(ct, "_get_json", lambda *_args, **_kwargs: {})
     with pytest.raises(TimeoutError):
-        ct.wait_history("http://127.0.0.1:8188", "pid", timeout=1)
+        ct.wait_history("http://127.0.0.1:8000", "pid", timeout=1)
 
 
 def test_wait_history_uses_subsecond_remaining(monkeypatch):
@@ -21,14 +21,14 @@ def test_wait_history_uses_subsecond_remaining(monkeypatch):
 
     monkeypatch.setattr(ct, "_get_json", _fake_get_json)
     with pytest.raises(TimeoutError):
-        ct.wait_history("http://127.0.0.1:8188", "pid", timeout=1)
+        ct.wait_history("http://127.0.0.1:8000", "pid", timeout=1)
     assert seen["timeout"] < 1.0
 
 
 def test_wait_history_wraps_request_error(monkeypatch):
     monkeypatch.setattr(ct, "_get_json", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
     with pytest.raises(ct.ComfyRequestError, match="history request failed"):
-        ct.wait_history("http://127.0.0.1:8188", "pid", timeout=1)
+        ct.wait_history("http://127.0.0.1:8000", "pid", timeout=1)
 
 
 def test_extract_files_requires_outputs():
@@ -43,7 +43,7 @@ def test_submit_workflow_returns_prompt_id_history_and_files(monkeypatch):
         "wait_history",
         lambda *_args, **_kwargs: {"outputs": {"9": {"images": [{"filename": "x.png"}]}}},
     )
-    out = ct.submit_workflow("http://127.0.0.1:8188", {"wf": True}, timeout=3)
+    out = ct.submit_workflow("http://127.0.0.1:8000", {"wf": True}, timeout=3)
     assert out["prompt_id"] == "pid"
     assert out["files"] == ["x.png"]
 
@@ -62,7 +62,7 @@ def test_submit_workflow_raises_execution_error(monkeypatch):
         },
     )
     with pytest.raises(ct.ComfyRequestError, match="execution_error"):
-        ct.submit_workflow("http://127.0.0.1:8188", {"wf": True}, timeout=3)
+        ct.submit_workflow("http://127.0.0.1:8000", {"wf": True}, timeout=3)
 
 
 def test_collect_file_entries_ignores_none_subfolder():

@@ -13,7 +13,7 @@ def test_validate_local_comfy_config_accepts_local_dirs(tmp_path):
 
 def test_validate_local_comfy_config_rejects_remote_host(tmp_path):
     cfg = _config(tmp_path)
-    cfg["integrations"]["comfyui_base_url"] = "http://192.168.0.10:8188"
+    cfg["integrations"]["comfyui_base_url"] = "http://192.168.0.10:8000"
     with pytest.raises(ComfyRequestError):
         validate_local_comfy_config(cfg)
 
@@ -25,7 +25,7 @@ def _config(tmp_path: Path) -> dict:
     out.mkdir()
     return {
         "integrations": {
-            "comfyui_base_url": "http://127.0.0.1:8188",
+            "comfyui_base_url": "http://127.0.0.1:8000",
             "comfyui_input_dir": str(inp),
             "comfyui_output_dir": str(out),
         }

@@ -29,11 +29,11 @@ def test_prepare_comfy_queue_interrupts_and_clears(monkeypatch):
     monkeypatch.setattr(entry, "clear_comfy_queue", lambda url: calls.append(("clear", url)))
     monkeypatch.setattr(entry, "comfy_queue_counts", lambda url: (0, 0))
     cfg = {
-        "integrations": {"comfyui_base_url": "http://127.0.0.1:8188"},
+        "integrations": {"comfyui_base_url": "http://127.0.0.1:8000"},
         "runtime": {"interrupt_comfy_before_start": True, "clear_comfy_queue_before_start": True},
     }
     entry._prepare_comfy_queue(cfg)
-    assert calls == [("interrupt", "http://127.0.0.1:8188"), ("clear", "http://127.0.0.1:8188")]
+    assert calls == [("interrupt", "http://127.0.0.1:8000"), ("clear", "http://127.0.0.1:8000")]
 
 
 def test_prepare_comfy_queue_raises_when_not_empty(monkeypatch):
@@ -41,7 +41,7 @@ def test_prepare_comfy_queue_raises_when_not_empty(monkeypatch):
     monkeypatch.setattr(entry, "clear_comfy_queue", lambda _url: None)
     monkeypatch.setattr(entry, "comfy_queue_counts", lambda _url: (1, 2))
     cfg = {
-        "integrations": {"comfyui_base_url": "http://127.0.0.1:8188"},
+        "integrations": {"comfyui_base_url": "http://127.0.0.1:8000"},
         "runtime": {"interrupt_comfy_before_start": True, "clear_comfy_queue_before_start": True},
     }
     try:

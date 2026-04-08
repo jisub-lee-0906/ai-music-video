@@ -53,7 +53,7 @@ def _config(tmp_path: Path) -> dict:
     out.mkdir()
     return {
         "integrations": {
-            "comfyui_base_url": "http://127.0.0.1:8188",
+            "comfyui_base_url": "http://127.0.0.1:8000",
             "comfyui_input_dir": str(inp),
             "comfyui_output_dir": str(out),
         }
