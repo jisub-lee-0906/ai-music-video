@@ -7,8 +7,8 @@ def test_audio_policy_leaves_duration_open_without_explicit_target():
     out = audio_policy({"audio": {"bpm": 120}})
     assert out["duration"] == 0
     assert out["beats_per_bar"] == 4
-    assert out["bar_lane"].startswith("intro 4")
-    assert "final chorus 12" in out["bar_lane"]
+    assert out["bar_lane"].startswith("intro 8")
+    assert "final chorus 16" in out["bar_lane"]
     assert out["duration_min_sec"] == 150
     assert out["duration_max_sec"] == 180
 
@@ -70,6 +70,14 @@ def test_audio_policy_accepts_custom_section_bars():
     assert out["section_bars"]["final_chorus_bonus"] == 8
 
 
+def test_audio_policy_rejects_non_multiple_of_four_section_bars():
+    try:
+        audio_policy({"audio": {"section_bars": {"pre_chorus": 6}}})
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "multiple of 4" in str(exc)
+
+
 def test_sections_use_bar_ratio_not_line_weight():
     blocks = [
         {"section": "intro", "label": "Intro", "lines": ["a"]},
@@ -79,12 +87,12 @@ def test_sections_use_bar_ratio_not_line_weight():
     ]
     out = _sections(80.0, blocks, 120, 4, {})
     assert out[0]["start_sec"] == 0.0
-    assert out[0]["end_sec"] == 11.429
-    assert out[1]["start_sec"] == 11.429
+    assert out[0]["end_sec"] == 20.0
+    assert out[1]["start_sec"] == 20.0
     assert out[1]["end_sec"] == 40.0
     assert out[2]["start_sec"] == 40.0
-    assert out[2]["end_sec"] == 68.571
-    assert out[3]["start_sec"] == 68.571
+    assert out[2]["end_sec"] == 60.0
+    assert out[3]["start_sec"] == 60.0
     assert out[3]["end_sec"] == 80.0
 
 
@@ -102,6 +110,6 @@ def test_preflight_audio_map_uses_same_bar_timing_policy():
         ],
     }
     audio_map = build_audio_preview_map(plan)
-    assert audio_map["sections"][0]["end_sec"] == 10.667
-    assert audio_map["sections"][1]["end_sec"] == 37.333
-    assert audio_map["sections"][2]["start_sec"] == 37.333
+    assert audio_map["sections"][0]["end_sec"] == 16.0
+    assert audio_map["sections"][1]["end_sec"] == 32.0
+    assert audio_map["sections"][2]["start_sec"] == 32.0

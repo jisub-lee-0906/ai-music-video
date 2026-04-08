@@ -192,7 +192,7 @@ def _render_final_lyrics(plan: dict, blocks: list[dict]) -> str:
         body = [str(x).strip() for x in row.get("lines", []) if str(x).strip()]
         if not label:
             continue
-        if not body and label.lower() != "outro":
+        if not body and label.lower() not in {"intro", "outro"}:
             continue
         lines.append(f"[{label}]")
         if body:
@@ -376,6 +376,19 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
             continue
         if line_count > max_lines:
             raise RuntimeError(f"line_count too dense for {label}: {line_count} > {max_lines}")
+    _validate_short_form_songform(plan, outline)
+
+
+def _validate_short_form_songform(plan: dict, outline: dict) -> None:
+    max_sec = int(plan.get("duration_max_sec", 0) or 0)
+    labels = [str(block.get("label", "")).strip() for block in outline.get("lyrics_blocks", []) if isinstance(block, dict)]
+    if max_sec <= 0 or max_sec > 180:
+        return
+    crowded = {"Post-Chorus", "Chorus 2", "Pre-Chorus 2"} & set(labels)
+    if len(crowded) >= 3:
+        raise RuntimeError("short-form city pop outline too crowded: avoid using Post-Chorus, Pre-Chorus 2, and Chorus 2 together")
+    if "Post-Chorus" in labels and "Chorus 2" in labels and "Bridge" in labels:
+        raise RuntimeError("short-form city pop outline too crowded: avoid combining Post-Chorus, Chorus 2, and Bridge in one under-3-minute song")
 
 
 def _hook_candidates_prompt(plan: dict) -> str:

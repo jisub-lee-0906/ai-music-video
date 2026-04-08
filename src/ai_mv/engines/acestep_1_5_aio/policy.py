@@ -28,16 +28,16 @@ DEFAULT_LINE_BUDGETS: dict[str, int] = {
     "Outro": 0,
 }
 DEFAULT_SECTION_BARS: dict[str, int] = {
-    "intro": 4,
-    "verse": 10,
-    "verse_1": 10,
-    "verse_2": 10,
-    "pre_chorus": 6,
-    "chorus": 10,
+    "intro": 8,
+    "verse": 8,
+    "verse_1": 8,
+    "verse_2": 8,
+    "pre_chorus": 8,
+    "chorus": 8,
     "post_chorus": 4,
-    "bridge": 6,
-    "outro": 4,
-    "final_chorus_bonus": 2,
+    "bridge": 4,
+    "outro": 8,
+    "final_chorus_bonus": 8,
 }
 PREFERRED_SONGFORM: tuple[tuple[str, str], ...] = (
     ("intro", "Intro"),
@@ -48,6 +48,36 @@ PREFERRED_SONGFORM: tuple[tuple[str, str], ...] = (
     ("bridge", "Bridge"),
     ("chorus", "Final Chorus"),
     ("outro", "Outro"),
+)
+SHORT_FORM_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
+    (
+        ("intro", "Intro"),
+        ("verse_1", "Verse 1"),
+        ("pre_chorus", "Pre-Chorus"),
+        ("chorus", "Chorus"),
+        ("verse_2", "Verse 2"),
+        ("bridge", "Bridge"),
+        ("chorus", "Final Chorus"),
+        ("outro", "Outro"),
+    ),
+    (
+        ("intro", "Intro"),
+        ("verse_1", "Verse 1"),
+        ("chorus", "Chorus"),
+        ("verse_2", "Verse 2"),
+        ("bridge", "Bridge"),
+        ("chorus", "Final Chorus"),
+        ("outro", "Outro"),
+    ),
+    (
+        ("intro", "Intro"),
+        ("verse_1", "Verse 1"),
+        ("pre_chorus", "Pre-Chorus"),
+        ("chorus", "Chorus"),
+        ("verse_2", "Verse 2"),
+        ("chorus", "Final Chorus"),
+        ("outro", "Outro"),
+    ),
 )
 
 
@@ -65,6 +95,7 @@ def audio_policy(config: dict) -> dict:
         "duration_min_sec": _coerce_positive_int(audio.get("target_duration_min_sec"), default=150),
         "duration_max_sec": _coerce_positive_int(audio.get("target_duration_max_sec"), default=180),
         "bar_lane": bar_lane_summary(preferred_rows, section_bars),
+        "songform_variants": short_form_songform_variants(),
         "beats_per_bar": beats_per_bar,
         "section_bars": section_bars,
         "seed": int(audio.get("seed", 31)),
@@ -83,6 +114,13 @@ def audio_policy(config: dict) -> dict:
 
 def preferred_songform_rows() -> list[dict[str, str]]:
     return [{"section": sec, "label": label} for sec, label in PREFERRED_SONGFORM]
+
+
+def short_form_songform_variants() -> list[list[dict[str, str]]]:
+    return [
+        [{"section": sec, "label": label} for sec, label in variant]
+        for variant in SHORT_FORM_VARIANTS
+    ]
 
 
 def compute_duration_from_blocks(blocks: Sequence[dict], bpm: int, beats_per_bar: int, section_bars: dict[str, int]) -> int:
@@ -195,7 +233,7 @@ def resolve_section_bars(audio: dict) -> dict[str, int]:
         name = str(key).strip().lower()
         if not name:
             continue
-        resolved[name] = _coerce_positive_int(value, default=0, label=f"audio.section_bars.{name}")
+        resolved[name] = _coerce_bar_multiple(value, label=f"audio.section_bars.{name}")
     return resolved
 
 
@@ -404,6 +442,13 @@ def _coerce_positive_int(raw: object, default: int, label: str = "") -> int:
         if label:
             raise RuntimeError(f"{label} must be > 0")
         return int(default)
+    return value
+
+
+def _coerce_bar_multiple(raw: object, label: str) -> int:
+    value = _coerce_positive_int(raw, default=0, label=label)
+    if value % 4 != 0:
+        raise RuntimeError(f"{label} must be a multiple of 4")
     return value
 
 

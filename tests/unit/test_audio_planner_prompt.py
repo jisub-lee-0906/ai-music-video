@@ -50,6 +50,8 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
     assert "genre_description is the future [tags] block" in prompt
     assert "core instruments, arrangement energy, and vocal character" in prompt
     assert "Choose a songform that fits modern short-form Japanese city pop around two and a half to three minutes" in prompt
+    assert "Prefer a strong beginning-middle-turn-resolution arc" in prompt
+    assert "Keep Intro instrumental." in prompt
     assert "director_brief_intent" not in prompt
     assert len(prompt) < 2600
 
@@ -214,6 +216,29 @@ def test_normalize_audio_outline_canonicalizes_repeated_citypop_labels():
         "Final Chorus",
         "Outro",
     ]
+
+
+def test_validate_outline_line_budgets_rejects_overcrowded_short_form_songform():
+    with pytest.raises(RuntimeError, match="short-form city pop outline too crowded"):
+        audio_planner._validate_outline_line_budgets(
+            {"duration_max_sec": 180, "line_budgets": {"Intro": 0, "Verse 1": 5, "Pre-Chorus": 3, "Chorus": 5, "Post-Chorus": 2, "Verse 2": 5, "Pre-Chorus 2": 3, "Chorus 2": 5, "Bridge": 3, "Final Chorus": 5, "Outro": 0}},
+            {
+                "bpm": 110,
+                "lyrics_blocks": [
+                    {"label": "Intro", "line_count": 0},
+                    {"label": "Verse 1", "line_count": 5},
+                    {"label": "Pre-Chorus", "line_count": 3},
+                    {"label": "Chorus", "line_count": 5},
+                    {"label": "Post-Chorus", "line_count": 2},
+                    {"label": "Verse 2", "line_count": 5},
+                    {"label": "Pre-Chorus 2", "line_count": 3},
+                    {"label": "Chorus 2", "line_count": 5},
+                    {"label": "Bridge", "line_count": 3},
+                    {"label": "Final Chorus", "line_count": 5},
+                    {"label": "Outro", "line_count": 0},
+                ],
+            },
+        )
 
 
 def test_generate_lyrics_block_skips_llm_for_zero_line_intro():

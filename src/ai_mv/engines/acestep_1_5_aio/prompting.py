@@ -48,29 +48,48 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
         "Write it in English as one compact production paragraph starting with a genre label and colon. "
         "Include core instruments, arrangement energy, and vocal character. "
         "Do not use artist references, camera language, or visual wording. "
-        "Treat Audio intent as the source of truth for the song's emotional meaning and progression; genre and voice only shape presentation. "
+        "Treat Audio intent as the source of truth; genre and voice only shape presentation. "
         "If bpm is not fixed, choose it from genre, line density, and breathing room. "
     )
 
 
 def _audio_songform_rules(plan: dict) -> str:
     ending = _ending_policy(plan)
+    variant_text = _songform_variant_clause(plan)
     rules = [
         "Write a full song, not a fragment. ",
-        "Keep a clear arc across the song: early sections establish the state, middle sections develop or tighten it, and later sections resolve or release it. ",
         "Choose a songform that fits modern short-form Japanese city pop around two and a half to three minutes instead of forcing one fixed template. ",
-        "Prefer compact, natural section flow over mechanically using every available section label. ",
+        variant_text,
+        "Prefer compact, natural section flow. ",
+        "Prefer a strong beginning-middle-turn-resolution arc, such as Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Bridge -> Final Chorus -> Outro. ",
         "For each section, role should say what that section must do, and change should say what becomes different from the previous section. ",
-        "Use Chorus 2, Pre-Chorus 2, or Post-Chorus only if the song truly needs them. ",
+        "Use Chorus 2, Pre-Chorus 2, or Post-Chorus only if the song truly needs them, and avoid crowding a short song with all of them at once. ",
         "Do not make Verse 2 a copy of Verse 1. ",
+        "Make Bridge the emotional turn when it appears, and make Final Chorus feel earned after that turn. ",
         "If you use Final Chorus, make it feel like an answer, not a repeat. ",
-        "Keep Intro and Outro instrumental unless a very short sung line is clearly necessary. ",
+        "Keep Intro instrumental. Keep Outro instrumental unless a very short sung tail is clearly necessary. ",
     ]
     if bool(ending.get("final_chorus_required", False)):
         rules.append("Use a distinct final return labeled Final Chorus. ")
     if bool(ending.get("outro_required", False)):
         rules.append("If you include Outro, keep it very short and terminal. ")
     return "".join(rules)
+
+
+def _songform_variant_clause(plan: dict) -> str:
+    variants = plan.get("songform_variants", [])
+    if not isinstance(variants, list) or not variants:
+        return ""
+    rendered: list[str] = []
+    for variant in variants[:3]:
+        if not isinstance(variant, list):
+            continue
+        labels = [str(row.get("label", "")).strip() for row in variant if isinstance(row, dict) and str(row.get("label", "")).strip()]
+        if labels:
+            rendered.append(" -> ".join(labels))
+    if not rendered:
+        return ""
+    return "Choose one natural songform shape from these candidate patterns: " + " | ".join(rendered) + ". "
 
 
 def _audio_line_budget_rules(plan: dict) -> str:
@@ -101,7 +120,7 @@ def _language_style_rules(plan: dict) -> str:
             "Write fluent modern Japanese lyrics later. Keep them natural, compact, singable, and emotionally precise. "
             "Favor concrete, lived-in visual detail over abstract explanation. "
             "Let the song choose whether it leans toward romance, breakup, longing, self-recovery, urban loneliness, or another fitting city-pop mood. "
-            "Avoid Korean-style direct confession phrasing, overpacked literary metaphor, and awkward slogan-like hooks. "
+            "Avoid Korean-style direct confession, overpacked literary metaphor, and awkward slogan-like hooks. "
         )
     if lang == "ko":
         return "Write fluent modern Korean lyrics later. Keep them short, singable, and direct. "
