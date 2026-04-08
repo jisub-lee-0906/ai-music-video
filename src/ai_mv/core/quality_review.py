@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from ai_mv.core.quality_review_metrics import lyric_metrics, plan_metrics, route_stats
+from ai_mv.core.quality_review_metrics import duration_metrics, lyric_metrics, plan_metrics, prompt_metrics, route_stats
 
 
 def build_quality_review(config: dict, payload: dict) -> dict:
     metrics = plan_metrics(payload)
     lyric = lyric_metrics(payload)
+    prompts = prompt_metrics(payload)
+    durations = duration_metrics(payload)
     route = route_stats(payload.get("clip_routes", []), payload)
     strengths: list[str] = []
     risks: list[str] = []
@@ -21,8 +23,30 @@ def build_quality_review(config: dict, payload: dict) -> dict:
         strengths.append("clip routes are populated")
     elif payload.get("prompt_plan"):
         risks.append("render routes are missing")
+    if bool(lyric.get("beat_timing_monotonic", False)):
+        strengths.append("lyric beat timing stays monotonic across the song")
+    else:
+        risks.append("lyric beat timing is not monotonic")
+    if int(prompts.get("ref_adjacent_duplicate_count", 0)) == 0:
+        strengths.append("adjacent REF prompts are not duplicated")
+    else:
+        risks.append(f"{int(prompts['ref_adjacent_duplicate_count'])} adjacent REF prompts repeat too closely")
+    if int(prompts.get("wan_adjacent_duplicate_count", 0)) == 0:
+        strengths.append("adjacent WAN prompts are not duplicated")
+    else:
+        risks.append(f"{int(prompts['wan_adjacent_duplicate_count'])} adjacent WAN prompts repeat too closely")
+    if int(prompts.get("subject_drift_count", 0)) == 0:
+        strengths.append("REF prompts keep subject identity wording stable")
+    else:
+        risks.append(f"{int(prompts['subject_drift_count'])} REF prompts show subject drift")
+    if float(durations.get("audio_duration_sec", 0.0)) > 0.0 and float(durations.get("video_duration_sec", 0.0)) > 0.0:
+        drift = float(durations.get("duration_drift_sec", 0.0))
+        if drift <= 0.2:
+            strengths.append("final video length stays closely aligned to the audio")
+        else:
+            risks.append(f"audio/video length drift is {drift:.3f}s")
     return {
-        "reasoning": "Minimal runtime review checks only storyboard population, lyric coverage, and route generation.",
+        "reasoning": "Technical safety review only. This report is a lightweight runtime signal, not the main creative evaluation. Use llm_review.json as the primary qualitative review.",
         "strengths": strengths,
         "risks": risks,
         "metrics": {
@@ -30,6 +54,15 @@ def build_quality_review(config: dict, payload: dict) -> dict:
             "lyric_beat_count": int(lyric.get("lyric_beat_count", 0)),
             "unmapped_lyric_lines": int(lyric.get("unmapped_lyric_lines", 0)),
             "route_count": int(route.get("total_count", 0)),
+            "beat_timing_monotonic": bool(lyric.get("beat_timing_monotonic", False)),
+            "ref_adjacent_duplicate_count": int(prompts.get("ref_adjacent_duplicate_count", 0)),
+            "wan_adjacent_duplicate_count": int(prompts.get("wan_adjacent_duplicate_count", 0)),
+            "subject_drift_count": int(prompts.get("subject_drift_count", 0)),
+            "ref_duration_summary": dict(prompts.get("ref_duration_summary", {})),
+            "wan_duration_summary": dict(prompts.get("wan_duration_summary", {})),
+            "audio_duration_sec": float(durations.get("audio_duration_sec", 0.0)),
+            "video_duration_sec": float(durations.get("video_duration_sec", 0.0)),
+            "duration_drift_sec": float(durations.get("duration_drift_sec", 0.0)),
         },
     }
 
@@ -68,10 +101,13 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
         }
     lyric_summary = lyric_metrics(payload)
     summary_metrics = plan_metrics(payload) if payload.get("scene_outline") else {}
+    prompt_summary = prompt_metrics(payload)
+    duration_summary = duration_metrics(payload)
     return {
         "run_id": state["run_id"],
         "selected_brief": str(payload.get("selected_brief", "")).strip(),
-        "pipeline_version": "minimal",
+        "pipeline_version": "music_profile_centered_v1",
+        "review_mode": "technical_signals_plus_llm_review",
         "language": str(audio_map.get("language", "")).strip(),
         "selected_songform": songform,
         "selected_labels": labels,
@@ -81,10 +117,21 @@ def build_run_summary(state: dict, payload: dict, quality_review: dict) -> dict:
         "lyric_beat_count": int(lyric_summary["lyric_beat_count"]),
         "shot_to_lyric_coverage": float(lyric_summary["shot_to_lyric_coverage"]),
         "unmapped_lyric_lines": int(lyric_summary["unmapped_lyric_lines"]),
+        "beat_timing_monotonic": bool(lyric_summary.get("beat_timing_monotonic", False)),
         "shot_package_count": int(summary_metrics.get("shot_package_count", 0)),
         "payoff_role_count": int(summary_metrics.get("payoff_role_count", 0)),
         "shot_function_count": int(summary_metrics.get("shot_function_count", 0)),
         "place_count": int(summary_metrics.get("place_count", 0)),
+        "ref_item_count": int(prompt_summary.get("ref_item_count", 0)),
+        "wan_item_count": int(prompt_summary.get("wan_item_count", 0)),
+        "ref_adjacent_duplicate_count": int(prompt_summary.get("ref_adjacent_duplicate_count", 0)),
+        "wan_adjacent_duplicate_count": int(prompt_summary.get("wan_adjacent_duplicate_count", 0)),
+        "subject_drift_count": int(prompt_summary.get("subject_drift_count", 0)),
+        "ref_duration_summary": dict(prompt_summary.get("ref_duration_summary", {})),
+        "wan_duration_summary": dict(prompt_summary.get("wan_duration_summary", {})),
+        "audio_duration_sec": float(duration_summary.get("audio_duration_sec", 0.0)),
+        "video_duration_sec": float(duration_summary.get("video_duration_sec", 0.0)),
+        "duration_drift_sec": float(duration_summary.get("duration_drift_sec", 0.0)),
         "failure_reason": str(state.get("failure_reason", "")).strip(),
         "completed_stages": list(state.get("completed_stages", [])),
         "current_stage": str(state.get("current_stage", "")).strip(),

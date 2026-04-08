@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from ai_mv.core.workflow_names import AUDIO_WORKFLOW
 from ai_mv.engines.acestep_1_5_aio.mapper import audio_required_inputs, map_audio_workflow
-from ai_mv.engines.acestep_1_5_aio.policy import compute_section_windows
+from ai_mv.engines.acestep_1_5_aio.policy import build_song_timing, compute_section_windows
 from ai_mv.infra.comfy_outputs import pick_audio_file
 from ai_mv.infra.comfy_client import run_workflow
 from ai_mv.utils.path_utils import resolve_generated_file
+from ai_mv.utils.audio_timing import analyze_audio_timing
 from ai_mv.utils.time_utils import ffprobe_duration
 
 ALLOWED_SECTIONS = {"intro", "verse", "verse_1", "verse_2", "pre_chorus", "chorus", "post_chorus", "bridge", "outro"}
@@ -18,16 +19,25 @@ def run_audio_split(config: dict, plan: dict) -> dict:
     duration = ffprobe_duration(music_file)
     if duration <= 0:
         raise RuntimeError(f"invalid audio duration: {music_file}")
+    timing = analyze_audio_timing(
+        music_file,
+        bpm_hint=int(plan.get("bpm", 0) or 0),
+        beats_per_bar=int(plan.get("beats_per_bar", 4) or 4),
+    )
+    timing_bundle = build_song_timing(
+        duration,
+        plan.get("lyrics_blocks", []),
+        int(plan.get("bpm", 0)),
+        int(plan.get("beats_per_bar", 4)),
+        plan.get("section_bars", {}),
+        detected_beat_times=timing.get("beat_times_sec", []),
+        detected_bpm=int(timing.get("detected_bpm", 0) or 0),
+    )
     return {
         "duration_sec": duration,
-        "bpm_estimate": int(plan["bpm"]),
-        "sections": _sections(
-            duration,
-            plan.get("lyrics_blocks", []),
-            int(plan.get("bpm", 0)),
-            int(plan.get("beats_per_bar", 4)),
-            plan.get("section_bars", {}),
-        ),
+        "bpm_estimate": int(timing_bundle["timing"]["detected_bpm"]),
+        "sections": timing_bundle["sections"],
+        "timing": timing_bundle["timing"],
         "music_file": music_file,
     }
 
@@ -44,7 +54,14 @@ def _sections(
     rows = _validate_and_fix_order(rows)
     if not rows:
         raise RuntimeError("lyrics_blocks empty after validation")
-    return compute_section_windows(float(duration), rows, int(bpm), int(beats_per_bar), section_bars or {})
+    timing_bundle = build_song_timing(
+        float(duration),
+        rows,
+        int(bpm),
+        int(beats_per_bar),
+        section_bars or {},
+    )
+    return timing_bundle["sections"]
 
 
 def _limit_section_rows(rows: list[dict]) -> list[dict]:

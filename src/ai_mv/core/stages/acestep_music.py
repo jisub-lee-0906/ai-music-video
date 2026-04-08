@@ -65,18 +65,20 @@ def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dic
 
 
 def build_audio_preview_map(plan: dict) -> dict:
-    from ai_mv.engines.acestep_1_5_aio.runner import _sections
+    from ai_mv.engines.acestep_1_5_aio.policy import build_song_timing
 
     duration = float(plan["duration"])
+    timing_bundle = build_song_timing(
+        duration,
+        plan.get("lyrics_blocks", []),
+        int(plan.get("bpm", 0)),
+        int(plan.get("beats_per_bar", 4)),
+        plan.get("section_bars", {}),
+    )
     return {
         "duration_sec": duration,
-        "bpm_estimate": int(plan["bpm"]),
-        "sections": _sections(
-            duration,
-            plan.get("lyrics_blocks", []),
-            int(plan.get("bpm", 0)),
-            int(plan.get("beats_per_bar", 4)),
-            plan.get("section_bars", {}),
-        ),
+        "bpm_estimate": int(timing_bundle["timing"]["detected_bpm"]),
+        "sections": timing_bundle["sections"],
+        "timing": timing_bundle["timing"],
         "music_file": "",
     }

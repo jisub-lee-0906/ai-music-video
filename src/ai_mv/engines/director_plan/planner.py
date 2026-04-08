@@ -64,10 +64,6 @@ def _shot_function(shot_role: str, payoff_role: str) -> str:
 
 
 def _resolve_place(brief: dict, shot: dict) -> str:
-    literal_image = str(shot.get("literal_image", "")).strip()
-    inferred = _literal_place(literal_image)
-    if inferred:
-        return inferred
     locations = [str(x).strip() for x in brief.get("profile_locations", []) if str(x).strip()]
     section = str(shot.get("section_label", "")).strip().lower()
     story_function = str(shot.get("shot_role", "")).strip().lower()
@@ -81,6 +77,17 @@ def _resolve_place(brief: dict, shot: dict) -> str:
         if len(locations) >= 2:
             return locations[1]
         return locations[0]
+    literal_image = " ".join(
+        part.strip()
+        for part in (
+            str(shot.get("literal_image", "")).strip(),
+            str(shot.get("visible_action", "")).strip(),
+        )
+        if part.strip()
+    )
+    inferred = _literal_place(literal_image)
+    if inferred:
+        return inferred
     return "a grounded real-world location"
 
 
@@ -136,11 +143,11 @@ def _clean(text: str) -> str:
 
 def _literal_place(text: str) -> str:
     low = text.lower()
-    if any(token in low for token in ("crosswalk", "asphalt", "headlight", "sidewalk", "street", "intersection", "storefront", "shop window", "shuttered storefronts")):
+    if any(token in low for token in ("crosswalk", "sidewalk", "street", "intersection", "storefront", "shop window")):
         return "wet city street at night"
-    if any(token in low for token in ("diner", "cafe", "booth", "mug", "counter", "table")):
+    if any(token in low for token in ("diner", "cafe", "booth", "counter")):
         return "dim late-night diner"
-    if any(token in low for token in ("club", "synthesizer", "cables", "stage")):
+    if any(token in low for token in ("club", "stage", "rehearsal room")):
         return "cramped rehearsal room"
     if any(token in low for token in ("rooftop", "skyline", "dawn", "fog")):
         return "concrete rooftop at dawn"

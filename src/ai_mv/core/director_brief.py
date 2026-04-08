@@ -98,6 +98,7 @@ def build_director_brief_intent(config: dict) -> dict:
     world_rules = _text(visual, "world_rules")
     section_roles = _section_story_roles(visual.get("section_story_roles", {}))
     section_event_scripts = _section_event_scripts(visual.get("section_event_scripts", {}))
+    motifs = _str_list(visual.get("motifs", []))
     return {
         "brief_name": str(config.get("brief", "")).strip() or "director_brief_example",
         "identity_core": _text(character, "identity_core"),
@@ -139,7 +140,8 @@ def build_director_brief_intent(config: dict) -> dict:
         "transition_bias": "",
         "ref_frame_style": "natural cinematic music-video keyframe with grounded environmental realism",
         "wan_motion_style": "natural motion that stays connected between the two keyframes",
-        "motif_families": [],
+        "motif_families": motifs,
+        "profile_motifs": motifs,
     }
 
 
@@ -254,6 +256,7 @@ def _build_minimal_brief_intent(config: dict) -> dict:
     visual_concept = _top_text(config, "visual_concept")
     locations = _top_list(config, "locations")
     props = _top_list(config, "props")
+    motifs = _top_list(config, "motifs")
     style = " ".join(part for part in (genre, voice, prompt) if part).strip()
     subject_intro = _ref_subject_intro_from_voice(voice)
     identity_core = _identity_core_from_voice(voice)
@@ -265,7 +268,6 @@ def _build_minimal_brief_intent(config: dict) -> dict:
     anchor_pose = _anchor_text(config, "anchor_pose") or "full-body standing pose, slight side angle, both hands visible, shoes fully visible"
     anchor_background = _anchor_text(config, "anchor_background") or "plain neutral studio background, no props, no environmental elements"
     section_roles = _generic_section_story_roles(prompt, visual_concept, locations)
-    section_events = _generic_section_event_scripts(prompt, visual_concept, locations, props)
     return {
         "brief_name": str(config.get("brief", "")).strip() or "director_brief_example",
         "identity_core": identity_core,
@@ -273,7 +275,7 @@ def _build_minimal_brief_intent(config: dict) -> dict:
         "anchor_wardrobe_guidance": _anchor_wardrobe_guidance(config),
         "anchor_avoid": "",
         "ref_subject_intro": subject_intro,
-        "ref_continuity_guidance": "Keep the same vocalist identity and stable single-subject continuity.",
+        "ref_continuity_guidance": "Keep the same anchor character identity and stable single-subject continuity.",
         "style_contract": style,
         "world_core": "",
         "time_anchor": "at night" if "night" in prompt.lower() else "",
@@ -282,7 +284,7 @@ def _build_minimal_brief_intent(config: dict) -> dict:
         "performer_arc": "Keep one readable direction across the song.",
         "forbidden_story_moves": "",
         "section_story_roles": section_roles,
-        "section_event_scripts": section_events,
+        "section_event_scripts": {},
         "section_grammar": section_roles,
         "wan_negative": _DEFAULT_WAN_NEGATIVE,
         "audio_language": language,
@@ -303,13 +305,14 @@ def _build_minimal_brief_intent(config: dict) -> dict:
         "transition_bias": "",
         "ref_frame_style": "natural cinematic music-video keyframe with grounded environmental realism",
         "wan_motion_style": "natural motion that stays connected between the two keyframes",
-        "motif_families": [],
+        "motif_families": motifs,
         "profile_prompt": prompt,
         "profile_genre": genre,
         "profile_voice": voice,
         "visual_concept": visual_concept,
         "profile_locations": locations,
         "profile_props": props,
+        "profile_motifs": motifs,
         "anchor_subject": anchor_subject,
         "anchor_hair": anchor_hair,
         "anchor_top": anchor_top,
@@ -321,25 +324,11 @@ def _build_minimal_brief_intent(config: dict) -> dict:
 
 
 def _ref_subject_intro_from_voice(voice: str) -> str:
-    low = voice.lower()
-    if "solo female" in low:
-        return "The same solo female vocalist"
-    if "solo male" in low:
-        return "The same solo male vocalist"
-    if "female" in low:
-        return "The same female vocalist"
-    if "male" in low:
-        return "The same male vocalist"
-    if "duo" in low or "group" in low or "mixed" in low:
-        return "The same vocal act"
-    return "The same vocalist"
+    return "The same anchor character"
 
 
 def _identity_core_from_voice(voice: str) -> str:
-    cleaned = " ".join(str(voice).strip().split())
-    if cleaned:
-        return f"same vocalist, {cleaned}"
-    return "same vocalist"
+    return "same anchor character"
 
 
 def _anchor_text(config: dict, key: str) -> str:
@@ -352,16 +341,16 @@ def _anchor_subject(config: dict) -> str:
         return explicit
     voice = _top_text(config, "voice").lower()
     if "solo female" in voice:
-        return "young adult female vocalist"
+        return "young adult woman"
     if "solo male" in voice:
-        return "young adult male vocalist"
+        return "young adult man"
     if "female" in voice:
-        return "young adult female vocalist"
+        return "young adult woman"
     if "male" in voice:
-        return "young adult male vocalist"
+        return "young adult man"
     if "duo" in voice or "group" in voice or "mixed" in voice:
-        return "young adult vocal act"
-    return "young adult vocalist"
+        return "young adult duo"
+    return "young adult person"
 
 
 def _anchor_wardrobe_guidance(config: dict) -> str:

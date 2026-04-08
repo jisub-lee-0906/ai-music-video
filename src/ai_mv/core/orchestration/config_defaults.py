@@ -15,12 +15,9 @@ DEFAULT_CONFIG: dict = {
         "wan_size": "768x432",
         "wan_fps": 16,
         "wan_max_clip_sec": 5.0,
-        "wan_safe_max_gap_sec": 4.0,
         "wan_steps_low": 12,
         "wan_steps_normal": 14,
         "wan_steps_high": 16,
-        "wan_planner_batch_size": 20,
-        "flux2_ref_planner_batch_size": 4,
         "ref_naturalize": True,
         "ref_polish": True,
         "wan_naturalize": True,
@@ -44,6 +41,9 @@ DEFAULT_CONFIG: dict = {
         "template_hashes": {},
         "interrupt_comfy_before_start": True,
         "clear_comfy_queue_before_start": True,
+    },
+    "review": {
+        "llm_review": True,
     },
 }
 

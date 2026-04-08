@@ -17,9 +17,11 @@ def test_verbalize_ref_prompts_uses_minimal_place_action_carry():
 
     out = render_verbalizer.verbalize_ref_prompts({}, rows)
 
-    assert out["S001"].startswith("The performer is writing in a worn notebook in a dim late-night diner, three-quarter medium framing.")
-    assert "worn notebook and half-empty coffee mug remain in view".lower() in out["S001"].lower()
-    assert "Rain beads on the diner window." in out["S001"]
+    assert "SubjectForm: single person." in out["S001"]
+    assert "Action: writing in a worn notebook." in out["S001"]
+    assert "Place: a dim late-night diner." in out["S001"]
+    assert "Detail: Rain beads on the diner window." in out["S001"]
+    assert "Carry: worn notebook and half-empty coffee mug." in out["S001"]
     assert out["S001"].endswith("Keep the face.")
 
 
@@ -35,8 +37,10 @@ def test_verbalize_wan_prompts_uses_compact_bridge_sentence():
 
     out = render_verbalizer.verbalize_wan_prompts({}, rows)
 
-    assert out["S002"].startswith("The performer is crossing the rainy street with one readable step forward on a wet city street at night.")
-    assert "The same worn notebook stay in view." in out["S002"]
+    assert "SubjectForm: single person." in out["S002"]
+    assert "Motion: crossing the rainy street with one readable step forward." in out["S002"]
+    assert "Place: a wet city street at night." in out["S002"]
+    assert "Carry: worn notebook." in out["S002"]
 
 
 def test_verbalize_ref_prompts_uses_plural_subject_for_group_voice():
@@ -63,7 +67,8 @@ def test_verbalize_ref_prompts_uses_plural_subject_for_group_voice():
         rows,
     )
 
-    assert out["S010"].startswith("They are walking side by side through the rainy street on a wet city street at night, medium-wide full-body framing.")
+    assert "SubjectForm: plural." in out["S010"]
+    assert "Action: walking side by side through the rainy street." in out["S010"]
     assert out["S010"].endswith("Keep the faces consistent.")
 
 
@@ -90,5 +95,6 @@ def test_verbalize_ref_prompts_uses_female_subject_for_solo_female_voice():
         rows,
     )
 
-    assert out["S011"].startswith("She is walking alone through the rainy street on a wet city street at night, medium-wide full-body framing.")
+    assert "SubjectForm: single female." in out["S011"]
+    assert "Action: walking alone through the rainy street." in out["S011"]
     assert out["S011"].endswith("Keep the face.")

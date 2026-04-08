@@ -15,6 +15,12 @@ SCENE_OUTLINE_REQUIRED_FIELDS = (
     "payoff_role",
     "shot_role",
     "duration_sec",
+    "start_beat_index",
+    "end_beat_index",
+    "start_sec",
+    "end_sec",
+    "anchor_sec",
+    "segment_focus",
 )
 
 DIRECTOR_REQUIRED_FIELDS = (
@@ -24,6 +30,12 @@ DIRECTOR_REQUIRED_FIELDS = (
     "action",
     "carry",
     "framing",
+    "start_beat_index",
+    "end_beat_index",
+    "start_sec",
+    "end_sec",
+    "anchor_sec",
+    "segment_focus",
 )
 
 PROMPT_REQUIRED_REF_FIELDS = (
@@ -43,6 +55,12 @@ PROMPT_REQUIRED_REF_FIELDS = (
     "action",
     "carry",
     "framing",
+    "segment_focus",
+    "start_beat_index",
+    "end_beat_index",
+    "start_sec",
+    "end_sec",
+    "anchor_sec",
     "ref_prompt_text",
 )
 
@@ -56,6 +74,8 @@ PROMPT_REQUIRED_WAN_FIELDS = (
     "place",
     "bridge_action",
     "carry",
+    "start_anchor_sec",
+    "end_anchor_sec",
     "wan_positive_prompt_text",
 )
 

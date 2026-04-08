@@ -23,11 +23,11 @@ def test_validate_director_brief_requires_story_only_fields():
 
 def test_build_director_brief_intent_returns_writer_layer_fields():
     intent = build_director_brief_intent(_brief())
-    assert intent["identity_core"] == "same vocalist, solo female, airy and emotional"
+    assert intent["identity_core"] == "same anchor character"
     assert intent["story_premise"]
     assert intent["audio_brief"]
     assert intent["performer_arc"]
-    assert intent["anchor_subject"] == "young adult female vocalist"
+    assert intent["anchor_subject"] == "young adult woman"
     assert intent["anchor_pose"]
     assert intent["anchor_background"]
     assert intent["visual_concept"] == "Realistic cinematic city-night breakup video."

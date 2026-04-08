@@ -71,6 +71,7 @@ def _planner_prompt(config: dict, audio_plan: dict, sections: list[dict]) -> str
         f"Visual concept={_brief_visual_context(brief)}. "
         f"Preferred locations={_preferred_locations(brief)}. "
         f"Carry-friendly props={_preferred_props(brief)}. "
+        f"Optional motifs={_preferred_motifs(brief)}. "
         f"Sections={_section_digest(sections)}. "
         f"Source section lines JSON={_section_lines_json(sections)}. "
         f"Lyrics={_lyrics_digest(audio_plan)}."
@@ -123,6 +124,10 @@ def _section_lines_json(sections: list[dict]) -> str:
 
 
 def _attach_time_ranges(timeline: dict, sections: list[dict], audio_plan: dict, audio_map: dict) -> None:
+    timing = audio_map.get("timing", {}) if isinstance(audio_map, dict) else {}
+    grid = [float(x) for x in timing.get("grid_beat_times_sec", []) if _coerce_float(x) >= 0.0]
+    if len(grid) < 2:
+        raise RuntimeError("lyrics_timeline missing audio_map.timing.grid_beat_times_sec")
     source_sections = [section for section in sections if isinstance(section, dict)]
     indexed_by_name: dict[str, list[dict]] = {}
     indexed_by_name_and_label: dict[tuple[str, str], list[dict]] = {}
@@ -154,17 +159,25 @@ def _attach_time_ranges(timeline: dict, sections: list[dict], audio_plan: dict, 
             row = source_sections[section_index]
         start = float(row.get("start_sec", row.get("start", 0.0)))
         end = float(row.get("end_sec", row.get("end", start)))
+        section_start_idx = _safe_int(row.get("start_beat_index", 0))
+        section_end_idx = _safe_int(row.get("end_beat_index", section_start_idx + 1))
         beats = [beat for beat in section.get("lyric_beats", []) if isinstance(beat, dict)]
         if not beats:
             section["start_sec"] = round(start, 3)
             section["end_sec"] = round(end, 3)
+            section["start_beat_index"] = section_start_idx
+            section["end_beat_index"] = section_end_idx
             continue
-        ranges = _beat_ranges_for_section(start, end, beats, audio_plan, audio_map)
-        for beat, (beat_start, beat_end) in zip(beats, ranges):
+        ranges = _beat_ranges_for_section(section_start_idx, section_end_idx, start, end, beats, grid)
+        for beat, (beat_start_idx, beat_end_idx, beat_start, beat_end) in zip(beats, ranges):
+            beat["start_beat_index"] = beat_start_idx
+            beat["end_beat_index"] = beat_end_idx
             beat["start_sec"] = round(beat_start, 3)
             beat["end_sec"] = round(beat_end, 3)
         section["start_sec"] = round(start, 3)
         section["end_sec"] = round(end, 3)
+        section["start_beat_index"] = section_start_idx
+        section["end_beat_index"] = section_end_idx
 
 
 def _recommended_max_beats(audio_plan: dict, sections: list[dict]) -> int:
@@ -191,44 +204,32 @@ def _recommended_max_beats(audio_plan: dict, sections: list[dict]) -> int:
 
 
 def _beat_ranges_for_section(
-    start: float,
-    end: float,
+    section_start_idx: int,
+    section_end_idx: int,
+    section_start_sec: float,
+    section_end_sec: float,
     beats: list[dict],
-    audio_plan: dict,
-    audio_map: dict,
-) -> list[tuple[float, float]]:
-    span = max(0.001, end - start)
-    musical_beat_sec = _musical_beat_sec(audio_plan, audio_map)
-    total_musical_beats = max(len(beats), int(round(span / musical_beat_sec)))
+    grid: list[float],
+) -> list[tuple[int, int, float, float]]:
+    total_musical_beats = max(len(beats), section_end_idx - section_start_idx)
     weights = [_beat_weight(row) for row in beats]
     allocations = _allocate_integer_units(total_musical_beats, weights, minimum=1)
-    out: list[tuple[float, float]] = []
-    cursor = start
+    out: list[tuple[int, int, float, float]] = []
+    cursor = section_start_idx
+    grid_last = len(grid) - 1
     for idx, alloc in enumerate(allocations):
+        beat_start_idx = cursor
+        beat_end_idx = min(section_end_idx, cursor + alloc)
         if idx == len(allocations) - 1:
-            beat_end = end
-        else:
-            beat_end = min(end, cursor + (alloc * musical_beat_sec))
-        out.append((cursor, beat_end))
-        cursor = beat_end
+            beat_end_idx = section_end_idx
+        beat_start_sec = _grid_time(grid, beat_start_idx, section_start_sec)
+        beat_end_sec = _grid_time(grid, beat_end_idx, section_end_sec)
+        out.append((beat_start_idx, beat_end_idx, beat_start_sec, beat_end_sec))
+        cursor = min(grid_last, beat_end_idx)
     if out:
-        out[-1] = (out[-1][0], end)
+        last = out[-1]
+        out[-1] = (last[0], section_end_idx, last[2], section_end_sec)
     return out
-
-
-def _musical_beat_sec(audio_plan: dict, audio_map: dict) -> float:
-    bpm = 0
-    try:
-        bpm = int(audio_plan.get("bpm", 0) or 0)
-    except Exception:
-        bpm = 0
-    if bpm <= 0:
-        try:
-            bpm = int(audio_map.get("bpm_estimate", 0) or 0)
-        except Exception:
-            bpm = 0
-    bpm = bpm if bpm > 0 else 100
-    return 60.0 / float(bpm)
 
 
 def _beat_weight(beat: dict) -> float:
@@ -263,6 +264,31 @@ def _allocate_integer_units(total_units: int, weights: list[float], minimum: int
     for idx in order[:left]:
         base[idx] += 1
     return base
+
+
+def _preferred_motifs(brief: dict) -> str:
+    rows = [str(x).strip() for x in brief.get("profile_motifs", []) if str(x).strip()]
+    return ", ".join(rows) if rows else "no fixed motif list"
+
+
+def _safe_int(value: object) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return 0
+
+
+def _coerce_float(value: object) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return -1.0
+
+
+def _grid_time(grid: list[float], index: int, fallback: float) -> float:
+    if 0 <= int(index) < len(grid):
+        return float(grid[int(index)])
+    return float(fallback)
 
 
 def _brief_visual_context(brief: dict) -> str:

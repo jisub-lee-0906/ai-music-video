@@ -44,9 +44,15 @@ def _normalize_outline_shot(shot: dict) -> dict:
         "continuity_anchor",
         "payoff_role",
         "shot_role",
+        "segment_focus",
     ):
         shot[key] = str(shot.get(key, "")).strip()
     shot["duration_sec"] = float(shot.get("duration_sec", 2.0) or 2.0)
+    shot["start_beat_index"] = int(shot.get("start_beat_index", 0) or 0)
+    shot["end_beat_index"] = int(shot.get("end_beat_index", 0) or 0)
+    shot["start_sec"] = float(shot.get("start_sec", 0.0) or 0.0)
+    shot["end_sec"] = float(shot.get("end_sec", 0.0) or 0.0)
+    shot["anchor_sec"] = float(shot.get("anchor_sec", shot["start_sec"]) or shot["start_sec"])
     return shot
 
 
@@ -75,9 +81,15 @@ def _normalize_prompt_ref_item(row: dict) -> dict:
         "action",
         "carry",
         "framing",
+        "segment_focus",
         "ref_prompt_text",
     ):
         row[key] = str(row.get(key, "")).strip()
+    row["start_beat_index"] = int(row.get("start_beat_index", 0) or 0)
+    row["end_beat_index"] = int(row.get("end_beat_index", 0) or 0)
+    row["start_sec"] = float(row.get("start_sec", 0.0) or 0.0)
+    row["end_sec"] = float(row.get("end_sec", 0.0) or 0.0)
+    row["anchor_sec"] = float(row.get("anchor_sec", row["start_sec"]) or row["start_sec"])
     return row
 
 
@@ -95,6 +107,8 @@ def _normalize_prompt_wan_item(row: dict) -> dict:
         "wan_positive_prompt_text",
     ):
         row[key] = str(row.get(key, "")).strip()
+    row["start_anchor_sec"] = float(row.get("start_anchor_sec", 0.0) or 0.0)
+    row["end_anchor_sec"] = float(row.get("end_anchor_sec", 0.0) or 0.0)
     return row
 
 

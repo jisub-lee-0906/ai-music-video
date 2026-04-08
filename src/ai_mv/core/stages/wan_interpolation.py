@@ -45,7 +45,6 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     render = config.get("render", {}) if isinstance(config, dict) else {}
     fps = _wan_fps(render, config)
-    max_frames = _wan_max_frames(render, fps)
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in payload.get("flux2_ref_images", []) if isinstance(row, dict)}
     chains = [row for row in payload.get("prompt_plan", {}).get("wan_items", []) if isinstance(row, dict)]
     clips: list[dict] = []
@@ -55,7 +54,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
         start_ref = ref_map[start_ref_shot_id]
         end_ref = ref_map[end_ref_shot_id]
         transition_family = str(chain.get("wan_transition_family", "")).strip()
-        duration_sec = float(chain.get("duration_sec", 2.0) or 2.0)
+        duration_sec = _wan_duration(chain)
         planned_frames = max(_frame_floor(fps), int(round(duration_sec * fps)))
         clips.append(
             {
@@ -65,7 +64,7 @@ def build_wan_plan(config: dict, payload: dict) -> dict:
                 "start_ref_index": int(start_ref.get("timeline_index", 0) or 0),
                 "end_ref_index": int(end_ref.get("timeline_index", 0) or 0),
                 "fps": fps,
-                "frames": min(max_frames, planned_frames),
+                "frames": planned_frames,
                 "section_name": str(chain.get("section_name", "")).strip(),
                 "section_label": str(chain.get("section_label", "")).strip(),
                 "shot_type": "DETAIL_INSERT",
@@ -108,18 +107,6 @@ def _wan_negative_prompt(brief: dict) -> str:
 def _frame_floor(fps: int) -> int:
     return max(1, int(round(max(1, fps) * 0.25)))
 
-
-def _wan_max_frames(render: dict, fps: int) -> int:
-    max_clip_sec = 5.0
-    if isinstance(render, dict):
-        try:
-            max_clip_sec = float(render.get("wan_max_clip_sec", 5.0) or 5.0)
-        except Exception:
-            max_clip_sec = 5.0
-    value = int(round(max_clip_sec * fps)) + 1
-    return max(_frame_floor(fps), value)
-
-
 def _wan_fps(render: dict, config: dict) -> int:
     raw = render.get("wan_fps", 16) if isinstance(render, dict) else 16
     try:
@@ -129,3 +116,11 @@ def _wan_fps(render: dict, config: dict) -> int:
     if value > 0:
         return value
     return max(1, int(parse_target(config["video"]["target"])[2]))
+
+
+def _wan_duration(chain: dict) -> float:
+    start_anchor = float(chain.get("start_anchor_sec", 0.0) or 0.0)
+    end_anchor = float(chain.get("end_anchor_sec", start_anchor) or start_anchor)
+    delta = max(0.25, end_anchor - start_anchor)
+    explicit = float(chain.get("duration_sec", 0.0) or 0.0)
+    return round(explicit if explicit > 0.0 else delta, 3)

@@ -7,7 +7,7 @@ from ai_mv.core.director_brief import build_director_brief_intent
 def build_scene_outline(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     timeline = payload["lyrics_timeline"]
-    bpm = _resolve_bpm(config, payload)
+    grid = _timing_grid(payload)
     sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
     shot_packages: list[dict] = []
     for section_index, section in enumerate(sections, start=1):
@@ -24,7 +24,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
             if not beat_id:
                 continue
             shot_role = _shot_role(section_label, beat_index, len(beats), str(beat.get("payoff_role", "")).strip())
-            for segment in _beat_segments(config, beat, shot_role, bpm):
+            for segment in _beat_segments(config, beat, shot_role, grid):
                 shot_packages.append(
                     {
                         "shot_id": _segment_shot_id(beat_id, segment["segment_index"], segment["segment_count"]),
@@ -40,11 +40,14 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
                         "payoff_role": str(beat.get("payoff_role", "")).strip(),
                         "shot_role": _segment_shot_role(shot_role, segment["segment_index"], segment["segment_count"]),
                         "duration_sec": segment["duration_sec"],
+                        "start_beat_index": segment["start_beat_index"],
+                        "end_beat_index": segment["end_beat_index"],
                         "segment_index": segment["segment_index"],
                         "segment_count": segment["segment_count"],
                         "segment_focus": _segment_focus(segment["segment_index"], segment["segment_count"], shot_role),
                         "start_sec": segment["start_sec"],
                         "end_sec": segment["end_sec"],
+                        "anchor_sec": segment["start_sec"],
                     }
                 )
     return normalize_scene_outline(
@@ -106,39 +109,26 @@ def _duration(beat: dict) -> float:
     return max(0.5, end - start) if end > start else 2.0
 
 
-def _beat_segments(config: dict, beat: dict, shot_role: str, bpm: int) -> list[dict]:
+def _beat_segments(config: dict, beat: dict, shot_role: str, grid: list[float]) -> list[dict]:
     duration = _duration(beat)
     render = config.get("render", {}) if isinstance(config, dict) else {}
-    wan_safe = float(render.get("wan_safe_max_gap_sec", 4.0) or 4.0)
     wan_max = float(render.get("wan_max_clip_sec", 5.0) or 5.0)
-    beat_sec = _musical_beat_sec(bpm)
-    duration_beats = max(1.0, duration / beat_sec)
-    target_beats = 4.0 if shot_role in {"release", "handoff"} else 6.0
-    time_target = max(wan_safe, min(wan_max, target_beats * beat_sec))
-    content_target = max(1, int(-(-duration_beats // target_beats)))
-    time_target_count = max(1, int(-(-duration // time_target)))
-    count = max(content_target, time_target_count)
-    start = float(beat.get("start_sec", 0.0) or 0.0)
-    segment_span = duration / float(count)
-    out: list[dict] = []
-    for idx in range(count):
-        seg_start = round(start + segment_span * idx, 3)
-        seg_end = round(start + segment_span * (idx + 1), 3)
-        out.append(
-            {
-                "segment_index": idx + 1,
-                "segment_count": count,
-                "duration_sec": round(max(0.5, seg_end - seg_start), 3),
-                "start_sec": seg_start,
-                "end_sec": seg_end,
-            }
-        )
-    return out
-
-
-def _musical_beat_sec(bpm: int) -> float:
-    bpm = bpm if bpm > 0 else 100
-    return 60.0 / float(bpm)
+    start_idx = _safe_int(beat.get("start_beat_index", 0))
+    end_idx = max(start_idx + 1, _safe_int(beat.get("end_beat_index", start_idx + 1)))
+    beat_span = max(1, end_idx - start_idx)
+    payoff_role = str(beat.get("payoff_role", "")).strip()
+    count = 1
+    count = max(count, int(-(-duration // max(0.5, wan_max))))
+    count = max(count, _release_split_count(duration, beat_span, shot_role, payoff_role))
+    count = min(count, beat_span)
+    while True:
+        allocations = _allocate_segments(beat_span, count)
+        out = _segments_from_allocations(start_idx, allocations, grid)
+        if out and all(float(row["duration_sec"]) <= wan_max + 1e-6 for row in out):
+            return out
+        if count >= beat_span:
+            return out
+        count += 1
 
 
 def _resolve_bpm(config: dict, payload: dict) -> int:
@@ -155,6 +145,79 @@ def _resolve_bpm(config: dict, payload: dict) -> int:
     except Exception:
         bpm = 0
     return bpm if bpm > 0 else 100
+
+
+def _release_split_count(duration: float, beat_span: int, shot_role: str, payoff_role: str) -> int:
+    payoff = str(payoff_role).strip().lower()
+    role = str(shot_role).strip().lower()
+    is_release = payoff in {"release", "payoff"} or role == "release"
+    if not is_release:
+        return 1
+    if beat_span < 8:
+        return 1
+    if duration < 4.0:
+        return 1
+    return 2
+
+
+def _allocate_segments(total_beats: int, count: int) -> list[int]:
+    count = max(1, min(int(count), int(total_beats)))
+    base = total_beats // count
+    rem = total_beats % count
+    out = []
+    for idx in range(count):
+        out.append(base + (1 if idx < rem else 0))
+    return out
+
+
+def _segments_from_allocations(start_idx: int, allocations: list[int], grid: list[float]) -> list[dict]:
+    out: list[dict] = []
+    cursor = start_idx
+    for idx, alloc in enumerate(allocations, start=1):
+        seg_start_idx = cursor
+        seg_end_idx = cursor + alloc
+        seg_start = _grid_time(grid, seg_start_idx)
+        seg_end = _grid_time(grid, seg_end_idx)
+        out.append(
+            {
+                "segment_index": idx,
+                "segment_count": len(allocations),
+                "start_beat_index": seg_start_idx,
+                "end_beat_index": seg_end_idx,
+                "duration_sec": round(max(0.25, seg_end - seg_start), 3),
+                "start_sec": round(seg_start, 3),
+                "end_sec": round(seg_end, 3),
+            }
+        )
+        cursor = seg_end_idx
+    return out
+
+
+def _timing_grid(payload: dict) -> list[float]:
+    timing = payload.get("audio_map", {}).get("timing", {}) if isinstance(payload, dict) else {}
+    grid = [float(x) for x in timing.get("grid_beat_times_sec", []) if _safe_float(x) >= 0.0]
+    if len(grid) < 2:
+        raise RuntimeError("scene_outline missing audio_map.timing.grid_beat_times_sec")
+    return grid
+
+
+def _grid_time(grid: list[float], index: int) -> float:
+    idx = max(0, min(int(index), len(grid) - 1))
+    return float(grid[idx])
+
+
+def _safe_int(value: object) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return 0
+
+
+def _safe_float(value: object) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return -1.0
 
 
 def _segment_shot_role(base: str, segment_index: int, segment_count: int) -> str:
@@ -185,3 +248,4 @@ def _segment_shot_id(beat_id: str, segment_index: int, segment_count: int) -> st
     if segment_count <= 1:
         return beat_id
     return f"{beat_id}_s{segment_index}"
+

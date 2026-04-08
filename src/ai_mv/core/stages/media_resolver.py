@@ -7,25 +7,29 @@ from ai_mv.utils.path_utils import resolve_generated_file
 
 def build_merge_plan(payload: dict, audio_duration_sec: float | None = None) -> dict:
     clips = [row for row in payload.get("clips", []) if isinstance(row, dict)]
-    if not clips:
-        return {"ordered": []}
     clip_by_shot = {str(row.get("shot_id", "")).strip(): str(row.get("video", "")).strip() for row in clips}
     refs = {
         str(row.get("shot_id", "")).strip(): str(row.get("end", "")).strip()
         for row in payload.get("flux2_ref_images", [])
         if isinstance(row, dict)
     }
+    ref_items = [
+        row
+        for row in payload.get("prompt_plan", {}).get("ref_items", [])
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    ]
     shots = {
         str(row.get("shot_id", "")).strip(): row
-        for row in payload.get("direction_plan", {}).get("shot_packages", [])
-        if isinstance(row, dict)
+        for row in ref_items
     }
     chains = [row for row in payload.get("prompt_plan", {}).get("wan_items", []) if isinstance(row, dict)]
+    if not ref_items:
+        return {"ordered": []}
     if not chains:
-        first_ref_id = next(iter(refs.keys()), "")
+        first_ref_id = str(ref_items[0].get("shot_id", "")).strip()
         first_ref = refs.get(first_ref_id, "")
         if not first_ref:
-            return {"ordered": [path for path in clip_by_shot.values() if path]}
+            return {"ordered": []}
         total = max(0.0, float(audio_duration_sec or 0.0))
         return {
             "ordered": [
@@ -34,16 +38,12 @@ def build_merge_plan(payload: dict, audio_duration_sec: float | None = None) -> 
         }
 
     ordered: list[dict] = []
-    first_chain = chains[0]
-    first_ref_id = str(first_chain.get("start_ref_shot_id", "")).strip()
+    first_ref_id = str(ref_items[0].get("shot_id", "")).strip()
     first_ref = refs.get(first_ref_id, "")
     first_shot = shots.get(first_ref_id, {})
-    head_gap = max(0.0, float(first_shot.get("start_sec", 0.0) or 0.0))
-    first_hold = max(0.0, float(first_shot.get("duration_sec", 0.0) or 0.0))
-    if first_ref and head_gap > 0.01:
-        ordered.append({"kind": "still", "image": first_ref, "duration_sec": round(head_gap, 3), "label": "head_gap"})
-    if first_ref and first_hold > 0.01:
-        ordered.append({"kind": "still", "image": first_ref, "duration_sec": round(first_hold, 3), "label": "first_ref_hold"})
+    head_hold = max(0.0, float(first_shot.get("start_sec", 0.0) or 0.0))
+    if first_ref and head_hold > 0.01:
+        ordered.append({"kind": "still", "image": first_ref, "duration_sec": round(head_hold, 3), "label": "head_hold"})
 
     for chain in chains:
         shot_id = str(chain.get("shot_id", "")).strip()
@@ -51,14 +51,13 @@ def build_merge_plan(payload: dict, audio_duration_sec: float | None = None) -> 
         if video:
             ordered.append({"kind": "video", "path": video, "label": shot_id})
 
-    last_chain = chains[-1]
-    last_ref_id = str(last_chain.get("end_ref_shot_id", "")).strip()
+    last_ref_id = str(ref_items[-1].get("shot_id", "")).strip()
     last_ref = refs.get(last_ref_id, "")
     last_shot = shots.get(last_ref_id, {})
-    tail_start = float(last_shot.get("end_sec", 0.0) or 0.0)
-    tail_gap = max(0.0, float(audio_duration_sec or 0.0) - tail_start)
-    if last_ref and tail_gap > 0.01:
-        ordered.append({"kind": "still", "image": last_ref, "duration_sec": round(tail_gap, 3), "label": "tail_gap"})
+    tail_start = float(last_shot.get("start_sec", 0.0) or 0.0)
+    tail_hold = max(0.0, float(audio_duration_sec or 0.0) - tail_start)
+    if last_ref and tail_hold > 0.01:
+        ordered.append({"kind": "still", "image": last_ref, "duration_sec": round(tail_hold, 3), "label": "tail_hold"})
     return {"ordered": ordered}
 
 

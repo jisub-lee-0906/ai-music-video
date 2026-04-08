@@ -130,6 +130,61 @@ def compute_section_windows(
     return out
 
 
+def build_song_timing(
+    duration_sec: float,
+    rows: Sequence[dict],
+    bpm: int,
+    beats_per_bar: int,
+    section_bars: dict[str, int] | None,
+    *,
+    detected_beat_times: Sequence[float] | None = None,
+    detected_bpm: int = 0,
+) -> dict:
+    normalized_rows = _rows(rows)
+    if not normalized_rows:
+        raise RuntimeError("lyrics_blocks empty after validation")
+    beats_per_bar = int(beats_per_bar) if int(beats_per_bar) > 0 else DEFAULT_BEATS_PER_BAR
+    section_bars = section_bars or DEFAULT_SECTION_BARS
+    bar_counts = section_bar_plan(normalized_rows, section_bars)
+    total_bars = sum(bar_counts)
+    total_beats = max(1, total_bars * beats_per_bar)
+    actual_beats = _normalize_times(detected_beat_times or [])
+    resolved_bpm = int(detected_bpm) if int(detected_bpm) > 0 else (int(bpm) if int(bpm) > 0 else DEFAULT_DURATION_BPM)
+    grid = _project_song_beat_grid(float(duration_sec), total_beats, resolved_bpm, actual_beats)
+    sections: list[dict] = []
+    cursor = 0
+    for idx, (row, bar_count) in enumerate(zip(normalized_rows, bar_counts)):
+        beat_count = max(1, int(bar_count) * beats_per_bar)
+        start_idx = cursor
+        end_idx = min(total_beats, cursor + beat_count)
+        if idx == len(normalized_rows) - 1:
+            end_idx = total_beats
+        sections.append(
+            {
+                "name": str(row.get("section", "section")).strip().lower(),
+                "label": str(row.get("label", "")).strip() or str(row.get("section", "section")).strip().lower(),
+                "start_sec": round(grid[start_idx], 3),
+                "end_sec": round(grid[end_idx], 3),
+                "start_beat_index": start_idx,
+                "end_beat_index": end_idx,
+            }
+        )
+        cursor = end_idx
+    bar_times = [round(grid[idx], 6) for idx in range(0, len(grid), beats_per_bar)]
+    if not bar_times or bar_times[-1] != round(float(duration_sec), 6):
+        bar_times.append(round(float(duration_sec), 6))
+    return {
+        "sections": sections,
+        "timing": {
+            "detected_bpm": resolved_bpm,
+            "beat_times_sec": [round(x, 6) for x in actual_beats],
+            "grid_beat_times_sec": [round(x, 6) for x in grid],
+            "bar_times_sec": bar_times,
+            "beats_per_bar": beats_per_bar,
+        },
+    }
+
+
 def resolve_section_bars(audio: dict) -> dict[str, int]:
     raw = audio.get("section_bars", {}) if isinstance(audio, dict) else {}
     if raw in ("", None):
@@ -215,6 +270,85 @@ def _bars_to_seconds(total_bars: int, bpm: int, beats_per_bar: int) -> int:
     resolved_beats = int(beats_per_bar) if int(beats_per_bar) > 0 else DEFAULT_BEATS_PER_BAR
     seconds = float(total_bars) * float(resolved_beats) * 60.0 / float(resolved_bpm)
     return max(1, int(round(seconds)))
+
+
+def _project_song_beat_grid(
+    duration_sec: float,
+    total_beats: int,
+    bpm: int,
+    detected_beat_times: Sequence[float],
+) -> list[float]:
+    if total_beats <= 0:
+        return [0.0, round(float(duration_sec), 6)]
+    duration_sec = max(0.001, float(duration_sec))
+    beats = _normalize_times(detected_beat_times)
+    if not beats:
+        beat_sec = duration_sec / float(total_beats)
+        out = [0.0]
+        for idx in range(1, total_beats):
+            out.append(round(idx * beat_sec, 6))
+        out.append(round(duration_sec, 6))
+        return _monotonic_times(out, duration_sec)
+    anchor_positions = [0.0]
+    anchor_times = [0.0]
+    for idx, value in enumerate(beats, start=1):
+        anchor_positions.append(float(idx))
+        anchor_times.append(float(value))
+    anchor_positions.append(float(len(beats) + 1))
+    anchor_times.append(duration_sec)
+    detected_units = float(len(beats) + 1)
+    out = []
+    for expected_idx in range(total_beats + 1):
+        query = (float(expected_idx) * detected_units) / float(total_beats)
+        out.append(round(_interp(anchor_positions, anchor_times, query), 6))
+    out[0] = 0.0
+    out[-1] = round(duration_sec, 6)
+    return _monotonic_times(out, duration_sec)
+
+
+def _interp(xs: list[float], ys: list[float], query: float) -> float:
+    if query <= xs[0]:
+        return ys[0]
+    if query >= xs[-1]:
+        return ys[-1]
+    for idx in range(1, len(xs)):
+        left_x = xs[idx - 1]
+        right_x = xs[idx]
+        if query > right_x:
+            continue
+        left_y = ys[idx - 1]
+        right_y = ys[idx]
+        span = max(1e-6, right_x - left_x)
+        frac = (query - left_x) / span
+        return left_y + (right_y - left_y) * frac
+    return ys[-1]
+
+
+def _normalize_times(values: Sequence[float]) -> list[float]:
+    out: list[float] = []
+    prev = -1.0
+    for raw in values:
+        try:
+            value = round(float(raw), 6)
+        except Exception:
+            continue
+        if value < 0:
+            continue
+        if prev >= 0 and value <= prev:
+            continue
+        out.append(value)
+        prev = value
+    return out
+
+
+def _monotonic_times(values: list[float], duration_sec: float) -> list[float]:
+    out = list(values)
+    for idx in range(1, len(out)):
+        if out[idx] <= out[idx - 1]:
+            out[idx] = min(duration_sec, round(out[idx - 1] + 1e-3, 6))
+    out[0] = 0.0
+    out[-1] = round(duration_sec, 6)
+    return out
 
 
 def _base_bar_count(section: str, section_bars: dict[str, int]) -> int:
