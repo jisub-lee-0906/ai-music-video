@@ -360,7 +360,7 @@ def _anchor_subject(config: dict) -> str:
     if "male" in voice:
         return "young adult male vocalist"
     if "duo" in voice or "group" in voice or "mixed" in voice:
-        return "vocal performer"
+        return "young adult vocal act"
     return "young adult vocalist"
 
 

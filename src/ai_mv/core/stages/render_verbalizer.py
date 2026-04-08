@@ -156,7 +156,11 @@ def _lead_clause(subject: str, be: str, action: str, place: str, framing: str) -
 def _subject_phrase(brief: dict) -> str:
     voice = str(brief.get("profile_voice", "")).lower()
     if "duo" in voice or "group" in voice or "mixed" in voice:
-        return "The performers"
+        return "They"
+    if "female" in voice or "woman" in voice or "girl" in voice:
+        return "She"
+    if "male" in voice or "man" in voice or "boy" in voice:
+        return "He"
     return "The performer"
 
 
@@ -168,11 +172,13 @@ def _face_lock(brief: dict) -> str:
 
 
 def _be_verb(subject: str) -> str:
-    return "are" if subject.endswith("s") else "is"
+    lowered = subject.lower()
+    return "are" if lowered == "they" or subject.endswith("s") else "is"
 
 
 def _remain_verb(subject: str) -> str:
-    return "remain" if subject.endswith("s") else "remains"
+    lowered = subject.lower()
+    return "remain" if lowered == "they" or subject.endswith("s") else "remains"
 
 
 def _literal_clause(text: str) -> str:

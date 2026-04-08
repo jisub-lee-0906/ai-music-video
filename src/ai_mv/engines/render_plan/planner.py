@@ -197,10 +197,14 @@ def _ref_draft_prompt(row: dict) -> str:
     segment_focus = str(row.get("segment_focus", "")).strip()
     literal_image = str(row.get("literal_image", "")).strip()
     base = str(row.get("ref_prompt_text", "")).strip()
+    subject_seed = _subject_seed(base)
     return (
         "Write a final REF prompt in natural cinematic English from this shot card. "
         "Do not invent new people, props, places, actions, camera setups, or story beats. "
         "Do not change the subject identity or introduce gendered terms that are not already present in the base prompt. "
+        "Preserve the same leading subject wording and grammatical person already used in the base prompt. "
+        "Do not replace that lead with 'a woman', 'the woman', or 'the performer' if the base prompt already starts with a pronoun form. "
+        "Do not introduce singular/plural or possessive mismatches like 'their' for a solo subject. "
         "Keep the same exact shot meaning and continuity anchor. "
         "Write the full prompt directly rather than editing the base prompt line by line. "
         "Make each prompt read like a fluent image-generation prompt instead of a mechanical summary. "
@@ -214,7 +218,7 @@ def _ref_draft_prompt(row: dict) -> str:
         "Keep the tone grounded and cinematic, not explanatory or analytical. "
         "End with the exact face-lock sentence from the base prompt. "
         "Return strict JSON only. "
-        f"Shot: shot_id={shot_id} | section={section_label} | place={place} | action={action} | carry={carry} | framing={framing} | segment_focus={segment_focus} | detail={literal_image} | base_prompt={base}"
+        f"Shot: shot_id={shot_id} | section={section_label} | place={place} | action={action} | carry={carry} | framing={framing} | segment_focus={segment_focus} | detail={literal_image} | subject_seed={subject_seed} | base_prompt={base}"
     )
 
 
@@ -241,19 +245,24 @@ def _normalize_ref_draft_result(raw: dict, row: dict) -> str:
     face_lock = _face_lock_suffix(str(row.get("ref_prompt_text", "")).strip())
     if face_lock and not prompt_text.endswith(face_lock):
         return ""
+    subject_seed = _subject_seed(str(row.get("ref_prompt_text", "")).strip())
+    if subject_seed and not prompt_text.startswith(subject_seed):
+        return ""
     return prompt_text
 
 
 def _ref_polish_prompt(row: dict) -> str:
     shot_id = str(row.get("shot_id", "")).strip()
     base = str(row.get("ref_prompt_text", "")).strip()
+    subject_seed = _subject_seed(base)
     return (
         "Polish this REF prompt lightly. "
         "Keep the exact same shot meaning, identity, place, action, continuity, and face-lock. "
         "Do not invent anything new. "
+        "Preserve the same leading subject wording and grammatical person already used in the prompt. "
         "Fix grammar, remove awkward phrasing, and smooth sentence flow only. "
         "Return strict JSON only. "
-        f"Shot: shot_id={shot_id} | prompt_text={base}"
+        f"Shot: shot_id={shot_id} | subject_seed={subject_seed} | prompt_text={base}"
     )
 
 
@@ -274,6 +283,14 @@ def _face_lock_suffix(prompt_text: str) -> str:
     return ""
 
 
+def _subject_seed(prompt_text: str) -> str:
+    text = str(prompt_text).strip()
+    for prefix in ("She is ", "He is ", "They are ", "The performer is "):
+        if text.startswith(prefix):
+            return prefix
+    return ""
+
+
 def _wan_draft_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
     shot_id = str(row.get("shot_id", "")).strip()
     section_label = str(row.get("section_label", "")).strip()
@@ -286,19 +303,20 @@ def _wan_draft_prompt(row: dict, ref_by_id: dict[str, dict]) -> str:
     start_ref_text = str(ref_by_id.get(start_ref, {}).get("ref_prompt_text", "")).strip()
     end_ref_text = str(ref_by_id.get(end_ref, {}).get("ref_prompt_text", "")).strip()
     return (
-        "Write a final WAN bridge prompt in natural cinematic English from this transition card. "
+        "Write a final WAN bridge prompt in short natural English from this transition card. "
         "Do not invent new places, props, actions, camera setups, or story beats. "
         "Do not change the subject identity or introduce gendered terms that are not already present in the base prompt. "
         "Keep the same exact transition meaning between the two keyframes. "
         "Write the full bridge prompt directly rather than editing the base prompt line by line. "
         "Keep the prompt focused on continuity between adjacent keyframes rather than restating the whole scene. "
         "Make the bridge feel like a readable transition from one keyframe to the next, not a duplicate of the REF prompt. "
-        "Use complete, grammatically fluent English sentences rather than fragments or note-like phrases. "
-        "Prefer one clear motion and one continuity detail. "
-        "Prefer concrete physical continuity details over abstract mood description. "
+        "Use one or two short fluent sentences, not a long paragraph. "
+        "Prefer one clear motion and one continuity detail only. "
+        "Prefer concrete physical continuity details over abstract mood or style description. "
         "Use the start_ref and end_ref context to emphasize what changes between the two keyframes. "
         "Do not add a face-lock line such as 'Keep the face.' or any lens, lighting, or film-finish sentence unless it is already present in the base prompt. "
-        "Keep the tone grounded and cinematic, not analytical. "
+        "Avoid decorative wording, emotional explanation, and repeated scene-setting. "
+        "Keep the tone grounded and direct. "
         "Return strict JSON only. "
         f"Item: shot_id={shot_id} | section={section_label} | pair={start_ref}->{end_ref} | place={place} | action={action} | carry={carry} | "
         f"start_ref={start_ref_text} | end_ref={end_ref_text} | base_prompt={base}"
@@ -335,6 +353,7 @@ def _wan_polish_prompt(row: dict) -> str:
         "Polish this WAN bridge prompt lightly. "
         "Keep the exact same transition meaning, identity, place, action, and continuity. "
         "Do not invent anything new. "
+        "Keep it short and direct. "
         "Fix grammar, remove awkward phrasing, and smooth sentence flow only. "
         "Return strict JSON only. "
         f"Item: shot_id={shot_id} | prompt_text={base}"

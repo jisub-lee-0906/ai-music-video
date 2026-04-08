@@ -17,7 +17,7 @@ def build_lyrics_timeline(config: dict, payload: dict) -> dict:
         timeline = normalize_lyrics_timeline(raw, sections)
     except RuntimeError as exc:
         raise RuntimeError(f"lyrics_timeline validation failed: {exc}") from exc
-    _attach_time_ranges(timeline, sections)
+    _attach_time_ranges(timeline, sections, audio_plan, payload.get("audio_map", {}))
     return timeline
 
 
@@ -28,6 +28,7 @@ def build_lyrics_timeline_preview_prompt(config: dict, audio_plan: dict, section
 def _planner_prompt(config: dict, audio_plan: dict, sections: list[dict]) -> str:
     max_beats = _recommended_max_beats(audio_plan, sections)
     brief = build_director_brief_intent(config)
+    language = str(audio_plan.get("language", config.get("language", "ko"))).strip().lower()
     return (
         "You are a lyric-to-scene timeline planner for a music video. "
         "Return strict JSON only. No prose outside JSON. "
@@ -58,6 +59,7 @@ def _planner_prompt(config: dict, audio_plan: dict, sections: list[dict]) -> str
         "Let the lyric line decide the current image and action; let the profile only stabilize the world around it. "
         "Prefer tangible nouns like window, mug, notebook, wet asphalt, headlights, cables, rooftop wind, or empty chair over vague mood language. "
         "Prefer visible actions like writing, walking, turning, crossing, sitting, holding, looking, stepping, or pausing over internal-only statements. "
+        f"Write literal_image, visible_action, emotional_turn, and continuity_anchor in the song language ({language}) rather than mixing in random English object labels. "
         "Do not write meta phrases like 'the scene shows', 'the sequence', 'visual metaphor', 'emotional thread', 'continuity', or 'camera-ready'. "
         "Do not mention editing, camera instructions, lens names, film grain, or prompt-writing advice here. "
         "Within a section, avoid flattening all beats into the same image or action. "
@@ -120,7 +122,7 @@ def _section_lines_json(sections: list[dict]) -> str:
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
-def _attach_time_ranges(timeline: dict, sections: list[dict]) -> None:
+def _attach_time_ranges(timeline: dict, sections: list[dict], audio_plan: dict, audio_map: dict) -> None:
     source_sections = [section for section in sections if isinstance(section, dict)]
     indexed_by_name: dict[str, list[dict]] = {}
     indexed_by_name_and_label: dict[tuple[str, str], list[dict]] = {}
@@ -153,11 +155,16 @@ def _attach_time_ranges(timeline: dict, sections: list[dict]) -> None:
         start = float(row.get("start_sec", row.get("start", 0.0)))
         end = float(row.get("end_sec", row.get("end", start)))
         beats = [beat for beat in section.get("lyric_beats", []) if isinstance(beat, dict)]
-        span = max(0.001, end - start)
-        beat_span = span / float(max(1, len(beats)))
-        for idx, beat in enumerate(beats):
-            beat["start_sec"] = round(start + beat_span * idx, 3)
-            beat["end_sec"] = round(start + beat_span * (idx + 1), 3)
+        if not beats:
+            section["start_sec"] = round(start, 3)
+            section["end_sec"] = round(end, 3)
+            continue
+        ranges = _beat_ranges_for_section(start, end, beats, audio_plan, audio_map)
+        for beat, (beat_start, beat_end) in zip(beats, ranges):
+            beat["start_sec"] = round(beat_start, 3)
+            beat["end_sec"] = round(beat_end, 3)
+        section["start_sec"] = round(start, 3)
+        section["end_sec"] = round(end, 3)
 
 
 def _recommended_max_beats(audio_plan: dict, sections: list[dict]) -> int:
@@ -181,6 +188,81 @@ def _recommended_max_beats(audio_plan: dict, sections: list[dict]) -> int:
     if max_lines >= 6:
         return 4
     return 3
+
+
+def _beat_ranges_for_section(
+    start: float,
+    end: float,
+    beats: list[dict],
+    audio_plan: dict,
+    audio_map: dict,
+) -> list[tuple[float, float]]:
+    span = max(0.001, end - start)
+    musical_beat_sec = _musical_beat_sec(audio_plan, audio_map)
+    total_musical_beats = max(len(beats), int(round(span / musical_beat_sec)))
+    weights = [_beat_weight(row) for row in beats]
+    allocations = _allocate_integer_units(total_musical_beats, weights, minimum=1)
+    out: list[tuple[float, float]] = []
+    cursor = start
+    for idx, alloc in enumerate(allocations):
+        if idx == len(allocations) - 1:
+            beat_end = end
+        else:
+            beat_end = min(end, cursor + (alloc * musical_beat_sec))
+        out.append((cursor, beat_end))
+        cursor = beat_end
+    if out:
+        out[-1] = (out[-1][0], end)
+    return out
+
+
+def _musical_beat_sec(audio_plan: dict, audio_map: dict) -> float:
+    bpm = 0
+    try:
+        bpm = int(audio_plan.get("bpm", 0) or 0)
+    except Exception:
+        bpm = 0
+    if bpm <= 0:
+        try:
+            bpm = int(audio_map.get("bpm_estimate", 0) or 0)
+        except Exception:
+            bpm = 0
+    bpm = bpm if bpm > 0 else 100
+    return 60.0 / float(bpm)
+
+
+def _beat_weight(beat: dict) -> float:
+    refs = [int(x) for x in beat.get("line_refs", []) if int(x) > 0]
+    payoff = str(beat.get("payoff_role", "")).strip().lower()
+    weight = float(max(1, len(refs)))
+    if payoff in {"release", "payoff"}:
+        weight += 0.75
+    elif payoff in {"tighten", "residue"}:
+        weight += 0.25
+    return weight
+
+
+def _allocate_integer_units(total_units: int, weights: list[float], minimum: int) -> list[int]:
+    count = len(weights)
+    if count <= 0:
+        return []
+    if total_units <= count * minimum:
+        base = [minimum] * count
+        base[-1] += max(0, total_units - sum(base))
+        return base
+    base = [minimum] * count
+    remaining = total_units - (count * minimum)
+    total_weight = sum(max(0.01, weight) for weight in weights)
+    raw = [remaining * (max(0.01, weight) / total_weight) for weight in weights]
+    ints = [int(value) for value in raw]
+    frac = [value - int(value) for value in raw]
+    for idx in range(count):
+        base[idx] += ints[idx]
+    left = total_units - sum(base)
+    order = sorted(range(count), key=lambda i: frac[i], reverse=True)
+    for idx in order[:left]:
+        base[idx] += 1
+    return base
 
 
 def _brief_visual_context(brief: dict) -> str:

@@ -43,8 +43,8 @@ def run_wan_interpolation(stage_input: StageInput) -> StageOutput:
 
 def build_wan_plan(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
-    fps = parse_target(config["video"]["target"])[2]
     render = config.get("render", {}) if isinstance(config, dict) else {}
+    fps = _wan_fps(render, config)
     max_frames = _wan_max_frames(render, fps)
     ref_map = {str(row.get("shot_id", "")).strip(): row for row in payload.get("flux2_ref_images", []) if isinstance(row, dict)}
     chains = [row for row in payload.get("prompt_plan", {}).get("wan_items", []) if isinstance(row, dict)]
@@ -110,9 +110,22 @@ def _frame_floor(fps: int) -> int:
 
 
 def _wan_max_frames(render: dict, fps: int) -> int:
-    raw = render.get("wan_max_frames", 40) if isinstance(render, dict) else 40
+    max_clip_sec = 5.0
+    if isinstance(render, dict):
+        try:
+            max_clip_sec = float(render.get("wan_max_clip_sec", 5.0) or 5.0)
+        except Exception:
+            max_clip_sec = 5.0
+    value = int(round(max_clip_sec * fps)) + 1
+    return max(_frame_floor(fps), value)
+
+
+def _wan_fps(render: dict, config: dict) -> int:
+    raw = render.get("wan_fps", 16) if isinstance(render, dict) else 16
     try:
         value = int(raw)
     except Exception:
-        value = 40
-    return max(_frame_floor(fps), value)
+        value = 16
+    if value > 0:
+        return value
+    return max(1, int(parse_target(config["video"]["target"])[2]))

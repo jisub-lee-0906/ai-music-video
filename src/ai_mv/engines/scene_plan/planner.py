@@ -7,6 +7,7 @@ from ai_mv.core.director_brief import build_director_brief_intent
 def build_scene_outline(config: dict, payload: dict) -> dict:
     brief = build_director_brief_intent(config)
     timeline = payload["lyrics_timeline"]
+    bpm = _resolve_bpm(config, payload)
     sections = [row for row in timeline.get("sections", []) if isinstance(row, dict)]
     shot_packages: list[dict] = []
     for section_index, section in enumerate(sections, start=1):
@@ -23,7 +24,7 @@ def build_scene_outline(config: dict, payload: dict) -> dict:
             if not beat_id:
                 continue
             shot_role = _shot_role(section_label, beat_index, len(beats), str(beat.get("payoff_role", "")).strip())
-            for segment in _beat_segments(config, beat, shot_role):
+            for segment in _beat_segments(config, beat, shot_role, bpm):
                 shot_packages.append(
                     {
                         "shot_id": _segment_shot_id(beat_id, segment["segment_index"], segment["segment_count"]),
@@ -105,13 +106,18 @@ def _duration(beat: dict) -> float:
     return max(0.5, end - start) if end > start else 2.0
 
 
-def _beat_segments(config: dict, beat: dict, shot_role: str) -> list[dict]:
+def _beat_segments(config: dict, beat: dict, shot_role: str, bpm: int) -> list[dict]:
     duration = _duration(beat)
     render = config.get("render", {}) if isinstance(config, dict) else {}
     wan_safe = float(render.get("wan_safe_max_gap_sec", 4.0) or 4.0)
     wan_max = float(render.get("wan_max_clip_sec", 5.0) or 5.0)
-    target = max(wan_safe, min(wan_max, 4.5 if shot_role in {"carry", "handoff"} else 5.0))
-    count = max(1, int(-(-duration // target)))
+    beat_sec = _musical_beat_sec(bpm)
+    duration_beats = max(1.0, duration / beat_sec)
+    target_beats = 4.0 if shot_role in {"release", "handoff"} else 6.0
+    time_target = max(wan_safe, min(wan_max, target_beats * beat_sec))
+    content_target = max(1, int(-(-duration_beats // target_beats)))
+    time_target_count = max(1, int(-(-duration // time_target)))
+    count = max(content_target, time_target_count)
     start = float(beat.get("start_sec", 0.0) or 0.0)
     segment_span = duration / float(count)
     out: list[dict] = []
@@ -128,6 +134,27 @@ def _beat_segments(config: dict, beat: dict, shot_role: str) -> list[dict]:
             }
         )
     return out
+
+
+def _musical_beat_sec(bpm: int) -> float:
+    bpm = bpm if bpm > 0 else 100
+    return 60.0 / float(bpm)
+
+
+def _resolve_bpm(config: dict, payload: dict) -> int:
+    audio_map = payload.get("audio_map", {}) if isinstance(payload, dict) else {}
+    try:
+        bpm = int(audio_map.get("bpm_estimate", 0) or 0)
+    except Exception:
+        bpm = 0
+    if bpm > 0:
+        return bpm
+    audio = config.get("audio", {}) if isinstance(config, dict) else {}
+    try:
+        bpm = int(audio.get("bpm", 0) or 0)
+    except Exception:
+        bpm = 0
+    return bpm if bpm > 0 else 100
 
 
 def _segment_shot_role(base: str, segment_index: int, segment_count: int) -> str:

@@ -15,7 +15,7 @@ def _config() -> dict:
         "locations": ["dim late-night diner", "wet city street at night", "concrete rooftop at dawn"],
         "props": ["worn notebook", "half-empty coffee mug", "studio headphones"],
         "video": {"target": "1920x1080@24"},
-        "render": {"wan_safe_max_gap_sec": 4.0, "wan_max_frames": 40},
+        "render": {"wan_safe_max_gap_sec": 4.0, "wan_fps": 16},
     }
 
 
@@ -81,9 +81,9 @@ def test_storyboard_chain_uses_minimal_ref_fields():
     assert first_ref["carry"]
     assert first_ref["framing"]
     assert first_ref["ref_prompt_text"].endswith("Keep the face.")
-    assert len(prompt["wan_items"]) == 1
-    assert prompt["wan_items"][0]["bridge_action"]
-    assert prompt["wan_items"][0]["wan_positive_prompt_text"]
+    assert len(prompt["wan_items"]) >= 1
+    assert all(row["bridge_action"] for row in prompt["wan_items"])
+    assert all(row["wan_positive_prompt_text"] for row in prompt["wan_items"])
 
 
 def test_scene_outline_splits_long_beats_by_wan_safe_duration():
@@ -112,7 +112,7 @@ def test_scene_outline_splits_long_beats_by_wan_safe_duration():
         }
     }
     scene = build_scene_outline(config, payload)
-    assert [row["shot_id"] for row in scene["shot_packages"]] == ["verse1_b1_s1", "verse1_b1_s2"]
+    assert [row["shot_id"] for row in scene["shot_packages"]] == ["verse1_b1_s1", "verse1_b1_s2", "verse1_b1_s3"]
     assert max(float(row["duration_sec"]) for row in scene["shot_packages"]) <= 5.0
 
 
@@ -123,13 +123,11 @@ def test_wan_plan_uses_adjacent_ref_pairs():
     payload = {
         **_payload(),
         "prompt_plan": prompt,
-        "flux2_ref_images": [
-            {"shot_id": "verse1_b1", "start": "start1.png", "end": "end1.png"},
-            {"shot_id": "chorus_b1", "start": "start2.png", "end": "end2.png"},
-        ],
+        "flux2_ref_images": [{"shot_id": row["shot_id"], "start": f"start_{i}.png", "end": f"end_{i}.png"} for i, row in enumerate(prompt["ref_items"], start=1)],
     }
     wan = build_wan_plan(_config(), payload)
-    assert len(wan["clips"]) == 1
-    assert wan["clips"][0]["start"] == "end1.png"
-    assert wan["clips"][0]["end"] == "end2.png"
+    assert len(wan["clips"]) == len(prompt["wan_items"])
+    assert wan["clips"][0]["start"] == "end_1.png"
+    assert wan["clips"][0]["end"] == "end_2.png"
+    assert wan["clips"][0]["fps"] == 16
     assert wan["clips"][0]["positive_prompt"]

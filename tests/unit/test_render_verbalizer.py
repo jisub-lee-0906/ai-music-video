@@ -63,5 +63,32 @@ def test_verbalize_ref_prompts_uses_plural_subject_for_group_voice():
         rows,
     )
 
-    assert out["S010"].startswith("The performers are walking side by side through the rainy street on a wet city street at night, medium-wide full-body framing.")
+    assert out["S010"].startswith("They are walking side by side through the rainy street on a wet city street at night, medium-wide full-body framing.")
     assert out["S010"].endswith("Keep the faces consistent.")
+
+
+def test_verbalize_ref_prompts_uses_female_subject_for_solo_female_voice():
+    rows = [
+        {
+            "shot_id": "S011",
+            "section_label": "Verse 1",
+            "place": "a wet city street at night",
+            "action": "walking alone through the rainy street",
+            "carry": "wet asphalt",
+            "framing": "medium-wide full-body framing",
+            "literal_image": "Wet asphalt and blurred headlights stretching across the block",
+        }
+    ]
+
+    out = render_verbalizer.verbalize_ref_prompts(
+        {
+            "prompt": "late-night breakup walk",
+            "genre": "synth pop",
+            "voice": "solo female, airy and emotional",
+            "language": "ko",
+        },
+        rows,
+    )
+
+    assert out["S011"].startswith("She is walking alone through the rainy street on a wet city street at night, medium-wide full-body framing.")
+    assert out["S011"].endswith("Keep the face.")
