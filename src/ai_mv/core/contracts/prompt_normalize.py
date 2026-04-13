@@ -59,7 +59,12 @@ def validate_audio_lyrics_language(lyrics: str, language: str) -> None:
         raise RuntimeError("audio lyrics language mismatch: expected en-dominant lyrics")
 
 
-def validate_audio_lyrics_quality(blocks: list[dict], language: str, line_budgets: dict | None = None) -> None:
+def validate_audio_lyrics_quality(
+    blocks: list[dict],
+    language: str,
+    line_budgets: dict | None = None,
+    section_bars: dict | None = None,
+) -> None:
     rows = [row for row in blocks if isinstance(row, dict)]
     if not rows:
         raise RuntimeError("audio lyrics blocks missing")
@@ -74,6 +79,8 @@ def validate_audio_lyrics_quality(blocks: list[dict], language: str, line_budget
     _validate_chorus_growth(rows, lang)
     _validate_hook_quality(rows, lang)
     _validate_section_role_minimums(rows, line_budgets or {})
+    _validate_bar_fit(rows, lang, section_bars or {})
+    _validate_pre_chorus_chorus_contrast(rows, lang, section_bars or {})
 
 
 def validate_audio_genre_description_language(text: str) -> None:
@@ -513,6 +520,77 @@ def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> N
         max_allowed = int(line_budgets.get(label, 0) or 0)
         if max_allowed > 0 and len(lines) > max_allowed:
             raise RuntimeError(f"audio lyrics quality mismatch: {label} exceeds line budget")
+
+
+def _validate_bar_fit(blocks: list[dict], language: str, section_bars: dict) -> None:
+    if not section_bars:
+        return
+    for row in blocks:
+        label = str(row.get("label", "")).strip()
+        section = str(row.get("section", "")).strip().lower()
+        bars = _resolve_section_bar_count(section, label, section_bars)
+        lines = [str(line).strip() for line in row.get("lines", []) if str(line).strip()]
+        if not lines or bars <= 0:
+            continue
+        avg_visible = sum(_visible_char_count(line) for line in lines) / max(1, len(lines))
+        if label == "Bridge" and bars <= 4:
+            max_avg = 40 if language == "en" else 18 if language == "ko" else 20
+            if len(lines) > 3:
+                raise RuntimeError("audio lyrics quality mismatch: 4-bar Bridge is overpacked")
+            if avg_visible > max_avg:
+                raise RuntimeError("audio lyrics quality mismatch: 4-bar Bridge phrasing is too dense")
+        if label in {"Chorus", "Chorus 2"} and bars <= 8:
+            max_avg = 40 if language == "en" else 16 if language == "ko" else 18
+            if len(lines) > 5:
+                raise RuntimeError(f"audio lyrics quality mismatch: {label} overfills an 8-bar chorus")
+            if avg_visible > max_avg:
+                raise RuntimeError(f"audio lyrics quality mismatch: {label} phrasing feels too long for 8 bars")
+        if label in {"Verse 1", "Verse 2"} and bars <= 8:
+            max_avg = 44 if language == "en" else 19 if language == "ko" else 22
+            if avg_visible > max_avg:
+                raise RuntimeError(f"audio lyrics quality mismatch: {label} phrasing feels too dense for 8 bars")
+        if label == "Final Chorus" and bars >= 16:
+            min_lines = 5
+            if len(lines) < min_lines:
+                raise RuntimeError("audio lyrics quality mismatch: Final Chorus underuses its extended bar space")
+
+
+def _validate_pre_chorus_chorus_contrast(blocks: list[dict], language: str, section_bars: dict) -> None:
+    indexed = {str(row.get("label", "")).strip(): row for row in blocks if isinstance(row, dict)}
+    pairs = [("Pre-Chorus", "Chorus"), ("Pre-Chorus 2", "Chorus 2")]
+    for pre_label, chorus_label in pairs:
+        pre = indexed.get(pre_label)
+        chorus = indexed.get(chorus_label)
+        if not pre or not chorus:
+            continue
+        pre_bars = _resolve_section_bar_count(str(pre.get("section", "")).strip().lower(), pre_label, section_bars)
+        chorus_bars = _resolve_section_bar_count(str(chorus.get("section", "")).strip().lower(), chorus_label, section_bars)
+        if pre_bars != 8 or chorus_bars != 8:
+            continue
+        pre_lines = [str(line).strip() for line in pre.get("lines", []) if str(line).strip()]
+        chorus_lines = [str(line).strip() for line in chorus.get("lines", []) if str(line).strip()]
+        if not pre_lines or not chorus_lines:
+            continue
+        if len(pre_lines) > len(chorus_lines):
+            raise RuntimeError(f"audio lyrics quality mismatch: {pre_label} should stay tighter than {chorus_label}")
+        pre_avg = sum(_visible_char_count(line) for line in pre_lines) / max(1, len(pre_lines))
+        chorus_avg = sum(_visible_char_count(line) for line in chorus_lines) / max(1, len(chorus_lines))
+        margin = 4 if language == "ja" else 2
+        if pre_avg > chorus_avg + margin:
+            raise RuntimeError(f"audio lyrics quality mismatch: {pre_label} phrasing is too broad compared with {chorus_label}")
+
+
+def _resolve_section_bar_count(section: str, label: str, section_bars: dict) -> int:
+    if section == "chorus" and str(label).strip().lower() == "final chorus":
+        direct = int(section_bars.get("final_chorus", 0) or 0)
+        if direct > 0:
+            return direct
+        return int(section_bars.get("chorus", 0) or 0) + int(section_bars.get("final_chorus_bonus", 0) or 0)
+    if section in section_bars:
+        return int(section_bars.get(section, 0) or 0)
+    if section.startswith("verse_"):
+        return int(section_bars.get("verse", 0) or 0)
+    return 0
 
 
 def _allows_empty_lyric_section(section_name: str, section_label: str) -> bool:

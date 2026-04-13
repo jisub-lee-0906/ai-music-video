@@ -31,6 +31,32 @@ def test_render_stills_calls_qwen_runner(monkeypatch):
     assert calls[0]["positive_prompt"] == "city pop girl by the sea"
 
 
+def test_plan_preview_builds_qwen_style_prompt_tokens():
+    from ai_mv.core.stages.plan_citypop_mv import build_plan_preview_payload
+
+    payload = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 8.0}},
+        {
+            "concept_text": "Japanese 80s city pop",
+            "audio_map": {
+                "duration_sec": 32.0,
+                "sections": [
+                    {"label": "Intro", "name": "intro", "start_sec": 0.0, "end_sec": 8.0},
+                    {"label": "Verse 1", "name": "verse_1", "start_sec": 8.0, "end_sec": 16.0},
+                    {"label": "Chorus", "name": "chorus", "start_sec": 16.0, "end_sec": 24.0},
+                    {"label": "Outro", "name": "outro", "start_sec": 24.0, "end_sec": 32.0},
+                ],
+            },
+        },
+    )
+
+    prompt = payload["render_plan"][0]["prompt_polish"]
+    assert "clean cel shading" in prompt
+    assert "bold graphic composition" in prompt
+    assert "80s japanese city pop illustration" in prompt
+    assert "film grain" in prompt
+
+
 def test_render_clips_routes_i2v(monkeypatch):
     calls = []
 

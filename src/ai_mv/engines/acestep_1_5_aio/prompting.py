@@ -50,6 +50,7 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
         "Do not use artist references, camera language, or visual wording. "
         "Treat Audio intent as the source of truth; genre and voice only shape presentation. "
         "If bpm is not fixed, choose it from genre, line density, and breathing room. "
+        "For brighter, hook-forward, moving-forward, or more energetic city-pop concepts, prefer a noticeably quicker pulse instead of defaulting to mellow midtempo. "
     )
 
 
@@ -67,6 +68,8 @@ def _audio_songform_rules(plan: dict) -> str:
         "Do not make Verse 2 a copy of Verse 1. ",
         "Make Bridge the emotional turn when it appears, and make Final Chorus feel earned after that turn. ",
         "If you use Final Chorus, make it feel like an answer, not a repeat. ",
+        "Make the first Chorus line feel title-worthy and instantly memorable. ",
+        "Let the Final Chorus feel more decisive and more open than the first Chorus. ",
         "Keep Intro instrumental. Keep Outro instrumental unless a very short sung tail is clearly necessary. ",
     ]
     if bool(ending.get("final_chorus_required", False)):
@@ -120,6 +123,7 @@ def _language_style_rules(plan: dict) -> str:
             "Write fluent modern Japanese lyrics later. Keep them natural, compact, singable, and emotionally precise. "
             "Favor concrete, lived-in visual detail over abstract explanation. "
             "Let the song choose whether it leans toward romance, breakup, longing, self-recovery, urban loneliness, or another fitting city-pop mood. "
+            "Prefer a short, title-grade hook line in the chorus family instead of a generic pretty sentence. "
             "Avoid Korean-style direct confession, overpacked literary metaphor, and awkward slogan-like hooks. "
         )
     if lang == "ko":

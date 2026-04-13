@@ -239,28 +239,62 @@ def _eligible_for_flf2v(shot: dict, next_shot: dict, min_sec: float, max_sec: fl
 
 
 def _prompt_seed(concept_text: str, citypop_bible: dict, shot: dict) -> str:
-    motifs = ", ".join(citypop_bible["motifs"][:3])
-    palette = ", ".join(citypop_bible["palette"][:3])
-    scene = _shot_scene_detail(shot)
+    concept = _concept_seed_phrase(concept_text)
     progression = _section_progression_hint(shot)
-    return (
-        f"{concept_text}. Japanese 80s city pop music video. "
-        f"section {shot['section_name']} ({shot['section_type']}), visual mode {shot['visual_mode']}, shot role {shot['shot_role']}. "
-        f"scene event: {scene}. progression: {progression}. "
-        f"palette: {palette}. motifs: {motifs}."
+    scene_event = _shot_scene_detail(shot)
+    subject = _qwen_subject_phrase(shot)
+    location = _qwen_location_phrase(shot)
+    palette = _qwen_palette_phrase(shot, citypop_bible)
+    return ", ".join(
+        part
+        for part in [
+            concept,
+            f"progression: {progression}" if progression else "",
+            f"scene event: {scene_event}" if scene_event else "",
+            subject,
+            location,
+            palette,
+            "clean cel shading",
+            "bold graphic composition",
+            "80s japanese city pop illustration",
+            "film grain",
+        ]
+        if part
     )
 
 
+def _concept_seed_phrase(concept_text: str) -> str:
+    text = str(concept_text or "").strip()
+    lower = text.lower()
+    if "japanese" in lower and "city pop" in lower:
+        return "Japanese 80s city pop music video"
+    return text or "city pop music video"
+
+
 def _prompt_draft(shot: dict) -> str:
-    framing, motion = _shot_framing_and_motion(shot)
-    return (
-        f"{shot['visual_mode']}, {shot['shot_role']}, {shot['section_name']}, "
-        f"{framing}, {motion}, restrained camera, city pop mood"
+    styling = _qwen_styling_phrase(shot)
+    framing = _qwen_framing_phrase(shot)
+    return ", ".join(
+        part
+        for part in [
+            styling,
+            framing,
+            "clean cel shading",
+            "bold graphic composition",
+            "80s japanese city pop illustration",
+            "film grain",
+        ]
+        if part
     )
 
 
 def _prompt_polish(prompt_seed: str, prompt_draft: str) -> str:
-    return f"{prompt_seed} {prompt_draft}".strip()
+    tokens: list[str] = []
+    for block in (prompt_seed, prompt_draft):
+        for token in [part.strip() for part in str(block).split(",") if part.strip()]:
+            if token not in tokens:
+                tokens.append(token)
+    return ", ".join(tokens)
 
 
 def _section_progression_hint(shot: dict) -> str:
@@ -335,6 +369,87 @@ def _shot_framing_and_motion(shot: dict) -> tuple[str, str]:
         "bridge_transition": "controlled transition move",
     }.get(visual_mode, "restrained motion")
     return framing, motion
+
+
+def _qwen_subject_phrase(shot: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    role = str(shot.get("shot_role", "")).strip()
+    if visual_mode == "profile_mood":
+        return "a close-up of a woman with long dark hair under fluorescent station light"
+    if visual_mode == "night_drive":
+        return "a close-up of a singer in reflected night light with strong presence"
+    if visual_mode == "window_reflection":
+        return "a close-up of a singer through glass with reflected city lights"
+    if visual_mode == "city_glance":
+        return "a close-up of a woman turning toward the camera through city reflections"
+    if visual_mode == "chorus_performance":
+        return "a close-up of a singer facing the camera with neon reflections and vivid expression"
+    if visual_mode == "neon_release":
+        return "a close-up of a singer framed by neon reflections and moving city light"
+    if visual_mode == "night_bridge":
+        return "a close-up of a solitary woman with bridge lights behind her"
+    if visual_mode == "memory_flash":
+        return "a close-up portrait of a woman with soft reflected light and wind in her hair"
+    if visual_mode == "bridge_transition":
+        return "a close-up of a woman shifting from reflection to open night air"
+    if role.startswith("chorus"):
+        return "a close-up of a singer in a reflective city-pop portrait"
+    return "a close-up of a stylish woman in an 80s city pop scene"
+
+
+def _qwen_location_phrase(shot: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    mapping = {
+        "profile_mood": "night station interior with dark glass panels",
+        "night_drive": "night interior, passing street light, and reflected city glow",
+        "window_reflection": "glass reflection close-up with city light spill",
+        "city_glance": "night city glass reflection with passing shop lights",
+        "chorus_performance": "glowing city light reflections with a nightlife backdrop",
+        "neon_release": "night boulevard light reflected across glass and polished surfaces",
+        "night_bridge": "bridge lights in soft focus behind the subject",
+        "memory_flash": "soft city skyline or room-light reflection at dusk",
+        "bridge_transition": "neon-lit transition between street light and glass reflection",
+    }
+    return mapping.get(visual_mode, "night city reflections")
+
+
+def _qwen_palette_phrase(shot: dict, citypop_bible: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    if visual_mode in {"night_drive", "window_reflection", "night_bridge", "chorus_performance"}:
+        return "deep blue and neon magenta palette"
+    if visual_mode in {"memory_flash", "profile_mood"}:
+        return "soft dusk violet and cool pink palette"
+    if visual_mode in {"neon_release", "city_glance"}:
+        return "deep blue and warm amber night palette"
+    palette = [str(x).strip() for x in citypop_bible.get("palette", []) if str(x).strip()]
+    return ", ".join(palette[:2])
+
+
+def _qwen_styling_phrase(shot: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    if visual_mode in {"neon_release", "window_reflection", "night_drive", "chorus_performance", "city_glance"}:
+        return "graphic reflective close-up styling"
+    if visual_mode == "memory_flash":
+        return "soft nostalgic reflective portrait styling"
+    if visual_mode == "profile_mood":
+        return "elegant station reflection styling"
+    return "clean reflective city-pop styling"
+
+
+def _qwen_framing_phrase(shot: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    mapping = {
+        "profile_mood": "tight portrait close-up",
+        "night_drive": "tight close-up with reflected night light",
+        "window_reflection": "tight close-up through reflective glass",
+        "city_glance": "three-quarter reflective close-up",
+        "chorus_performance": "bold front-facing close-up",
+        "neon_release": "medium close-up with neon framing",
+        "night_bridge": "close-up with bridge lights in the background",
+        "memory_flash": "soft portrait close-up",
+        "bridge_transition": "graphic reflective close-up",
+    }
+    return mapping.get(visual_mode, "graphic close-up framing")
 
 
 def _compress_sections(sections: list[dict], duration_sec: float) -> list[dict]:

@@ -3,6 +3,45 @@ from __future__ import annotations
 from ai_mv.engines.acestep_1_5_aio.prompting import _intent_clause, _language_clause
 
 
+def _section_bar_count(plan: dict, block: dict) -> int:
+    section_bars = plan.get("section_bars", {}) if isinstance(plan.get("section_bars", {}), dict) else {}
+    section = str(block.get("section", "")).strip().lower()
+    label = str(block.get("label", "")).strip().lower()
+    if section == "chorus" and "final chorus" in label:
+        final_direct = int(section_bars.get("final_chorus", 0) or 0)
+        if final_direct > 0:
+            return final_direct
+        chorus_base = int(section_bars.get("chorus", 8) or 8)
+        return chorus_base + int(section_bars.get("final_chorus_bonus", 0) or 0)
+    if section in section_bars:
+        return int(section_bars.get(section, 0) or 0)
+    if section.startswith("verse_"):
+        return int(section_bars.get("verse", 0) or 0)
+    return 0
+
+
+def _bar_feel_clause(plan: dict, block: dict) -> str:
+    bars = _section_bar_count(plan, block)
+    label = str(block.get("label", "")).strip()
+    if bars <= 0:
+        return ""
+    if label == "Intro":
+        return f"This Intro is locked to {bars} bars and should stay instrumental with zero lyric lines. "
+    if label == "Outro":
+        return f"This Outro is locked to {bars} bars and should stay instrumental or near-silent with zero lyric lines. "
+    if bars == 4 and label == "Bridge":
+        return "This Bridge is only 4 bars, so it must feel brief, compressed, and turning. Use very short lines and no explanation. "
+    if bars == 8 and label in {"Pre-Chorus", "Pre-Chorus 2"}:
+        return "This pre-chorus is 8 bars, so it should feel like pressure building upward. Keep it tighter than the chorus, do not fully release, and end by pushing into the next section. "
+    if bars == 8 and label in {"Chorus", "Chorus 2"}:
+        return "This chorus is 8 bars, so phrase it compactly. Lead with a hookable line, let it open more clearly than the pre-chorus, keep the lines short, and avoid a 12-bar feeling. "
+    if bars == 8 and label in {"Verse 1", "Verse 2"}:
+        return "This verse is 8 bars, so keep it lean and evenly breathing. Use concrete details without overpacking narrative clauses. "
+    if bars >= 16 and label == "Final Chorus":
+        return f"This Final Chorus opens across {bars} bars, so it should use that extra space for a bigger payoff. Let it widen beyond the earlier chorus, preferably with one more idea or line of release, while staying singable and clearly segmented. "
+    return f"This section is locked to {bars} bars, so match that size with natural breathing and no overpacked phrasing. "
+
+
 def _audio_lyrics_rules_qwen(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
     base = (
@@ -38,6 +77,7 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
         _audio_lyrics_rules_qwen(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
+        + _bar_feel_clause(plan, block)
         + f"Current block=[{label}] line_count={line_count}. "
         + _current_block_constraints(completed, block)
         + f"Output exactly {line_count} lyric lines, one per line. "
@@ -51,7 +91,8 @@ def _audio_lyrics_block_system_prompt(plan: dict, block: dict) -> str:
     line_count = int(block.get("line_count", 1))
     return (
         f"Write exactly {line_count} lyric lines for [{label}] in natural {lang_name}. "
-        "No header. No explanation. No extra lines. "
+        + _bar_feel_clause(plan, block)
+        + "No header. No explanation. No extra lines. "
     )
 
 
@@ -67,6 +108,9 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         if not label:
             continue
         summary = f"[{label}]={line_count} lines"
+        bars = _section_bar_count(plan, block)
+        if bars > 0:
+            summary += f", {bars} bars"
         if role or change:
             details = []
             if role:
@@ -81,9 +125,11 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         + _intent_clause(plan, include_selected_hook=False, include_hook_fragments=False)
         + "Write the full lyrics draft for the entire song in one pass so section progression feels connected. "
         + "Keep the locked section order and exact line counts from the outline. "
+        + "Respect the locked bar sizes of each section so the phrasing feels like it actually fits the form instead of floating free from it. "
         + "Let early sections establish the state, middle sections develop or tighten it, and later sections release or resolve it. "
         + "Make Verse 2 change perspective, cost, or direction instead of restating Verse 1. "
-        + "Make Bridge compress or reframe so the final return lands harder. "
+        + "Make Bridge compress or reframe so the final return lands harder. A 4-bar bridge must feel brief and turning, not explanatory. "
+        + "An 8-bar chorus must feel compact and hook-first. A 16-bar Final Chorus may open wider, but still needs clear internal breathing. "
         + "Keep each section distinct while preserving one shared emotional thread across the whole song. "
         + "Stay inside the world already implied by the audio intent. "
         + "Do not invent random nouns just to fake atmosphere. "
@@ -163,12 +209,12 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
     rules = {
         "Intro": "Intro should be empty or a very short setup. ",
         "Verse 1": "Verse 1 should establish the state with concrete details. ",
-        "Pre-Chorus": "Pre-Chorus should tighten anticipation without spending the hook. ",
-        "Chorus": "Chorus should deliver the clearest hook and first release. ",
+        "Pre-Chorus": "Pre-Chorus should tighten anticipation without spending the hook and should feel tighter than the Chorus. ",
+        "Chorus": "Chorus should deliver the clearest hook and first release, opening wider than the Pre-Chorus. ",
         "Verse 2": "Verse 2 must add change, cost, or contradiction. ",
-        "Pre-Chorus 2": "Pre-Chorus 2 should escalate rather than repeat Pre-Chorus. ",
+        "Pre-Chorus 2": "Pre-Chorus 2 should escalate rather than repeat Pre-Chorus and should still stay tighter than the Chorus return. ",
         "Bridge": "Bridge should interrupt or reframe before the last return. ",
-        "Final Chorus": "Final Chorus should feel like the answer and strongest payoff. ",
+        "Final Chorus": "Final Chorus should feel like the answer and strongest payoff, using its extra space instead of repeating the first chorus shape. ",
         "Outro": "Outro should be terminal and very short. ",
     }
     if label == "Chorus 2" and chorus:

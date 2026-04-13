@@ -11,6 +11,14 @@ def test_validate_local_comfy_config_accepts_local_dirs(tmp_path):
     validate_local_comfy_config(cfg)
 
 
+def test_validate_local_comfy_config_accepts_wsl_windows_host(tmp_path, monkeypatch):
+    cfg = _config(tmp_path)
+    cfg["integrations"]["comfyui_base_url"] = "http://172.28.224.1:8000"
+    monkeypatch.setenv("WSL_INTEROP", "/tmp/wsl")
+    monkeypatch.setattr("ai_mv.infra.comfy_local._wsl_windows_gateway_host", lambda: "172.28.224.1")
+    validate_local_comfy_config(cfg)
+
+
 def test_validate_local_comfy_config_rejects_remote_host(tmp_path):
     cfg = _config(tmp_path)
     cfg["integrations"]["comfyui_base_url"] = "http://192.168.0.10:8000"

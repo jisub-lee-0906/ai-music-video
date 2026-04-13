@@ -89,6 +89,7 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
         normalized["lyrics_blocks"],
         str(plan.get("language", "")).strip(),
         dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {},
+        dict(plan.get("section_bars", {})) if isinstance(plan.get("section_bars", {}), dict) else {},
     )
     _validate_ending_contract(plan, normalized)
     normalized["lyrics_blocks"] = _attach_line_indexes(normalized.get("lyrics_blocks", []))
@@ -176,6 +177,7 @@ def _audio_runtime_context(plan: dict) -> dict:
         "tags": plan["tags"],
         "language": str(plan.get("language", "")).strip(),
         "filename_prefix": str(plan.get("filename_prefix", "")).strip(),
+        "songform_variants": list(plan.get("songform_variants", [])) if isinstance(plan.get("songform_variants", []), list) else [],
         "genre_head": str(plan.get("genre_head", "")).strip(),
         "vocal_profile": str(plan.get("vocal_profile", "")).strip(),
         "vocal_tone": str(plan.get("vocal_tone", "")).strip(),
@@ -243,6 +245,7 @@ def _plan_hook_candidates_with_llm(config: dict, plan: dict) -> dict:
 
 def _plan_lyrics_with_llm(config: dict, plan: dict, outline: dict) -> dict:
     completed = _generate_lyrics_draft(config, plan, outline)
+    completed = _polish_lyrics_sections(config, plan, outline, completed)
     return _merge_audio_outline_and_lyrics(outline, {"lyrics_blocks": completed})
 
 
@@ -899,9 +902,9 @@ def _polish_lyrics_sections(config: dict, plan: dict, outline: dict, blocks: lis
             f"Polish this {label}. "
             f"Primary goal: {reason}. "
             "Keep the exact line count, section function, and established song world. "
-            "Make the language feel more natural and connected to the rest of the song. "
+            "Make the Japanese feel more naturally singable and better fitted to the section's bar length and breathing. "
             "Prefer lines that feel more lived-in, specific, and memorable over safe generic phrasing. "
-            "Replace explanation with stronger lyric detail where possible, but keep the song singable. "
+            "Replace explanation with stronger lyric detail where possible, but keep the section easy to sing in time. "
         )
         refreshed[idx] = _generate_lyrics_block_with_note(
             config,
@@ -935,13 +938,19 @@ def _lyrics_rewrite_targets_prompt(plan: dict, blocks: list[dict]) -> str:
         rendered.append(f"[{label}] " + " / ".join(lines))
     return (
         "Review these song sections and choose at most 2 sections that would most benefit from a rewrite. "
-        "Focus only on hook naturalness, section-role contrast, lyrical specificity, world consistency, final payoff, and artist-level distinctiveness. "
+        "Focus only on Japanese lyric naturalness, singability, bar-fit, section-role contrast, lyrical specificity, world consistency, and final payoff. "
+        "Check whether each section really sounds singable at its locked size instead of reading like free text. "
+        "A 4-bar Bridge must stay brief and turning. "
+        "An 8-bar Pre-Chorus should stay tighter than the Chorus. "
+        "An 8-bar Chorus should feel hook-first and clearly opened. "
+        "A 16-bar Final Chorus should use its extra space for a bigger release. "
         "Flag sections that invent a new sharply specific place, shop, vehicle, or prop without grounding it elsewhere in the song. "
         "Flag sections that use a catchy English phrase that feels imported from outside the song rather than growing naturally from the lyric language. "
-        "Flag sections whose lines feel generic, over-explained, too familiar, or not memorable enough. "
-        "Prefer sections that would benefit from more lived-in detail, stronger physicality, or a more personal final payoff. "
+        "Flag sections whose lines feel generic, over-explained, too familiar, not memorable enough, too dense for the bar count, or too flat for the section payoff. "
+        "Prefer sections that would benefit from more lived-in detail, stronger physicality, a cleaner singing rhythm, or a more personal final payoff. "
         "Do not choose sections that already work. "
         "Prefer rewriting the minimum number of sections needed. "
+        + f"Locked bar lane={str(plan.get('bar_lane', '')).strip()}. "
         + _language_clause(plan)
         + _intent_clause(plan)
         + "Return strict JSON only. "

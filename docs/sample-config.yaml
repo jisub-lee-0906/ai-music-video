@@ -29,7 +29,7 @@ planning:
   flf2v_max_sec: 6.0
 
 integrations:
-  comfyui_base_url: "http://127.0.0.1:8000"
+  comfyui_base_url: "http://172.28.224.1:8000"
   comfyui_input_dir: "C:/Users/Desktop/Documents/ComfyUI/input"
   comfyui_output_dir: "C:/Users/Desktop/Documents/ComfyUI/output"
   workflows_dir: "workflows"

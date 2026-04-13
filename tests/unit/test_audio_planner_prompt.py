@@ -53,7 +53,7 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
     assert "Prefer a strong beginning-middle-turn-resolution arc" in prompt
     assert "Keep Intro instrumental." in prompt
     assert "director_brief_intent" not in prompt
-    assert len(prompt) < 2600
+    assert len(prompt) < 3200
 
 
 def test_audio_prompt_uses_flattened_profile_fields():
@@ -105,7 +105,7 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
                 {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["少し近く", "息が上がる", "ドアが開く"]},
                 {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
                 {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["止まったような夜", "もう一度息をする"]},
-                {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["濡れた街の果て", "いま私を見て", "揺らぎはしない", "最後まで進む"]},
+                {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["濡れた街の果て", "いま私を見て", "揺らぎはしない", "最後まで進む", "朝までほどけない"]},
             ],
         },
     )
@@ -147,6 +147,33 @@ def test_build_audio_plan_uses_concept_text_as_citypop_fallback(monkeypatch):
     assert plan["language"] == "ja"
     assert plan["genre_head"] == "city pop"
     assert plan["audio_direction"] == cfg["concept_text"]
+
+
+def test_plan_lyrics_with_llm_runs_final_review_polish(monkeypatch):
+    outline = {
+        "genre_description": "City Pop: warm electric piano and soft bass.",
+        "bpm": 98,
+        "keyscale": "A major",
+        "seed": 31,
+        "duration": 168,
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "role": "set", "change": "enter", "line_count": 4},
+            {"section": "chorus", "label": "Chorus", "style": "release", "role": "open", "change": "lift", "line_count": 4},
+        ],
+    }
+    draft = [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["古い灯り", "遅い吐息", "空いた道", "残る名前"]},
+        {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["まだ行ける", "夜はほどける", "君のいない街でも", "光の方へ進む"]},
+    ]
+    polished = [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["古い灯り", "遅い吐息", "空いた道", "残る名前"]},
+        {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["まだ行ける", "夜はほどける", "君のいない街でも", "朝へ向かって進む"]},
+    ]
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_draft", lambda _config, _plan, _outline: draft)
+    monkeypatch.setattr(audio_planner, "_polish_lyrics_sections", lambda _config, _plan, _outline, blocks: polished)
+    merged = audio_planner._plan_lyrics_with_llm({}, {"bar_lane": "chorus 8"}, outline)
+    chorus = next(row for row in merged["lyrics_blocks"] if row["label"] == "Chorus")
+    assert chorus["lines"][-1] == "朝へ向かって進む"
 
 
 def test_validate_outline_line_budgets_rejects_overpacked_blocks():

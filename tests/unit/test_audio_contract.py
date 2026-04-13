@@ -166,3 +166,131 @@ def test_validate_audio_lyrics_quality_rejects_chorus_without_short_hook_line():
     ]
     with pytest.raises(RuntimeError, match="lacks a short memorable hook line"):
         validate_audio_lyrics_quality(blocks, "ko")
+
+
+def test_validate_audio_lyrics_quality_rejects_overpacked_four_bar_bridge():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["終電あとの道で息を止める", "窓の灯りだけが少し揺れる"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["夜はまだ終わらない", "駅前の風がほどける", "君の影だけ遠くなる", "それでも歩いていく"]},
+        {
+            "section": "bridge",
+            "label": "Bridge",
+            "style": "turn",
+            "lines": [
+                "改札の向こうの気配をまだ数えている",
+                "眠れない窓辺で朝の輪郭を抱えこむ",
+                "曲がるたび言いそびれた言葉が増える",
+                "今夜だけ長い説明を続けてしまう",
+            ],
+        },
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["夜はまだ終わらない", "鍵を開けて進んでいく", "君のいない部屋の奥で", "新しい朝を迎えにいく"]},
+    ]
+    with pytest.raises(RuntimeError, match="4-bar Bridge"):
+        validate_audio_lyrics_quality(
+            blocks,
+            "ja",
+            section_bars={"verse": 8, "chorus": 8, "bridge": 4, "final_chorus_bonus": 8},
+        )
+
+
+def test_validate_audio_lyrics_quality_rejects_long_eight_bar_chorus_phrasing():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["終電あとの坂で立ち止まる", "ポケットの鍵が少し冷たい"]},
+        {
+            "section": "chorus",
+            "label": "Chorus",
+            "style": "hook",
+            "lines": [
+                "まだ戻れない",
+                "歩道橋の上で言えなかった気持ちだけがまだ残る",
+                "見送った背中だけが夜の窓にゆっくり伸びていく",
+                "笑っていた横顔ばかり今も長く揺れ続けている",
+                "あの角を曲がれば何かが戻る気がまだしてしまう",
+            ],
+        },
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["まだ行ける", "夜を越える", "この街ごと抱いて", "朝へ向かう"]},
+    ]
+    with pytest.raises(RuntimeError, match="8-bar chorus|Chorus phrasing"):
+        validate_audio_lyrics_quality(
+            blocks,
+            "ja",
+            section_bars={"verse": 8, "chorus": 8, "final_chorus_bonus": 8},
+        )
+
+
+def test_validate_audio_lyrics_quality_accepts_bar_fit_for_short_form_japanese_city_pop():
+    blocks = [
+        {"section": "intro", "label": "Intro", "style": "lift", "lines": []},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["終電あとの坂を歩く", "ネオンが靴先でほどける", "言えないままの息を持つ", "窓の灯りだけ見ていた"]},
+        {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["もう少しだけ", "ここにいてよ", "朝の前まで"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["まだ行ける", "夜はほどける", "君のいない街でも", "光の方へ進む"]},
+        {"section": "verse_2", "label": "Verse 2", "style": "shift", "lines": ["改札の音が背を押す", "ポケットで鍵が鳴っている", "昨日の影は薄くなる", "この街にも朝が来る"]},
+        {"section": "bridge", "label": "Bridge", "style": "turn", "lines": ["戻れない夜もある", "それでも前を見る", "白い朝が差しこむ"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["まだ行ける", "夜を越えて", "君のいない部屋でも", "新しい光を点ける", "この街でまた始める"]},
+        {"section": "outro", "label": "Outro", "style": "tail", "lines": []},
+    ]
+    validate_audio_lyrics_quality(
+        blocks,
+        "ja",
+        line_budgets={
+            "Intro": 0,
+            "Verse 1": 5,
+            "Pre-Chorus": 3,
+            "Chorus": 5,
+            "Verse 2": 5,
+            "Bridge": 3,
+            "Final Chorus": 5,
+            "Outro": 0,
+        },
+        section_bars={
+            "intro": 8,
+            "verse": 8,
+            "pre_chorus": 8,
+            "chorus": 8,
+            "bridge": 4,
+            "outro": 8,
+            "final_chorus_bonus": 8,
+        },
+    )
+
+
+def test_validate_audio_lyrics_quality_rejects_sixteen_bar_final_chorus_that_underdelivers():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["終電あとの坂を歩く", "ネオンが靴先でほどける", "言えないままの息を持つ", "窓の灯りだけ見ていた"]},
+        {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["もう少しだけ", "ここにいてよ", "朝の前まで"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["まだ行ける", "夜はほどける", "君のいない街でも", "光の方へ進む"]},
+        {"section": "bridge", "label": "Bridge", "style": "turn", "lines": ["戻れない夜もある", "それでも前を見る", "白い朝が差しこむ"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["まだ行ける", "夜を越えて", "君のいない部屋でも", "新しい光を点ける"]},
+    ]
+    with pytest.raises(RuntimeError, match="Final Chorus underuses"):
+        validate_audio_lyrics_quality(
+            blocks,
+            "ja",
+            section_bars={
+                "verse": 8,
+                "pre_chorus": 8,
+                "chorus": 8,
+                "bridge": 4,
+                "final_chorus_bonus": 8,
+            },
+        )
+
+
+def test_validate_audio_lyrics_quality_rejects_pre_chorus_that_is_too_broad_for_chorus_contrast():
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["終電あとの坂を歩く", "ネオンが靴先でほどける", "言えないままの息を持つ", "窓の灯りだけ見ていた"]},
+        {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["もう少しだけこの街の夜を全部抱えていたい", "まだ言えなかった気持ちだけが胸の奥で渦を巻く", "朝の前まであなたの影を長く追いかけてしまう", "それでも今は戻れないまま揺れ続けている"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["まだ行ける", "夜はほどける", "君のいない街でも", "光の方へ進む"]},
+        {"section": "chorus", "label": "Final Chorus", "style": "peak", "lines": ["まだ行ける", "夜を越えて", "君のいない部屋でも", "新しい光を点ける", "この街でまた始める"]},
+    ]
+    with pytest.raises(RuntimeError, match="Pre-Chorus should stay tighter|Pre-Chorus phrasing is too broad"):
+        validate_audio_lyrics_quality(
+            blocks,
+            "ja",
+            section_bars={
+                "verse": 8,
+                "pre_chorus": 8,
+                "chorus": 8,
+                "final_chorus_bonus": 8,
+            },
+        )
