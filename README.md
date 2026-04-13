@@ -65,6 +65,21 @@ ai-mv start --brief director_brief_example
 ai-mv status --run-id 20260406-215500
 ```
 
+## WSL Usage
+
+If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrapper scripts instead of the default CLI commands. The default shared config still uses Windows-style ComfyUI directories, so the wrappers inject WSL-safe values without changing the Windows workflow.
+
+```bash
+./scripts/doctor-wsl.sh
+./scripts/preflight-wsl.sh --concept-text 'Japanese 80s city pop night drive, neon coast, bittersweet summer romance'
+./scripts/start-wsl.sh --concept-text 'Japanese 80s city pop night drive, neon coast, bittersweet summer romance'
+```
+
+Notes:
+- the wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
+- they expect ComfyUI input/output under `/mnt/c/Users/Desktop/Documents/ComfyUI/`
+- `start-wsl.sh` runs the real generation pipeline and will create outputs / consume time
+
 ## Tests
 
 ```powershell
