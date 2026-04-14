@@ -55,12 +55,28 @@ def analyze_audio_timing(
     cleaned = _clean_times(beat_times.tolist())
     if len(cleaned) < max(4, beats_per_bar * 2):
         raise RuntimeError(f"audio beat analysis produced too few beats: {len(cleaned)}")
-    detected_bpm = int(round(float(tempo))) if float(tempo) > 0 else int(bpm_hint or 0)
+    tempo_value = _tempo_scalar(tempo)
+    detected_bpm = int(round(tempo_value)) if tempo_value > 0 else int(bpm_hint or 0)
     return {
         "detected_bpm": detected_bpm if detected_bpm > 0 else 120,
         "beat_times_sec": cleaned,
         "beats_per_bar": max(1, int(beats_per_bar)),
     }
+
+
+def _tempo_scalar(raw: object) -> float:
+    try:
+        return float(raw)
+    except Exception:
+        pass
+    try:
+        first = list(raw)[0]  # type: ignore[arg-type]
+    except Exception:
+        return 0.0
+    try:
+        return float(first)
+    except Exception:
+        return 0.0
 
 
 def _clean_times(values: list[float]) -> list[float]:

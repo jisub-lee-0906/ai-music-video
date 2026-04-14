@@ -28,7 +28,100 @@ def test_render_stills_calls_qwen_runner(monkeypatch):
 
     assert out.payload["still_results"][0]["image"] == "D:/renders/S001.png"
     assert calls[0]["filename_prefix"] == "stills/S001"
-    assert calls[0]["positive_prompt"] == "city pop girl by the sea"
+    assert "city pop girl by the sea" in calls[0]["positive_prompt"]
+    assert "single cinematic keyframe" in calls[0]["positive_prompt"]
+    assert "one uninterrupted composition" in calls[0]["positive_prompt"]
+
+
+def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
+    calls = []
+
+    def _fake_run_qwen_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    stage_input = StageInput(
+        run_id="run-1b",
+        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1024x1024"}},
+        payload={
+            "shot_plan": [{"shot_id": "S009"}],
+            "render_plan": [{"shot_id": "S009", "prompt_polish": "night station portrait, reflective glass, film grain"}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "night station portrait, reflective glass, film grain" in prompt
+    assert "anime film still" in prompt
+    assert "single cinematic keyframe" in prompt
+    assert "no inset portrait" in prompt
+
+
+def test_render_stills_strips_panel_prone_graphic_prompt_tokens(monkeypatch):
+    calls = []
+
+    def _fake_run_qwen_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    stage_input = StageInput(
+        run_id="run-1c",
+        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S010"}],
+            "render_plan": [
+                {
+                    "shot_id": "S010",
+                    "prompt_polish": "night station portrait, bold graphic composition, graphic reflective close-up styling, reflective glass, film grain",
+                }
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "night station portrait" in prompt
+    assert "reflective glass" in prompt
+    assert "film grain" in prompt
+    assert "bold graphic composition" not in prompt
+    assert "graphic reflective close-up styling" not in prompt
+    assert "full-bleed frame" in prompt
+
+
+def test_render_stills_strips_storyboard_like_meta_prompt_tokens(monkeypatch):
+    calls = []
+
+    def _fake_run_qwen_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    stage_input = StageInput(
+        run_id="run-1d",
+        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S011"}],
+            "render_plan": [
+                {
+                    "shot_id": "S011",
+                    "prompt_polish": "Japanese 80s city pop music video, progression: opening pass through the night, scene event: late-night city movement, a close-up of a singer in reflected night light, film grain",
+                }
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "a close-up of a singer in reflected night light" in prompt
+    assert "film grain" in prompt
+    assert "Japanese 80s city pop music video" not in prompt
+    assert "progression: opening pass through the night" not in prompt
+    assert "scene event: late-night city movement" not in prompt
 
 
 def test_plan_preview_builds_qwen_style_prompt_tokens():

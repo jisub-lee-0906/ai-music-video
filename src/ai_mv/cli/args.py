@@ -11,6 +11,8 @@ def build_parser() -> argparse.ArgumentParser:
     start_cmd.add_argument("--run-id", default=None)
     start_cmd.add_argument("--concept-text", dest="concept_text", default=None)
     start_cmd.add_argument("--brief", dest="legacy_brief", default=None)
+    start_cmd.add_argument("--audio-brief", dest="audio_brief", default=None)
+    start_cmd.add_argument("--audio-hook-brief", dest="audio_hook_brief", default=None)
 
     sub.add_parser("doctor")
 
@@ -18,6 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--run-id", default=None)
     preflight.add_argument("--concept-text", dest="concept_text", default=None)
     preflight.add_argument("--brief", dest="legacy_brief", default=None)
+    preflight.add_argument("--audio-brief", dest="audio_brief", default=None)
+    preflight.add_argument("--audio-hook-brief", dest="audio_hook_brief", default=None)
 
     status = sub.add_parser("status")
     status.add_argument("--run-id", required=True)

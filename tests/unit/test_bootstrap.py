@@ -21,7 +21,7 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
         (tmp_path / "workflows" / name).write_text("{}", encoding="utf-8")
     out = bootstrap_config(cfg, tmp_path / "artifacts")
     assert out["video"]["target"] == "1920x1080@24"
-    assert out["render"]["qwen_size"] == "1024x1024"
+    assert out["render"]["qwen_size"] == "1280x720"
     assert out["render"]["ltx_i2v_size"] == "1280x720"
     assert out["concept_text"]
 
@@ -37,7 +37,7 @@ def test_apply_citypop_defaults_sets_default_when_missing(tmp_path, monkeypatch)
         "integrations": {"workflows_dir": str(Path("workflows"))},
         "video": {"target": "1920x1080@24"},
         "render": {
-            "qwen_size": "1024x1024",
+            "qwen_size": "1280x720",
             "ltx_i2v_size": "1280x720",
             "ltx_ia2v_size": "1280x720",
             "ltx_flf2v_size": "1280x720",

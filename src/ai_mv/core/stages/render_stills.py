@@ -13,7 +13,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
         render_item = render_map.get(shot_id, {})
-        prompt_text = _still_prompt_text(render_item)
+        prompt_text = _single_keyframe_prompt_text(_still_prompt_text(render_item))
         image_path = run_qwen_still(
             stage_input.config,
             {
@@ -54,3 +54,52 @@ def _still_prompt_text(render_item: dict) -> str:
         if value:
             return value
     return "japanese 80s city pop illustration, neon coast, bittersweet summer night"
+
+
+def _single_keyframe_prompt_text(prompt_text: str) -> str:
+    base = _sanitize_still_prompt_text(prompt_text)
+    constraints = [
+        "anime film still",
+        "single cinematic keyframe",
+        "single continuous scene",
+        "one camera shot",
+        "one uninterrupted composition",
+        "full-bleed frame",
+        "continuous background perspective",
+        "close-up portrait integrated into the environment",
+        "reflections within the same shot",
+        "diegetic reflections only",
+        "no inset portrait",
+        "no secondary frame",
+        "no juxtaposed scenes",
+        "no panel layout",
+        "no collage",
+        "no split screen",
+        "no text",
+    ]
+    tokens: list[str] = []
+    for block in [base, *constraints]:
+        for token in [part.strip() for part in str(block).split(",") if part.strip()]:
+            if token not in tokens:
+                tokens.append(token)
+    return ", ".join(tokens)
+
+
+def _sanitize_still_prompt_text(prompt_text: str) -> str:
+    blocked_exact_tokens = {
+        "japanese 80s city pop music video",
+        "bold graphic composition",
+        "graphic reflective close-up styling",
+    }
+    tokens: list[str] = []
+    for token in [part.strip() for part in str(prompt_text or "").split(",") if part.strip()]:
+        lower = token.lower()
+        if lower in blocked_exact_tokens:
+            continue
+        if lower.startswith("progression:"):
+            continue
+        if lower.startswith("scene event:"):
+            continue
+        if token not in tokens:
+            tokens.append(token)
+    return ", ".join(tokens)

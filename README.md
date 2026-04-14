@@ -67,7 +67,18 @@ ai-mv status --run-id 20260406-215500
 
 ## WSL Usage
 
-If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrapper scripts instead of the default CLI commands. The default shared config still uses Windows-style ComfyUI directories, so the wrappers inject WSL-safe values without changing the Windows workflow.
+If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrapper scripts instead of the default CLI commands. The default shared config is still designed to be compatible with the Windows workflow, so the wrappers inject WSL-safe values for the ComfyUI host, mounted input/output directories, and Codex path.
+
+### First successful WSL run target
+
+Use this as the initial success envelope:
+- concept-text driven run only
+- target music duration: 15–20 seconds
+- `planning.enable_ia2v=false`
+- `planning.enable_flf2v=false`
+- still generation + basic i2v clips only
+- `./scripts/preflight-wsl.sh` and `./scripts/start-wsl.sh` now default to this smoke mode
+- add `--full-run` only when you intentionally want the longer path
 
 ```bash
 ./scripts/doctor-wsl.sh
@@ -79,6 +90,7 @@ Notes:
 - the wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
 - they expect ComfyUI input/output under `/mnt/c/Users/Desktop/Documents/ComfyUI/`
 - `start-wsl.sh` runs the real generation pipeline and will create outputs / consume time
+- do not treat `ia2v`, `flf2v`, perfect identity consistency, or precise sync as first-run pass criteria
 
 ## Tests
 

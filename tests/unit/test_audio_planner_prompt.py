@@ -149,6 +149,56 @@ def test_build_audio_plan_uses_concept_text_as_citypop_fallback(monkeypatch):
     assert plan["audio_direction"] == cfg["concept_text"]
 
 
+def test_build_audio_plan_prefers_audio_brief_over_concept_text(monkeypatch):
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_with_llm",
+        lambda _config, _plan: {
+            "genre_description": "City Pop: warm electric piano, soft bass groove, and bittersweet lead vocal over neon-night drums.",
+            "bpm": 108,
+            "keyscale": "A major",
+            "seed": 31,
+            "duration": 150,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["濡れた灯り", "遅い吐息", "空いた道", "残る名前"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
+            ],
+        },
+    )
+    cfg = {
+        "concept_text": "visual-only panel-safe concept",
+        "audio": {"brief": "music-facing brief", "hook_brief": "short title-worthy hook"},
+    }
+    plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+    assert plan["audio_direction"] == "music-facing brief"
+    assert plan["hook_brief"] == "short title-worthy hook"
+
+
+def test_build_audio_plan_uses_audio_brief_as_hook_fallback_when_hook_brief_missing(monkeypatch):
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_with_llm",
+        lambda _config, _plan: {
+            "genre_description": "City Pop: warm electric piano, soft bass groove, and bittersweet lead vocal over neon-night drums.",
+            "bpm": 108,
+            "keyscale": "A major",
+            "seed": 31,
+            "duration": 150,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["濡れた灯り", "遅い吐息", "空いた道", "残る名前"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
+            ],
+        },
+    )
+    cfg = {
+        "concept_text": "visual-only panel-safe concept",
+        "audio": {"brief": "music-facing brief"},
+    }
+    plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+    assert plan["audio_direction"] == "music-facing brief"
+    assert plan["hook_brief"] == "music-facing brief"
+
+
 def test_plan_lyrics_with_llm_runs_final_review_polish(monkeypatch):
     outline = {
         "genre_description": "City Pop: warm electric piano and soft bass.",

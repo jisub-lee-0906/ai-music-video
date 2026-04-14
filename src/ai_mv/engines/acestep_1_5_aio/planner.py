@@ -126,6 +126,7 @@ def _audio_fixed_fields(audio: dict) -> dict:
 def _audio_intent_fields(audio: dict) -> dict:
     return {
         "audio_direction": str(audio.get("brief", "")).strip(),
+        "hook_brief": str(audio.get("hook_brief", "")).strip(),
         "negative_direction": " ".join(
             part for part in [str(audio.get("negative_direction", "")).strip(), str(audio.get("avoid", "")).strip()] if part
             ).strip(),
@@ -140,12 +141,14 @@ def _audio_source(config: dict) -> dict:
     voice = str(config.get("voice", "")).strip() if isinstance(config, dict) else ""
     profile, tone = _split_voice(voice or str(audio.get("vocal_profile", "")).strip())
     merged = dict(audio)
-    if not prompt and concept_text:
-        prompt = concept_text
+    audio_brief = str(audio.get("brief", "")).strip()
+    selected_prompt = audio_brief or prompt or concept_text
+    selected_hook_brief = str(audio.get("hook_brief", "")).strip() or audio_brief or prompt or concept_text
     merged["language"] = "ja"
-    if prompt:
-        merged["brief"] = prompt
-        merged["hook_brief"] = str(audio.get("hook_brief", "")).strip() or prompt
+    if selected_prompt:
+        merged["brief"] = selected_prompt
+    if selected_hook_brief:
+        merged["hook_brief"] = selected_hook_brief
     if not genre and _looks_like_citypop(concept_text):
         genre = "city pop"
     if genre:
@@ -183,6 +186,7 @@ def _audio_runtime_context(plan: dict) -> dict:
         "vocal_tone": str(plan.get("vocal_tone", "")).strip(),
         "quality": plan["quality"],
         "audio_direction": str(plan.get("audio_direction", "")).strip(),
+        "hook_brief": str(plan.get("hook_brief", "")).strip(),
         "negative_direction": str(plan.get("negative_direction", "")).strip(),
     }
 

@@ -31,12 +31,24 @@
   - `enable_ia2v=false`
   - `enable_flf2v=false`
 - 오디오 길이: `15~20초`
+- 목표: still + 기본 `i2v` clip + `final_mv.mp4` 생성까지 확인
+- 이번 단계에서 기대하지 않을 것:
+  - 완벽한 캐릭터 일관성
+  - 정밀 립싱크
+  - 정밀 비트 싱크
+  - 긴 러닝타임 서사 완성도
 
 ## 5. Run Order
 
-1. `preflight` 실행
-2. `start` 실행
-3. 산출물 확인:
+WSL에서는 아래 순서를 우선 사용한다.
+
+1. `./scripts/doctor-wsl.sh`
+2. `./scripts/preflight-wsl.sh --concept-text '<concept>'`
+3. `./scripts/start-wsl.sh --concept-text '<concept>'`
+4. 필요할 때만 긴 경로로 전환:
+   - `./scripts/preflight-wsl.sh --full-run --concept-text '<concept>'`
+   - `./scripts/start-wsl.sh --full-run --concept-text '<concept>'`
+5. 산출물 확인:
    - `manifest.json`
    - `run_summary.json`
    - `stills/*.png`
