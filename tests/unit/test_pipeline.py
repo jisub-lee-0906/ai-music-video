@@ -35,7 +35,7 @@ def test_pipeline_runs_ordered_stages(monkeypatch):
     monkeypatch.setattr(pipeline, "_ordered_stages", lambda: [
         ("audio", _stage("audio", {"audio_plan": {"genre_description": "x"}, "audio_map": {"sections": [{"name": "verse"}]}, "music_file": "music.mp3"})),
         ("plan", _stage("plan", {
-            "citypop_bible": {"style": "citypop"},
+            "style_bible": {"style": "citypop"},
             "shot_plan": [{"shot_id": "S001", "start_sec": 0.0, "end_sec": 4.0}],
             "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
         })),

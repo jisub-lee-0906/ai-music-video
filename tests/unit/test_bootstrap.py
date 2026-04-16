@@ -26,7 +26,7 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     assert out["concept_text"]
 
 
-def test_apply_citypop_defaults_sets_default_when_missing(tmp_path, monkeypatch):
+def test_apply_input_defaults_sets_generic_default_when_missing(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         bootstrap_guard,
@@ -45,8 +45,9 @@ def test_apply_citypop_defaults_sets_default_when_missing(tmp_path, monkeypatch)
         "runtime": {"template_hash_lock": False, "template_hashes": {}},
     }
 
-    bootstrap_guard.apply_citypop_defaults(cfg)
+    bootstrap_guard.apply_input_defaults(cfg)
 
     assert cfg["concept_text"] == bootstrap_guard.DEFAULT_CONCEPT
+    assert "city pop" not in cfg["concept_text"].lower()
     assert "prompt" not in cfg
     assert "genre" not in cfg

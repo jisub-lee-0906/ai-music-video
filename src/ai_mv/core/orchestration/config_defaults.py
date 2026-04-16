@@ -14,7 +14,7 @@ DEFAULT_CONFIG: dict = {
         "brief": "",
         "hook_brief": "",
     },
-    "concept_text": "Japanese 80s city pop night drive, neon coast, bittersweet summer romance",
+    "concept_text": "emotionally resonant night-drive music video concept with a vivid urban atmosphere",
     "video": {"target": "1920x1080@24"},
     "render": {
         "qwen_size": "1280x720",

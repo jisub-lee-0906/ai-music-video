@@ -8,10 +8,10 @@ from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 from ai_mv.core.stages.acestep_music import run_acestep_music
 from ai_mv.core.stages.assemble_mv import run_assemble_mv
-from ai_mv.core.stages.plan_citypop_mv import run_plan_citypop_mv
+from ai_mv.core.stages.plan_mv import run_plan_mv
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
-from ai_mv.core.stages.review_outputs import run_review_outputs
+from ai_mv.core.stages.review_stage import run_review_stage
 
 
 def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = False) -> str:
@@ -46,9 +46,9 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
 def _ordered_stages() -> list[tuple[str, callable]]:
     return [
         ("audio", run_acestep_music),
-        ("plan", run_plan_citypop_mv),
+        ("plan", run_plan_mv),
         ("stills", run_render_stills),
         ("clips", run_render_clips),
         ("assemble", run_assemble_mv),
-        ("review", run_review_outputs),
+        ("review", run_review_stage),
     ]

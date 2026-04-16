@@ -91,7 +91,7 @@ def _clip_prompt_text(render_item: dict) -> str:
         value = str(render_item.get(key, "")).strip()
         if value:
             return value
-    return "city pop music video shot"
+    return "music video shot with a clear cinematic action beat"
 
 
 def _bridge_target_image(shot_id: str, shot: dict, render_item: dict, still_map: dict) -> str:

@@ -7,7 +7,7 @@ from ai_mv.core.contracts.errors import StageFailure
 
 REQUIRED_INPUTS: dict[str, tuple[str, ...]] = {
     "plan": ("audio_plan", "audio_map"),
-    "stills": ("shot_plan", "render_plan", "citypop_bible"),
+    "stills": ("shot_plan", "render_plan", "style_bible"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
     "assemble": ("clip_results", "music_file"),
     "review": ("review_inputs",),
@@ -19,17 +19,26 @@ class ClipOutput(TypedDict):
     video: str
 
 
+def _normalize_legacy_stage_payload(stage: str, payload: dict) -> dict:
+    if stage != "stills" or not isinstance(payload, dict):
+        return payload
+    if "style_bible" in payload or "citypop_bible" not in payload:
+        return payload
+    return {**payload, "style_bible": payload.get("citypop_bible")}
+
+
 def validate_stage_input(stage: str, payload: dict) -> None:
+    normalized_payload = _normalize_legacy_stage_payload(stage, payload)
     required = REQUIRED_INPUTS.get(stage, ())
-    missing = [key for key in required if key not in payload]
+    missing = [key for key in required if key not in normalized_payload]
     if missing:
         names = ", ".join(missing)
         raise StageFailure(f"{stage} missing required inputs: {names}")
-    empty = [key for key in required if _is_empty(payload.get(key))]
+    empty = [key for key in required if _is_empty(normalized_payload.get(key))]
     if empty:
         names = ", ".join(empty)
         raise StageFailure(f"{stage} empty required inputs: {names}")
-    _validate_stage_shape(stage, payload)
+    _validate_stage_shape(stage, normalized_payload)
 
 
 def _validate_stage_shape(stage: str, payload: dict) -> None:

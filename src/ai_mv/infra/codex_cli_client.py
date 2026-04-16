@@ -175,15 +175,18 @@ def _strict_schema(schema: dict):
 
 
 def _login_status(cmd: list[str]) -> str:
-    res = subprocess.run(
-        cmd + ["login", "status"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=10,
-        check=False,
-    )
+    try:
+        res = subprocess.run(
+            cmd + ["login", "status"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise CodexCliRequestError("Codex CLI executable not found") from exc
     if res.returncode != 0:
         raise CodexCliRequestError(f"Codex CLI login status failed: {res.stderr.strip() or res.stdout.strip()}")
     text = res.stdout.strip() or res.stderr.strip()
@@ -191,16 +194,19 @@ def _login_status(cmd: list[str]) -> str:
 
 
 def _run(args: list[str], prompt: str, timeout: int | None) -> None:
-    res = subprocess.run(
-        args,
-        input=prompt,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        res = subprocess.run(
+            args,
+            input=prompt,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise CodexCliRequestError("Codex CLI executable not found") from exc
     if res.returncode != 0:
         detail = res.stderr.strip() or res.stdout.strip()
         raise CodexCliRequestError(f"Codex CLI exec failed: {detail}")
@@ -230,7 +236,7 @@ def _codex_command_parts(config: dict) -> list[str]:
     resolved = shutil.which("codex") or shutil.which("codex.cmd")
     if resolved:
         return _validated_command_parts(Path(resolved))
-    raise CodexCliRequestError("Codex CLI executable not found")
+    return ["codex"]
 
 
 def _validated_command_parts(path: Path) -> list[str]:

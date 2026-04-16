@@ -53,7 +53,7 @@ def _still_prompt_text(render_item: dict) -> str:
         value = str(render_item.get(key, "")).strip()
         if value:
             return value
-    return "japanese 80s city pop illustration, neon coast, bittersweet summer night"
+    return "anime illustration, neon-lit night street, cinematic mood, bittersweet atmosphere"
 
 
 def _single_keyframe_prompt_text(prompt_text: str) -> str:

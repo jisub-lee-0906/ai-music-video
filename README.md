@@ -1,52 +1,46 @@
 # ai-mv
 
-`ai-mv` is a Python 3.11 CLI for generating music-video assets with local ComfyUI workflows and Codex-based planning.
+`ai-mv` is a Python 3.11 CLI for generating complete music videos from a single `concept_text` input using local ComfyUI workflows, music generation, and automated review.
 
-## Pipeline
+## Product direction
 
-The current pipeline runs these stages:
+The project is evolving toward:
+- multi-style music video generation, not a citypop-only tool
+- a concept-text-first UX
+- final-MV quality as the main success metric
+- strong ComfyUI/workflow orchestration
+- review and rerender loops that improve weak outputs
 
-1. `acestep_music`
-2. `storyboard`
-3. `keyframes`
-4. `wan_interpolation`
-5. `merge_mux`
+The external UX is intentionally simple even though the internal planning and workflow routing are more complex.
+
+## Current pipeline
+
+The current pipeline runs these high-level stages:
+
+1. `audio`
+2. `plan`
+3. `stills`
+4. `clips`
+5. `assemble`
+6. `review`
 
 In practice this means:
-
-- load a profile from `profiles/`
-- generate song text and audio inputs
-- derive a storyboard from lyrics and profile context
-- render anchor and reference frames
-- interpolate clips and mux the final output
-
-## Profile
-
-The current example profile is `profiles/director_brief_example.yaml`.
-
-Core fields:
-
-- `prompt`
-- `genre`
-- `voice`
-- `language`
-
-Optional visual support:
-
-- `visual_concept`
-- `locations`
-- `props`
-- `anchor_*`
+- derive music direction from `concept_text`
+- generate music and timing structure
+- build a visual plan
+- render stills and clips through ComfyUI workflows
+- assemble a final MV
+- review the output and identify rerender targets
 
 ## Requirements
 
 - Python `>=3.11`
-- local ComfyUI at `http://127.0.0.1:8000`
+- local ComfyUI reachable from this environment
 - Codex CLI installed and logged in
 - `ffmpeg` and `ffprobe` on `PATH`
 - workflow JSON templates in `workflows/`
 
-Default integration values live in [config_defaults.py](/D:/workspace/ai-music-video/src/ai_mv/core/orchestration/config_defaults.py).
+Default integration values live in `src/ai_mv/core/orchestration/config_defaults.py`.
 
 ## Install
 
@@ -60,14 +54,14 @@ pip install -e .[dev]
 
 ```powershell
 ai-mv doctor
-ai-mv preflight --brief director_brief_example
-ai-mv start --brief director_brief_example
+ai-mv preflight --concept-text "dreamy synthwave night drive with lonely neon romance"
+ai-mv start --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv status --run-id 20260406-215500
 ```
 
 ## WSL Usage
 
-If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrapper scripts instead of the default CLI commands. The default shared config is still designed to be compatible with the Windows workflow, so the wrappers inject WSL-safe values for the ComfyUI host, mounted input/output directories, and Codex path.
+If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrapper scripts instead of the default CLI commands. The wrappers inject WSL-safe values for the ComfyUI host, mounted input/output directories, and Codex path.
 
 ### First successful WSL run target
 
@@ -77,13 +71,13 @@ Use this as the initial success envelope:
 - `planning.enable_ia2v=false`
 - `planning.enable_flf2v=false`
 - still generation + basic i2v clips only
-- `./scripts/preflight-wsl.sh` and `./scripts/start-wsl.sh` now default to this smoke mode
+- `./scripts/preflight-wsl.sh` and `./scripts/start-wsl.sh` default to this smoke mode
 - add `--full-run` only when you intentionally want the longer path
 
 ```bash
 ./scripts/doctor-wsl.sh
-./scripts/preflight-wsl.sh --concept-text 'Japanese 80s city pop night drive, neon coast, bittersweet summer romance'
-./scripts/start-wsl.sh --concept-text 'Japanese 80s city pop night drive, neon coast, bittersweet summer romance'
+./scripts/preflight-wsl.sh --concept-text 'dreamy synthwave night drive with lonely neon romance'
+./scripts/start-wsl.sh --concept-text 'dreamy synthwave night drive with lonely neon romance'
 ```
 
 Notes:

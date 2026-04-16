@@ -49,7 +49,7 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
     assert "The final render format is [tags], then bracketed lyrics, then [Outro], then [end]" in prompt
     assert "genre_description is the future [tags] block" in prompt
     assert "core instruments, arrangement energy, and vocal character" in prompt
-    assert "Choose a songform that fits modern short-form Japanese city pop around two and a half to three minutes" in prompt
+    assert "Choose a songform that fits a modern short-form song around two and a half to three minutes" in prompt
     assert "Prefer a strong beginning-middle-turn-resolution arc" in prompt
     assert "Keep Intro instrumental." in prompt
     assert "director_brief_intent" not in prompt
@@ -123,12 +123,12 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
     assert plan["audio_direction"] == "late-night breakup song that grows from restraint to direct release"
 
 
-def test_build_audio_plan_uses_concept_text_as_citypop_fallback(monkeypatch):
+def test_build_audio_plan_uses_concept_text_as_genre_hint_fallback(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
         "_plan_with_llm",
         lambda _config, _plan: {
-            "genre_description": "City Pop: warm electric piano, soft bass groove, and bittersweet lead vocal over neon-night drums.",
+            "genre_description": "Synthwave: pulsing analog pads, driving bass arpeggios, and a glossy nocturnal lead vocal.",
             "bpm": 108,
             "keyscale": "A major",
             "seed": 31,
@@ -140,12 +140,12 @@ def test_build_audio_plan_uses_concept_text_as_citypop_fallback(monkeypatch):
         },
     )
     cfg = {
-        "concept_text": "Japanese 80s city pop night drive, neon coast, bittersweet summer romance",
+        "concept_text": "dreamy synthwave neon highway night drive",
         "language": "ko",
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
     assert plan["language"] == "ja"
-    assert plan["genre_head"] == "city pop"
+    assert plan["genre_head"] == "synthwave"
     assert plan["audio_direction"] == cfg["concept_text"]
 
 
@@ -259,7 +259,7 @@ def test_validate_outline_labels_requires_final_chorus_to_be_last_chorus_family_
         )
 
 
-def test_normalize_audio_outline_canonicalizes_repeated_citypop_labels():
+def test_normalize_audio_outline_canonicalizes_repeated_section_labels():
     out = audio_planner._normalize_audio_outline(
         {
             "genre_description": "City Pop: warm electric piano and soft bass.",
@@ -296,7 +296,7 @@ def test_normalize_audio_outline_canonicalizes_repeated_citypop_labels():
 
 
 def test_validate_outline_line_budgets_rejects_overcrowded_short_form_songform():
-    with pytest.raises(RuntimeError, match="short-form city pop outline too crowded"):
+    with pytest.raises(RuntimeError, match="short-form outline too crowded"):
         audio_planner._validate_outline_line_budgets(
             {"duration_max_sec": 180, "line_budgets": {"Intro": 0, "Verse 1": 5, "Pre-Chorus": 3, "Chorus": 5, "Post-Chorus": 2, "Verse 2": 5, "Pre-Chorus 2": 3, "Chorus 2": 5, "Bridge": 3, "Final Chorus": 5, "Outro": 0}},
             {

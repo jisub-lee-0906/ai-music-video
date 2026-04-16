@@ -11,6 +11,7 @@ from ai_mv.core.contracts.prompt_normalize import (
     validate_audio_lyrics_quality,
 )
 from ai_mv.core.contracts.prompt_schema import audio_outline_schema
+from ai_mv.engines.acestep_1_5_aio.mapper import GENRE_ALIASES
 from ai_mv.engines.acestep_1_5_aio.policy import audio_policy, bar_lane_summary, preferred_songform_rows
 from ai_mv.engines.acestep_1_5_aio.prompting import (
     _audio_config,
@@ -149,8 +150,8 @@ def _audio_source(config: dict) -> dict:
         merged["brief"] = selected_prompt
     if selected_hook_brief:
         merged["hook_brief"] = selected_hook_brief
-    if not genre and _looks_like_citypop(concept_text):
-        genre = "city pop"
+    if not genre:
+        genre = _infer_genre_from_concept_text(concept_text)
     if genre:
         merged["genre_head"] = genre
     if profile:
@@ -170,9 +171,17 @@ def _split_voice(text: str) -> tuple[str, str]:
     return parts[0], ", ".join(parts[1:])
 
 
-def _looks_like_citypop(text: str) -> bool:
-    low = str(text).strip().lower()
-    return "city pop" in low or "citypop" in low
+def _infer_genre_from_concept_text(text: str) -> str:
+    low = f" {str(text).strip().lower()} "
+    if not low.strip():
+        return ""
+    if " citypop " in low:
+        return "city pop"
+    for alias in sorted(GENRE_ALIASES.keys(), key=len, reverse=True):
+        needle = f" {alias} "
+        if needle in low:
+            return alias
+    return ""
 
 
 def _audio_runtime_context(plan: dict) -> dict:
@@ -393,9 +402,9 @@ def _validate_short_form_songform(plan: dict, outline: dict) -> None:
         return
     crowded = {"Post-Chorus", "Chorus 2", "Pre-Chorus 2"} & set(labels)
     if len(crowded) >= 3:
-        raise RuntimeError("short-form city pop outline too crowded: avoid using Post-Chorus, Pre-Chorus 2, and Chorus 2 together")
+        raise RuntimeError("short-form outline too crowded: avoid using Post-Chorus, Pre-Chorus 2, and Chorus 2 together")
     if "Post-Chorus" in labels and "Chorus 2" in labels and "Bridge" in labels:
-        raise RuntimeError("short-form city pop outline too crowded: avoid combining Post-Chorus, Chorus 2, and Bridge in one under-3-minute song")
+        raise RuntimeError("short-form outline too crowded: avoid combining Post-Chorus, Chorus 2, and Bridge in one under-3-minute song")
 
 
 def _hook_candidates_prompt(plan: dict) -> str:

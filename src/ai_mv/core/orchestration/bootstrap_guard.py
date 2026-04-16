@@ -8,16 +8,20 @@ from ai_mv.utils.bool_utils import parse_bool
 from ai_mv.utils.text_utils import ensure_16_9, ensure_positive_size, parse_size, parse_target
 from ai_mv.utils.path_utils import resolve_project_path
 
-DEFAULT_CONCEPT = "Japanese 80s city pop song and music video with a distinct emotional theme"
+DEFAULT_CONCEPT = "emotionally resonant original song and music video concept with a distinct visual theme"
 
 
-def apply_citypop_defaults(config: dict) -> None:
+def apply_input_defaults(config: dict) -> None:
     concept_text = str(config.get("concept_text", "")).strip()
     if not concept_text:
         config["concept_text"] = DEFAULT_CONCEPT
     audio = config.get("audio", {}) if isinstance(config.get("audio", {}), dict) else {}
     audio["language"] = "ja"
     config["audio"] = audio
+
+
+def apply_citypop_defaults(config: dict) -> None:
+    apply_input_defaults(config)
 
 
 def validate_sizes(config: dict) -> None:

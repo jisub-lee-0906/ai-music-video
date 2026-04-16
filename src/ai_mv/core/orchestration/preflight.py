@@ -9,7 +9,7 @@ from ai_mv.core.orchestration.stage_runs import run_preview_stage
 from ai_mv.core.state.state_snapshot import save_snapshot
 from ai_mv.core.state.state_store import init_run_state
 from ai_mv.core.stages.acestep_music import build_audio_preview_payload
-from ai_mv.core.stages.plan_citypop_mv import build_plan_preview_payload
+from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 
 
 def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = False) -> str:

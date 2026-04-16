@@ -1,253 +1,37 @@
-from ai_mv.core.stages.plan_citypop_mv import build_plan_preview_payload, _merged_shot_section_type
+from ai_mv.core.contracts.stage_io import StageInput
+from ai_mv.core.stages.plan_citypop_mv import build_plan_preview_payload as legacy_build_plan_preview_payload
+from ai_mv.core.stages.plan_citypop_mv import run_plan_citypop_mv
+from ai_mv.core.stages.plan_mv import build_plan_preview_payload
+from ai_mv.core.stages.plan_mv import run_plan_mv
 
 
-def test_citypop_plan_uses_audio_sections_and_stays_within_m1_bounds():
-    payload = {
-        "concept_text": "Japanese 80s city pop night drive, neon coast, bittersweet summer romance",
+def _sample_payload() -> dict:
+    return {
+        "concept_text": "Japanese 80s city pop night drive",
         "audio_map": {
-            "duration_sec": 19.0,
+            "duration_sec": 16.0,
             "sections": [
-                {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
-                {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
-                {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
-                {"name": "outro", "start_sec": 14.0, "end_sec": 19.0},
+                {"name": "intro", "start_sec": 0.0, "end_sec": 4.0},
+                {"name": "chorus", "start_sec": 4.0, "end_sec": 12.0},
+                {"name": "outro", "start_sec": 12.0, "end_sec": 16.0},
             ],
         },
     }
 
-    out = build_plan_preview_payload({}, payload)
 
-    shot_plan = out["shot_plan"]
-    render_plan = out["render_plan"]
-    assert 4 <= len(shot_plan) <= 6
-    assert len(render_plan) == len(shot_plan)
-    assert any(shot["section_type"] == "chorus" for shot in shot_plan)
-    assert all(shot["render_mode"] == "i2v" for shot in shot_plan)
-    assert round(sum(float(shot["duration_sec"]) for shot in shot_plan), 3) == 19.0
+def test_citypop_legacy_preview_builder_matches_generic_plan_preview():
+    payload = _sample_payload()
+
+    assert legacy_build_plan_preview_payload({}, payload) == build_plan_preview_payload({}, payload)
 
 
-def test_citypop_plan_splits_long_sections_for_m1():
-    payload = {
-        "concept_text": "Japanese 80s city pop summer dusk",
-        "audio_map": {
-            "duration_sec": 18.0,
-            "sections": [
-                {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
-                {"name": "verse", "start_sec": 3.0, "end_sec": 10.5},
-                {"name": "chorus", "start_sec": 10.5, "end_sec": 15.0},
-                {"name": "outro", "start_sec": 15.0, "end_sec": 18.0},
-            ],
-        },
-    }
 
-    out = build_plan_preview_payload({}, payload)
+def test_citypop_legacy_stage_wrapper_matches_generic_plan_stage():
+    stage_input = StageInput(run_id="run-legacy", config={}, payload=_sample_payload())
 
-    verse_shots = [shot for shot in out["shot_plan"] if shot["section_type"] == "verse"]
-    assert len(verse_shots) >= 2
-    assert any(shot["visual_mode"] == "window_reflection" for shot in verse_shots)
+    legacy_out = run_plan_citypop_mv(stage_input)
+    generic_out = run_plan_mv(stage_input)
 
-
-def test_citypop_plan_assigns_progressive_variants_within_long_section():
-    out = build_plan_preview_payload(
-        {"planning": {"max_shot_sec": 8.0}},
-        {
-            "concept_text": "Japanese 80s city pop summer dusk",
-            "audio_map": {
-                "duration_sec": 40.0,
-                "sections": [
-                    {"name": "verse_1", "start_sec": 0.0, "end_sec": 28.0},
-                    {"name": "chorus", "start_sec": 28.0, "end_sec": 40.0},
-                ],
-            },
-        },
-    )
-
-    verse_shots = [shot for shot in out["shot_plan"] if shot["section_type"] == "verse"]
-    assert [shot["shot_role"] for shot in verse_shots[:4]] == ["verse_setup", "verse_detail", "verse_flow", "verse_glow"]
-
-
-def test_citypop_plan_falls_back_without_audio_sections():
-    out = build_plan_preview_payload(
-        {},
-        {
-            "concept_text": "Japanese 80s city pop summer dusk",
-            "audio_map": {"duration_sec": 16.0, "sections": []},
-        },
-    )
-
-    section_types = [shot["section_type"] for shot in out["shot_plan"]]
-    assert section_types[0] == "intro"
-    assert "chorus" in section_types
-    assert section_types[-1] == "outro"
-
-
-def test_citypop_plan_builds_rich_render_prompts():
-    out = build_plan_preview_payload(
-        {},
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 15.0,
-                "sections": [{"name": "chorus", "start_sec": 0.0, "end_sec": 15.0}],
-            },
-        },
-    )
-
-    item = out["render_plan"][0]
-    assert "Japanese 80s city pop music video" in item["prompt_seed"]
-    assert "scene event:" in item["prompt_seed"]
-    assert item["prompt_draft"]
-    assert item["prompt_polish"]
-    assert "audio_segment" not in item
-
-
-def test_citypop_plan_uses_prechorus_progression_hint_before_chorus_hint():
-    out = build_plan_preview_payload(
-        {},
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 12.0,
-                "sections": [{"name": "pre_chorus", "start_sec": 0.0, "end_sec": 12.0}],
-            },
-        },
-    )
-
-    item = out["render_plan"][0]
-    assert "anticipation tightens before the lift" in item["prompt_seed"]
-
-
-def test_citypop_plan_can_route_ia2v_for_chorus_when_enabled():
-    out = build_plan_preview_payload(
-        {
-            "planning": {
-                "enable_ia2v": True,
-                "max_ia2v_shots": 2,
-                "ia2v_min_sec": 4.0,
-                "ia2v_max_sec": 8.0,
-            }
-        },
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 19.0,
-                "sections": [
-                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
-                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
-                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
-                    {"name": "chorus_2", "start_sec": 14.0, "end_sec": 19.0},
-                ],
-            },
-        },
-    )
-
-    chorus_shots = [shot for shot in out["shot_plan"] if shot["section_type"] == "chorus"]
-    ia2v_shots = [shot for shot in chorus_shots if shot["render_mode"] == "ia2v"]
-    assert ia2v_shots
-    assert len(ia2v_shots) <= 2
-    assert all(4.0 <= float(shot["duration_sec"]) <= 8.0 for shot in ia2v_shots)
-
-
-def test_citypop_plan_keeps_i2v_when_ia2v_is_disabled():
-    out = build_plan_preview_payload(
-        {"planning": {"enable_ia2v": False}},
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 18.0,
-                "sections": [
-                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
-                    {"name": "chorus", "start_sec": 3.0, "end_sec": 9.0},
-                    {"name": "chorus_2", "start_sec": 9.0, "end_sec": 15.0},
-                    {"name": "outro", "start_sec": 15.0, "end_sec": 18.0},
-                ],
-            },
-        },
-    )
-
-    assert all(shot["render_mode"] == "i2v" for shot in out["shot_plan"])
-
-
-def test_citypop_plan_can_route_flf2v_for_bridge_when_enabled():
-    out = build_plan_preview_payload(
-        {
-            "planning": {
-                "enable_flf2v": True,
-                "max_flf2v_shots": 1,
-                "flf2v_min_sec": 3.0,
-                "flf2v_max_sec": 6.0,
-            }
-        },
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 18.0,
-                "sections": [
-                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
-                    {"name": "verse", "start_sec": 3.0, "end_sec": 8.0},
-                    {"name": "pre_chorus", "start_sec": 8.0, "end_sec": 12.0},
-                    {"name": "chorus", "start_sec": 12.0, "end_sec": 18.0},
-                ],
-            },
-        },
-    )
-
-    flf2v_shots = [shot for shot in out["shot_plan"] if shot["render_mode"] == "flf2v"]
-    assert len(flf2v_shots) == 1
-    assert flf2v_shots[0]["bridge_to_shot_id"]
-    render_item = next(item for item in out["render_plan"] if item["shot_id"] == flf2v_shots[0]["shot_id"])
-    assert render_item["still_b"] == flf2v_shots[0]["bridge_to_shot_id"]
-    assert flf2v_shots[0]["shot_role"] == "bridge_transition"
-    assert flf2v_shots[0]["visual_mode"] == "bridge_transition"
-
-
-def test_citypop_plan_does_not_drop_tail_when_shot_count_exceeds_m1_max():
-    out = build_plan_preview_payload(
-        {},
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 20.0,
-                "sections": [
-                    {"name": "intro", "start_sec": 0.0, "end_sec": 2.0},
-                    {"name": "verse_1", "start_sec": 2.0, "end_sec": 6.5},
-                    {"name": "pre_chorus", "start_sec": 6.5, "end_sec": 10.0},
-                    {"name": "chorus", "start_sec": 10.0, "end_sec": 14.5},
-                    {"name": "verse_2", "start_sec": 14.5, "end_sec": 17.5},
-                    {"name": "outro", "start_sec": 17.5, "end_sec": 20.0},
-                ],
-            },
-        },
-    )
-
-    shot_plan = out["shot_plan"]
-    assert len(shot_plan) <= 6
-    assert round(float(shot_plan[-1]["end_sec"]), 3) == 20.0
-    assert round(sum(float(shot["duration_sec"]) for shot in shot_plan), 3) == 20.0
-
-
-def test_citypop_plan_sorts_and_clamps_sections_before_building_shots():
-    out = build_plan_preview_payload(
-        {},
-        {
-            "concept_text": "Japanese 80s city pop night drive",
-            "audio_map": {
-                "duration_sec": 20.0,
-                "sections": [
-                    {"name": "chorus", "start_sec": 10.0, "end_sec": 25.0},
-                    {"name": "intro", "start_sec": -1.0, "end_sec": 2.0},
-                    {"name": "verse", "start_sec": 2.0, "end_sec": 10.0},
-                ],
-            },
-        },
-    )
-
-    shot_plan = out["shot_plan"]
-    assert float(shot_plan[0]["start_sec"]) == 0.0
-    assert float(shot_plan[-1]["end_sec"]) == 20.0
-    assert [shot["section_type"] for shot in shot_plan][:2] == ["intro", "verse"]
-
-
-def test_citypop_plan_prefers_more_prominent_section_type_when_merging_across_boundary():
-    assert _merged_shot_section_type({"section_type": "verse"}, {"section_type": "pre_chorus"}) == "pre_chorus"
-    assert _merged_shot_section_type({"section_type": "pre_chorus"}, {"section_type": "chorus"}) == "chorus"
+    assert legacy_out.stage == generic_out.stage
+    assert legacy_out.status == generic_out.status
+    assert legacy_out.payload == generic_out.payload

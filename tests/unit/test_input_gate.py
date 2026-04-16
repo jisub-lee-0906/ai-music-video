@@ -23,7 +23,7 @@ def test_gate_accepts_planning_chain():
         {
             "shot_plan": [{"shot_id": "S001"}],
             "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
-            "citypop_bible": {"style": "citypop"},
+            "style_bible": {"style": "citypop"},
         },
     )
 

@@ -50,7 +50,7 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
         "Do not use artist references, camera language, or visual wording. "
         "Treat Audio intent as the source of truth; genre and voice only shape presentation. "
         "If bpm is not fixed, choose it from genre, line density, and breathing room. "
-        "For brighter, hook-forward, moving-forward, or more energetic city-pop concepts, prefer a noticeably quicker pulse instead of defaulting to mellow midtempo. "
+        "For brighter, hook-forward, moving-forward, or more energetic concepts, prefer a noticeably quicker pulse instead of defaulting to mellow midtempo. "
     )
 
 
@@ -59,7 +59,7 @@ def _audio_songform_rules(plan: dict) -> str:
     variant_text = _songform_variant_clause(plan)
     rules = [
         "Write a full song, not a fragment. ",
-        "Choose a songform that fits modern short-form Japanese city pop around two and a half to three minutes instead of forcing one fixed template. ",
+        "Choose a songform that fits a modern short-form song around two and a half to three minutes instead of forcing one fixed template. ",
         variant_text,
         "Prefer compact, natural section flow. ",
         "Prefer a strong beginning-middle-turn-resolution arc, such as Intro -> Verse 1 -> Pre-Chorus -> Chorus -> Verse 2 -> Bridge -> Final Chorus -> Outro. ",
@@ -122,7 +122,7 @@ def _language_style_rules(plan: dict) -> str:
         return (
             "Write fluent modern Japanese lyrics later. Keep them natural, compact, singable, and emotionally precise. "
             "Favor concrete, lived-in visual detail over abstract explanation. "
-            "Let the song choose whether it leans toward romance, breakup, longing, self-recovery, urban loneliness, or another fitting city-pop mood. "
+            "Let the song choose whether it leans toward romance, breakup, longing, self-recovery, urban loneliness, or another fitting emotional mood. "
             "Prefer a short, title-grade hook line in the chorus family instead of a generic pretty sentence. "
             "Avoid Korean-style direct confession, overpacked literary metaphor, and awkward slogan-like hooks. "
         )
