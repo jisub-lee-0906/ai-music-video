@@ -70,6 +70,7 @@ def build_review_report(
     publishability_summary = summarize_publishability(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
+        rerender_reasons=rerender_reasons,
     )
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",

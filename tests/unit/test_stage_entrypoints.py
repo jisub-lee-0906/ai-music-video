@@ -514,9 +514,24 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
         assert out.payload["review_report"]["review_signal_buckets"]["model_judged"]["passed"] is False
         assert out.payload["review_report"]["publishability_summary"]["technical_completion"]["passed"] is True
         assert out.payload["review_report"]["publishability_summary"]["technical_completion"]["next_action"] == "no_action"
+        assert out.payload["review_report"]["publishability_summary"]["technical_completion"]["rerender_bundle"] == {
+            "action": "no_action",
+            "target_shots": [],
+            "reason_codes": [],
+        }
         assert out.payload["review_report"]["publishability_summary"]["isolated_asset_quality"]["passed"] is False
         assert out.payload["review_report"]["publishability_summary"]["isolated_asset_quality"]["next_action"] == "rerender_clips_with_terminal_frame_cleanup"
+        assert out.payload["review_report"]["publishability_summary"]["isolated_asset_quality"]["rerender_bundle"] == {
+            "action": "rerender_clips_with_terminal_frame_cleanup",
+            "target_shots": ["S006"],
+            "reason_codes": ["terminal_frame_corruption"],
+        }
         assert out.payload["review_report"]["publishability_summary"]["final_mv_publishability"]["passed"] is False
         assert out.payload["review_report"]["publishability_summary"]["final_mv_publishability"]["next_action"] == "rerender_continuity_break_shots"
+        assert out.payload["review_report"]["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+            "action": "rerender_continuity_break_shots",
+            "target_shots": ["S006"],
+            "reason_codes": ["continuity_break"],
+        }
     finally:
         _Path.exists = _original_exists
