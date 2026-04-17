@@ -56,11 +56,25 @@ def build_quality_signals(
     terminal_frames_clean = "terminal_frame_corruption" not in all_reasons
     duplicate_subject_absent = "duplicate_subject" not in all_reasons
     overlay_intrusion_absent = "layered_overlay_intrusion" not in all_reasons
+    subject_match_preserved = not bool(all_reasons & {"weak_subject_match", "unrelated_scene_intrusion"})
+    environment_match_preserved = not bool(all_reasons & {"weak_environment_match", "unrelated_scene_intrusion"})
+    motion_source_safe = "motion_fragile_frame" not in all_reasons
+    scene_intrusion_absent = "unrelated_scene_intrusion" not in all_reasons
 
     visual_issue_count = sum(
         1
         for reason in all_reasons
-        if reason in {"terminal_frame_corruption", "continuity_break", "duplicate_subject", "layered_overlay_intrusion", "identity_drift"}
+        if reason in {
+            "terminal_frame_corruption",
+            "continuity_break",
+            "duplicate_subject",
+            "layered_overlay_intrusion",
+            "identity_drift",
+            "weak_subject_match",
+            "weak_environment_match",
+            "motion_fragile_frame",
+            "unrelated_scene_intrusion",
+        }
     )
     visual_quality_severity = "low"
     if visual_issue_count >= 2:
@@ -68,14 +82,21 @@ def build_quality_signals(
     elif visual_issue_count == 1:
         visual_quality_severity = "medium"
 
-    style_identity = final_video_exists and clip_done > 0 and visual_continuity_preserved
+    style_identity = (
+        final_video_exists
+        and clip_done > 0
+        and visual_continuity_preserved
+        and subject_match_preserved
+        and environment_match_preserved
+        and scene_intrusion_absent
+    )
     style_constraints_respected = final_video_exists and overlay_intrusion_absent and duplicate_subject_absent
 
     non_blocking_checks = {
         "camera_restraint": final_video_exists,
         "memorable_shot": clip_done > 0,
         "style_identity": style_identity,
-        "mood_consistency": final_video_exists and still_done > 0 and visual_continuity_preserved,
+        "mood_consistency": final_video_exists and still_done > 0 and visual_continuity_preserved and environment_match_preserved and scene_intrusion_absent,
     }
 
     overall_score = 100.0
@@ -112,6 +133,10 @@ def build_quality_signals(
         "terminal_frames_clean": terminal_frames_clean,
         "duplicate_subject_absent": duplicate_subject_absent,
         "overlay_intrusion_absent": overlay_intrusion_absent,
+        "subject_match_preserved": subject_match_preserved,
+        "environment_match_preserved": environment_match_preserved,
+        "motion_source_safe": motion_source_safe,
+        "scene_intrusion_absent": scene_intrusion_absent,
     }
     return {
         "still_done": still_done,

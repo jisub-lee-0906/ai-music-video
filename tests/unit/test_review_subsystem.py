@@ -324,3 +324,81 @@ def test_review_models_fail_visual_continuity_and_corruption_checks_from_rerende
     assert report["blocking_checks"]["duplicate_subject_absent"] is False
     assert report["severity"]["visual_quality"] == "high"
     assert report["scores"]["shots"]["S006"] < report["scores"]["shots"]["S001"]
+
+
+
+def test_rerender_priority_score_weights_new_publishability_findings():
+    score = rerender_priority_score([
+        "weak_subject_match",
+        "weak_environment_match",
+        "motion_fragile_frame",
+        "unrelated_scene_intrusion",
+    ])
+
+    assert score >= 12
+
+
+
+def test_review_models_surface_new_publishability_quality_findings():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S006"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        still_status={"S001": True, "S006": True},
+        clip_status={"S001": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={
+            "S006": [
+                "weak_subject_match",
+                "weak_environment_match",
+                "motion_fragile_frame",
+                "unrelated_scene_intrusion",
+            ]
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    assert report["benchmark_dimensions"]["alignment"]["passed"] is False
+    assert report["benchmark_dimensions"]["alignment"]["reasons"] == [
+        "weak_subject_match",
+        "weak_environment_match",
+        "unrelated_scene_intrusion",
+    ]
+    assert report["benchmark_dimensions"]["motion_quality"]["reasons"] == ["motion_fragile_frame"]
+    assert report["benchmark_dimensions"]["faithfulness"]["reasons"] == [
+        "weak_subject_match",
+        "weak_environment_match",
+        "unrelated_scene_intrusion",
+    ]
+    assert report["review_signal_buckets"]["heuristic_proxy"]["failed_checks"] == [
+        "subject_match_preserved",
+        "environment_match_preserved",
+        "motion_source_safe",
+        "scene_intrusion_absent",
+    ]
+    assert report["publishability_summary"]["isolated_asset_quality"]["failed_checks"] == [
+        "style_identity",
+        "subject_match_preserved",
+        "environment_match_preserved",
+        "scene_intrusion_absent",
+    ]
+    assert report["publishability_summary"]["isolated_asset_quality"]["rerender_bundle"] == {
+        "action": "rerender_scene_intrusion_shots",
+        "target_shots": ["S006"],
+        "reason_codes": [
+            "unrelated_scene_intrusion",
+            "weak_environment_match",
+            "weak_subject_match",
+        ],
+    }
+    assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == [
+        "mood_consistency",
+        "motion_source_safe",
+    ]
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "rerender_motion_fragile_shots_with_safer_keyframes",
+        "target_shots": ["S006"],
+        "reason_codes": ["motion_fragile_frame"],
+    }

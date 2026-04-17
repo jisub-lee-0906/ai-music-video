@@ -22,6 +22,10 @@ _REASON_TO_DIMENSIONS = {
     "duplicate_subject": ("composition", "faithfulness"),
     "layered_overlay_intrusion": ("composition", "aesthetics"),
     "identity_drift": ("faithfulness", "alignment", "continuity"),
+    "weak_subject_match": ("alignment", "faithfulness"),
+    "weak_environment_match": ("alignment", "faithfulness"),
+    "motion_fragile_frame": ("motion_quality",),
+    "unrelated_scene_intrusion": ("alignment", "faithfulness"),
 }
 
 

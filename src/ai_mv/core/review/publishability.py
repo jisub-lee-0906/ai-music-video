@@ -14,11 +14,15 @@ _ISOLATED_ASSET_QUALITY_CHECKS = (
     "terminal_frames_clean",
     "duplicate_subject_absent",
     "style_identity",
+    "subject_match_preserved",
+    "environment_match_preserved",
+    "scene_intrusion_absent",
 )
 
 _FINAL_MV_PUBLISHABILITY_CHECKS = (
     "visual_continuity_preserved",
     "mood_consistency",
+    "motion_source_safe",
 )
 
 _GUIDANCE_BY_CHECK = {
@@ -31,8 +35,12 @@ _GUIDANCE_BY_CHECK = {
     "terminal_frames_clean": "rerender affected clips with cleaner terminal frames and shorter motion range",
     "duplicate_subject_absent": "tighten single-subject framing and remove duplicate subject artifacts",
     "style_identity": "strengthen style-identity prompt constraints and rerender weakest shots",
+    "subject_match_preserved": "rerender weak-subject-match shots with tighter protagonist constraints",
+    "environment_match_preserved": "rerender weak-environment-match shots with stronger world and location anchors",
+    "scene_intrusion_absent": "rerender scene-intrusion shots and remove unrelated scene content",
     "visual_continuity_preserved": "rerender continuity-break shots and preserve identity across adjacent shots",
     "mood_consistency": "rerender mood-drift shots to match the song section and neighboring shots",
+    "motion_source_safe": "rerender motion-fragile shots with safer keyframes and simpler motion sources",
 }
 
 _TECHNICAL_PRIORITY = (
@@ -47,11 +55,15 @@ _TECHNICAL_PRIORITY = (
 _ISOLATED_PRIORITY = (
     ("terminal_frames_clean", "rerender_clips_with_terminal_frame_cleanup"),
     ("duplicate_subject_absent", "rerender_weak_shots_with_prompt_tightening"),
+    ("scene_intrusion_absent", "rerender_scene_intrusion_shots"),
+    ("subject_match_preserved", "rerender_weak_shots_with_prompt_tightening"),
+    ("environment_match_preserved", "rerender_weak_shots_with_prompt_tightening"),
     ("style_identity", "rerender_weak_shots_with_prompt_tightening"),
 )
 
 _FINAL_PRIORITY = (
     ("visual_continuity_preserved", "rerender_continuity_break_shots"),
+    ("motion_source_safe", "rerender_motion_fragile_shots_with_safer_keyframes"),
     ("mood_consistency", "rerender_mood_drift_shots"),
 )
 
@@ -67,10 +79,14 @@ _BUCKET_REASON_CODES = {
         "terminal_frame_corruption",
         "duplicate_subject",
         "identity_drift",
+        "weak_subject_match",
+        "weak_environment_match",
+        "unrelated_scene_intrusion",
     },
     "final_mv_publishability": {
         "continuity_break",
         "identity_drift",
+        "motion_fragile_frame",
     },
 }
 

@@ -15,6 +15,10 @@ _HEURISTIC_PROXY_CHECKS = (
     "visual_continuity_preserved",
     "duplicate_subject_absent",
     "overlay_intrusion_absent",
+    "subject_match_preserved",
+    "environment_match_preserved",
+    "motion_source_safe",
+    "scene_intrusion_absent",
     "camera_restraint",
     "memorable_shot",
 )
