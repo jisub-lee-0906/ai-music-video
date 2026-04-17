@@ -24,29 +24,22 @@ PROTECTED_PAYLOAD_KEYS = {
 }
 
 
-def _normalize_legacy_payload_aliases(payload: dict) -> dict:
-    if not isinstance(payload, dict):
-        return payload
-    normalized = dict(payload)
-    if "citypop_bible" in normalized:
-        normalized.setdefault("style_bible", normalized["citypop_bible"])
-        normalized.pop("citypop_bible", None)
-    return normalized
-
-
 def merge_stage_payload(target: dict, patch: dict, stage: str) -> None:
     if not isinstance(patch, dict):
         raise StageFailure(f"{stage} returned invalid payload: expected object")
-    normalized_patch = _normalize_legacy_payload_aliases(patch)
+    legacy_keys = sorted(key for key in patch if key == "citypop_bible")
+    if legacy_keys:
+        names = ", ".join(legacy_keys)
+        raise StageFailure(f"{stage} returned removed legacy payload keys: {names}")
     collisions = [
         key
-        for key, value in normalized_patch.items()
+        for key, value in patch.items()
         if key in PROTECTED_PAYLOAD_KEYS and key in target and target[key] != value
     ]
     if collisions:
         names = ", ".join(sorted(collisions))
         raise StageFailure(f"{stage} attempted to overwrite protected payload keys: {names}")
-    target.update(normalized_patch)
+    target.update(patch)
 
 
 def run_result_stage(

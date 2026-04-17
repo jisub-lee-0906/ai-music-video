@@ -17,15 +17,16 @@ def test_gate_accepts_generic_style_bible_for_stills():
     )
 
 
-def test_gate_accepts_legacy_citypop_bible_for_stills_during_transition():
-    validate_stage_input(
-        "stills",
-        {
-            "shot_plan": [{"shot_id": "S001"}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
-            "citypop_bible": {"style": "japanese_citypop_80s_90s"},
-        },
-    )
+def test_gate_rejects_legacy_citypop_bible_for_stills():
+    with pytest.raises(StageFailure):
+        validate_stage_input(
+            "stills",
+            {
+                "shot_plan": [{"shot_id": "S001"}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                "citypop_bible": {"style": "japanese_citypop_80s_90s"},
+            },
+        )
 
 
 def test_merge_stage_payload_protects_generic_style_bible():
@@ -50,17 +51,13 @@ def test_merge_stage_payload_preserves_style_bible_without_citypop_alias():
     assert "citypop_bible" not in payload
 
 
-def test_merge_stage_payload_normalizes_legacy_citypop_bible_patch_to_style_bible():
-    payload = {}
-
-    merge_stage_payload(
-        payload,
-        {"citypop_bible": {"style": "japanese_citypop_80s_90s"}},
-        "plan",
-    )
-
-    assert payload["style_bible"] == {"style": "japanese_citypop_80s_90s"}
-    assert "citypop_bible" not in payload
+def test_merge_stage_payload_rejects_legacy_citypop_bible_patch():
+    with pytest.raises(StageFailure):
+        merge_stage_payload(
+            {},
+            {"citypop_bible": {"style": "japanese_citypop_80s_90s"}},
+            "plan",
+        )
 
 
 def test_write_manifest_emits_generic_style_fields(monkeypatch, tmp_path):
@@ -100,7 +97,7 @@ def test_write_manifest_emits_generic_style_fields(monkeypatch, tmp_path):
     assert "citypop_bible" not in manifest
 
 
-def test_write_manifest_backfills_style_bible_from_legacy_citypop_bible(monkeypatch, tmp_path):
+def test_write_manifest_does_not_backfill_style_bible_from_legacy_citypop_bible(monkeypatch, tmp_path):
     writes: list[tuple[str, dict]] = []
 
     monkeypatch.setattr(manifest_module, "run_file", lambda run_id, name, scope="run": tmp_path / scope / run_id / name)
@@ -131,5 +128,5 @@ def test_write_manifest_backfills_style_bible_from_legacy_citypop_bible(monkeypa
     )
 
     manifest = writes[0][1]
-    assert manifest["style_bible"] == {"style": "japanese_citypop_80s_90s"}
+    assert manifest["style_bible"] == {}
     assert "citypop_bible" not in manifest
