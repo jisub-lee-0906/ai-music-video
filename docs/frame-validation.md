@@ -84,6 +84,7 @@ The repo now supports direct frame extraction through the CLI:
 ```bash
 ai-mv extract-frames --video path/to/clip.mp4 --output-dir .analysis/clip-review --kind clip
 ai-mv extract-frames --video path/to/final.mp4 --output-dir .analysis/final-review --kind final --sample-count 8
+ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json
 ```
 
 Output behavior:
@@ -91,6 +92,9 @@ Output behavior:
   - writes `first.png`, `middle.png`, `last.png`
 - `--kind final`
   - writes `final_01.png`, `final_02.png`, ... according to `--sample-count`
+- `quality-findings-template`
+  - writes a JSON scaffold shaped like `payload.review_inputs.quality_findings`
+  - includes `known_quality_finding_codes` for the currently supported artifact taxonomy
 
 ## Recommended workflow
 
@@ -99,7 +103,10 @@ Output behavior:
 3. For assembled outputs, run `extract-frames --kind final`.
 4. Review the extracted images in order.
 5. Record failure tags explicitly.
-6. Only then decide whether the issue belongs to:
+6. If you want to pass those findings into a later review run, generate a scaffold first:
+   - `ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json`
+7. Fill `review_inputs.quality_findings[{shot_id}]` with the observed tags.
+8. Only then decide whether the issue belongs to:
    - still prompt syntax
    - still prompt contract
    - clip prompt syntax

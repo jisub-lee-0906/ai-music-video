@@ -25,4 +25,8 @@ def build_parser() -> argparse.ArgumentParser:
     extract_frames.add_argument("--output-dir", dest="output_dir", required=True)
     extract_frames.add_argument("--kind", choices=("clip", "final"), default="clip")
     extract_frames.add_argument("--sample-count", dest="sample_count", type=int, default=6)
+
+    quality_findings = sub.add_parser("quality-findings-template")
+    quality_findings.add_argument("--shot-id", dest="shot_ids", action="append", required=True)
+    quality_findings.add_argument("--output", required=True)
     return parser

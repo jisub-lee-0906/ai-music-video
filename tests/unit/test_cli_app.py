@@ -28,6 +28,26 @@ def test_build_parser_supports_extract_frames_command():
     assert args.sample_count == 8
 
 
+def test_build_parser_supports_quality_findings_template_command():
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "quality-findings-template",
+            "--shot-id",
+            "S001",
+            "--shot-id",
+            "S002",
+            "--output",
+            ".analysis/review-findings.json",
+        ]
+    )
+
+    assert args.command == "quality-findings-template"
+    assert args.shot_ids == ["S001", "S002"]
+    assert args.output == ".analysis/review-findings.json"
+
+
 def test_main_handles_dispatch_error(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["ai-mv", "start", "--run-id", "bad/run-id"])
 

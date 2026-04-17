@@ -107,3 +107,24 @@ def test_run_extract_frames_entry_reports_written_files(monkeypatch, tmp_path, c
     assert "frames_written=3" in out
     assert str(output_dir / "first.png") in out
 
+
+def test_run_quality_findings_template_writes_json(monkeypatch, tmp_path, capsys):
+    output_file = tmp_path / "review-findings.json"
+    monkeypatch.setattr(
+        "ai_mv.entrypoints.quality_findings_template.quality_findings_review_input_template",
+        lambda shot_ids: {
+            "review_inputs": {"quality_findings": {shot_id: [] for shot_id in shot_ids}},
+            "known_quality_finding_codes": ["terminal_frame_corruption"],
+        },
+    )
+
+    from ai_mv.entrypoints.quality_findings_template import run_quality_findings_template
+
+    rc = run_quality_findings_template(["S001", "S002"], str(output_file))
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert output_file.exists()
+    assert "shot_count=2" in out
+    assert str(output_file) in out
+
