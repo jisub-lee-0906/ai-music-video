@@ -19,19 +19,22 @@ Canonical product direction and non-negotiable architecture rules.
 3. ../.hermes/plans/2026-04-15_202537-structure-migration-mapping.md
 Target architecture, keep/move/delete expectations, and migration priorities.
 
-4. workflow-usage.md
+4. prompt-lab.md
+How to test prompt syntax outside the main ai-mv pipeline before encoding findings into repo-side prompt contracts.
+
+5. workflow-usage.md
 Current workflow usage and mapper/binding expectations.
 
-5. workflow-binding-notes.md
+6. workflow-binding-notes.md
 Workflow node binding notes and ComfyUI integration assumptions.
 
-6. m2-ia2v-spec.md
+7. m2-ia2v-spec.md
 Current ia2v routing and audio-reactive clip constraints.
 
-7. m3-flf2v-spec.md
+8. m3-flf2v-spec.md
 Current flf2v transition routing constraints.
 
-8. first-run-checklist.md
+9. first-run-checklist.md
 Operational checklist for real runs.
 
 Historical / style-pack-specific material:
