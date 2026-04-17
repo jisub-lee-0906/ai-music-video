@@ -1,6 +1,15 @@
 # Keyframe-Style Still Prompts Implementation Plan
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+> Historical plan note:
+> - This document was written before the current multi-style architecture stabilized.
+> - References to `plan_citypop_mv.py`, `test_citypop_stages.py`, and citypop-era naming are historical and not current repo truth.
+> - Current canonical references are:
+>   - `../README.md`
+>   - `../../.hermes/plans/2026-04-15_202152-product-direction-charter.md`
+>   - `../../.hermes/plans/2026-04-15_202537-structure-migration-mapping.md`
+> - Current planning stage is `src/ai_mv/core/stages/plan_mv.py` and current still-stage tests live under generic/unit planning and stage test files.
+>
+> **For Hermes:** Treat this file as historical implementation context only, not as the active architecture plan.
 
 **Goal:** Ensure still-image generation consistently asks for a single cinematic keyframe image rather than collage/comic-panel/contact-sheet style multi-image compositions.
 

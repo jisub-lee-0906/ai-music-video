@@ -1,6 +1,14 @@
 # ai-mv WSL Realistic Goals and Optimization Plan
 
-> For Hermes: Use subagent-driven-development skill to implement this plan task-by-task.
+> Historical plan note:
+> - This file remains useful for WSL/Windows operational context, but some example prompts still reflect an earlier citypop-heavy phase.
+> - Example concept text in this document is illustrative only and does not define the current product as citypop-first.
+> - Current canonical references are:
+>   - `../README.md`
+>   - `../../.hermes/plans/2026-04-15_202152-product-direction-charter.md`
+>   - `../../.hermes/plans/2026-04-15_202537-structure-migration-mapping.md`
+>
+> For Hermes: Treat this file as historical operational planning context, not as the active product-definition source.
 
 Goal: Make ai-mv reliably runnable from WSL against a Windows-hosted ComfyUI setup, with a realistic first-success target that favors short stylized outputs over full automation.
 

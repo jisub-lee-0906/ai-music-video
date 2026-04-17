@@ -1,6 +1,15 @@
 # Audio / Visual Brief Separation Implementation Plan
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+> Historical plan note:
+> - This document predates the current charter-locked cleanup and still contains citypop-flavored examples and older test references.
+> - The separation idea remains useful, but the file is not canonical product truth.
+> - Current canonical references are:
+>   - `../README.md`
+>   - `../../.hermes/plans/2026-04-15_202152-product-direction-charter.md`
+>   - `../../.hermes/plans/2026-04-15_202537-structure-migration-mapping.md`
+> - Any mention of `test_citypop_stages.py` or citypop-specific examples should be interpreted as historical examples, not required current architecture.
+>
+> **For Hermes:** Treat this file as historical design context only.
 
 **Goal:** Improve audio lyric quality and audio/visual consistency at the same time by separating music-facing intent from still-image-facing intent, without breaking the current WSL wrappers or the existing concept-driven workflow.
 

@@ -47,3 +47,4 @@ Historical / style-pack-specific material:
 Operating rule for this folder:
 - Treat the product-direction charter and structure-migration mapping as canonical.
 - Treat citypop-specific docs as style-pack history unless they are explicitly rewritten for the current architecture.
+- Treat older files under `docs/plans/` as historical implementation notes when they reference removed stage names, old tests, or citypop-first assumptions.
