@@ -1,43 +1,49 @@
-# Citypop MV Rebuild Docs
+# ai-mv Docs Index
 
-이 폴더는 기존 범용 `Flux/WAN` 파이프라인을 폐기하고, `ACE-Step 1.5 + Qwen-Image + LTX 2.3 + ffmpeg` 기반의 시티팝 전용 뮤직비디오 파이프라인으로 재구축하기 위한 기준 문서만 담는다.
+This docs directory now supports the current ai-mv product direction:
+- concept_text-first UX
+- multi-style MV generation
+- mandatory music generation
+- final-MV quality as the main success metric
+- strong ComfyUI/workflow orchestration
+- review and rerender loops that improve weak outputs
 
-문서 순서:
+Read these first:
 
-1. [citypop-mv-master-plan.md](/D:/workspace/ai-music-video/docs/citypop-mv-master-plan.md)
-제품 목표, 고정 철학, stage 구성, 최종 MVP 범위
+1. ../README.md
+Top-level product overview and current command surface.
 
-2. [workflow-usage.md](/D:/workspace/ai-music-video/docs/workflow-usage.md)
-현재 채택한 5개 workflow를 어떤 입력/출력 계약으로 사용할지 정리
+2. ../.hermes/plans/2026-04-15_202152-product-direction-charter.md
+Canonical product direction and non-negotiable architecture rules.
 
-3. [repo-restructure.md](/D:/workspace/ai-music-video/docs/repo-restructure.md)
-새 디렉터리 구조, 모듈 책임, 단계별 구현 순서
+3. ../.hermes/plans/2026-04-15_202537-structure-migration-mapping.md
+Target architecture, keep/move/delete expectations, and migration priorities.
 
-4. [legacy-deletion-plan.md](/D:/workspace/ai-music-video/docs/legacy-deletion-plan.md)
-삭제 대상, 보류 대상, 제거 순서, 완료 기준
+4. workflow-usage.md
+Current workflow usage and mapper/binding expectations.
 
-5. [workflow-binding-notes.md](/D:/workspace/ai-music-video/docs/workflow-binding-notes.md)
-workflow JSON을 수정하지 않고 mapper에서 어떤 node/input만 바인딩할지 정리
+5. workflow-binding-notes.md
+Workflow node binding notes and ComfyUI integration assumptions.
 
-6. [m1-implementation-spec.md](/D:/workspace/ai-music-video/docs/m1-implementation-spec.md)
-M1 최소 구현 범위, path 규칙, review 최소 계약
+6. m2-ia2v-spec.md
+Current ia2v routing and audio-reactive clip constraints.
 
-7. [m2-ia2v-spec.md](/D:/workspace/ai-music-video/docs/m2-ia2v-spec.md)
-`ia2v` 샷 선정, audio trim, fallback 규칙
+7. m3-flf2v-spec.md
+Current flf2v transition routing constraints.
 
-8. [m3-flf2v-spec.md](/D:/workspace/ai-music-video/docs/m3-flf2v-spec.md)
-`flf2v` 브리지 선정과 입력/검수 규칙
+8. first-run-checklist.md
+Operational checklist for real runs.
 
-9. [first-run-checklist.md](/D:/workspace/ai-music-video/docs/first-run-checklist.md)
-모델 다운로드 완료 후 첫 실제 샘플 런 전에 확인할 체크리스트
+Historical / style-pack-specific material:
+- archived/citypop-mv-master-plan.md
+  Historical citypop-first plan. Useful as style-pack reference, not as repo-wide product truth.
+- repo-restructure.md
+  Older restructuring notes that still contain citypop-era assumptions and should be read as transitional context only.
+- implementation-change-map.md
+  Transitional implementation map with historical assumptions mixed in.
+- legacy-deletion-plan.md
+  Useful deletion notes, but some entries reflect an older citypop-first reset and should be reconciled against the current charter.
 
-10. [sample-config.yaml](/D:/workspace/ai-music-video/docs/sample-config.yaml)
-첫 샘플 런에 쓸 수 있는 최소 설정 예시
-
-운영 원칙:
-
-- 범용성보다 결과물 일관성을 우선한다.
-- 프로필 시스템은 제거한다.
-- 스타일은 항상 일본 80~90년대 시티팝으로 고정한다.
-- 코드의 역할은 실행, 구조, 검수이며 미학 문장 보정은 LLM draft/polish에 맡긴다.
-- 검수 기준은 prompt가 아니라 실제 생성된 이미지와 비디오 결과물이다.
+Operating rule for this folder:
+- Treat the product-direction charter and structure-migration mapping as canonical.
+- Treat citypop-specific docs as style-pack history unless they are explicitly rewritten for the current architecture.
