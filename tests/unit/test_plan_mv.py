@@ -96,7 +96,9 @@ def test_plan_mv_builds_rich_render_prompts():
 
     item = out["render_plan"][0]
     assert "Japanese 80s city pop music video" in item["prompt_seed"]
-    assert "scene event:" in item["prompt_seed"]
+    assert "same protagonist" in item["prompt_seed"]
+    assert "same summer night-drive world" in item["prompt_seed"]
+    assert "scene event:" not in item["prompt_seed"]
     assert item["prompt_draft"]
     assert item["prompt_polish"]
     assert "audio_segment" not in item

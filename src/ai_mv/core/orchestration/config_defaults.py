@@ -7,7 +7,7 @@ from pathlib import Path
 DEFAULT_CONFIG: dict = {
     "audio": {
         "quality": "V0",
-        "language": "ja",
+        "language": "",
         "beats_per_bar": 4,
         "target_duration_min_sec": 150,
         "target_duration_max_sec": 180,

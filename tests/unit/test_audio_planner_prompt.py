@@ -27,7 +27,7 @@ def _prompt_plan(**extra):
             "Pre-Chorus 2": 3,
             "Chorus": 4,
             "Chorus 2": 4,
-            "Final Chorus": 4,
+            "Final Chorus": 5,
             "Bridge": 2,
             "Outro": 0,
         },
@@ -101,11 +101,11 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
             "seed": 31,
             "duration": 150,
             "lyrics_blocks": [
-                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["濡れた灯り", "遅い吐息", "空いた道", "残る名前"]},
-                {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["少し近く", "息が上がる", "ドアが開く"]},
-                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
-                {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["止まったような夜", "もう一度息をする"]},
-                {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["濡れた街の果て", "いま私を見て", "揺らぎはしない", "最後まで進む", "朝までほどけない"]},
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 불빛", "느린 한숨", "빈 도로", "남은 이름"]},
+                {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["조금 가까이", "숨이 차올라", "문이 열려"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["젖은 거리 끝에서", "나는 너를 봐", "사라지지 않아", "끝까지 나아가"]},
+                {"section": "bridge", "label": "Bridge", "style": "reframe", "lines": ["멈춘 것 같은 밤", "다시 한 번 숨을 쉬어"]},
+                {"section": "chorus", "label": "Final Chorus", "style": "answer", "lines": ["젖은 거리 끝에서", "이제 나를 봐", "흔들리지 않아", "끝까지 나아가", "새벽까지 이어 가"]},
             ],
         },
     )
@@ -116,7 +116,7 @@ def test_build_audio_plan_accepts_minimal_profile_directly(monkeypatch):
         "language": "ko",
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
-    assert plan["language"] == "ja"
+    assert plan["language"] == "ko"
     assert plan["genre_head"] == "synth pop"
     assert plan["vocal_profile"] == "solo female"
     assert plan["vocal_tone"] == "airy and emotional"
@@ -134,19 +134,41 @@ def test_build_audio_plan_uses_concept_text_as_genre_hint_fallback(monkeypatch):
             "seed": 31,
             "duration": 150,
             "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["Midnight signs blur", "the highway glows", "my hands stay steady", "the city leans in"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["I drive through the afterglow", "all the lights stay open", "you fade into the skyline", "I keep moving forward"]},
+            ],
+        },
+    )
+    cfg = {
+        "concept_text": "dreamy synthwave neon highway night drive",
+    }
+    plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+    assert plan["language"] == "en"
+    assert plan["genre_head"] == "synthwave"
+    assert plan["audio_direction"] == cfg["concept_text"]
+
+
+def test_build_audio_plan_infers_japanese_for_city_pop_when_language_missing(monkeypatch):
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_with_llm",
+        lambda _config, _plan: {
+            "genre_description": "City Pop: warm electric piano, soft bass groove, and bittersweet lead vocal over neon-night drums.",
+            "bpm": 108,
+            "keyscale": "A major",
+            "seed": 31,
+            "duration": 150,
+            "lyrics_blocks": [
                 {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["濡れた灯り", "遅い吐息", "空いた道", "残る名前"]},
                 {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["濡れた街の果て", "私は君を見る", "消えはしない", "最後まで進む"]},
             ],
         },
     )
     cfg = {
-        "concept_text": "dreamy synthwave neon highway night drive",
-        "language": "ko",
+        "concept_text": "summer boulevard cassette romance under ocean-blue dusk",
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
     assert plan["language"] == "ja"
-    assert plan["genre_head"] == "synthwave"
-    assert plan["audio_direction"] == cfg["concept_text"]
 
 
 def test_build_audio_plan_prefers_audio_brief_over_concept_text(monkeypatch):
@@ -167,7 +189,7 @@ def test_build_audio_plan_prefers_audio_brief_over_concept_text(monkeypatch):
     )
     cfg = {
         "concept_text": "visual-only panel-safe concept",
-        "audio": {"brief": "music-facing brief", "hook_brief": "short title-worthy hook"},
+        "audio": {"brief": "music-facing brief", "hook_brief": "short title-worthy hook", "language": "ja"},
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
     assert plan["audio_direction"] == "music-facing brief"
@@ -192,7 +214,7 @@ def test_build_audio_plan_uses_audio_brief_as_hook_fallback_when_hook_brief_miss
     )
     cfg = {
         "concept_text": "visual-only panel-safe concept",
-        "audio": {"brief": "music-facing brief"},
+        "audio": {"brief": "music-facing brief", "language": "ja"},
     }
     plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
     assert plan["audio_direction"] == "music-facing brief"

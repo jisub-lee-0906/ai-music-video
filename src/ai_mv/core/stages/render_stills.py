@@ -49,7 +49,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
 
 
 def _still_prompt_text(render_item: dict) -> str:
-    for key in ("prompt_polish", "prompt_draft", "prompt_seed"):
+    for key in ("still_prompt_text", "prompt_polish", "prompt_draft", "prompt_seed"):
         value = str(render_item.get(key, "")).strip()
         if value:
             return value

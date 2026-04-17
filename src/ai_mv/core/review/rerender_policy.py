@@ -11,6 +11,7 @@ def rerender_targets(
     audio_video_drift_sec: float = 0.0,
     coverage: dict[str, float] | None = None,
     shot_scores: dict[str, float] | None = None,
+    quality_findings: dict[str, list[str]] | None = None,
 ) -> list[str]:
     reasons = rerender_reasons(
         planned_shot_ids,
@@ -20,6 +21,7 @@ def rerender_targets(
         audio_video_drift_sec=audio_video_drift_sec,
         coverage=coverage,
         config=config,
+        quality_findings=quality_findings,
     )
     scored = sorted(
         reasons.items(),
@@ -48,6 +50,7 @@ def rerender_reasons(
     audio_video_drift_sec: float = 0.0,
     coverage: dict[str, float] | None = None,
     config: dict | None = None,
+    quality_findings: dict[str, list[str]] | None = None,
 ) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     review = config.get("review", {}) if isinstance(config, dict) else {}
@@ -73,6 +76,7 @@ def rerender_reasons(
     if float(coverage.get("stills_ratio", 1.0)) < min_stills or float(coverage.get("clips_ratio", 1.0)) < min_clips:
         quality_failures.append("coverage_too_low")
 
+    findings_map = quality_findings if isinstance(quality_findings, dict) else {}
     for shot_id in planned_shot_ids:
         reasons: list[str] = []
         if not still_status.get(shot_id, False):
@@ -80,8 +84,19 @@ def rerender_reasons(
         if not clip_status.get(shot_id, False):
             reasons.append("missing_clip")
         reasons.extend(x for x in quality_failures if x not in reasons)
+        reasons.extend(_normalize_quality_findings(findings_map.get(shot_id, []), reasons))
         if reasons:
             out[shot_id] = reasons
+    return out
+
+
+def _normalize_quality_findings(findings: list[str] | tuple[str, ...] | set[str], existing: list[str]) -> list[str]:
+    out: list[str] = []
+    for finding in findings if isinstance(findings, (list, tuple, set)) else []:
+        value = str(finding or "").strip()
+        if not value or value in existing or value in out:
+            continue
+        out.append(value)
     return out
 
 
@@ -93,5 +108,10 @@ def rerender_priority_score(reasons: list[str]) -> int:
         "coverage_too_low": 3,
         "missing_clip": 3,
         "missing_still": 2,
+        "terminal_frame_corruption": 6,
+        "continuity_break": 5,
+        "duplicate_subject": 5,
+        "layered_overlay_intrusion": 5,
+        "identity_drift": 4,
     }
     return sum(int(weights.get(reason, 1)) for reason in reasons)

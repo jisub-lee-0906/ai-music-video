@@ -21,10 +21,12 @@ def map_ltx_i2v_workflow(config: dict, item: dict) -> dict:
     fps = _int_value(item.get("fps") or config.get("render", {}).get("ltx_fps"), 24)
     duration = _float_value(item.get("duration_sec"), 4.0)
     frame_count = _frame_count(item, fps, duration)
+    prompt_seed = str(item.get("clip_prompt_seed") or item.get("prompt_seed") or "").strip()
+    positive_prompt = str(item.get("clip_positive_prompt") or item.get("positive_prompt") or "").strip()
     return {
         "node.inputs": {
-            LTX_I2V_SEED: {"value": str(item["prompt_seed"]).strip()},
-            LTX_I2V_POS: {"text": str(item.get("positive_prompt", "")).strip()},
+            LTX_I2V_SEED: {"value": prompt_seed},
+            LTX_I2V_POS: {"text": positive_prompt},
             LTX_I2V_NEG: {"text": str(item.get("negative_prompt", "")).strip()},
             LTX_I2V_IMAGE: {"image": str(item["image"]).strip()},
             LTX_I2V_WIDTH: {"value": width},

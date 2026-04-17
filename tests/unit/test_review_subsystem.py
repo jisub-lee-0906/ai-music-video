@@ -91,6 +91,20 @@ def test_rerender_reasons_include_quality_failures():
     assert reasons["S001"] == ["missing_final_video", "drift_too_high", "coverage_too_low"]
 
 
+def test_rerender_reasons_include_explicit_visual_quality_findings():
+    reasons = rerender_reasons(
+        ["S001", "S002"],
+        {"S001": True, "S002": True},
+        {"S001": True, "S002": True},
+        quality_findings={
+            "S002": ["terminal_frame_corruption", "continuity_break", "duplicate_subject"],
+        },
+    )
+
+    assert reasons["S002"] == ["terminal_frame_corruption", "continuity_break", "duplicate_subject"]
+    assert "S001" not in reasons
+
+
 def test_rerender_priority_score_ranks_quality_failures():
     score = rerender_priority_score(["missing_final_video", "drift_too_high", "coverage_too_low"])
     assert score >= 12
@@ -190,3 +204,25 @@ def test_review_models_respects_min_overall_score_threshold():
 
     assert report["status"] == "needs_rerender"
     assert report["blocking_checks"]["overall_score_within_threshold"] is False
+
+
+def test_review_models_fail_visual_continuity_and_corruption_checks_from_rerender_reasons():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S006"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        still_status={"S001": True, "S006": True},
+        clip_status={"S001": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={"S006": ["terminal_frame_corruption", "continuity_break", "duplicate_subject"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    assert report["status"] == "needs_rerender"
+    assert report["blocking_checks"]["terminal_frames_clean"] is False
+    assert report["blocking_checks"]["visual_continuity_preserved"] is False
+    assert report["blocking_checks"]["duplicate_subject_absent"] is False
+    assert report["severity"]["visual_quality"] == "high"
+    assert report["scores"]["shots"]["S006"] < report["scores"]["shots"]["S001"]

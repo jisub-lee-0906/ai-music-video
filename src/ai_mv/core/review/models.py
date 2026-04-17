@@ -46,6 +46,7 @@ def build_review_report(
         final_video_exists=final_video_exists,
         audio_video_drift_sec=audio_video_drift_sec,
         config=config,
+        rerender_reasons=rerender_reasons,
     )
     blocking_checks = signals["blocking_checks"]
     non_blocking_checks = signals["non_blocking_checks"]

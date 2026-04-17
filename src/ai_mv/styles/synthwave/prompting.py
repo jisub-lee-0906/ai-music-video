@@ -2,54 +2,115 @@ from __future__ import annotations
 
 
 def build_synthwave_prompt_seed(concept_text: str, style_bible: dict, shot: dict) -> str:
-    text = str(concept_text or "").strip()
-    concept = "retro synthwave music video" if "synthwave" in text.lower() else (text or "retro synthwave music video")
-    palette = ", ".join(str(x).strip() for x in style_bible.get("palette", [])[:2] if str(x).strip())
-    visual_mode = str(shot.get("visual_mode", "")).strip()
-    scene = {
-        "night_drive": "neon highway glide under sodium and magenta light",
-        "window_reflection": "chrome reflections folding across glass and dashboard light",
-        "chorus_performance": "hero performance framed by a glowing skyline and wet asphalt",
-        "city_glance": "side glance toward neon signs and passing light trails",
-        "memory_flash": "soft retro memory bloom with VHS glow and dusk fog",
-        "night_bridge": "suspended overpass crossing above electric city light",
-        "profile_mood": "solo portrait under electric violet station light",
-        "bridge_transition": "transition between cockpit glow and open neon boulevard",
-        "neon_release": "wide release into a glowing retro skyline",
-    }.get(visual_mode, "retro synthwave visual beat")
+    concept = _normalize_concept_text(concept_text)
+    continuity = _continuity_anchor(shot)
+    subject = _subject_anchor(shot)
+    environment = _environment_anchor(shot)
+    palette = _palette_phrase(style_bible)
     return ", ".join(
         part
         for part in [
+            "retro synthwave music video",
             concept,
-            f"scene event: {scene}",
+            continuity,
+            subject,
+            environment,
             palette,
-            "retro synthwave illustration",
-            "neon glow",
-            "analog atmosphere",
+            "retro-futurist anime frame",
+            "single coherent night-drive world",
+            "stable character identity",
+            "clean cinematic composition",
+            "analog glow",
         ]
         if part
     )
 
 
-
 def build_synthwave_prompt_draft(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     framing = {
-        "profile_mood": "tight electric portrait",
-        "night_drive": "windshield close-up with reflected light trails",
-        "window_reflection": "chrome reflection close-up",
-        "city_glance": "three-quarter neon close-up",
-        "chorus_performance": "front-facing skyline performance close-up",
-        "neon_release": "wide boulevard release framing",
-        "night_bridge": "overpass silhouette close-up",
-        "memory_flash": "soft VHS portrait framing",
-        "bridge_transition": "retro transition close-up",
-    }.get(visual_mode, "retro synthwave close-up")
+        "laser_horizon": "low-angle horizon framing with stable vanishing lines",
+        "neon_highway": "windshield-side close-up with controlled road perspective",
+        "mirror_glass": "single-subject reflection close-up with clean glass geometry",
+        "dashboard_pulse": "cockpit close-up with restrained console glow",
+        "grid_surge": "front-facing hero frame with stable skyline depth",
+        "neon_run": "tracking boulevard composition with one dominant subject",
+        "skyline_bloom": "wide skyline release with one anchored silhouette",
+        "tunnel_reveal": "tunnel transition frame with single-scene depth",
+        "afterglow_escape": "afterglow portrait with clean edge separation and no overlays",
+    }.get(visual_mode, "single-scene synthwave cinematic close-up")
     return ", ".join(
         [
             framing,
-            "retro synthwave illustration",
-            "neon glow",
-            "analog atmosphere",
+            "no layered collage",
+            "no abstract overlay",
+            "no duplicate subject",
+            "motion-safe keyframe",
         ]
     )
+
+
+def _normalize_concept_text(concept_text: str) -> str:
+    text = str(concept_text or "").strip()
+    return text or "retro synthwave night-drive music video"
+
+
+def _continuity_anchor(shot: dict) -> str:
+    role = str(shot.get("shot_role", "")).strip()
+    mapping = {
+        "intro_glide": "same night, same expressway journey, opening approach",
+        "intro_approach": "same night, same expressway journey, city lights approaching",
+        "verse_cruise": "same protagonist, same vehicle journey, controlled forward motion",
+        "verse_reflection": "same protagonist, same vehicle interior, reflected neon continuity",
+        "verse_swerve": "same protagonist, same roadway, tension rising without scene change",
+        "verse_afterimage": "same protagonist, same night world, lingering afterimage of motion",
+        "prechorus_charge": "same night, same route, energy tightening before the hook",
+        "prechorus_release": "same subject, same route, anticipation peaks without world change",
+        "chorus_breakout": "same protagonist, same boulevard, hook arrives in the same world",
+        "chorus_cruise": "same protagonist, same boulevard, release continues with wider motion",
+        "chorus_lift": "same protagonist, same skyline, emotional lift without identity drift",
+        "chorus_afterburn": "same protagonist, same skyline, lingering afterburn of the hook",
+        "bridge_descent": "same protagonist, same city, bridge moment turns inward without cutting worlds",
+        "bridge_escape": "same protagonist, same city, transition out of the bridge with continuity intact",
+        "outro_fade": "same protagonist, same night, afterglow fading toward dawn",
+        "outro_tail": "same protagonist, same night, final tail lights receding in one world",
+    }
+    return mapping.get(role, "same protagonist, same night-drive world, continuity preserved")
+
+
+def _subject_anchor(shot: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    mapping = {
+        "laser_horizon": "young woman with dark shoulder-length hair and a sleek silhouette",
+        "neon_highway": "young woman driver with dark shoulder-length hair and steady gaze",
+        "mirror_glass": "young woman with dark shoulder-length hair reflected in side glass",
+        "dashboard_pulse": "young woman in the cockpit with dark shoulder-length hair and focused expression",
+        "grid_surge": "young woman performer with dark shoulder-length hair and direct eye contact",
+        "neon_run": "young woman in motion with dark shoulder-length hair and neon rim light",
+        "skyline_bloom": "young woman silhouette with dark shoulder-length hair against the skyline",
+        "tunnel_reveal": "young woman framed by tunnel light with dark shoulder-length hair",
+        "afterglow_escape": "young woman with dark shoulder-length hair in a calm afterglow portrait",
+    }
+    return mapping.get(visual_mode, "young woman with dark shoulder-length hair and stable synthwave styling")
+
+
+def _environment_anchor(shot: dict) -> str:
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    mapping = {
+        "laser_horizon": "elevated expressway, distant skyline, neon horizon lines",
+        "neon_highway": "night expressway with reflective asphalt and cyan-magenta light trails",
+        "mirror_glass": "car side window, reflected skyline, wet urban light",
+        "dashboard_pulse": "vehicle interior, dashboard glow, night roadway beyond the glass",
+        "grid_surge": "open boulevard, skyline depth, wet road reflections",
+        "neon_run": "wide boulevard, moving tail lights, deep city perspective",
+        "skyline_bloom": "glowing skyline, wet concrete, clear road perspective",
+        "tunnel_reveal": "city tunnel mouth, receding lights, stable vanishing point",
+        "afterglow_escape": "quiet overpass, fading tail lights, soft neon afterglow",
+    }
+    return mapping.get(visual_mode, "same urban night-drive setting with stable road perspective")
+
+
+def _palette_phrase(style_bible: dict) -> str:
+    palette = [str(x).strip() for x in style_bible.get("palette", [])[:3] if str(x).strip()]
+    return ", ".join(palette)
+

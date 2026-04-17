@@ -145,7 +145,7 @@ def _audio_source(config: dict) -> dict:
     audio_brief = str(audio.get("brief", "")).strip()
     selected_prompt = audio_brief or prompt or concept_text
     selected_hook_brief = str(audio.get("hook_brief", "")).strip() or audio_brief or prompt or concept_text
-    merged["language"] = "ja"
+    explicit_language = _configured_audio_language(config, audio)
     if selected_prompt:
         merged["brief"] = selected_prompt
     if selected_hook_brief:
@@ -154,11 +154,49 @@ def _audio_source(config: dict) -> dict:
         genre = _infer_genre_from_concept_text(concept_text)
     if genre:
         merged["genre_head"] = genre
+    merged["language"] = explicit_language or _infer_lyrics_language(genre=genre, concept_text=concept_text, audio_brief=selected_prompt)
     if profile:
         merged["vocal_profile"] = profile
     if tone:
         merged["vocal_tone"] = tone
     return merged
+
+
+
+def _configured_audio_language(config: dict, audio: dict) -> str:
+    candidates = [
+        str(audio.get("language", "")).strip(),
+        str(config.get("language", "")).strip() if isinstance(config, dict) else "",
+    ]
+    for candidate in candidates:
+        normalized = candidate.lower()
+        if normalized in {"en", "ja", "ko"}:
+            return normalized
+    return ""
+
+
+
+def _infer_lyrics_language(*, genre: str, concept_text: str, audio_brief: str) -> str:
+    joined = " ".join(part for part in [genre, concept_text, audio_brief] if str(part).strip())
+    lowered = joined.lower()
+    if _contains_hangul(joined) or any(token in lowered for token in ("k-pop", "kpop", "korean", "seoul", "busan")):
+        return "ko"
+    if _contains_japanese_script(joined) or any(
+        token in lowered
+        for token in ("city pop", "citypop", "japanese", "tokyo", "shibuya", "summer boulevard", "cassette romance", "ocean-blue dusk")
+    ):
+        return "ja"
+    return "en"
+
+
+
+def _contains_hangul(text: str) -> bool:
+    return any("\uac00" <= ch <= "\ud7a3" for ch in str(text))
+
+
+
+def _contains_japanese_script(text: str) -> bool:
+    return any(("\u3040" <= ch <= "\u30ff") or ("\u4e00" <= ch <= "\u9fff") for ch in str(text))
 
 
 def _split_voice(text: str) -> tuple[str, str]:

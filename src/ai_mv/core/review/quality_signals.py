@@ -9,6 +9,7 @@ def build_quality_signals(
     final_video_exists: bool,
     audio_video_drift_sec: float,
     config: dict,
+    rerender_reasons: dict[str, list[str]] | None = None,
 ) -> dict:
     total = len(planned_shot_ids)
     still_done = sum(1 for shot_id in planned_shot_ids if still_status.get(shot_id, False))
@@ -49,15 +50,33 @@ def build_quality_signals(
     elif lowest_coverage < min_required_coverage:
         coverage_severity = "medium"
 
-    style_identity = final_video_exists and clip_done > 0
-    style_constraints_respected = final_video_exists
+    reason_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
+    all_reasons = {reason for reasons in reason_map.values() if isinstance(reasons, list) for reason in reasons}
+    visual_continuity_preserved = not bool(all_reasons & {"continuity_break", "identity_drift"})
+    terminal_frames_clean = "terminal_frame_corruption" not in all_reasons
+    duplicate_subject_absent = "duplicate_subject" not in all_reasons
+    overlay_intrusion_absent = "layered_overlay_intrusion" not in all_reasons
+
+    visual_issue_count = sum(
+        1
+        for reason in all_reasons
+        if reason in {"terminal_frame_corruption", "continuity_break", "duplicate_subject", "layered_overlay_intrusion", "identity_drift"}
+    )
+    visual_quality_severity = "low"
+    if visual_issue_count >= 2:
+        visual_quality_severity = "high"
+    elif visual_issue_count == 1:
+        visual_quality_severity = "medium"
+
+    style_identity = final_video_exists and clip_done > 0 and visual_continuity_preserved
+    style_constraints_respected = final_video_exists and overlay_intrusion_absent and duplicate_subject_absent
 
     non_blocking_checks = {
         "camera_restraint": final_video_exists,
         "memorable_shot": clip_done > 0,
         "style_identity": style_identity,
         "citypop_identity": style_identity,
-        "mood_consistency": final_video_exists and still_done > 0,
+        "mood_consistency": final_video_exists and still_done > 0 and visual_continuity_preserved,
     }
 
     overall_score = 100.0
@@ -70,6 +89,10 @@ def build_quality_signals(
     if coverage_severity == "medium":
         overall_score -= 15.0
     elif coverage_severity == "high":
+        overall_score -= 30.0
+    if visual_quality_severity == "medium":
+        overall_score -= 15.0
+    elif visual_quality_severity == "high":
         overall_score -= 30.0
     if not non_blocking_checks["memorable_shot"]:
         overall_score -= 5.0
@@ -87,6 +110,10 @@ def build_quality_signals(
         "overall_score_within_threshold": overall_score >= min_overall_score,
         "style_constraints_respected": style_constraints_respected,
         "not_kpop_or_cyberpunk": style_constraints_respected,
+        "visual_continuity_preserved": visual_continuity_preserved,
+        "terminal_frames_clean": terminal_frames_clean,
+        "duplicate_subject_absent": duplicate_subject_absent,
+        "overlay_intrusion_absent": overlay_intrusion_absent,
     }
     return {
         "still_done": still_done,
@@ -95,6 +122,7 @@ def build_quality_signals(
         "severity": {
             "drift": drift_severity,
             "coverage": coverage_severity,
+            "visual_quality": visual_quality_severity,
         },
         "scores": {
             "overall": overall_score,

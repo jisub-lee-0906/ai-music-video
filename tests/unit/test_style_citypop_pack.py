@@ -40,14 +40,18 @@ def test_citypop_prompting_builds_seed_from_style_pack_helpers():
     )
 
     assert "Japanese 80s city pop music video" in seed
-    assert "scene event:" in seed
+    assert "same protagonist" in seed
+    assert "same summer night-drive world" in seed
+    assert "city pop" not in seed.lower() or "japanese 80s city pop music video" in seed.lower()
+    assert "scene event:" not in seed
     assert "a close-up of a singer facing the camera" in seed
 
 
 def test_citypop_prompting_builds_draft_from_style_pack_helpers():
     draft = build_citypop_prompt_draft({"visual_mode": "profile_mood"})
 
-    assert "elegant station reflection styling" in draft
+    assert "motion-safe keyframe" in draft
+    assert "no layered collage" in draft
     assert "tight portrait close-up" in draft
     assert "film grain" in draft
 

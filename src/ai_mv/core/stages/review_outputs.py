@@ -14,6 +14,7 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
     planned_shot_ids = [str(row.get("shot_id", "")).strip() for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)]
     still_status = shot_asset_status(still_results, "image")
     clip_status = shot_asset_status(clip_results, "video")
+    quality_findings = _collect_quality_findings(stage_input.payload)
     drift = audio_video_drift_sec(
         str(stage_input.payload.get("music_file", "")).strip(),
         final_video,
@@ -31,6 +32,7 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         audio_video_drift_sec=drift,
         coverage=coverage,
         config=stage_input.config,
+        quality_findings=quality_findings,
     )
     provisional_shot_scores = build_shot_quality_scores(
         planned_shot_ids=planned_shot_ids,
@@ -47,6 +49,7 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         audio_video_drift_sec=drift,
         coverage=coverage,
         shot_scores=provisional_shot_scores,
+        quality_findings=quality_findings,
     )
     report = build_review_report(
         planned_shot_ids=planned_shot_ids,
@@ -61,3 +64,36 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         config=stage_input.config,
     )
     return StageOutput("review_outputs", "done", {"review_report": report}, [])
+
+
+
+def _collect_quality_findings(payload: dict) -> dict[str, list[str]]:
+    findings: dict[str, list[str]] = {}
+    for key in ("still_results", "clip_results"):
+        for row in payload.get(key, []):
+            if not isinstance(row, dict):
+                continue
+            shot_id = str(row.get("shot_id", "")).strip()
+            if not shot_id:
+                continue
+            _extend_unique(findings.setdefault(shot_id, []), row.get("quality_issues", []))
+    review_inputs = payload.get("review_inputs")
+    if isinstance(review_inputs, dict):
+        explicit = review_inputs.get("quality_findings")
+        if isinstance(explicit, dict):
+            for shot_id, reasons in explicit.items():
+                normalized_shot_id = str(shot_id or "").strip()
+                if not normalized_shot_id:
+                    continue
+                _extend_unique(findings.setdefault(normalized_shot_id, []), reasons)
+    return {shot_id: reasons for shot_id, reasons in findings.items() if reasons}
+
+
+
+def _extend_unique(target: list[str], reasons: object) -> None:
+    if not isinstance(reasons, (list, tuple, set)):
+        return
+    for reason in reasons:
+        value = str(reason or "").strip()
+        if value and value not in target:
+            target.append(value)

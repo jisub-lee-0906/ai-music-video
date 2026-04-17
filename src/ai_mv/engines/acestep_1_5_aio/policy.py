@@ -251,7 +251,7 @@ def resolve_line_budgets(audio: dict) -> dict[str, int]:
         resolved["Pre-Chorus 2"] = 3
         resolved["Chorus"] = 4
         resolved["Chorus 2"] = 4
-        resolved["Final Chorus"] = 4
+        resolved["Final Chorus"] = 5
         resolved["Bridge"] = 2
         resolved["Intro"] = 0
         resolved["Outro"] = 0

@@ -30,7 +30,7 @@ def test_audio_policy_populates_default_ending_contract():
     assert out["line_budgets"]["Intro"] == 0
     assert out["line_budgets"]["Verse 1"] == 4
     assert out["line_budgets"]["Pre-Chorus"] == 3
-    assert out["line_budgets"]["Final Chorus"] == 4
+    assert out["line_budgets"]["Final Chorus"] == 5
 
     assert out["line_budgets"]["Outro"] == 0
 

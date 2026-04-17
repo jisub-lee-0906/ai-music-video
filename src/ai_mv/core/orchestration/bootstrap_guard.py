@@ -16,8 +16,8 @@ def apply_input_defaults(config: dict) -> None:
     if not concept_text:
         config["concept_text"] = DEFAULT_CONCEPT
     audio = config.get("audio", {}) if isinstance(config.get("audio", {}), dict) else {}
-    audio["language"] = "ja"
-    config["audio"] = audio
+    if audio:
+        config["audio"] = audio
 
 
 def apply_citypop_defaults(config: dict) -> None:

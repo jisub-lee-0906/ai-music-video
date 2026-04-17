@@ -18,11 +18,12 @@ def map_ltx_flf2v_workflow(config: dict, item: dict) -> dict:
     fps = _int_value(item.get("fps") or config.get("render", {}).get("ltx_fps"), 24)
     duration_sec = _float_value(item.get("duration_sec"), 5.0)
     frame_count = _frame_count(item, fps, duration_sec)
+    positive_prompt = str(item.get("clip_positive_prompt") or item.get("positive_prompt") or "").strip()
     return {
         "node.inputs": {
             LTX_FLF2V_FIRST: {"image": str(item["first_image"]).strip()},
             LTX_FLF2V_LAST: {"image": str(item["last_image"]).strip()},
-            LTX_FLF2V_POS: {"text": str(item.get("positive_prompt", "")).strip()},
+            LTX_FLF2V_POS: {"text": positive_prompt},
             LTX_FLF2V_NEG: {"text": str(item.get("negative_prompt", "")).strip()},
             LTX_FLF2V_WIDTH: {"value": width},
             LTX_FLF2V_HEIGHT: {"value": height},

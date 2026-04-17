@@ -21,6 +21,18 @@ def test_render_clips_uses_generic_fallback_prompt_text_when_empty():
     assert "city pop" not in prompt.lower()
 
 
+def test_render_stills_prefers_workflow_specific_still_prompt_text():
+    prompt = _still_prompt_text({"still_prompt_text": "single-subject keyframe, motion-safe keyframe"})
+
+    assert prompt == "single-subject keyframe, motion-safe keyframe"
+
+
+def test_render_clips_prefers_workflow_specific_clip_prompt_seed():
+    prompt = _clip_prompt_text({"clip_prompt_seed": "camera drift forward, stable motion"})
+
+    assert prompt == "camera drift forward, stable motion"
+
+
 def test_render_stills_calls_qwen_runner(monkeypatch):
     calls = []
 
@@ -159,8 +171,9 @@ def test_plan_preview_builds_qwen_style_prompt_tokens():
 
     prompt = payload["render_plan"][0]["prompt_polish"]
     assert "clean cel shading" in prompt
-    assert "bold graphic composition" in prompt
-    assert "80s japanese city pop illustration" in prompt
+    assert "same protagonist" in prompt
+    assert "motion-safe keyframe" in prompt
+    assert "80s japanese city pop illustration" not in prompt
     assert "film grain" in prompt
 
 
@@ -178,7 +191,15 @@ def test_render_clips_routes_i2v(monkeypatch):
         payload={
             "music_file": "music/song.mp3",
             "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "i2v"}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v", "prompt_seed": "night drive"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "render_mode": "i2v",
+                    "prompt_seed": "night drive",
+                    "clip_prompt_seed": "slow windshield drift",
+                    "clip_positive_prompt": "slow windshield drift, stable motion, no abrupt pose change",
+                }
+            ],
             "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png"}],
         },
     )
@@ -188,6 +209,8 @@ def test_render_clips_routes_i2v(monkeypatch):
     assert out.payload["clip_results"][0]["video"] == "D:/renders/S001_i2v.mp4"
     assert calls[0][1]["image"] == "D:/renders/S001.png"
     assert calls[0][1]["filename_prefix"] == "clips/S001_i2v"
+    assert calls[0][1]["prompt_seed"] == "slow windshield drift"
+    assert calls[0][1]["positive_prompt"] == "slow windshield drift, stable motion, no abrupt pose change"
 
 
 def test_render_clips_fails_fast_when_i2v_still_is_missing():
@@ -445,5 +468,43 @@ def test_review_outputs_computes_audio_video_drift(monkeypatch):
         out = run_review_outputs(stage_input)
 
         assert out.payload["review_report"]["audio_video_drift_sec"] == 0.35
+    finally:
+        _Path.exists = _original_exists
+
+
+def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
+    existing = {"D:/renders/final.mp4", "D:/renders/S006.png", "D:/renders/S006.mp4"}
+
+    def _fake_exists(self):
+        return str(self).replace("\\", "/") in {path.replace("\\", "/") for path in existing}
+
+    from pathlib import Path as _Path
+
+    _original_exists = _Path.exists
+    _Path.exists = _fake_exists
+    try:
+        stage_input = StageInput(
+            run_id="run-9",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "shot_plan": [{"shot_id": "S006"}],
+                "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "status": "done"}],
+                "clip_results": [{"shot_id": "S006", "video": "D:/renders/S006.mp4", "status": "done"}],
+                "review_inputs": {
+                    "music_file": "D:/renders/song.mp3",
+                    "quality_findings": {
+                        "S006": ["terminal_frame_corruption", "continuity_break"],
+                    },
+                },
+            },
+        )
+
+        out = run_review_outputs(stage_input)
+
+        assert out.payload["review_report"]["status"] == "needs_rerender"
+        assert out.payload["review_report"]["rerender_targets"] == ["S006"]
+        assert out.payload["review_report"]["blocking_checks"]["terminal_frames_clean"] is False
+        assert out.payload["review_report"]["blocking_checks"]["visual_continuity_preserved"] is False
     finally:
         _Path.exists = _original_exists

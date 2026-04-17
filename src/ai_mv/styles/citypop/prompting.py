@@ -3,8 +3,7 @@ from __future__ import annotations
 
 def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict) -> str:
     concept = _concept_seed_phrase(concept_text)
-    progression = _section_progression_hint(shot)
-    scene_event = _shot_scene_detail(shot)
+    continuity = _continuity_anchor(shot)
     subject = _qwen_subject_phrase(shot)
     location = _qwen_location_phrase(shot)
     palette = _qwen_palette_phrase(shot, citypop_bible)
@@ -12,37 +11,33 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
         part
         for part in [
             concept,
-            f"progression: {progression}" if progression else "",
-            f"scene event: {scene_event}" if scene_event else "",
+            continuity,
             subject,
             location,
             palette,
             "clean cel shading",
-            "bold graphic composition",
-            "80s japanese city pop illustration",
+            "single coherent night-drive world",
+            "stable character identity",
             "film grain",
         ]
         if part
     )
 
 
-
 def build_citypop_prompt_draft(shot: dict) -> str:
-    styling = _qwen_styling_phrase(shot)
     framing = _qwen_framing_phrase(shot)
     return ", ".join(
         part
         for part in [
-            styling,
             framing,
-            "clean cel shading",
-            "bold graphic composition",
-            "80s japanese city pop illustration",
+            "soft reflective portrait styling",
+            "motion-safe keyframe",
+            "no layered collage",
+            "no abstract overlay",
             "film grain",
         ]
         if part
     )
-
 
 
 def _concept_seed_phrase(concept_text: str) -> str:
@@ -53,98 +48,59 @@ def _concept_seed_phrase(concept_text: str) -> str:
     return text or "city pop music video"
 
 
-
-def _section_progression_hint(shot: dict) -> str:
-    name = str(shot.get("section_name", "")).strip().lower()
-    if "pre-chorus 2" in name or "pre_chorus 2" in name:
-        return "tension rises faster, less hesitation"
-    if "pre-chorus" in name or "pre_chorus" in name:
-        return "anticipation tightens before the lift"
-    if "final chorus" in name:
-        return "last release before dawn, emotionally resolved"
-    if "chorus 2" in name:
-        return "hook returns brighter, more exposed"
-    if "chorus" in name:
-        return "first payoff, arrival of the hook"
-    if "verse 2" in name:
-        return "same night, changed perspective"
-    if "bridge" in name:
-        return "the night turns inward before the final return"
-    if "outro" in name:
-        return "afterglow and tail lights fading out"
-    return "opening pass through the night"
-
-
-
-def _shot_scene_detail(shot: dict) -> str:
-    visual_mode = str(shot.get("visual_mode", "")).strip()
+def _continuity_anchor(shot: dict) -> str:
     role = str(shot.get("shot_role", "")).strip()
-    mapping = {
-        "profile_mood": "solo lead portrait in a quiet city setting at blue hour with ambient glow on the face",
-        "night_drive": "late-night city movement with reflected streetlights sliding across glass and metal surfaces",
-        "window_reflection": "close-up with layered reflections across glass, cheek, or polished surfaces",
-        "city_glance": "three-quarter glance toward passing signs, platform lights, or side streets",
-        "chorus_performance": "intimate performance shot with the city opening behind the singer",
-        "neon_release": "wide exterior pass through a lit boulevard or open night street",
-        "night_bridge": "quiet transitional night crossing with sparse traffic and open dark space below",
-        "memory_flash": "soft memory flash with film-grain warmth and moving air in the frame",
-        "bridge_transition": "visual handoff from interior reflection to the next scene anchor",
-    }
-    detail = mapping.get(visual_mode, "city pop shot with one clear visual beat")
-    if role.startswith("verse_detail"):
-        return "close-up on hands, glass, fabric, and reflected city light in a quiet intimate moment"
-    if role.startswith("chorus_hold"):
-        return "held emotional release as the hook settles in and the city lights stretch behind the subject"
-    if role.startswith("chorus_arrive"):
-        return "the hook lands as the camera meets the singer head-on"
-    if role.startswith("outro_tail"):
-        return "the last light drifting away after the song resolves"
-    return detail
-
+    section_name = str(shot.get("section_name", "")).strip().lower()
+    if role.startswith("chorus"):
+        return "same protagonist, same summer night-drive world, hook arrival in the same city"
+    if role.startswith("verse"):
+        return "same protagonist, same summer night-drive world, intimate movement through the city"
+    if role.startswith("prechorus"):
+        return "same protagonist, same summer night-drive world, anticipation tightens before the lift"
+    if role.startswith("bridge"):
+        return "same protagonist, same summer night-drive world, the night turns inward without changing worlds"
+    if role.startswith("outro") or "outro" in section_name:
+        return "same protagonist, same summer night-drive world, afterglow fading into the last lights"
+    return "same protagonist, same summer night-drive world, continuity preserved"
 
 
 def _qwen_subject_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
-    role = str(shot.get("shot_role", "")).strip()
     if visual_mode == "profile_mood":
-        return "a close-up of a woman with long dark hair under fluorescent station light"
+        return "young woman with long dark hair under fluorescent station light"
     if visual_mode == "night_drive":
-        return "a close-up of a singer in reflected night light with strong presence"
+        return "young woman driver with reflected night light and steady expression"
     if visual_mode == "window_reflection":
-        return "a close-up of a singer through glass with reflected city lights"
+        return "young woman seen through side glass with reflected city lights"
     if visual_mode == "city_glance":
-        return "a close-up of a woman turning toward the camera through city reflections"
+        return "young woman turning toward the camera through city reflections"
     if visual_mode == "chorus_performance":
         return "a close-up of a singer facing the camera with neon reflections and vivid expression"
     if visual_mode == "neon_release":
-        return "a close-up of a singer framed by neon reflections and moving city light"
+        return "young woman framed by neon reflections and moving city light"
     if visual_mode == "night_bridge":
-        return "a close-up of a solitary woman with bridge lights behind her"
+        return "young woman with bridge lights behind her"
     if visual_mode == "memory_flash":
-        return "a close-up portrait of a woman with soft reflected light and wind in her hair"
+        return "young woman in a soft afterglow portrait with wind in her hair"
     if visual_mode == "bridge_transition":
-        return "a close-up of a woman shifting from reflection to open night air"
-    if role.startswith("chorus"):
-        return "a close-up of a singer in a reflective city-pop portrait"
-    return "a close-up of a stylish woman in an 80s city pop scene"
-
+        return "young woman shifting from reflection to open night air"
+    return "young woman in a reflective summer night portrait"
 
 
 def _qwen_location_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
         "profile_mood": "night station interior with dark glass panels",
-        "night_drive": "night interior, passing street light, and reflected city glow",
-        "window_reflection": "glass reflection close-up with city light spill",
-        "city_glance": "night city glass reflection with passing shop lights",
+        "night_drive": "night expressway interior with passing street light and reflected city glow",
+        "window_reflection": "car side window with layered reflections and city light spill",
+        "city_glance": "night boulevard glass reflection with passing shop lights",
         "chorus_performance": "glowing city light reflections with a nightlife backdrop",
-        "neon_release": "night boulevard light reflected across glass and polished surfaces",
+        "neon_release": "night boulevard light across wet street and polished surfaces",
         "night_bridge": "bridge lights in soft focus behind the subject",
-        "memory_flash": "soft city skyline or room-light reflection at dusk",
-        "bridge_transition": "neon-lit transition between street light and glass reflection",
+        "memory_flash": "soft city skyline reflection at dusk",
+        "bridge_transition": "transition between street light and reflective glass in the same city",
     }
     return mapping.get(visual_mode, "night city reflections")
-
 
 
 def _qwen_palette_phrase(shot: dict, citypop_bible: dict) -> str:
@@ -159,19 +115,6 @@ def _qwen_palette_phrase(shot: dict, citypop_bible: dict) -> str:
     return ", ".join(palette[:2])
 
 
-
-def _qwen_styling_phrase(shot: dict) -> str:
-    visual_mode = str(shot.get("visual_mode", "")).strip()
-    if visual_mode in {"neon_release", "window_reflection", "night_drive", "chorus_performance", "city_glance"}:
-        return "graphic reflective close-up styling"
-    if visual_mode == "memory_flash":
-        return "soft nostalgic reflective portrait styling"
-    if visual_mode == "profile_mood":
-        return "elegant station reflection styling"
-    return "clean reflective city-pop styling"
-
-
-
 def _qwen_framing_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
@@ -183,6 +126,6 @@ def _qwen_framing_phrase(shot: dict) -> str:
         "neon_release": "medium close-up with neon framing",
         "night_bridge": "close-up with bridge lights in the background",
         "memory_flash": "soft portrait close-up",
-        "bridge_transition": "graphic reflective close-up",
+        "bridge_transition": "clean reflective close-up",
     }
-    return mapping.get(visual_mode, "graphic close-up framing")
+    return mapping.get(visual_mode, "clean cinematic close-up")

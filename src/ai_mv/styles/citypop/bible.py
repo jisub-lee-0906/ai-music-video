@@ -4,6 +4,7 @@ from __future__ import annotations
 def get_citypop_bible() -> dict:
     return {
         "style": "japanese_citypop_80s_90s",
+        "style_aliases": ["city pop", "citypop", "summer boulevard", "cassette romance", "ocean-blue dusk"],
         "palette": ["sunset amber", "ocean blue", "neon cyan", "sodium-vapor night"],
         "motifs": [
             "city lights",
