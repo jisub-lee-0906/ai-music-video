@@ -20,10 +20,6 @@ def apply_input_defaults(config: dict) -> None:
         config["audio"] = audio
 
 
-def apply_citypop_defaults(config: dict) -> None:
-    apply_input_defaults(config)
-
-
 def validate_sizes(config: dict) -> None:
     w, h, _ = parse_target(config["video"]["target"])
     ensure_16_9(w, h)
