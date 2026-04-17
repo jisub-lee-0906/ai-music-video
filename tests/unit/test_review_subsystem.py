@@ -180,6 +180,12 @@ def test_review_models_include_publishability_summary_levels():
         "target_shots": [],
         "reason_codes": [],
     }
+    assert summary["technical_completion"]["rerender_prescription"] == {
+        "stage_focus": None,
+        "workflow_focus": None,
+        "prompt_contract_focus": [],
+        "fix_strategy": "no_action",
+    }
     assert summary["isolated_asset_quality"]["passed"] is False
     assert summary["isolated_asset_quality"]["failed_checks"] == ["terminal_frames_clean", "duplicate_subject_absent", "style_identity"]
     assert summary["isolated_asset_quality"]["next_action"] == "rerender_clips_with_terminal_frame_cleanup"
@@ -192,6 +198,12 @@ def test_review_models_include_publishability_summary_levels():
         "action": "rerender_clips_with_terminal_frame_cleanup",
         "target_shots": ["S006"],
         "reason_codes": ["duplicate_subject", "terminal_frame_corruption"],
+    }
+    assert summary["isolated_asset_quality"]["rerender_prescription"] == {
+        "stage_focus": "clips",
+        "workflow_focus": ["i2v", "ia2v", "flf2v"],
+        "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
+        "fix_strategy": "shorter_motion_and_clean_terminal_frames",
     }
     assert summary["final_mv_publishability"]["passed"] is False
     assert summary["final_mv_publishability"]["failed_checks"] == ["visual_continuity_preserved", "mood_consistency"]
@@ -393,6 +405,12 @@ def test_review_models_surface_new_publishability_quality_findings():
             "weak_subject_match",
         ],
     }
+    assert report["publishability_summary"]["isolated_asset_quality"]["rerender_prescription"] == {
+        "stage_focus": "stills",
+        "workflow_focus": ["qwen_image"],
+        "prompt_contract_focus": ["still_prompt_text"],
+        "fix_strategy": "tighten_subject_and_world_anchors",
+    }
     assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == [
         "mood_consistency",
         "motion_source_safe",
@@ -401,6 +419,12 @@ def test_review_models_surface_new_publishability_quality_findings():
         "action": "rerender_motion_fragile_shots_with_safer_keyframes",
         "target_shots": ["S006"],
         "reason_codes": ["motion_fragile_frame"],
+    }
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_prescription"] == {
+        "stage_focus": "stills_then_clips",
+        "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+        "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
     }
 
 
@@ -465,4 +489,10 @@ def test_review_models_surface_panelized_keyframe_findings():
             "panel_layout",
             "split_screen",
         ],
+    }
+    assert report["publishability_summary"]["isolated_asset_quality"]["rerender_prescription"] == {
+        "stage_focus": "stills",
+        "workflow_focus": ["qwen_image"],
+        "prompt_contract_focus": ["still_prompt_text"],
+        "fix_strategy": "enforce_single_frame_keyframe_composition",
     }

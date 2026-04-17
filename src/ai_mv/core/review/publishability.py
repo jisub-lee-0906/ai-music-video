@@ -164,6 +164,7 @@ def _summary(
         "next_action": next_action,
         "rerender_guidance": [_GUIDANCE_BY_CHECK[check_name] for check_name in failures if check_name in _GUIDANCE_BY_CHECK],
         "rerender_bundle": _rerender_bundle(bucket_name, next_action, rerender_reasons),
+        "rerender_prescription": _rerender_prescription(next_action),
     }
 
 
@@ -201,6 +202,54 @@ def _rerender_bundle(bucket_name: str, action_name: str, rerender_reasons: dict[
         "target_shots": target_shots,
         "reason_codes": sorted(reason_codes),
     }
+
+
+
+def _rerender_prescription(action_name: str) -> dict[str, object]:
+    prescriptions = {
+        "no_action": {
+            "stage_focus": None,
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "no_action",
+        },
+        "rerender_clips_with_terminal_frame_cleanup": {
+            "stage_focus": "clips",
+            "workflow_focus": ["i2v", "ia2v", "flf2v"],
+            "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "shorter_motion_and_clean_terminal_frames",
+        },
+        "rerender_weak_shots_with_prompt_tightening": {
+            "stage_focus": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "tighten_subject_identity_and_style_anchors",
+        },
+        "rerender_scene_intrusion_shots": {
+            "stage_focus": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "tighten_subject_and_world_anchors",
+        },
+        "rerender_motion_fragile_shots_with_safer_keyframes": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
+        },
+        "rerender_panelized_keyframes": {
+            "stage_focus": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "enforce_single_frame_keyframe_composition",
+        },
+    }
+    return dict(prescriptions.get(action_name, {
+        "stage_focus": "review",
+        "workflow_focus": None,
+        "prompt_contract_focus": [],
+        "fix_strategy": "inspect_review_failures_manually",
+    }))
 
 
 
