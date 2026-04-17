@@ -20,7 +20,7 @@ def test_plan_preview_exposes_only_style_bible_as_canonical_payload():
 
 
 
-def test_review_report_keeps_legacy_aliases_in_sync_with_generic_checks():
+def test_review_report_exposes_only_generic_style_checks():
     report = build_review_report(
         planned_shot_ids=["S001"],
         still_results=[{"shot_id": "S001"}],
@@ -34,5 +34,7 @@ def test_review_report_keeps_legacy_aliases_in_sync_with_generic_checks():
         config={"review": {"max_audio_video_drift_sec": 0.5}},
     )
 
-    assert report["non_blocking_checks"]["citypop_identity"] == report["non_blocking_checks"]["style_identity"]
-    assert report["blocking_checks"]["not_kpop_or_cyberpunk"] == report["blocking_checks"]["style_constraints_respected"]
+    assert "style_identity" in report["non_blocking_checks"]
+    assert "citypop_identity" not in report["non_blocking_checks"]
+    assert "style_constraints_respected" in report["blocking_checks"]
+    assert "not_kpop_or_cyberpunk" not in report["blocking_checks"]

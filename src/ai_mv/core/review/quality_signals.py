@@ -75,7 +75,6 @@ def build_quality_signals(
         "camera_restraint": final_video_exists,
         "memorable_shot": clip_done > 0,
         "style_identity": style_identity,
-        "citypop_identity": style_identity,
         "mood_consistency": final_video_exists and still_done > 0 and visual_continuity_preserved,
     }
 
@@ -109,7 +108,6 @@ def build_quality_signals(
         "clips_coverage_within_threshold": coverage["clips_ratio"] >= min_clips,
         "overall_score_within_threshold": overall_score >= min_overall_score,
         "style_constraints_respected": style_constraints_respected,
-        "not_kpop_or_cyberpunk": style_constraints_respected,
         "visual_continuity_preserved": visual_continuity_preserved,
         "terminal_frames_clean": terminal_frames_clean,
         "duplicate_subject_absent": duplicate_subject_absent,
