@@ -173,10 +173,23 @@ def test_review_models_include_publishability_summary_levels():
     summary = report["publishability_summary"]
     assert summary["technical_completion"]["passed"] is True
     assert summary["technical_completion"]["blocking_failures"] == []
+    assert summary["technical_completion"]["next_action"] == "no_action"
+    assert summary["technical_completion"]["rerender_guidance"] == []
     assert summary["isolated_asset_quality"]["passed"] is False
     assert summary["isolated_asset_quality"]["failed_checks"] == ["terminal_frames_clean", "duplicate_subject_absent", "style_identity"]
+    assert summary["isolated_asset_quality"]["next_action"] == "rerender_clips_with_terminal_frame_cleanup"
+    assert summary["isolated_asset_quality"]["rerender_guidance"] == [
+        "rerender affected clips with cleaner terminal frames and shorter motion range",
+        "tighten single-subject framing and remove duplicate subject artifacts",
+        "strengthen style-identity prompt constraints and rerender weakest shots",
+    ]
     assert summary["final_mv_publishability"]["passed"] is False
     assert summary["final_mv_publishability"]["failed_checks"] == ["visual_continuity_preserved", "mood_consistency"]
+    assert summary["final_mv_publishability"]["next_action"] == "rerender_continuity_break_shots"
+    assert summary["final_mv_publishability"]["rerender_guidance"] == [
+        "rerender continuity-break shots and preserve identity across adjacent shots",
+        "rerender mood-drift shots to match the song section and neighboring shots",
+    ]
 
 
 
