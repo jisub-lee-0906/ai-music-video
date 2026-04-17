@@ -97,8 +97,9 @@ Output behavior:
   - writes a JSON scaffold shaped like `payload.review_inputs.quality_findings`
   - includes `known_quality_finding_codes` for the currently supported artifact taxonomy
 - `review-packet`
-  - writes `review-packet.json`, `review-findings.json`, and `review-notes.md`
+  - writes `review-packet.json`, `review-findings.json`, `review-notes.md`, and `contact-sheet.json`
   - precomputes expected frame paths under `frames/`
+  - reserves `contact-sheet.png` as the target image path for a future rendered contact sheet
   - bundles frame-review bookkeeping into one folder
 
 ## Recommended workflow
@@ -108,12 +109,13 @@ Output behavior:
 3. For assembled outputs, run `extract-frames --kind final`.
 4. Review the extracted images in order.
 5. Record failure tags explicitly.
-6. If you want one folder that already contains the manifest, findings scaffold, and notes file, generate a packet first:
+6. If you want one folder that already contains the manifest, findings scaffold, notes file, and contact-sheet layout metadata, generate a packet first:
    - `ai-mv review-packet --video path/to/final.mp4 --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002`
-7. If you only need the JSON scaffold, generate it directly:
+7. Use `contact-sheet.json` to keep frame ordering and grid placement deterministic before rendering or reviewing a composite contact sheet.
+8. If you only need the JSON scaffold, generate it directly:
    - `ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json`
-8. Fill `review_inputs.quality_findings[{shot_id}]` with the observed tags.
-9. Only then decide whether the issue belongs to:
+9. Fill `review_inputs.quality_findings[{shot_id}]` with the observed tags.
+10. Only then decide whether the issue belongs to:
    - still prompt syntax
    - still prompt contract
    - clip prompt syntax

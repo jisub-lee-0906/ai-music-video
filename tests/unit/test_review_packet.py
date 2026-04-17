@@ -25,6 +25,8 @@ def test_build_review_packet_manifest_for_final_includes_expected_paths(tmp_path
     ]
     assert manifest["quality_findings_path"] == str(tmp_path / "review-packet" / "review-findings.json")
     assert manifest["reviewer_notes_path"] == str(tmp_path / "review-packet" / "review-notes.md")
+    assert manifest["contact_sheet_image_path"] == str(tmp_path / "review-packet" / "contact-sheet.png")
+    assert manifest["contact_sheet_manifest_path"] == str(tmp_path / "review-packet" / "contact-sheet.json")
 
 
 def test_build_review_packet_manifest_is_json_serializable(tmp_path):
@@ -44,3 +46,4 @@ def test_build_review_packet_manifest_is_json_serializable(tmp_path):
         str(tmp_path / "packet" / "frames" / "middle.png"),
         str(tmp_path / "packet" / "frames" / "last.png"),
     ]
+    assert data["contact_sheet_image_path"] == str(tmp_path / "packet" / "contact-sheet.png")

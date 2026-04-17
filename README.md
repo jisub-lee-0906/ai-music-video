@@ -60,6 +60,7 @@ ai-mv status --run-id 20260406-215500
 ai-mv extract-frames --video artifacts/latest_success/final_video.mp4 --output-dir .analysis/final-review --kind final --sample-count 8
 ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json
 ai-mv review-packet --video artifacts/latest_success/final_video.mp4 --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002
+# packet now includes review-packet.json, review-findings.json, review-notes.md, and contact-sheet.json
 ```
 
 ## WSL Usage

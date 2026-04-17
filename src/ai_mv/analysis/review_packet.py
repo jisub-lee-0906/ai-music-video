@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ai_mv.analysis.contact_sheet import build_contact_sheet_manifest
 from ai_mv.analysis.frame_extract import representative_frame_plan
 from ai_mv.core.review.quality_findings import quality_findings_review_input_template
 
@@ -36,6 +37,8 @@ def build_review_packet_manifest(
         "frame_labels": [str(row["label"]) for row in plan],
         "quality_findings_path": str(output_root / "review-findings.json"),
         "reviewer_notes_path": str(output_root / "review-notes.md"),
+        "contact_sheet_image_path": str(output_root / "contact-sheet.png"),
+        "contact_sheet_manifest_path": str(output_root / "contact-sheet.json"),
     }
 
 
@@ -62,16 +65,30 @@ def write_review_packet(
     manifest_path = output_root / "review-packet.json"
     quality_findings_path = Path(manifest["quality_findings_path"])
     reviewer_notes_path = Path(manifest["reviewer_notes_path"])
+    contact_sheet_manifest_path = Path(manifest["contact_sheet_manifest_path"])
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     quality_findings_path.write_text(
         json.dumps(quality_findings_review_input_template(list(manifest["shot_ids"])), indent=2) + "\n",
         encoding="utf-8",
     )
     reviewer_notes_path.write_text(_reviewer_notes_template(manifest), encoding="utf-8")
+    contact_sheet_manifest_path.write_text(
+        json.dumps(
+            build_contact_sheet_manifest(
+                frame_paths=list(manifest["frame_paths"]),
+                frame_labels=list(manifest["frame_labels"]),
+                output_image_path=manifest["contact_sheet_image_path"],
+            ),
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return {
         "manifest_path": manifest_path,
         "quality_findings_path": quality_findings_path,
         "reviewer_notes_path": reviewer_notes_path,
+        "contact_sheet_manifest_path": contact_sheet_manifest_path,
     }
 
 
