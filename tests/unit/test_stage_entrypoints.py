@@ -506,5 +506,8 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
         assert out.payload["review_report"]["rerender_targets"] == ["S006"]
         assert out.payload["review_report"]["blocking_checks"]["terminal_frames_clean"] is False
         assert out.payload["review_report"]["blocking_checks"]["visual_continuity_preserved"] is False
+        assert out.payload["review_report"]["benchmark_dimensions"]["temporal_coherence"]["passed"] is False
+        assert out.payload["review_report"]["benchmark_dimensions"]["temporal_coherence"]["affected_shots"] == ["S006"]
+        assert out.payload["review_report"]["benchmark_dimensions"]["continuity"]["reasons"] == ["continuity_break"]
     finally:
         _Path.exists = _original_exists

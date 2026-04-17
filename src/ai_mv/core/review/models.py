@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.review.benchmark_dimensions import summarize_benchmark_dimensions
 from ai_mv.core.review.quality_signals import build_quality_signals
 from ai_mv.core.review.rerender_policy import rerender_priority_score
 
@@ -59,6 +60,7 @@ def build_review_report(
         clip_status=clip_status,
         rerender_reasons=rerender_reasons,
     )
+    benchmark_dimensions = summarize_benchmark_dimensions(rerender_reasons)
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -82,4 +84,5 @@ def build_review_report(
         "rerender_targets": rerender_targets,
         "rerender_reasons": rerender_reasons,
         "rerender_priority_scores": priority_scores,
+        "benchmark_dimensions": benchmark_dimensions,
     }

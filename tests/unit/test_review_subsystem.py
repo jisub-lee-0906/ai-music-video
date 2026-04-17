@@ -110,6 +110,28 @@ def test_rerender_priority_score_ranks_quality_failures():
     assert score >= 12
 
 
+def test_review_models_include_benchmark_dimension_summary():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S006"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        still_status={"S001": True, "S006": True},
+        clip_status={"S001": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={"S006": ["terminal_frame_corruption", "continuity_break", "duplicate_subject"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    benchmark = report["benchmark_dimensions"]
+    assert benchmark["temporal_coherence"]["passed"] is False
+    assert benchmark["temporal_coherence"]["affected_shots"] == ["S006"]
+    assert benchmark["continuity"]["reasons"] == ["continuity_break"]
+    assert benchmark["composition"]["reasons"] == ["duplicate_subject"]
+    assert benchmark["alignment"]["passed"] is True
+
+
 def test_review_models_build_report_from_inputs():
     report = build_review_report(
         planned_shot_ids=["S001"],
