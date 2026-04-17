@@ -156,6 +156,30 @@ def test_review_models_include_review_signal_buckets():
     assert buckets["model_judged"]["failed_checks"] == ["style_identity", "mood_consistency"]
 
 
+def test_review_models_include_publishability_summary_levels():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S006"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        still_status={"S001": True, "S006": True},
+        clip_status={"S001": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={"S006": ["terminal_frame_corruption", "continuity_break", "duplicate_subject"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    summary = report["publishability_summary"]
+    assert summary["technical_completion"]["passed"] is True
+    assert summary["technical_completion"]["blocking_failures"] == []
+    assert summary["isolated_asset_quality"]["passed"] is False
+    assert summary["isolated_asset_quality"]["failed_checks"] == ["terminal_frames_clean", "duplicate_subject_absent", "style_identity"]
+    assert summary["final_mv_publishability"]["passed"] is False
+    assert summary["final_mv_publishability"]["failed_checks"] == ["visual_continuity_preserved", "mood_consistency"]
+
+
+
 def test_review_models_build_report_from_inputs():
     report = build_review_report(
         planned_shot_ids=["S001"],

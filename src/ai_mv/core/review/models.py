@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.review.benchmark_dimensions import summarize_benchmark_dimensions
+from ai_mv.core.review.publishability import summarize_publishability
 from ai_mv.core.review.quality_signals import build_quality_signals
 from ai_mv.core.review.rerender_policy import rerender_priority_score
 from ai_mv.core.review.signal_buckets import summarize_review_signal_buckets
@@ -66,6 +67,10 @@ def build_review_report(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
     )
+    publishability_summary = summarize_publishability(
+        blocking_checks=blocking_checks,
+        non_blocking_checks=non_blocking_checks,
+    )
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -91,4 +96,5 @@ def build_review_report(
         "rerender_priority_scores": priority_scores,
         "benchmark_dimensions": benchmark_dimensions,
         "review_signal_buckets": review_signal_buckets,
+        "publishability_summary": publishability_summary,
     }
