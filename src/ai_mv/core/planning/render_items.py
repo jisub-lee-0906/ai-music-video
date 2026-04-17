@@ -6,7 +6,9 @@ from ai_mv.styles.resolver import build_style_prompt_draft, build_style_prompt_s
 
 def build_render_item(config: dict, concept_text: str, style_name_or_bible, style_bible_or_shot, shot: dict | None = None) -> dict:
     if shot is None:
-        style_name = resolve_style_name(concept_text)
+        planning = config.get("planning", {}) if isinstance(config, dict) else {}
+        default_style_name = str(planning.get("default_style_name", "")).strip() or None
+        style_name = resolve_style_name(concept_text, default_style_name=default_style_name)
         style_bible = style_name_or_bible
         shot = style_bible_or_shot
     else:

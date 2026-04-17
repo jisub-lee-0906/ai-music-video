@@ -35,13 +35,15 @@ def _style_pack(style_name: str) -> dict:
 
 
 
-def resolve_style_name(concept_text: str) -> str:
+def resolve_style_name(concept_text: str, *, default_style_name: str | None = None) -> str:
     text = _normalized_text(concept_text)
     scores = {style_name: _style_match_score(text, pack["bible"]()) for style_name, pack in STYLE_PACKS.items()}
     best_style = max(scores, key=scores.get)
     if scores[best_style] > 0:
         return best_style
-    return "citypop"
+    if default_style_name is not None and str(default_style_name).strip():
+        return str(default_style_name).strip() if _style_pack(default_style_name) else ""
+    raise KeyError("style_name could not be resolved from concept_text and no explicit default_style_name was provided")
 
 
 def get_style_bible(style_name: str) -> dict:

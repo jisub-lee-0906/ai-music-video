@@ -22,6 +22,31 @@ def test_style_resolver_rejects_unknown_style_pack_name():
 
 
 
+def test_style_resolver_requires_explicit_default_for_no_match_concept_text():
+    import pytest
+
+    with pytest.raises(KeyError):
+        resolve_style_name("lonely cinematic road at dusk")
+
+
+
+def test_plan_preview_uses_explicit_default_style_when_concept_text_is_ambiguous():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "synthwave"}},
+        {
+            "concept_text": "lonely cinematic road at dusk",
+            "audio_map": {
+                "duration_sec": 16.0,
+                "sections": [{"name": "chorus", "start_sec": 0.0, "end_sec": 16.0}],
+            },
+        },
+    )
+
+    assert out["style_name"] == "synthwave"
+    assert out["style_bible"]["style"] == "retro_synthwave_nightdrive_80s"
+
+
+
 def test_plan_preview_uses_synthwave_style_bible_and_prompting():
     out = build_plan_preview_payload(
         {},

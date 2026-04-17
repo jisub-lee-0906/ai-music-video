@@ -18,7 +18,9 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     concept_text = str(payload.get("concept_text") or config.get("concept_text", "")).strip()
     audio_map = dict(payload.get("audio_map", {}))
     duration = float(audio_map.get("duration_sec", 16.0) or 16.0)
-    style_name = resolve_style_name(concept_text)
+    planning = config.get("planning", {}) if isinstance(config, dict) else {}
+    default_style_name = str(planning.get("default_style_name", "")).strip() or None
+    style_name = resolve_style_name(concept_text, default_style_name=default_style_name)
     style_bible = get_style_bible(style_name)
     sections = normalized_sections(audio_map, duration)
     shot_plan = build_shot_plan(config, sections, style_name=style_name)
