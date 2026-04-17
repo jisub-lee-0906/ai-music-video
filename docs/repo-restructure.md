@@ -1,140 +1,93 @@
-# Repository Restructure Plan
+# Repository Restructure Status
 
-## 1. 목표
+This document is a truth-synced replacement for the older restructure plan.
+It describes the architecture that now exists in the repository, the legacy seams that still remain, and the next cleanup priorities.
 
-현재 저장소는 범용 planning과 `Flux/WAN` 중심 구조라서 새 파이프라인과 맞지 않는다.
+## 1. Product and architecture baseline
 
-새 구조의 목표:
+Canonical product direction lives in:
+- `../.hermes/plans/2026-04-15_202152-product-direction-charter.md`
+- `../.hermes/plans/2026-04-15_202537-structure-migration-mapping.md`
 
-- stage 이름과 코드 책임이 실제 workflow와 일치해야 한다.
-- profile/director brief 의존을 제거해야 한다.
-- shot plan과 render plan이 시티팝 고정 규칙을 직접 소비해야 한다.
-- 결과물 검수와 재생성 루프를 중심에 둬야 한다.
+This repo is now aligned to:
+- concept-text-first UX
+- multi-style MV generation
+- mandatory music generation
+- final-MV quality as the main success metric
+- ComfyUI/workflow-backed rendering
+- review/rerender loops instead of one-shot output claims
 
-## 2. 권장 디렉터리 구조
+## 2. Current high-level pipeline
 
-권장 구조:
+The current pipeline is:
+1. `audio`
+2. `plan`
+3. `stills`
+4. `clips`
+5. `assemble`
+6. `review`
 
-```text
-src/ai_mv/
-  cli/
-  core/
-    artifacts/
-    contracts/
-    orchestration/
-    stages/
-  engines/
-    acestep_audio/
-    citypop_plan/
-    qwen_stills/
-    ltx_i2v/
-    ltx_ia2v/
-    ltx_flf2v/
-    review/
-  infra/
-  utils/
-  presets/
-    citypop_bible.py
-```
-
-## 3. 새 stage 파일
-
-남길 것:
-
-- `ffmpeg_muxer.py`
+Current stage files under `src/ai_mv/core/stages/`:
 - `acestep_music.py`
-  단, 내부 계약은 새 구조에 맞게 수정
-
-새로 만들 것:
-
-- `plan_citypop_mv.py`
+- `plan_mv.py`
 - `render_stills.py`
 - `render_clips.py`
 - `assemble_mv.py`
 - `review_outputs.py`
 
-역할:
+Compatibility helpers also exist:
+- `ffmpeg_muxer.py`
+- `payload_views.py`
+- `review_stage.py`
 
-### `plan_citypop_mv.py`
+Important correction:
+- `plan_citypop_mv.py` is no longer the target or canonical stage name.
+- The canonical planning entrypoint is now `plan_mv.py`.
 
-- `music_map`을 읽어 shot plan 생성
-- section 기반 visual mode 결정
-- render mode 결정
-- draft/polish 대상 prompt seed 생성
+## 3. Current domain structure
 
-### `render_stills.py`
+### Shared planning layer
+Current extracted planning modules under `src/ai_mv/core/planning/`:
+- `sections.py`
+- `routing.py`
+- `shot_plan.py`
+- `render_items.py`
 
-- Qwen still generation orchestration
-- master still과 shot still 생성
-- still 산출물 manifest 작성
+These hold the style-neutral planning and render-item assembly logic that used to be mixed into larger stage files.
 
-### `render_clips.py`
+### Review subsystem
+Current extracted review modules under `src/ai_mv/core/review/`:
+- `policy.py`
+- `rerender_policy.py`
+- `quality_signals.py`
+- `benchmark_dimensions.py`
+- `signal_buckets.py`
+- `publishability.py`
+- `models.py`
 
-- shot별 mode에 맞춰 `i2v`, `ia2v`, `flf2v` runner 호출
-- shot 단위 audio trim
-- clip 결과 기록
+The review report now contains:
+- raw blocking/non-blocking checks
+- rerender targets and reasons
+- benchmark-dimension summaries
+- evidence-type signal buckets
+- publishability summary split into technical completion / isolated asset quality / final MV publishability
 
-### `assemble_mv.py`
+### Style layer
+Current style packs under `src/ai_mv/styles/`:
+- `citypop/`
+- `synthwave/`
+- `resolver.py`
 
-- shot clip ordering
-- hold 삽입
-- concat/mux
-- final output manifest 작성
+This is a major shift from the older docs: style-specific assumptions are no longer supposed to live directly in `core`.
 
-### `review_outputs.py`
+## 4. Current canonical payload concepts
 
-- still/clip/final video를 대상으로 review signal 생성
-- rerender list 작성
-
-## 4. 새 engine 파일
-
-권장 엔진 구조:
-
-```text
-src/ai_mv/engines/
-  acestep_audio/
-    mapper.py
-    planner.py
-    runner.py
-  citypop_plan/
-    planner.py
-    shot_rules.py
-    prompting.py
-  qwen_stills/
-    mapper.py
-    runner.py
-  ltx_i2v/
-    mapper.py
-    runner.py
-  ltx_ia2v/
-    mapper.py
-    runner.py
-  ltx_flf2v/
-    mapper.py
-    runner.py
-  review/
-    planner.py
-    metrics.py
-```
-
-## 5. 새 orchestration 구조
-
-`pipeline.py`의 ordered stages는 아래로 교체한다.
-
-```text
-audio
-plan
-stills
-clips
-assemble
-review
-```
-
-payload 핵심 키:
-
+The active payload/report surface is centered on keys such as:
+- `concept_text`
+- `style_name`
+- `style_bible`
 - `music_plan`
 - `music_map`
-- `citypop_bible`
 - `shot_plan`
 - `render_plan`
 - `still_results`
@@ -142,113 +95,69 @@ payload 핵심 키:
 - `final_video`
 - `review_report`
 
-삭제할 payload 키:
+Important correction:
+- `style_bible` is the canonical field.
+- `citypop_bible` still appears only as a transitional compatibility seam in some normalization paths and tests.
 
-- `story_profile`
-- `lyrics_timeline`
-- `scene_outline`
-- `direction_plan`
-- `prompt_plan.ref_items`
-- `prompt_plan.wan_items`
-- `flux2_ref_images`
-- `clip_routes`
+## 5. Remaining legacy seams
 
-## 6. presets 계층
+No, legacy has not been fully removed yet.
 
-새로 추가할 정적 계층:
+The main remaining legacy categories are:
 
-- [citypop_bible.py](/D:/workspace/ai-music-video/src/ai_mv/presets/citypop_bible.py)
+### A. Transitional compatibility seams
+These are still present intentionally but should eventually disappear:
+- `citypop_bible` backfill/normalization in orchestration and manifest code
+- tests that explicitly verify legacy alias compatibility
 
-담을 내용:
+Examples:
+- `src/ai_mv/core/orchestration/input_gate.py`
+- `src/ai_mv/core/orchestration/stage_runs.py`
+- `src/ai_mv/core/artifacts/manifest.py`
+- `tests/unit/test_stage_payloads_generic_style.py`
+- `tests/unit/test_legacy_alias_compatibility.py`
 
-- palette
-- motifs
-- negative rules
-- section별 visual defaults
-- shot role defaults
-- prompt seed fragments
+### B. Style-pack-specific code that is still real, not accidental legacy
+These are not necessarily bugs, but they are still citypop-weighted implementation surfaces:
+- `src/ai_mv/styles/citypop/*`
+- `src/ai_mv/styles/resolver.py` default/fallback behavior
+- citypop-oriented examples and tests
 
-이 파일은 기존 profile을 대체한다.
+This is acceptable as long as:
+- core stays style-neutral
+- citypop remains one style pack, not repo-wide truth
 
-## 7. 문서와 테스트 구조
+### C. Historical docs that still lie or drift
+These were the largest remaining truth mismatch before this rewrite:
+- `docs/repo-restructure.md`
+- `docs/implementation-change-map.md`
 
-문서는 이 순서로 유지한다.
+Older plan documents under `docs/plans/` and archived citypop docs remain historical references, not canonical product truth.
 
-- 제품 정의
-- workflow 활용
-- 구조 개편
-- 삭제 계획
+## 6. What has already been removed
 
-테스트도 새 구조에 맞춰 재편한다.
+These older legacy items have already been removed or demoted from canonical status:
+- `plan_citypop_mv.py` as the canonical planner stage
+- `apply_citypop_defaults`
+- legacy review aliases such as `citypop_identity` and `not_kpop_or_cyberpunk`
+- `profiles/director_brief_example.yaml`
+- obsolete `docs/citypop-mv-master-plan.md` path in favor of archived history
+- canonical payload use of `citypop_bible` in favor of `style_bible`
 
-권장 테스트 묶음:
+## 7. Next cleanup priorities
 
-- `test_citypop_plan.py`
-- `test_qwen_stills_mapper.py`
-- `test_ltx_i2v_mapper.py`
-- `test_ltx_ia2v_mapper.py`
-- `test_ltx_flf2v_mapper.py`
-- `test_pipeline_v2.py`
-- `test_review_outputs.py`
+Recommended next legacy-removal order:
+1. remove `citypop_bible` transitional compatibility seams once no caller depends on them
+2. reduce `styles/resolver.py` citypop-first fallback assumptions where possible
+3. rewrite or archive additional historical docs under `docs/plans/` that still read like active truth
+4. keep improving publishability-oriented review, because technical cleanup alone does not reach the success metric
 
-## 8. 구현 순서
+## 8. Practical rule for future edits
 
-1. `workflow_names.py` 교체
-2. `pipeline.py` stage 순서 교체
-3. 새 stage skeleton 추가
-4. `citypop_bible` 추가
-5. `plan` 구현
-6. `qwen_stills` 구현
-7. `ltx_i2v` 구현
-8. `assemble` 구현
-9. `review` 구현
-10. `ia2v`, `flf2v` 확장
+When a file or doc disagrees with the charter, prefer:
+1. charter
+2. structure migration mapping
+3. current README and current code
+4. historical docs only as reference
 
-각 단계 완료 산출물:
-
-- 문서 잠금
-  `docs/`에 제품 정의, workflow 활용, 구조 개편, 삭제 계획이 최신 상태로 반영됨
-
-- pipeline skeleton
-  새 6 stage가 import 에러 없이 연결되고, 더미 payload로 end-to-end 테스트 가능
-
-- Qwen stills
-  shot별 still 파일과 manifest가 생성됨
-
-- LTX clips
-  shot별 clip 파일과 clip manifest가 생성됨
-
-- review loop
-  review report가 rerender target을 반환함
-
-운영 체크포인트:
-
-- Checkpoint A
-  새 pipeline 이름과 payload 키가 잠김
-  검증 방식: 문서 검토 + unit test에서 새 stage 이름과 payload key 확인
-
-- Checkpoint B
-  M1 runnable sample 생성 성공
-  검증 방식: `pytest` smoke + 샘플 CLI run + 산출물 존재 확인
-
-- Checkpoint C
-  M2 `ia2v` 샷 추가 성공
-  검증 방식: routing unit test + 샘플 run에서 chorus shot 확인
-
-- Checkpoint D
-  M3 `flf2v` 브리지 추가 성공
-  검증 방식: routing unit test + 샘플 run에서 bridge shot 확인
-
-## 9. 브랜치 운영 방식
-
-작업 브랜치는 기능별로 나누는 게 좋다.
-
-- `codex/rebuild-docs`
-- `codex/rebuild-pipeline-skeleton`
-- `codex/rebuild-qwen-stills`
-- `codex/rebuild-ltx-clips`
-- `codex/rebuild-review-loop`
-
-문서 작업 후 바로 해야 할 첫 구현 브랜치:
-
-- `codex/rebuild-pipeline-skeleton`
+If a doc still describes citypop-only behavior, old stage names, or removed artifacts as current truth, it should be rewritten or explicitly marked historical.
