@@ -48,6 +48,35 @@ def test_build_parser_supports_quality_findings_template_command():
     assert args.output == ".analysis/review-findings.json"
 
 
+def test_build_parser_supports_review_packet_command():
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "review-packet",
+            "--video",
+            "renders/final.mp4",
+            "--output-dir",
+            ".analysis/run-1",
+            "--kind",
+            "final",
+            "--sample-count",
+            "8",
+            "--shot-id",
+            "S001",
+            "--shot-id",
+            "S002",
+        ]
+    )
+
+    assert args.command == "review-packet"
+    assert args.video == "renders/final.mp4"
+    assert args.output_dir == ".analysis/run-1"
+    assert args.kind == "final"
+    assert args.sample_count == 8
+    assert args.shot_ids == ["S001", "S002"]
+
+
 def test_main_handles_dispatch_error(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["ai-mv", "start", "--run-id", "bad/run-id"])
 

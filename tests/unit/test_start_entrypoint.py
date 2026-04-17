@@ -128,3 +128,31 @@ def test_run_quality_findings_template_writes_json(monkeypatch, tmp_path, capsys
     assert "shot_count=2" in out
     assert str(output_file) in out
 
+
+def test_run_review_packet_writes_manifest_and_supporting_files(monkeypatch, tmp_path, capsys):
+    output_dir = tmp_path / "packet"
+    monkeypatch.setattr(
+        "ai_mv.entrypoints.review_packet.write_review_packet",
+        lambda **_kwargs: {
+            "manifest_path": output_dir / "review-packet.json",
+            "quality_findings_path": output_dir / "review-findings.json",
+            "reviewer_notes_path": output_dir / "review-notes.md",
+        },
+    )
+
+    from ai_mv.entrypoints.review_packet import run_review_packet
+
+    rc = run_review_packet(
+        video=str(tmp_path / "final.mp4"),
+        output_dir=str(output_dir),
+        kind="final",
+        sample_count=8,
+        shot_ids=["S001", "S002"],
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "kind=final" in out
+    assert str(output_dir / "review-packet.json") in out
+    assert str(output_dir / "review-findings.json") in out
+

@@ -29,4 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     quality_findings = sub.add_parser("quality-findings-template")
     quality_findings.add_argument("--shot-id", dest="shot_ids", action="append", required=True)
     quality_findings.add_argument("--output", required=True)
+
+    review_packet = sub.add_parser("review-packet")
+    review_packet.add_argument("--video", required=True)
+    review_packet.add_argument("--output-dir", dest="output_dir", required=True)
+    review_packet.add_argument("--kind", choices=("clip", "final"), default="clip")
+    review_packet.add_argument("--sample-count", dest="sample_count", type=int, default=6)
+    review_packet.add_argument("--shot-id", dest="shot_ids", action="append", default=[])
     return parser

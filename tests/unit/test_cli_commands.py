@@ -35,3 +35,23 @@ def test_dispatch_routes_quality_findings_template_command(monkeypatch):
 
     assert rc == 0
     assert calls == [(["S001", "S002"], ".analysis/review-findings.json")]
+
+
+def test_dispatch_routes_review_packet_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "ai_mv.cli.commands.run_review_packet",
+        lambda video, output_dir, kind, sample_count, shot_ids: calls.append((video, output_dir, kind, sample_count, shot_ids)) or 0,
+    )
+
+    rc = dispatch(
+        "review-packet",
+        video="renders/final.mp4",
+        output_dir=".analysis/run-1",
+        kind="final",
+        sample_count=8,
+        shot_ids=["S001", "S002"],
+    )
+
+    assert rc == 0
+    assert calls == [("renders/final.mp4", ".analysis/run-1", "final", 8, ["S001", "S002"])]
