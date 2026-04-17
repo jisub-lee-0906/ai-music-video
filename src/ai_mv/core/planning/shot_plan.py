@@ -8,7 +8,7 @@ from ai_mv.styles.resolver import apply_style_section_variants, style_section_sh
 
 
 
-def build_shot_plan(config: dict, sections: list[dict], style_name: str = "citypop") -> list[dict]:
+def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> list[dict]:
     total_duration = sum(float(section.get("duration_sec", 0.0) or 0.0) for section in sections)
     shots: list[dict] = []
     for section in sections:
@@ -36,7 +36,7 @@ def build_shot_plan(config: dict, sections: list[dict], style_name: str = "cityp
 
 
 
-def split_section_into_shots(config: dict, section: dict, *, style_name: str = "citypop") -> list[dict]:
+def split_section_into_shots(config: dict, section: dict, *, style_name: str) -> list[dict]:
     duration_sec = float(section["duration_sec"])
     section_type = str(section["section_type"])
     shot_specs = style_section_shot_specs(style_name, section_type, duration_sec)

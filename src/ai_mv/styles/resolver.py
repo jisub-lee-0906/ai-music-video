@@ -26,6 +26,15 @@ STYLE_PACKS = {
 }
 
 
+
+def _style_pack(style_name: str) -> dict:
+    normalized = str(style_name or "").strip()
+    if normalized not in STYLE_PACKS:
+        raise KeyError(f"unknown style pack: {normalized}")
+    return STYLE_PACKS[normalized]
+
+
+
 def resolve_style_name(concept_text: str) -> str:
     text = _normalized_text(concept_text)
     scores = {style_name: _style_match_score(text, pack["bible"]()) for style_name, pack in STYLE_PACKS.items()}
@@ -36,27 +45,33 @@ def resolve_style_name(concept_text: str) -> str:
 
 
 def get_style_bible(style_name: str) -> dict:
-    return STYLE_PACKS.get(style_name, STYLE_PACKS["citypop"])["bible"]()
+    return _style_pack(style_name)["bible"]()
+
 
 
 def build_style_prompt_seed(style_name: str, concept_text: str, style_bible: dict, shot: dict) -> str:
-    return STYLE_PACKS.get(style_name, STYLE_PACKS["citypop"])["prompt_seed"](concept_text, style_bible, shot)
+    return _style_pack(style_name)["prompt_seed"](concept_text, style_bible, shot)
+
 
 
 def build_style_prompt_draft(style_name: str, shot: dict) -> str:
-    return STYLE_PACKS.get(style_name, STYLE_PACKS["citypop"])["prompt_draft"](shot)
+    return _style_pack(style_name)["prompt_draft"](shot)
+
 
 
 def style_section_shot_specs(style_name: str, section_type: str, duration_sec: float) -> list[dict]:
-    return STYLE_PACKS.get(style_name, STYLE_PACKS["citypop"])["section_specs"](section_type, duration_sec)
+    return _style_pack(style_name)["section_specs"](section_type, duration_sec)
+
 
 
 def apply_style_section_variants(style_name: str, section_type: str, parts: list[dict]) -> list[dict]:
-    return STYLE_PACKS.get(style_name, STYLE_PACKS["citypop"])["section_variants"](section_type, parts)
+    return _style_pack(style_name)["section_variants"](section_type, parts)
+
 
 
 def _normalized_text(concept_text: str) -> str:
     return " ".join(str(concept_text or "").strip().lower().replace("_", " ").replace("-", " ").split())
+
 
 
 def _style_match_score(text: str, bible: dict) -> int:

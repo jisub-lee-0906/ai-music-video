@@ -22,6 +22,7 @@ def test_shot_plan_builds_renumbered_shots_from_sections():
                 "duration_sec": 6.0,
             },
         ],
+        style_name="citypop",
     )
 
     assert out[0]["shot_id"] == "S001"
@@ -42,7 +43,28 @@ def test_shot_plan_splits_oversized_parts_using_max_shot_sec():
                 "duration_sec": 10.0,
             }
         ],
+        style_name="citypop",
     )
 
     assert len(out) >= 3
     assert all(float(shot["duration_sec"]) <= 4.0 for shot in out)
+
+
+def test_shot_plan_rejects_unknown_style_name():
+    import pytest
+
+    with pytest.raises(KeyError):
+        build_shot_plan(
+            {"planning": {"max_shot_sec": 8.0}},
+            [
+                {
+                    "index": 1,
+                    "section_name": "VERSE 1",
+                    "section_type": "verse",
+                    "start_sec": 0.0,
+                    "end_sec": 8.0,
+                    "duration_sec": 8.0,
+                }
+            ],
+            style_name="unknown-style",
+        )

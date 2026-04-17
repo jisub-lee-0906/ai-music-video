@@ -1,5 +1,5 @@
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
-from ai_mv.styles.resolver import resolve_style_name
+from ai_mv.styles.resolver import get_style_bible, resolve_style_name
 
 
 def test_style_resolver_detects_citypop_and_synthwave_from_concept_text():
@@ -11,6 +11,15 @@ def test_style_resolver_detects_citypop_and_synthwave_from_concept_text():
 def test_style_resolver_uses_style_pack_metadata_not_citypop_first_fallback():
     assert resolve_style_name("retro coupe under a neon skyline with analog glow") == "synthwave"
     assert resolve_style_name("summer boulevard cassette romance under ocean-blue dusk") == "citypop"
+
+
+
+def test_style_resolver_rejects_unknown_style_pack_name():
+    import pytest
+
+    with pytest.raises(KeyError):
+        get_style_bible("unknown-style")
+
 
 
 def test_plan_preview_uses_synthwave_style_bible_and_prompting():
