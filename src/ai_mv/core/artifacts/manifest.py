@@ -19,7 +19,6 @@ def write_manifest(state: dict, payload: dict) -> None:
         "audio_plan": dict(payload.get("audio_plan", {})),
         "audio_map": dict(payload.get("audio_map", {})),
         "style_bible": dict(payload.get("style_bible") or payload.get("citypop_bible", {})),
-        "citypop_bible": dict(payload.get("citypop_bible") or payload.get("style_bible", {})),
         "shot_plan": list(payload.get("shot_plan", [])),
         "render_plan": list(payload.get("render_plan", [])),
         "still_results": list(payload.get("still_results", [])),

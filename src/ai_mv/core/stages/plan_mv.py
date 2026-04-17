@@ -26,7 +26,6 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     return {
         "style_name": style_name,
         "style_bible": style_bible,
-        "citypop_bible": style_bible,
         "shot_plan": shot_plan,
         "render_plan": render_plan,
         "workflow_inputs": {

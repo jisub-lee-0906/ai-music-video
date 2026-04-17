@@ -14,7 +14,6 @@ PROTECTED_PAYLOAD_KEYS = {
     "music_file",
     "style_name",
     "style_bible",
-    "citypop_bible",
     "shot_plan",
     "render_plan",
     "still_results",
@@ -29,10 +28,9 @@ def _normalize_legacy_payload_aliases(payload: dict) -> dict:
     if not isinstance(payload, dict):
         return payload
     normalized = dict(payload)
-    if "style_bible" in normalized and "citypop_bible" not in normalized:
-        normalized["citypop_bible"] = normalized["style_bible"]
-    if "citypop_bible" in normalized and "style_bible" not in normalized:
-        normalized["style_bible"] = normalized["citypop_bible"]
+    if "citypop_bible" in normalized:
+        normalized.setdefault("style_bible", normalized["citypop_bible"])
+        normalized.pop("citypop_bible", None)
     return normalized
 
 

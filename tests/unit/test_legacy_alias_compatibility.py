@@ -3,7 +3,7 @@ from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 
 
 
-def test_plan_preview_keeps_legacy_citypop_bible_alias_in_sync_with_style_bible():
+def test_plan_preview_exposes_only_style_bible_as_canonical_payload():
     out = build_plan_preview_payload(
         {},
         {
@@ -15,7 +15,8 @@ def test_plan_preview_keeps_legacy_citypop_bible_alias_in_sync_with_style_bible(
         },
     )
 
-    assert out["style_bible"] == out["citypop_bible"]
+    assert "style_bible" in out
+    assert "citypop_bible" not in out
 
 
 
