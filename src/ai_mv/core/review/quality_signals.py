@@ -60,6 +60,9 @@ def build_quality_signals(
     environment_match_preserved = not bool(all_reasons & {"weak_environment_match", "unrelated_scene_intrusion"})
     motion_source_safe = "motion_fragile_frame" not in all_reasons
     scene_intrusion_absent = "unrelated_scene_intrusion" not in all_reasons
+    panel_layout_absent = "panel_layout" not in all_reasons
+    collage_layout_absent = "collage_layout" not in all_reasons
+    split_screen_absent = "split_screen" not in all_reasons
 
     visual_issue_count = sum(
         1
@@ -74,6 +77,9 @@ def build_quality_signals(
             "weak_environment_match",
             "motion_fragile_frame",
             "unrelated_scene_intrusion",
+            "panel_layout",
+            "collage_layout",
+            "split_screen",
         }
     )
     visual_quality_severity = "low"
@@ -137,6 +143,9 @@ def build_quality_signals(
         "environment_match_preserved": environment_match_preserved,
         "motion_source_safe": motion_source_safe,
         "scene_intrusion_absent": scene_intrusion_absent,
+        "panel_layout_absent": panel_layout_absent,
+        "collage_layout_absent": collage_layout_absent,
+        "split_screen_absent": split_screen_absent,
     }
     return {
         "still_done": still_done,

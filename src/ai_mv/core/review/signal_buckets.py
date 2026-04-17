@@ -19,6 +19,9 @@ _HEURISTIC_PROXY_CHECKS = (
     "environment_match_preserved",
     "motion_source_safe",
     "scene_intrusion_absent",
+    "panel_layout_absent",
+    "collage_layout_absent",
+    "split_screen_absent",
     "camera_restraint",
     "memorable_shot",
 )

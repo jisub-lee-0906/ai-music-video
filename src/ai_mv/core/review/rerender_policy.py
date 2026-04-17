@@ -117,5 +117,8 @@ def rerender_priority_score(reasons: list[str]) -> int:
         "weak_environment_match": 3,
         "motion_fragile_frame": 4,
         "unrelated_scene_intrusion": 5,
+        "panel_layout": 4,
+        "collage_layout": 4,
+        "split_screen": 3,
     }
     return sum(int(weights.get(reason, 1)) for reason in reasons)

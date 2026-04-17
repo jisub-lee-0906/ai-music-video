@@ -17,6 +17,9 @@ _ISOLATED_ASSET_QUALITY_CHECKS = (
     "subject_match_preserved",
     "environment_match_preserved",
     "scene_intrusion_absent",
+    "panel_layout_absent",
+    "collage_layout_absent",
+    "split_screen_absent",
 )
 
 _FINAL_MV_PUBLISHABILITY_CHECKS = (
@@ -38,6 +41,9 @@ _GUIDANCE_BY_CHECK = {
     "subject_match_preserved": "rerender weak-subject-match shots with tighter protagonist constraints",
     "environment_match_preserved": "rerender weak-environment-match shots with stronger world and location anchors",
     "scene_intrusion_absent": "rerender scene-intrusion shots and remove unrelated scene content",
+    "panel_layout_absent": "rerender panelized keyframes as single-frame cinematic stills",
+    "collage_layout_absent": "rerender collage-like keyframes as single uninterrupted compositions",
+    "split_screen_absent": "rerender split-screen keyframes as one continuous shot",
     "visual_continuity_preserved": "rerender continuity-break shots and preserve identity across adjacent shots",
     "mood_consistency": "rerender mood-drift shots to match the song section and neighboring shots",
     "motion_source_safe": "rerender motion-fragile shots with safer keyframes and simpler motion sources",
@@ -56,6 +62,9 @@ _ISOLATED_PRIORITY = (
     ("terminal_frames_clean", "rerender_clips_with_terminal_frame_cleanup"),
     ("duplicate_subject_absent", "rerender_weak_shots_with_prompt_tightening"),
     ("scene_intrusion_absent", "rerender_scene_intrusion_shots"),
+    ("panel_layout_absent", "rerender_panelized_keyframes"),
+    ("collage_layout_absent", "rerender_panelized_keyframes"),
+    ("split_screen_absent", "rerender_panelized_keyframes"),
     ("subject_match_preserved", "rerender_weak_shots_with_prompt_tightening"),
     ("environment_match_preserved", "rerender_weak_shots_with_prompt_tightening"),
     ("style_identity", "rerender_weak_shots_with_prompt_tightening"),
@@ -82,6 +91,9 @@ _BUCKET_REASON_CODES = {
         "weak_subject_match",
         "weak_environment_match",
         "unrelated_scene_intrusion",
+        "panel_layout",
+        "collage_layout",
+        "split_screen",
     },
     "final_mv_publishability": {
         "continuity_break",

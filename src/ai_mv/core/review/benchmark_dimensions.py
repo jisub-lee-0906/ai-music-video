@@ -26,6 +26,9 @@ _REASON_TO_DIMENSIONS = {
     "weak_environment_match": ("alignment", "faithfulness"),
     "motion_fragile_frame": ("motion_quality",),
     "unrelated_scene_intrusion": ("alignment", "faithfulness"),
+    "panel_layout": ("composition",),
+    "collage_layout": ("composition", "aesthetics"),
+    "split_screen": ("composition", "aesthetics"),
 }
 
 

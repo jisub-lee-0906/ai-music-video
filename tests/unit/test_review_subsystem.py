@@ -402,3 +402,67 @@ def test_review_models_surface_new_publishability_quality_findings():
         "target_shots": ["S006"],
         "reason_codes": ["motion_fragile_frame"],
     }
+
+
+
+def test_rerender_priority_score_weights_panelized_keyframe_findings():
+    score = rerender_priority_score([
+        "panel_layout",
+        "collage_layout",
+        "split_screen",
+    ])
+
+    assert score >= 11
+
+
+
+def test_review_models_surface_panelized_keyframe_findings():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S006"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S006"}],
+        still_status={"S001": True, "S006": True},
+        clip_status={"S001": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={
+            "S006": [
+                "panel_layout",
+                "collage_layout",
+                "split_screen",
+            ]
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    assert report["benchmark_dimensions"]["composition"]["passed"] is False
+    assert report["benchmark_dimensions"]["composition"]["reasons"] == [
+        "panel_layout",
+        "collage_layout",
+        "split_screen",
+    ]
+    assert report["benchmark_dimensions"]["aesthetics"]["reasons"] == [
+        "collage_layout",
+        "split_screen",
+    ]
+    assert report["review_signal_buckets"]["heuristic_proxy"]["failed_checks"] == [
+        "panel_layout_absent",
+        "collage_layout_absent",
+        "split_screen_absent",
+    ]
+    assert report["publishability_summary"]["isolated_asset_quality"]["failed_checks"] == [
+        "panel_layout_absent",
+        "collage_layout_absent",
+        "split_screen_absent",
+    ]
+    assert report["publishability_summary"]["isolated_asset_quality"]["next_action"] == "rerender_panelized_keyframes"
+    assert report["publishability_summary"]["isolated_asset_quality"]["rerender_bundle"] == {
+        "action": "rerender_panelized_keyframes",
+        "target_shots": ["S006"],
+        "reason_codes": [
+            "collage_layout",
+            "panel_layout",
+            "split_screen",
+        ],
+    }
