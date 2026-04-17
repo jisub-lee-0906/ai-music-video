@@ -19,4 +19,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = sub.add_parser("status")
     status.add_argument("--run-id", required=True)
+
+    extract_frames = sub.add_parser("extract-frames")
+    extract_frames.add_argument("--video", required=True)
+    extract_frames.add_argument("--output-dir", dest="output_dir", required=True)
+    extract_frames.add_argument("--kind", choices=("clip", "final"), default="clip")
+    extract_frames.add_argument("--sample-count", dest="sample_count", type=int, default=6)
     return parser

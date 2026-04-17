@@ -1,4 +1,5 @@
 import ai_mv.entrypoints.start as entry
+import ai_mv.entrypoints.extract_frames as extract_entry
 from pathlib import Path
 
 
@@ -83,3 +84,26 @@ def test_prepare_run_brief_does_not_write_audio_specific_briefs(monkeypatch, tmp
     assert not (state_dir / "audio_hook_brief.txt").exists()
     assert not (tmp_path / "runs" / "run-123" / "inputs" / "audio_brief.txt").exists()
     assert not (tmp_path / "runs" / "run-123" / "inputs" / "audio_hook_brief.txt").exists()
+
+
+def test_run_extract_frames_entry_reports_written_files(monkeypatch, tmp_path, capsys):
+    output_dir = tmp_path / "frames"
+    monkeypatch.setattr(
+        extract_entry,
+        "extract_frames",
+        lambda **_kwargs: [output_dir / "first.png", output_dir / "middle.png", output_dir / "last.png"],
+    )
+
+    rc = extract_entry.run_extract_frames(
+        video=str(tmp_path / "clip.mp4"),
+        output_dir=str(output_dir),
+        kind="clip",
+        sample_count=6,
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "kind=clip" in out
+    assert "frames_written=3" in out
+    assert str(output_dir / "first.png") in out
+

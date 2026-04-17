@@ -22,19 +22,22 @@ Target architecture, keep/move/delete expectations, and migration priorities.
 4. prompt-lab.md
 How to test prompt syntax outside the main ai-mv pipeline before encoding findings into repo-side prompt contracts.
 
-5. workflow-usage.md
+5. frame-validation.md
+How to validate stills, clips, and final MV outputs through representative frame extraction.
+
+6. workflow-usage.md
 Current workflow usage and mapper/binding expectations.
 
-6. workflow-binding-notes.md
+7. workflow-binding-notes.md
 Workflow node binding notes and ComfyUI integration assumptions.
 
-7. m2-ia2v-spec.md
+8. m2-ia2v-spec.md
 Current ia2v routing and audio-reactive clip constraints.
 
-8. m3-flf2v-spec.md
+9. m3-flf2v-spec.md
 Current flf2v transition routing constraints.
 
-9. first-run-checklist.md
+10. first-run-checklist.md
 Operational checklist for real runs.
 
 Historical / style-pack-specific material:

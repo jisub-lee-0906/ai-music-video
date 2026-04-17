@@ -1,6 +1,31 @@
 import sys
 
 from ai_mv.cli import app
+from ai_mv.cli.args import build_parser
+
+
+def test_build_parser_supports_extract_frames_command():
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "extract-frames",
+            "--video",
+            "renders/final.mp4",
+            "--output-dir",
+            ".analysis/run-1",
+            "--kind",
+            "final",
+            "--sample-count",
+            "8",
+        ]
+    )
+
+    assert args.command == "extract-frames"
+    assert args.video == "renders/final.mp4"
+    assert args.output_dir == ".analysis/run-1"
+    assert args.kind == "final"
+    assert args.sample_count == 8
 
 
 def test_main_handles_dispatch_error(monkeypatch, capsys):

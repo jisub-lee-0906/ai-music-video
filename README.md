@@ -57,6 +57,7 @@ ai-mv doctor
 ai-mv preflight --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv start --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv status --run-id 20260406-215500
+ai-mv extract-frames --video artifacts/latest_success/final_video.mp4 --output-dir .analysis/final-review --kind final --sample-count 8
 ```
 
 ## WSL Usage
