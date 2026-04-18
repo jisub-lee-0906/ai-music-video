@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from ai_mv.analysis.review_packet import write_review_packet
 from ai_mv.core.artifacts.paths import run_file
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
@@ -44,4 +42,15 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         "contact_sheet_image_path": str(written["contact_sheet_image_path"]),
         "contact_sheet_manifest_path": str(written["contact_sheet_manifest_path"]),
     }
-    return StageOutput("rerender_escalation", "done", {"rerender_escalation": report}, [str(Path(report["review_packet_manifest_path"]))])
+    return StageOutput(
+        "rerender_escalation",
+        "done",
+        {"rerender_escalation": report},
+        [
+            report["review_packet_manifest_path"],
+            report["quality_findings_path"],
+            report["reviewer_notes_path"],
+            report["contact_sheet_image_path"],
+            report["contact_sheet_manifest_path"],
+        ],
+    )

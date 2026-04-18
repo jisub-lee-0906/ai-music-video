@@ -1249,6 +1249,13 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
     assert report["reviewer_notes_path"].endswith("review-notes.md")
     assert report["contact_sheet_image_path"].endswith("contact-sheet.png")
     assert report["contact_sheet_manifest_path"].endswith("contact-sheet.json")
+    assert out.artifacts == [
+        report["review_packet_manifest_path"],
+        report["quality_findings_path"],
+        report["reviewer_notes_path"],
+        report["contact_sheet_image_path"],
+        report["contact_sheet_manifest_path"],
+    ]
 
 
 
