@@ -189,7 +189,7 @@ def test_pipeline_marks_unresolved_rerender_outcome_when_loop_still_needs_rerend
         lambda stage_input: StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
+            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "shot_count": 1, "video_path": "final.mp4", "reviewer_summary": "Manual review required for 1 shots: S001", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
         ),
     )
 
@@ -258,7 +258,7 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
         lambda stage_input: StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
+            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "shot_count": 1, "video_path": "final.mp4", "reviewer_summary": "Manual review required for 1 shots: S001", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
         ),
     )
 
@@ -268,7 +268,9 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
     assert final_payload["rerender_escalation"] == {
         "status": "manual_review_required",
         "shot_ids": ["S001"],
+        "shot_count": 1,
         "video_path": "final.mp4",
+        "reviewer_summary": "Manual review required for 1 shots: S001",
         "artifacts": {"review_packet_manifest": "review-packet.json"},
     }
 

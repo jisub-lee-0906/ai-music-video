@@ -35,6 +35,7 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
     report = {
         "status": "manual_review_required",
         "shot_ids": shot_ids,
+        "shot_count": len(shot_ids),
         "video_path": final_video,
         "review_packet_manifest_path": str(written["manifest_path"]),
         "quality_findings_path": str(written["quality_findings_path"]),
@@ -42,6 +43,7 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         "contact_sheet_image_path": str(written["contact_sheet_image_path"]),
         "contact_sheet_manifest_path": str(written["contact_sheet_manifest_path"]),
     }
+    report["reviewer_summary"] = _reviewer_summary(shot_ids)
     report["artifacts"] = {
         "review_packet_manifest": report["review_packet_manifest_path"],
         "quality_findings": report["quality_findings_path"],
@@ -61,3 +63,10 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
             report["contact_sheet_manifest_path"],
         ],
     )
+
+
+def _reviewer_summary(shot_ids: list[str]) -> str:
+    normalized = [str(shot_id).strip() for shot_id in shot_ids if str(shot_id).strip()]
+    if not normalized:
+        return "Manual review required"
+    return f"Manual review required for {len(normalized)} shots: {', '.join(normalized)}"
