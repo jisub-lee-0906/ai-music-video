@@ -8,6 +8,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     write_manifest(state, payload)
     rerender_escalation = payload.get("rerender_escalation") if isinstance(payload.get("rerender_escalation"), dict) else {}
     summary_by_shot = rerender_escalation.get("summary_by_shot") if isinstance(rerender_escalation.get("summary_by_shot"), list) else []
+    escalation_artifacts = rerender_escalation.get("artifacts") if isinstance(rerender_escalation.get("artifacts"), dict) else {}
     escalation_actions = [
         str(row.get("recommended_action", "")).strip()
         for row in summary_by_shot
@@ -53,5 +54,9 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "rerender_escalation_unique_actions": sorted(set(escalation_actions)),
         "rerender_escalation_reason_codes": escalation_reason_codes,
         "rerender_escalation_unique_reason_codes": sorted(set(escalation_reason_codes)),
+        "rerender_escalation_artifact_keys": sorted(str(key).strip() for key in escalation_artifacts.keys() if str(key).strip()),
+        "rerender_escalation_review_packet_manifest": str(escalation_artifacts.get("review_packet_manifest", "")).strip(),
+        "rerender_escalation_quality_findings_path": str(escalation_artifacts.get("quality_findings", "")).strip(),
+        "rerender_escalation_reviewer_notes_path": str(escalation_artifacts.get("reviewer_notes", "")).strip(),
     }
     write_run_summary(state, summary)

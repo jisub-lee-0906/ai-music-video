@@ -17,6 +17,11 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
                 "status": "manual_review_required",
                 "shot_count": 1,
                 "reviewer_summary": "Manual review required for 1 shots: S001",
+                "artifacts": {
+                    "review_packet_manifest": "review-packet.json",
+                    "quality_findings": "review-findings.json",
+                    "reviewer_notes": "review-notes.md",
+                },
                 "summary_by_shot": [
                     {
                         "shot_id": "S001",
@@ -39,6 +44,10 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
     assert captured["rerender_escalation_unique_actions"] == ["rerender_continuity_break_shots"]
     assert captured["rerender_escalation_reason_codes"] == ["continuity_break"]
     assert captured["rerender_escalation_unique_reason_codes"] == ["continuity_break"]
+    assert captured["rerender_escalation_artifact_keys"] == ["quality_findings", "review_packet_manifest", "reviewer_notes"]
+    assert captured["rerender_escalation_review_packet_manifest"] == "review-packet.json"
+    assert captured["rerender_escalation_quality_findings_path"] == "review-findings.json"
+    assert captured["rerender_escalation_reviewer_notes_path"] == "review-notes.md"
 
 
 def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monkeypatch):
@@ -75,3 +84,4 @@ def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monke
     assert captured["rerender_escalation_unique_actions"] == []
     assert captured["rerender_escalation_reason_codes"] == []
     assert captured["rerender_escalation_unique_reason_codes"] == []
+    assert captured["rerender_escalation_artifact_keys"] == []
