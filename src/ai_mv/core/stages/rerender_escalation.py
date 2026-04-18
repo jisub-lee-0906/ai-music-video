@@ -19,7 +19,17 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         return StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "not_required", "shot_ids": [], "video_path": final_video}},
+            {
+                "rerender_escalation": {
+                    "status": "not_required",
+                    "shot_ids": [],
+                    "shot_count": 0,
+                    "summary_by_shot": [],
+                    "video_path": final_video,
+                    "reviewer_summary": "No manual review required",
+                    "artifacts": {},
+                }
+            },
             [],
         )
 

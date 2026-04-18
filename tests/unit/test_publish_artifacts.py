@@ -37,3 +37,37 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
     assert captured["rerender_escalation_actions"] == ["rerender_continuity_break_shots"]
     assert captured["rerender_escalation_max_priority"] == 7
     assert captured["rerender_escalation_unique_actions"] == ["rerender_continuity_break_shots"]
+
+
+def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_manifest", lambda state, payload: None)
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_run_summary", lambda state, summary: captured.update(summary))
+
+    write_pipeline_artifacts(
+        {"run_id": "run-124", "status": "done", "current_stage": "review", "completed_stages": ["review"]},
+        {
+            "concept_text": "citypop night drive",
+            "final_video": "final.mp4",
+            "music_file": "music.mp3",
+            "review_report": {"status": "done", "rerender_targets": []},
+            "rerender_escalation": {
+                "status": "not_required",
+                "shot_ids": [],
+                "shot_count": 0,
+                "summary_by_shot": [],
+                "video_path": "final.mp4",
+                "reviewer_summary": "No manual review required",
+                "artifacts": {},
+            },
+        },
+        {},
+    )
+
+    assert captured["rerender_escalation_status"] == "not_required"
+    assert captured["rerender_escalation_shot_count"] == 0
+    assert captured["rerender_escalation_reviewer_summary"] == "No manual review required"
+    assert captured["rerender_escalation_shot_ids"] == []
+    assert captured["rerender_escalation_actions"] == []
+    assert captured["rerender_escalation_max_priority"] == 0
+    assert captured["rerender_escalation_unique_actions"] == []

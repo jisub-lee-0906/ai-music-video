@@ -1348,7 +1348,15 @@ def test_rerender_escalation_skips_packet_creation_when_not_exhausted(monkeypatc
     )
 
     assert called == []
-    assert out.payload["rerender_escalation"] == {"status": "not_required", "shot_ids": [], "video_path": "D:/renders/final.mp4"}
+    assert out.payload["rerender_escalation"] == {
+        "status": "not_required",
+        "shot_ids": [],
+        "shot_count": 0,
+        "summary_by_shot": [],
+        "video_path": "D:/renders/final.mp4",
+        "reviewer_summary": "No manual review required",
+        "artifacts": {},
+    }
 
 
 
