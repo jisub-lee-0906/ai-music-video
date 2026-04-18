@@ -37,6 +37,8 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
     assert captured["rerender_escalation_actions"] == ["rerender_continuity_break_shots"]
     assert captured["rerender_escalation_max_priority"] == 7
     assert captured["rerender_escalation_unique_actions"] == ["rerender_continuity_break_shots"]
+    assert captured["rerender_escalation_reason_codes"] == ["continuity_break"]
+    assert captured["rerender_escalation_unique_reason_codes"] == ["continuity_break"]
 
 
 def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monkeypatch):
@@ -71,3 +73,5 @@ def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monke
     assert captured["rerender_escalation_actions"] == []
     assert captured["rerender_escalation_max_priority"] == 0
     assert captured["rerender_escalation_unique_actions"] == []
+    assert captured["rerender_escalation_reason_codes"] == []
+    assert captured["rerender_escalation_unique_reason_codes"] == []

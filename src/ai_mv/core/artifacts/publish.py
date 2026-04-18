@@ -18,6 +18,12 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         for row in summary_by_shot
         if isinstance(row, dict)
     ]
+    escalation_reason_codes = [
+        str(reason).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict)
+        for reason in row.get("reason_codes", []) if str(reason).strip()
+    ]
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -45,5 +51,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "rerender_escalation_actions": escalation_actions,
         "rerender_escalation_max_priority": max(escalation_priorities) if escalation_priorities else 0,
         "rerender_escalation_unique_actions": sorted(set(escalation_actions)),
+        "rerender_escalation_reason_codes": escalation_reason_codes,
+        "rerender_escalation_unique_reason_codes": sorted(set(escalation_reason_codes)),
     }
     write_run_summary(state, summary)
