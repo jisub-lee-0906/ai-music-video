@@ -2,6 +2,7 @@ from pathlib import Path
 
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.stages.assemble_mv import run_assemble_mv
+from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
 from ai_mv.core.stages.review_outputs import run_review_outputs
@@ -576,3 +577,128 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
         ]
     finally:
         _Path.exists = _original_exists
+
+
+
+def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs():
+    stage_input = StageInput(
+        run_id="run-rerender-1",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S003",
+                        "recommended_action": "rerender_scene_intrusion_shots",
+                        "rerender_stage": "stills",
+                        "stage_payloads": {
+                            "stills": {
+                                "shot_plan": [{"shot_id": "S003", "render_mode": "i2v"}],
+                                "render_plan": [{"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                            }
+                        },
+                    },
+                    {
+                        "shot_id": "S001",
+                        "recommended_action": "rerender_panelized_keyframes",
+                        "rerender_stage": "stills",
+                        "stage_payloads": {
+                            "stills": {
+                                "shot_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                                "render_plan": [{"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                            }
+                        },
+                    },
+                    {
+                        "shot_id": "S002",
+                        "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
+                        "rerender_stage": "stills_then_clips",
+                        "stage_payloads": {
+                            "stills": {
+                                "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                                "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                            },
+                            "clips": {
+                                "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                                "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                                "still_results": [
+                                    {"shot_id": "S002", "image": "still-2.png"},
+                                    {"shot_id": "S004", "image": "still-4.png"},
+                                ],
+                                "music_file": "song.mp3",
+                            },
+                        },
+                    },
+                    {
+                        "shot_id": "S006",
+                        "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                        "rerender_stage": "clips",
+                        "stage_payloads": {
+                            "clips": {
+                                "shot_plan": [{"shot_id": "S006", "render_mode": "i2v"}],
+                                "render_plan": [{"shot_id": "S006", "render_mode": "i2v", "clip_prompt_seed": "clip-6"}],
+                                "still_results": [{"shot_id": "S006", "image": "still-6.png"}],
+                                "music_file": "",
+                            }
+                        },
+                    },
+                ]
+            }
+        },
+    )
+
+    out = run_prepare_rerender(stage_input)
+
+    assert out.stage == "prepare_rerender"
+    assert out.status == "done"
+    assert out.payload == {
+        "rerender_target_ids": ["S003", "S001", "S002", "S006"],
+        "rerender_stage_sequence": ["stills", "clips"],
+        "rerender_stage_inputs": {
+            "stills": {
+                "shot_plan": [
+                    {"shot_id": "S003", "render_mode": "i2v"},
+                    {"shot_id": "S001", "render_mode": "i2v"},
+                    {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
+                ],
+                "render_plan": [
+                    {"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"},
+                    {"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"},
+                    {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+                ],
+            },
+            "clips": {
+                "shot_plan": [
+                    {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
+                    {"shot_id": "S006", "render_mode": "i2v"},
+                ],
+                "render_plan": [
+                    {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+                    {"shot_id": "S006", "render_mode": "i2v", "clip_prompt_seed": "clip-6"},
+                ],
+                "still_results": [
+                    {"shot_id": "S002", "image": "still-2.png"},
+                    {"shot_id": "S004", "image": "still-4.png"},
+                    {"shot_id": "S006", "image": "still-6.png"},
+                ],
+                "music_file": "song.mp3",
+            },
+        },
+    }
+
+
+
+def test_prepare_rerender_returns_empty_stage_inputs_when_review_has_no_targets():
+    stage_input = StageInput(
+        run_id="run-rerender-empty",
+        config={},
+        payload={"review_report": {"rerender_execution_payloads": []}},
+    )
+
+    out = run_prepare_rerender(stage_input)
+
+    assert out.payload == {
+        "rerender_target_ids": [],
+        "rerender_stage_sequence": [],
+        "rerender_stage_inputs": {},
+    }
