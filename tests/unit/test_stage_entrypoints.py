@@ -1244,6 +1244,18 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
     assert report["status"] == "manual_review_required"
     assert report["shot_ids"] == ["S003", "S007"]
     assert report["shot_count"] == 2
+    assert report["summary_by_shot"] == [
+        {
+            "shot_id": "S003",
+            "packet_artifacts": report["artifacts"],
+            "reviewer_note": "Inspect shot S003 in the review packet artifacts",
+        },
+        {
+            "shot_id": "S007",
+            "packet_artifacts": report["artifacts"],
+            "reviewer_note": "Inspect shot S007 in the review packet artifacts",
+        },
+    ]
     assert report["video_path"] == "D:/renders/final.mp4"
     assert report["reviewer_summary"] == "Manual review required for 2 shots: S003, S007"
     assert report["review_packet_manifest_path"].endswith("review-packet.json")

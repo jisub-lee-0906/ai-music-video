@@ -51,6 +51,7 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         "contact_sheet_image": report["contact_sheet_image_path"],
         "contact_sheet_manifest": report["contact_sheet_manifest_path"],
     }
+    report["summary_by_shot"] = _summary_by_shot(shot_ids, report["artifacts"])
     return StageOutput(
         "rerender_escalation",
         "done",
@@ -70,3 +71,15 @@ def _reviewer_summary(shot_ids: list[str]) -> str:
     if not normalized:
         return "Manual review required"
     return f"Manual review required for {len(normalized)} shots: {', '.join(normalized)}"
+
+
+def _summary_by_shot(shot_ids: list[str], artifacts: dict[str, str]) -> list[dict[str, object]]:
+    normalized = [str(shot_id).strip() for shot_id in shot_ids if str(shot_id).strip()]
+    return [
+        {
+            "shot_id": shot_id,
+            "packet_artifacts": dict(artifacts),
+            "reviewer_note": f"Inspect shot {shot_id} in the review packet artifacts",
+        }
+        for shot_id in normalized
+    ]
