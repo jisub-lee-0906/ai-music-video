@@ -82,6 +82,22 @@ def test_resolve_generated_file_requires_explicit_relative_subpath(tmp_path):
     assert resolve_generated_file(cfg, "clips/audio.wav", {".wav"}, "audio") == nested.resolve()
 
 
+def test_resolve_generated_file_normalizes_windows_style_relative_path(tmp_path):
+    cfg = _config(tmp_path)
+    nested = tmp_path / "output" / "prompt_lab" / "flux2_track_a" / "batch-1" / "F001_A1_s1001_00001_.png"
+    nested.parent.mkdir(parents=True)
+    nested.write_bytes(b"png")
+
+    path = resolve_generated_file(
+        cfg,
+        r"prompt_lab\flux2_track_a\batch-1/F001_A1_s1001_00001_.png",
+        {".png"},
+        "image",
+    )
+
+    assert path == nested.resolve()
+
+
 def _config(tmp_path: Path) -> dict:
     inp = tmp_path / "input"
     out = tmp_path / "output"

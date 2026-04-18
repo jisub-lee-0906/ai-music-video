@@ -6,6 +6,7 @@ __pycache__/
 .uv-cache/
 dist/
 .hermes/
+# Prompt-lab batches, review artifacts, and other transient analysis outputs stay untracked.
 .analysis/
 
 src/*.egg-info/

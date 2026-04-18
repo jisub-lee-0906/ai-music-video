@@ -117,7 +117,8 @@ def _resolve_generated_path(config: dict, ref: str) -> Path | None:
     raw = str(ref or "").strip()
     if not raw:
         return None
-    path = Path(raw)
+    normalized_raw = raw.replace("\\", "/")
+    path = Path(normalized_raw)
     if path.exists():
         return path.resolve()
     out = comfy_output_dir(config)
