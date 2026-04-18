@@ -141,6 +141,9 @@ A young woman in a satin bomber jacket leans under late-night station light, wit
 - 기본 still은 자연어 설명형으로 subject, place, light, mood, composition을 한 장면으로 묶는다
 - rerender/refinement는 기존 still identity를 유지하고 바꾸고 싶은 차이만 더한다
 - still workflow에는 negative prompt node가 없으므로 negative prompt 규칙을 still 문법 중심으로 문서화하지 않는다
+- repo의 single-keyframe constraint layer는 universal suffix가 아니라 conditional tool이다
+- 기본적으로 constrained mode를 쓰되, reflective-window 보존 샷과 continuity/readability repair 샷은 raw prompt 유지가 우선이다
+- shot별 예외가 필요하면 `render_plan[].still_constraint_mode = raw|constrained`로 명시한다
 
 ## 3. LTX 2.3 i2v
 

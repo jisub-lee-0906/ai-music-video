@@ -88,6 +88,9 @@
 - Flux2 still prompt는 쉼표 리스트를 정답으로 가정하지 말고, 자연어 설명/지시문으로 검증한다.
 - 기본 still workflow에는 still-side negative text 입력이 없으므로 negative prompt 기본값을 문법 핵심으로 취급하지 않는다.
 - reference rerender에서는 기존 still을 유지하고 바꾸고 싶은 차이만 더하는 방식이 우선이다.
+- `render_stills.py`는 single-keyframe constraint를 universal default로 취급하지 않는다.
+- 현재 policy는 기본적으로 constrained prompt를 쓰되, `window_reflection` 계열과 continuity/readability repair prompt는 raw prompt를 유지한다.
+- `render_plan[].still_constraint_mode`에 `raw` 또는 `constrained`를 넣으면 shot별 override가 가능하다.
 
 ## 3. LTX 2.3 `i2v`
 
