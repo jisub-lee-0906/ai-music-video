@@ -107,6 +107,7 @@ def _summary_by_shot(
                 "reason_codes": reason_codes,
                 "priority_score": int(plan_item.get("priority_score", 0) or 0),
                 "recommended_action": str(plan_item.get("recommended_action", "")).strip(),
+                "rerender_prescription": dict(plan_item.get("rerender_prescription", {})) if isinstance(plan_item.get("rerender_prescription"), dict) else {},
                 "packet_artifacts": dict(artifacts),
                 "reviewer_note": note,
             }
