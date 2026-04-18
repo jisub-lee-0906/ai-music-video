@@ -189,7 +189,7 @@ def test_pipeline_marks_unresolved_rerender_outcome_when_loop_still_needs_rerend
         lambda stage_input: StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4"}},
+            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
         ),
     )
 
@@ -258,14 +258,19 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
         lambda stage_input: StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4"}},
+            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
         ),
     )
 
     pipeline.run_pipeline({"concept_text": "citypop night drive"}, "escalate-test", allow_existing_run=True)
 
     assert order == ["audio", "plan", "stills", "clips", "assemble", "review", "rerender", "escalation"]
-    assert final_payload["rerender_escalation"] == {"status": "manual_review_required", "shot_ids": ["S001"], "video_path": "final.mp4"}
+    assert final_payload["rerender_escalation"] == {
+        "status": "manual_review_required",
+        "shot_ids": ["S001"],
+        "video_path": "final.mp4",
+        "artifacts": {"review_packet_manifest": "review-packet.json"},
+    }
 
 
 

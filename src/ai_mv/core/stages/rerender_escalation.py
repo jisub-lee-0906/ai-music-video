@@ -42,6 +42,13 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         "contact_sheet_image_path": str(written["contact_sheet_image_path"]),
         "contact_sheet_manifest_path": str(written["contact_sheet_manifest_path"]),
     }
+    report["artifacts"] = {
+        "review_packet_manifest": report["review_packet_manifest_path"],
+        "quality_findings": report["quality_findings_path"],
+        "reviewer_notes": report["reviewer_notes_path"],
+        "contact_sheet_image": report["contact_sheet_image_path"],
+        "contact_sheet_manifest": report["contact_sheet_manifest_path"],
+    }
     return StageOutput(
         "rerender_escalation",
         "done",
