@@ -391,6 +391,22 @@ def test_classify_rerender_target_uses_subject_identity_fix_strategy_for_subject
 
 
 
+def test_classify_rerender_target_uses_identity_continuity_fix_strategy_for_identity_drift():
+    classification = classify_rerender_target(["identity_drift"])
+
+    assert classification == {
+        "bucket": "isolated_asset_quality",
+        "recommended_action": "rerender_weak_shots_with_prompt_tightening",
+        "rerender_prescription": {
+            "stage_focus": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "tighten_identity_continuity_anchors",
+        },
+    }
+
+
+
 def test_review_models_leave_rerender_plan_empty_when_no_targets():
     report = build_review_report(
         planned_shot_ids=["S001"],

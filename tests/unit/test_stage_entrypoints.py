@@ -1003,6 +1003,14 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
                         "stage_payloads": {},
                     },
                     {
+                        "shot_id": "S005",
+                        "recommended_action": "rerender_weak_shots_with_prompt_tightening",
+                        "rerender_stage": "stills",
+                        "fix_strategy": "tighten_identity_continuity_anchors",
+                        "prompt_contract_focus": ["still_prompt_text"],
+                        "stage_payloads": {},
+                    },
+                    {
                         "shot_id": "S003",
                         "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
                         "rerender_stage": "clips",
@@ -1014,11 +1022,12 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
             },
             "rerender_stage_inputs": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S004"}],
+                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S004"}, {"shot_id": "S005"}],
                     "render_plan": [
                         {"shot_id": "S001", "still_prompt_text": "neon portrait"},
                         {"shot_id": "S002", "still_prompt_text": "night street singer"},
                         {"shot_id": "S004", "still_prompt_text": "rooftop heroine close-up"},
+                        {"shot_id": "S005", "still_prompt_text": "subway reflection heroine"},
                     ],
                 },
                 "clips": {
@@ -1044,6 +1053,7 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
     assert still_rows[0]["still_prompt_text"] == "neon portrait, single cinematic keyframe, one uninterrupted composition, no panel layout, no collage, no split screen"
     assert still_rows[1]["still_prompt_text"] == "night street singer, same protagonist, same environment, locked world details, no unrelated scene intrusion"
     assert still_rows[2]["still_prompt_text"] == "rooftop heroine close-up, same protagonist, locked identity details, no identity drift, no duplicate subject"
+    assert still_rows[3]["still_prompt_text"] == "subway reflection heroine, same protagonist, continuity-locked identity details, match adjacent shots, no identity drift, preserve neighboring-shot continuity"
     assert clip_rows[0]["clip_prompt_seed"] == "camera drift forward, clean terminal frame, restrained motion range"
     assert clip_rows[0]["clip_positive_prompt"] == "camera drift forward, clean terminal frame, restrained motion range, shorter motion beat, clean exit frame, no abrupt pose change"
 

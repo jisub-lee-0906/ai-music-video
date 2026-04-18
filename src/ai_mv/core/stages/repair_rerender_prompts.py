@@ -75,6 +75,17 @@ def _repair_prompt_text(*, field_name: str, fix_strategy: str, current_value: st
                 "no duplicate subject",
             ]
         )
+    if fix_strategy == "tighten_identity_continuity_anchors" and field_name == "still_prompt_text":
+        return _join_prompt_tokens(
+            [
+                current_value,
+                "same protagonist",
+                "continuity-locked identity details",
+                "match adjacent shots",
+                "no identity drift",
+                "preserve neighboring-shot continuity",
+            ]
+        )
     if fix_strategy == "shorter_motion_and_clean_terminal_frames":
         return _repair_terminal_frame_prompt(field_name=field_name, current_value=current_value)
     return current_value

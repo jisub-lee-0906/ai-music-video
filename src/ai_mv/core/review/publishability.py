@@ -306,9 +306,9 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
         "weak_environment_match" in normalized_reasons or "unrelated_scene_intrusion" in normalized_reasons
     ):
         prescription["fix_strategy"] = "tighten_subject_and_world_anchors"
-    elif action_name == "rerender_weak_shots_with_prompt_tightening" and (
-        "weak_subject_match" in normalized_reasons or "identity_drift" in normalized_reasons
-    ):
+    elif action_name == "rerender_weak_shots_with_prompt_tightening" and "identity_drift" in normalized_reasons:
+        prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
+    elif action_name == "rerender_weak_shots_with_prompt_tightening" and "weak_subject_match" in normalized_reasons:
         prescription["fix_strategy"] = "tighten_subject_identity_anchors"
     return prescription
 
