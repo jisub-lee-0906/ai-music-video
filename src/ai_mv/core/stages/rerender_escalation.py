@@ -55,6 +55,7 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         shot_ids,
         report["artifacts"],
         review_report.get("rerender_reasons") if isinstance(review_report.get("rerender_reasons"), dict) else {},
+        review_report.get("rerender_plan") if isinstance(review_report.get("rerender_plan"), list) else [],
     )
     return StageOutput(
         "rerender_escalation",
@@ -81,8 +82,14 @@ def _summary_by_shot(
     shot_ids: list[str],
     artifacts: dict[str, str],
     rerender_reasons: dict[str, list[str]],
+    rerender_plan: list[dict[str, object]],
 ) -> list[dict[str, object]]:
     normalized = [str(shot_id).strip() for shot_id in shot_ids if str(shot_id).strip()]
+    plan_by_shot = {
+        str(item.get("shot_id", "")).strip(): item
+        for item in rerender_plan
+        if isinstance(item, dict) and str(item.get("shot_id", "")).strip()
+    }
     rows: list[dict[str, object]] = []
     for shot_id in normalized:
         reason_codes = [
@@ -90,6 +97,7 @@ def _summary_by_shot(
             for reason in rerender_reasons.get(shot_id, [])
             if str(reason).strip()
         ]
+        plan_item = plan_by_shot.get(shot_id, {})
         note = f"Inspect shot {shot_id} in the review packet artifacts"
         if reason_codes:
             note += f" (reasons: {', '.join(reason_codes)})"
@@ -97,6 +105,8 @@ def _summary_by_shot(
             {
                 "shot_id": shot_id,
                 "reason_codes": reason_codes,
+                "priority_score": int(plan_item.get("priority_score", 0) or 0),
+                "recommended_action": str(plan_item.get("recommended_action", "")).strip(),
                 "packet_artifacts": dict(artifacts),
                 "reviewer_note": note,
             }

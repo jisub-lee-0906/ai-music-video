@@ -1240,6 +1240,18 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
                         "S003": ["continuity_break", "identity_drift"],
                         "S007": ["terminal_frame_corruption"],
                     },
+                    "rerender_plan": [
+                        {
+                            "shot_id": "S003",
+                            "priority_score": 9,
+                            "recommended_action": "rerender_continuity_break_shots",
+                        },
+                        {
+                            "shot_id": "S007",
+                            "priority_score": 5,
+                            "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                        },
+                    ],
                 },
                 "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
             },
@@ -1254,12 +1266,16 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         {
             "shot_id": "S003",
             "reason_codes": ["continuity_break", "identity_drift"],
+            "priority_score": 9,
+            "recommended_action": "rerender_continuity_break_shots",
             "packet_artifacts": report["artifacts"],
             "reviewer_note": "Inspect shot S003 in the review packet artifacts (reasons: continuity_break, identity_drift)",
         },
         {
             "shot_id": "S007",
             "reason_codes": ["terminal_frame_corruption"],
+            "priority_score": 5,
+            "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
             "packet_artifacts": report["artifacts"],
             "reviewer_note": "Inspect shot S007 in the review packet artifacts (reasons: terminal_frame_corruption)",
         },
