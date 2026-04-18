@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from ai_mv.core.contracts.stage_io import StageInput
+from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.assemble_mv import run_assemble_mv
+from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
@@ -701,4 +702,79 @@ def test_prepare_rerender_returns_empty_stage_inputs_when_review_has_no_targets(
         "rerender_target_ids": [],
         "rerender_stage_sequence": [],
         "rerender_stage_inputs": {},
+    }
+
+
+
+def test_execute_rerender_runs_stills_then_clips_with_fresh_still_results(monkeypatch):
+    calls = []
+
+    def _fake_run_render_stills(stage_input):
+        calls.append(("stills", stage_input.payload))
+        return StageOutput("render_stills", "done", {"still_results": [{"shot_id": "S002", "image": "rerendered-2.png"}]}, [])
+
+    def _fake_run_render_clips(stage_input):
+        calls.append(("clips", stage_input.payload))
+        return StageOutput("render_clips", "done", {"clip_results": [{"shot_id": "S002", "video": "rerendered-2.mp4"}]}, [])
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_render_stills", _fake_run_render_stills)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_render_clips", _fake_run_render_clips)
+
+    stage_input = StageInput(
+        run_id="run-rerender-exec-1",
+        config={"render": {"ltx_fps": 24}},
+        payload={
+            "rerender_stage_sequence": ["stills", "clips"],
+            "rerender_stage_inputs": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v"}],
+                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_prompt_text": "repair still"}],
+                },
+                "clips": {
+                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "repair clip"}],
+                    "still_results": [
+                        {"shot_id": "S002", "image": "stale-2.png"},
+                        {"shot_id": "S004", "image": "bridge-4.png"},
+                    ],
+                    "music_file": "song.mp3",
+                },
+            },
+        },
+    )
+
+    out = run_execute_rerender(stage_input)
+
+    assert [name for name, _payload in calls] == ["stills", "clips"]
+    assert calls[1][1]["still_results"] == [
+        {"shot_id": "S004", "image": "bridge-4.png"},
+        {"shot_id": "S002", "image": "rerendered-2.png"},
+    ]
+    assert out.stage == "execute_rerender"
+    assert out.status == "done"
+    assert out.payload == {
+        "rerender_results": {
+            "completed_stages": ["stills", "clips"],
+            "still_results": [{"shot_id": "S002", "image": "rerendered-2.png"}],
+            "clip_results": [{"shot_id": "S002", "video": "rerendered-2.mp4"}],
+        }
+    }
+
+
+
+def test_execute_rerender_returns_empty_results_when_no_rerender_stage_inputs_exist():
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-exec-empty",
+            config={},
+            payload={"rerender_stage_sequence": [], "rerender_stage_inputs": {}},
+        )
+    )
+
+    assert out.payload == {
+        "rerender_results": {
+            "completed_stages": [],
+            "still_results": [],
+            "clip_results": [],
+        }
     }
