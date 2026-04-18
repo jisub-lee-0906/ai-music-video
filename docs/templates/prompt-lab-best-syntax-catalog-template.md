@@ -3,7 +3,7 @@
 This file is the durable summary of what prompt grammar works best.
 Update it only after repeated experiments, not single lucky results.
 
-## Workflow: Qwen Still
+## Workflow: Flux2 Still
 
 ### Best-performing grammar patterns
 - Pattern name:

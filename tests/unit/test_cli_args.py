@@ -2,7 +2,7 @@ import pytest
 
 from ai_mv.cli.args import build_parser
 from ai_mv.core.orchestration.config_defaults import default_config
-from ai_mv.core.workflow_names import QWEN_STILL_WORKFLOW
+from ai_mv.core.workflow_names import FLUX2_KEYFRAME_WORKFLOW, FLUX2_STILL_WORKFLOW
 
 
 def test_parser_has_clean_commands():
@@ -20,11 +20,12 @@ def test_default_config_uses_concept_text_not_profile():
     assert "city pop" not in str(cfg["concept_text"]).lower()
 
 
-def test_default_config_sets_qwen_negative_for_single_keyframe_stills():
+def test_default_config_sets_flux2_negative_for_single_keyframe_stills():
     cfg = default_config()
-    negative = str(cfg["render"]["qwen_negative"])
-    assert cfg["render"]["qwen_size"] == "1280x720"
-    assert QWEN_STILL_WORKFLOW == "template_qwen_image_illustration_lora.json"
+    negative = str(cfg["render"]["flux2_negative"])
+    assert cfg["render"]["flux2_size"] == "1280x720"
+    assert FLUX2_STILL_WORKFLOW == "image_flux2_text_to_image.json"
+    assert FLUX2_KEYFRAME_WORKFLOW == "image_flux2.json"
     assert "comic panel" in negative
     assert "contact sheet" in negative
     assert "collage" in negative

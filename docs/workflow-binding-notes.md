@@ -12,7 +12,8 @@
 대상 workflow:
 
 - [audio_ace_step_1_5_split_4b.json](/D:/workspace/ai-music-video/workflows/audio_ace_step_1_5_split_4b.json)
-- [template_qwen_image_illustration_lora.json](/D:/workspace/ai-music-video/workflows/template_qwen_image_illustration_lora.json)
+- [image_flux2_text_to_image.json](/D:/workspace/ai-music-video/workflows/image_flux2_text_to_image.json)
+- [image_flux2.json](/D:/workspace/ai-music-video/workflows/image_flux2.json)
 - [video_ltx2_3_i2v.json](/D:/workspace/ai-music-video/workflows/video_ltx2_3_i2v.json)
 - [video_ltx2_3_ia2v.json](/D:/workspace/ai-music-video/workflows/video_ltx2_3_ia2v.json)
 - [video_ltx2_3_flf2v.json](/D:/workspace/ai-music-video/workflows/video_ltx2_3_flf2v.json)
@@ -66,37 +67,56 @@
 - `lyrics`는 필요 시 짧은 구조 가사로 유지
 - ACE workflow에는 별도 profile context를 넣지 않는다
 
-## 2. Qwen-Image
+## 2. Flux2 still workflows
 
 파일:
 
-- [template_qwen_image_illustration_lora.json](/D:/workspace/ai-music-video/workflows/template_qwen_image_illustration_lora.json)
+- [image_flux2_text_to_image.json](/D:/workspace/ai-music-video/workflows/image_flux2_text_to_image.json)
+- [image_flux2.json](/D:/workspace/ai-music-video/workflows/image_flux2.json)
 
 핵심 prompt 노드:
 
-- node `76:6`
+- T2I workflow node `98:6`
   class: `CLIPTextEncode`
   input: `text`
   역할: positive prompt
 
-- node `76:7`
+- REF workflow node `68:6`
   class: `CLIPTextEncode`
   input: `text`
-  역할: negative prompt
+  역할: positive prompt
 
 크기 노드:
 
-- node `76:58`
+- T2I workflow node `98:47`
+  inputs: `width`, `height`
+
+- REF workflow node `68:47`
   inputs: `width`, `height`
 
 샘플링 노드:
 
-- node `76:3`
-  inputs: `seed`, `steps`, `cfg`
+- T2I workflow node `98:25`
+  input: `noise_seed`
+
+- REF workflow node `68:25`
+  input: `noise_seed`
+
+- T2I workflow node `98:48`
+  inputs: `steps`, `width`, `height`
+
+- REF workflow node `68:48`
+  inputs: `steps`, `width`, `height`
+
+- T2I workflow node `98:26`
+  input: `guidance`
+
+- REF workflow node `68:26`
+  input: `guidance`
 
 출력 파일명 노드:
 
-- node `60`
+- node `9`
   input: `filename_prefix`
 
 프롬프트 예시 문체:
@@ -371,7 +391,7 @@ Music: Synthwave cyberpunk music with calm ambient synths and driving 80s beats.
 ### Prompt 전략
 
 - ACE: 장르 설명형 + 구조화 lyrics
-- Qwen: 쉼표 나열형 시각 설명
+- Flux2 stills: 쉼표 나열형 시각 설명 + rerender 시 reference-image refinement
 - LTX i2v: 장문 장면 지시형
 - LTX ia2v: 장문 장면 지시형 + 퍼포먼스/오디오 반응
 - LTX flf2v: 짧은 브리지 지시형

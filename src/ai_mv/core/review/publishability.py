@@ -279,25 +279,25 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
         },
         "rerender_weak_shots_with_prompt_tightening": {
             "stage_focus": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "tighten_subject_identity_and_style_anchors",
         },
         "rerender_scene_intrusion_shots": {
             "stage_focus": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "tighten_subject_and_world_anchors",
         },
         "rerender_motion_fragile_shots_with_safer_keyframes": {
             "stage_focus": "stills_then_clips",
-            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
         },
         "rerender_panelized_keyframes": {
             "stage_focus": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "enforce_single_frame_keyframe_composition",
         },
@@ -315,14 +315,14 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
         prescription["fix_strategy"] = "tighten_subject_and_world_anchors"
     elif action_name == "rerender_weak_shots_with_prompt_tightening" and "identity_drift" in normalized_reasons:
         prescription["stage_focus"] = "stills_then_clips"
-        prescription["workflow_focus"] = ["qwen_image", "i2v", "flf2v"]
+        prescription["workflow_focus"] = ["flux2_image", "i2v", "flf2v"]
         prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
         prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     elif action_name == "rerender_weak_shots_with_prompt_tightening" and "weak_subject_match" in normalized_reasons:
         prescription["fix_strategy"] = "tighten_subject_identity_anchors"
     elif action_name == "rerender_continuity_break_shots" and {"continuity_break", "identity_drift"}.issubset(normalized_reasons):
         prescription["stage_focus"] = "stills_then_clips"
-        prescription["workflow_focus"] = ["qwen_image", "i2v", "flf2v"]
+        prescription["workflow_focus"] = ["flux2_image", "i2v", "flf2v"]
         prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
         prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     return prescription

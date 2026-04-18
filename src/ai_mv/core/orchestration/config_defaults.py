@@ -17,13 +17,13 @@ DEFAULT_CONFIG: dict = {
     "concept_text": "emotionally resonant night-drive music video concept with a vivid urban atmosphere",
     "video": {"target": "1920x1080@24"},
     "render": {
-        "qwen_size": "1280x720",
+        "flux2_size": "1280x720",
         "ltx_i2v_size": "1280x720",
         "ltx_ia2v_size": "1280x720",
         "ltx_flf2v_size": "1280x720",
         "ltx_fps": 24,
         "ltx_default_shot_sec": 4.0,
-        "qwen_negative": "comic panel, comic page, manga page, contact sheet, collage, diptych, triptych, split screen, multiple frames, multi-panel layout, grid layout, storyboard, montage, text, subtitles, captions, border lines, panel border, inset frame, picture-in-picture, divided layout, juxtaposed scenes, duplicate scene, duplicate portrait, separate portrait box, magazine layout, poster collage",
+        "flux2_negative": "comic panel, comic page, manga page, contact sheet, collage, diptych, triptych, split screen, multiple frames, multi-panel layout, grid layout, storyboard, montage, text, subtitles, captions, border lines, panel border, inset frame, picture-in-picture, divided layout, juxtaposed scenes, duplicate scene, duplicate portrait, separate portrait box, magazine layout, poster collage",
         "ltx_negative": "pc game, console game, video game, cartoon, childish, ugly",
     },
     "limits": {

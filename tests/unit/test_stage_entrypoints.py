@@ -39,17 +39,17 @@ def test_render_clips_prefers_workflow_specific_clip_prompt_seed():
     assert prompt == "camera drift forward, stable motion"
 
 
-def test_render_stills_calls_qwen_runner(monkeypatch):
+def test_render_stills_calls_flux2_runner(monkeypatch):
     calls = []
 
-    def _fake_run_qwen_still(_config, item):
+    def _fake_run_flux2_still(_config, item):
         calls.append(item)
         return f"D:/renders/{item['shot_id']}.png"
 
-    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1",
-        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1024x1024"}},
+        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1024x1024"}},
         payload={
             "shot_plan": [{"shot_id": "S001"}],
             "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea"}],
@@ -68,14 +68,14 @@ def test_render_stills_calls_qwen_runner(monkeypatch):
 def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
     calls = []
 
-    def _fake_run_qwen_still(_config, item):
+    def _fake_run_flux2_still(_config, item):
         calls.append(item)
         return f"D:/renders/{item['shot_id']}.png"
 
-    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1b",
-        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1024x1024"}},
+        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1024x1024"}},
         payload={
             "shot_plan": [{"shot_id": "S009"}],
             "render_plan": [{"shot_id": "S009", "prompt_polish": "night station portrait, reflective glass, film grain"}],
@@ -94,14 +94,14 @@ def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
 def test_render_stills_strips_panel_prone_graphic_prompt_tokens(monkeypatch):
     calls = []
 
-    def _fake_run_qwen_still(_config, item):
+    def _fake_run_flux2_still(_config, item):
         calls.append(item)
         return f"D:/renders/{item['shot_id']}.png"
 
-    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1c",
-        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1280x720"}},
+        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1280x720"}},
         payload={
             "shot_plan": [{"shot_id": "S010"}],
             "render_plan": [
@@ -127,14 +127,14 @@ def test_render_stills_strips_panel_prone_graphic_prompt_tokens(monkeypatch):
 def test_render_stills_strips_storyboard_like_meta_prompt_tokens(monkeypatch):
     calls = []
 
-    def _fake_run_qwen_still(_config, item):
+    def _fake_run_flux2_still(_config, item):
         calls.append(item)
         return f"D:/renders/{item['shot_id']}.png"
 
-    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_qwen_still", _fake_run_qwen_still)
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1d",
-        config={"render": {"qwen_negative": "bad anatomy", "qwen_size": "1280x720"}},
+        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1280x720"}},
         payload={
             "shot_plan": [{"shot_id": "S011"}],
             "render_plan": [
@@ -156,7 +156,30 @@ def test_render_stills_strips_storyboard_like_meta_prompt_tokens(monkeypatch):
     assert "scene event: late-night city movement" not in prompt
 
 
-def test_plan_preview_builds_qwen_style_prompt_tokens():
+def test_render_stills_uses_reference_image_when_rerender_source_exists(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-1e",
+        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S012"}],
+            "render_plan": [{"shot_id": "S012", "still_prompt_text": "same protagonist under station light"}],
+            "still_results": [{"shot_id": "S012", "image": "D:/renders/prev_S012.png"}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert calls[0]["reference_image"] == "D:/renders/prev_S012.png"
+
+
+def test_plan_preview_builds_flux2_style_prompt_tokens():
     from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 
     payload = build_plan_preview_payload(
@@ -768,18 +791,19 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
         "rerender_target_ids": ["S003", "S001", "S002", "S006"],
         "rerender_stage_sequence": ["stills", "clips"],
         "rerender_stage_inputs": {
-            "stills": {
-                "shot_plan": [
-                    {"shot_id": "S003", "render_mode": "i2v"},
-                    {"shot_id": "S001", "render_mode": "i2v"},
-                    {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
-                ],
-                "render_plan": [
-                    {"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"},
-                    {"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"},
-                    {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
-                ],
-            },
+                "stills": {
+                    "shot_plan": [
+                        {"shot_id": "S003", "render_mode": "i2v"},
+                        {"shot_id": "S001", "render_mode": "i2v"},
+                        {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
+                    ],
+                    "render_plan": [
+                        {"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"},
+                        {"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"},
+                        {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+                    ],
+                    "still_results": [],
+                },
             "clips": {
                 "shot_plan": [
                     {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},

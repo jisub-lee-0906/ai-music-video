@@ -5,7 +5,7 @@
 범위:
 
 - `ACE-Step`
-- `Qwen stills`
+- `Flux2 stills`
 - `LTX i2v`
 - `ffmpeg assemble`
 - `review report`
@@ -85,7 +85,7 @@ M1 acceptance:
 - 모든 샷 `render_mode=i2v`
 - 전체 shot duration 합이 오디오 길이와 크게 어긋나지 않을 것
 
-## 4. Qwen Stills
+## 4. Flux2 Stills
 
 M1 규칙:
 

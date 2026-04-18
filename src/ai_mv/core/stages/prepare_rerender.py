@@ -4,7 +4,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 
 
 _STAGE_SCHEMA = {
-    "stills": ("shot_plan", "render_plan"),
+    "stills": ("shot_plan", "render_plan", "still_results"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
 }
 
@@ -46,7 +46,7 @@ def run_prepare_rerender(stage_input: StageInput) -> StageOutput:
 def _empty_stage_payload(stage_name: str) -> dict[str, object]:
     if stage_name == "clips":
         return {"shot_plan": [], "render_plan": [], "still_results": [], "music_file": ""}
-    return {"shot_plan": [], "render_plan": []}
+    return {"shot_plan": [], "render_plan": [], "still_results": []}
 
 
 

@@ -1,11 +1,12 @@
 # Workflow Usage Plan
 
-이 문서는 현재 저장소에 남긴 5개 workflow를 어떤 역할로 사용할지 고정한다.
+이 문서는 현재 저장소에 남긴 6개 workflow를 어떤 역할로 사용할지 고정한다.
 
 채택 workflow:
 
 - [audio_ace_step_1_5_split_4b.json](/D:/workspace/ai-music-video/workflows/audio_ace_step_1_5_split_4b.json)
-- [template_qwen_image_illustration_lora.json](/D:/workspace/ai-music-video/workflows/template_qwen_image_illustration_lora.json)
+- [image_flux2_text_to_image.json](/D:/workspace/ai-music-video/workflows/image_flux2_text_to_image.json)
+- [image_flux2.json](/D:/workspace/ai-music-video/workflows/image_flux2.json)
 - [video_ltx2_3_i2v.json](/D:/workspace/ai-music-video/workflows/video_ltx2_3_i2v.json)
 - [video_ltx2_3_ia2v.json](/D:/workspace/ai-music-video/workflows/video_ltx2_3_ia2v.json)
 - [video_ltx2_3_flf2v.json](/D:/workspace/ai-music-video/workflows/video_ltx2_3_flf2v.json)
@@ -44,11 +45,12 @@
 - 음악 stage에서 profile 정보를 읽지 않는다.
 - 시티팝용 tag/prompt seed는 코드 상수 또는 정적 템플릿으로 관리한다.
 
-## 2. Qwen-Image
+## 2. Flux2 still workflows
 
 파일:
 
-- [template_qwen_image_illustration_lora.json](/D:/workspace/ai-music-video/workflows/template_qwen_image_illustration_lora.json)
+- [image_flux2_text_to_image.json](/D:/workspace/ai-music-video/workflows/image_flux2_text_to_image.json)
+- [image_flux2.json](/D:/workspace/ai-music-video/workflows/image_flux2.json)
 
 역할:
 
@@ -78,8 +80,9 @@
 
 주의:
 
-- 기존 TTI와 REF를 나누지 않는다.
-- Qwen이 anchor와 shot still 역할을 모두 맡는다.
+- `image_flux2_text_to_image.json`은 기본 still 생성에 사용한다.
+- `image_flux2.json`은 기존 still을 reference로 받는 rerender/keyframe refinement에 사용한다.
+- Flux2 still stage가 anchor와 shot still 역할을 모두 맡는다.
 - prompt seed는 코드가 짧게 만들고, 자연어 품질은 LLM draft/polish로 넘긴다.
 
 ## 3. LTX 2.3 `i2v`

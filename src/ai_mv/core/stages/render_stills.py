@@ -1,29 +1,35 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.output_paths import qwen_still_prefix
-from ai_mv.engines.qwen_image.runner import run_qwen_still
+from ai_mv.core.output_paths import still_prefix
+from ai_mv.engines.flux2_image.runner import run_flux2_still
 
 
 def run_render_stills(stage_input: StageInput) -> StageOutput:
     shot_plan = [row for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)]
     render_plan = [row for row in stage_input.payload.get("render_plan", []) if isinstance(row, dict)]
+    prior_stills = [row for row in stage_input.payload.get("still_results", []) if isinstance(row, dict)]
     render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan}
+    prior_still_map = {str(row.get("shot_id", "")).strip(): row for row in prior_stills}
     still_results = []
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
         render_item = render_map.get(shot_id, {})
         prompt_text = _single_keyframe_prompt_text(_still_prompt_text(render_item))
-        image_path = run_qwen_still(
+        previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
+        item = {
+            "shot_id": shot_id,
+            "positive_prompt": prompt_text,
+            "negative_prompt": str(stage_input.config.get("render", {}).get("flux2_negative", "")).strip(),
+            "filename_prefix": still_prefix(shot_id),
+            "seed": int(render_item.get("seed", 0) or 0),
+            "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),
+        }
+        if previous_image:
+            item["reference_image"] = previous_image
+        image_path = run_flux2_still(
             stage_input.config,
-            {
-                "shot_id": shot_id,
-                "positive_prompt": prompt_text,
-                "negative_prompt": str(stage_input.config.get("render", {}).get("qwen_negative", "")).strip(),
-                "filename_prefix": qwen_still_prefix(shot_id),
-                "seed": int(render_item.get("seed", 0) or 0),
-                "qwen_size": str(stage_input.config.get("render", {}).get("qwen_size", "")).strip(),
-            },
+            item,
         )
         still_results.append(
             {

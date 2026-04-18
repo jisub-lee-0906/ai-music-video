@@ -9,7 +9,7 @@ def audio_prefix(run_id: str) -> str:
     return f"{MUSIC_DIR}/audio_{str(run_id).strip()}"
 
 
-def qwen_still_prefix(shot_id: str) -> str:
+def still_prefix(shot_id: str) -> str:
     return f"{STILL_DIR}/{str(shot_id).strip()}"
 
 

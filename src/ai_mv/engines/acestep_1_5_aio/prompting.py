@@ -15,7 +15,7 @@ def _audio_outline_prompt(plan: dict) -> str:
         + f"Planner seed={int(plan.get('seed', 31))}. This is a planning hint, not the workflow execution seed. "
         + _language_clause(plan)
         + _intent_clause(plan)
-        + _outline_label_clause_qwen(plan)
+        + _outline_label_clause(plan)
     )
 
 
@@ -133,7 +133,7 @@ def _language_style_rules(plan: dict) -> str:
     return ""
 
 
-def _outline_label_clause_qwen(plan: dict) -> str:
+def _outline_label_clause(plan: dict) -> str:
     rows = preferred_songform_rows()
     labels: list[str] = []
     for row in rows:

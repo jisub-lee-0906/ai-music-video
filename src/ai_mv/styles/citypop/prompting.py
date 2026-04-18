@@ -4,9 +4,9 @@ from __future__ import annotations
 def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict) -> str:
     concept = _concept_seed_phrase(concept_text)
     continuity = _continuity_anchor(shot)
-    subject = _qwen_subject_phrase(shot)
-    location = _qwen_location_phrase(shot)
-    palette = _qwen_palette_phrase(shot, citypop_bible)
+    subject = _still_subject_phrase(shot)
+    location = _still_location_phrase(shot)
+    palette = _still_palette_phrase(shot, citypop_bible)
     return ", ".join(
         part
         for part in [
@@ -25,7 +25,7 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
 
 
 def build_citypop_prompt_draft(shot: dict) -> str:
-    framing = _qwen_framing_phrase(shot)
+    framing = _still_framing_phrase(shot)
     return ", ".join(
         part
         for part in [
@@ -64,7 +64,7 @@ def _continuity_anchor(shot: dict) -> str:
     return "same protagonist, same summer night-drive world, continuity preserved"
 
 
-def _qwen_subject_phrase(shot: dict) -> str:
+def _still_subject_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode == "profile_mood":
         return "young woman with long dark hair under fluorescent station light"
@@ -87,7 +87,7 @@ def _qwen_subject_phrase(shot: dict) -> str:
     return "young woman in a reflective summer night portrait"
 
 
-def _qwen_location_phrase(shot: dict) -> str:
+def _still_location_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
         "profile_mood": "night station interior with dark glass panels",
@@ -103,7 +103,7 @@ def _qwen_location_phrase(shot: dict) -> str:
     return mapping.get(visual_mode, "night city reflections")
 
 
-def _qwen_palette_phrase(shot: dict, citypop_bible: dict) -> str:
+def _still_palette_phrase(shot: dict, citypop_bible: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode in {"night_drive", "window_reflection", "night_bridge", "chorus_performance"}:
         return "deep blue and neon magenta palette"
@@ -115,7 +115,7 @@ def _qwen_palette_phrase(shot: dict, citypop_bible: dict) -> str:
     return ", ".join(palette[:2])
 
 
-def _qwen_framing_phrase(shot: dict) -> str:
+def _still_framing_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
         "profile_mood": "tight portrait close-up",

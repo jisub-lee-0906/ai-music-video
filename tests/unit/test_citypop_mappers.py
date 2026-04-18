@@ -1,28 +1,49 @@
-from ai_mv.core.output_paths import ltx_clip_prefix, qwen_still_prefix
+from ai_mv.core.output_paths import ltx_clip_prefix, still_prefix
 from ai_mv.engines.ltx_flf2v.mapper import map_ltx_flf2v_workflow
 from ai_mv.engines.ltx_i2v.mapper import map_ltx_i2v_workflow
 from ai_mv.engines.ltx_ia2v.mapper import map_ltx_ia2v_workflow
-from ai_mv.engines.qwen_image.mapper import map_qwen_workflow
+from ai_mv.engines.flux2_image.mapper import map_flux2_workflow
 
 
-def test_qwen_mapper():
-    cfg = {"render": {"qwen_size": "1024x1024"}, "video": {"target": "1920x1080@24"}}
+def test_flux2_text_to_image_mapper():
+    cfg = {"render": {"flux2_size": "1024x1024"}, "video": {"target": "1920x1080@24"}}
     item = {
         "shot_id": "S001",
         "positive_prompt": "city pop heroine, sunset coast, clean cel shading, film grain",
         "negative_prompt": "ugly, blurry",
-        "filename_prefix": qwen_still_prefix("S001"),
+        "filename_prefix": still_prefix("S001"),
         "seed": 1234,
         "steps": 28,
-        "cfg": 4.5,
+        "guidance": 4.5,
     }
-    out = map_qwen_workflow(cfg, item)["node.inputs"]
-    assert out["76:6"]["text"] == item["positive_prompt"]
-    assert out["76:7"]["text"] == item["negative_prompt"]
-    assert out["76:58"]["width"] == 1024
-    assert out["76:58"]["height"] == 1024
-    assert out["76:3"]["seed"] == 1234
-    assert out["60"]["filename_prefix"] == "stills/S001"
+    out = map_flux2_workflow(cfg, item)["node.inputs"]
+    assert out["98:6"]["text"] == item["positive_prompt"]
+    assert out["98:47"]["width"] == 1024
+    assert out["98:47"]["height"] == 1024
+    assert out["98:48"]["steps"] == 28
+    assert out["98:25"]["noise_seed"] == 1234
+    assert out["98:26"]["guidance"] == 4.5
+    assert out["9"]["filename_prefix"] == "stills/S001"
+
+
+def test_flux2_reference_mapper_uses_reference_image_contract():
+    cfg = {"render": {"flux2_size": "1024x1024"}, "video": {"target": "1920x1080@24"}}
+    item = {
+        "shot_id": "S002",
+        "positive_prompt": "same protagonist under station light, locked identity details, single cinematic keyframe",
+        "filename_prefix": still_prefix("S002"),
+        "seed": 2222,
+        "steps": 20,
+        "guidance": 3.5,
+        "reference_image": "stills/S001.png",
+    }
+    out = map_flux2_workflow(cfg, item)["node.inputs"]
+    assert out["46"]["image"] == "stills/S001.png"
+    assert out["68:6"]["text"] == item["positive_prompt"]
+    assert out["68:48"]["steps"] == 20
+    assert out["68:25"]["noise_seed"] == 2222
+    assert out["68:26"]["guidance"] == 3.5
+    assert out["9"]["filename_prefix"] == "stills/S002"
 
 
 def test_ltx_i2v_mapper():

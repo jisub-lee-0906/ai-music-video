@@ -29,7 +29,7 @@ from ai_mv.engines.acestep_1_5_aio.lyric_blocks import (
     _audio_lyrics_draft_system_prompt,
     _audio_lyrics_block_prompt,
     _audio_lyrics_block_system_prompt,
-    _audio_lyrics_rules_qwen,
+    _audio_lyrics_rules,
     _parse_audio_lyrics_draft,
     _audio_retry_clause,
     _current_block_constraints,

@@ -25,7 +25,7 @@ Why this exists:
 The prompt lab is for direct workflow-facing experiments, not full MV runs.
 
 In-scope:
-- Qwen still prompt syntax
+- Flux2 still prompt syntax
 - LTX i2v prompt syntax
 - LTX ia2v prompt syntax
 - LTX flf2v prompt syntax
@@ -66,7 +66,7 @@ Do not answer 2 or 3 before 1 is grounded.
 
 ### A. Still-image track
 Target:
-- Qwen still generation
+- Flux2 still generation
 
 What to optimize for:
 - prompt adherence

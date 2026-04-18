@@ -11,7 +11,7 @@
 ## 2. Models
 
 - ACE-Step 1.5 관련 모델 다운로드 완료
-- Qwen-Image 관련 모델 다운로드 완료
+- Flux2 still related models downloaded and wired to the two local Flux2 workflows
 - LTX 2.3 `i2v / ia2v / flf2v` 관련 모델 다운로드 완료
 - workflow가 참조하는 VAE/CLIP/audio node 모델명과 실제 파일명이 일치하는지 확인
 
@@ -66,7 +66,7 @@ WSL에서는 아래 순서를 우선 사용한다.
 
 ## 7. First Retry Rules
 
-- still 실패면 Qwen prompt/seed만 먼저 확인
+- still 실패면 Flux2 prompt/seed/reference-image 경로만 먼저 확인
 - clip 실패면 해당 mode의 workflow binding부터 확인
 - ffmpeg 실패면 clip 경로와 audio 경로부터 확인
 - 첫 런에서는 `ia2v`, `flf2v`를 끄고 M1 경로부터 통과시킬 것

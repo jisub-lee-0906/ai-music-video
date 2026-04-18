@@ -274,7 +274,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
         "recommended_action": "rerender_scene_intrusion_shots",
         "rerender_prescription": {
             "stage_focus": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "tighten_subject_and_world_anchors",
         },
@@ -288,7 +288,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S003",
             "quality_findings": ["unrelated_scene_intrusion", "weak_subject_match"],
             "rerender_stage": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "recommended_action": "rerender_scene_intrusion_shots",
             "fix_strategy": "tighten_subject_and_world_anchors",
@@ -297,7 +297,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S001",
             "quality_findings": ["panel_layout", "collage_layout"],
             "rerender_stage": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "recommended_action": "rerender_panelized_keyframes",
             "fix_strategy": "enforce_single_frame_keyframe_composition",
@@ -306,7 +306,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S002",
             "quality_findings": ["motion_fragile_frame"],
             "rerender_stage": "stills_then_clips",
-            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
             "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
@@ -367,7 +367,7 @@ def test_classify_rerender_target_uses_world_anchor_fix_strategy_for_environment
         "recommended_action": "rerender_weak_shots_with_prompt_tightening",
         "rerender_prescription": {
             "stage_focus": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "tighten_subject_and_world_anchors",
         },
@@ -383,7 +383,7 @@ def test_classify_rerender_target_uses_subject_identity_fix_strategy_for_subject
         "recommended_action": "rerender_weak_shots_with_prompt_tightening",
         "rerender_prescription": {
             "stage_focus": "stills",
-            "workflow_focus": ["qwen_image"],
+            "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "tighten_subject_identity_anchors",
         },
@@ -399,7 +399,7 @@ def test_classify_rerender_target_uses_identity_continuity_fix_strategy_for_iden
         "recommended_action": "rerender_weak_shots_with_prompt_tightening",
         "rerender_prescription": {
             "stage_focus": "stills_then_clips",
-            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "tighten_identity_continuity_anchors",
         },
@@ -415,7 +415,7 @@ def test_classify_rerender_target_uses_composite_continuity_policy_for_identity_
         "recommended_action": "rerender_continuity_break_shots",
         "rerender_prescription": {
             "stage_focus": "stills_then_clips",
-            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "tighten_identity_continuity_anchors",
         },
@@ -630,7 +630,7 @@ def test_review_models_surface_new_publishability_quality_findings():
     }
     assert report["publishability_summary"]["isolated_asset_quality"]["rerender_prescription"] == {
         "stage_focus": "stills",
-        "workflow_focus": ["qwen_image"],
+        "workflow_focus": ["flux2_image"],
         "prompt_contract_focus": ["still_prompt_text"],
         "fix_strategy": "tighten_subject_and_world_anchors",
     }
@@ -645,7 +645,7 @@ def test_review_models_surface_new_publishability_quality_findings():
     }
     assert report["publishability_summary"]["final_mv_publishability"]["rerender_prescription"] == {
         "stage_focus": "stills_then_clips",
-        "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+        "workflow_focus": ["flux2_image", "i2v", "flf2v"],
         "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
         "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
     }
@@ -715,7 +715,7 @@ def test_review_models_surface_panelized_keyframe_findings():
     }
     assert report["publishability_summary"]["isolated_asset_quality"]["rerender_prescription"] == {
         "stage_focus": "stills",
-        "workflow_focus": ["qwen_image"],
+        "workflow_focus": ["flux2_image"],
         "prompt_contract_focus": ["still_prompt_text"],
         "fix_strategy": "enforce_single_frame_keyframe_composition",
     }

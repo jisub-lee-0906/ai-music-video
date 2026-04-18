@@ -23,7 +23,7 @@ def apply_input_defaults(config: dict) -> None:
 def validate_sizes(config: dict) -> None:
     w, h, _ = parse_target(config["video"]["target"])
     ensure_16_9(w, h)
-    for key in ("qwen_size", "ltx_i2v_size", "ltx_ia2v_size", "ltx_flf2v_size"):
+    for key in ("flux2_size", "ltx_i2v_size", "ltx_ia2v_size", "ltx_flf2v_size"):
         rw, rh = parse_size(str(config["render"][key]))
         ensure_positive_size(rw, rh)
 

@@ -42,7 +42,7 @@ def _bar_feel_clause(plan: dict, block: dict) -> str:
     return f"This section is locked to {bars} bars, so match that size with natural breathing and no overpacked phrasing. "
 
 
-def _audio_lyrics_rules_qwen(plan: dict) -> str:
+def _audio_lyrics_rules(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
     base = (
         "Keep the exact block label and exact line count. "
@@ -74,7 +74,7 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
     label = str(block.get("label", "")).strip()
     line_count = int(block.get("line_count", 1))
     return (
-        _audio_lyrics_rules_qwen(plan)
+        _audio_lyrics_rules(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
         + _bar_feel_clause(plan, block)
@@ -120,7 +120,7 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
             summary += " (" + "; ".join(details) + ")"
         sections.append(summary)
     return (
-        _audio_lyrics_rules_qwen(plan)
+        _audio_lyrics_rules(plan)
         + _language_clause(plan)
         + _intent_clause(plan, include_selected_hook=False, include_hook_fragments=False)
         + "Write the full lyrics draft for the entire song in one pass so section progression feels connected. "
