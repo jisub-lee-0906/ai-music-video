@@ -6,6 +6,7 @@ __pycache__/
 .uv-cache/
 dist/
 .hermes/
+.analysis/
 
 src/*.egg-info/
 *.egg-info/

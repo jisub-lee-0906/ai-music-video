@@ -86,6 +86,8 @@ def _repair_prompt_text(*, field_name: str, fix_strategy: str, current_value: st
                 "preserve neighboring-shot continuity",
             ]
         )
+    if fix_strategy == "tighten_identity_continuity_anchors":
+        return _repair_identity_continuity_prompt(field_name=field_name, current_value=current_value)
     if fix_strategy == "shorter_motion_and_clean_terminal_frames":
         return _repair_terminal_frame_prompt(field_name=field_name, current_value=current_value)
     return current_value
@@ -105,6 +107,26 @@ def _repair_terminal_frame_prompt(*, field_name: str, current_value: str) -> str
                 "restrained motion range",
                 "shorter motion beat",
                 "clean exit frame",
+                "no abrupt pose change",
+            ]
+        )
+    return current_value
+
+
+
+def _repair_identity_continuity_prompt(*, field_name: str, current_value: str) -> str:
+    tokens = [part.strip() for part in str(current_value).split(",") if part.strip()]
+    seed_prefix = tokens[0] if tokens else str(current_value).strip()
+    if field_name == "clip_prompt_seed":
+        return _join_prompt_tokens([seed_prefix, "same protagonist", "preserve neighboring-shot continuity"])
+    if field_name == "clip_positive_prompt":
+        return _join_prompt_tokens(
+            [
+                seed_prefix,
+                "same protagonist",
+                "preserve neighboring-shot continuity",
+                "match adjacent shots",
+                "no identity drift",
                 "no abrupt pose change",
             ]
         )

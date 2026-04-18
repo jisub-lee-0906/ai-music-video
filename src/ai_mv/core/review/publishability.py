@@ -307,6 +307,9 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
     ):
         prescription["fix_strategy"] = "tighten_subject_and_world_anchors"
     elif action_name == "rerender_weak_shots_with_prompt_tightening" and "identity_drift" in normalized_reasons:
+        prescription["stage_focus"] = "stills_then_clips"
+        prescription["workflow_focus"] = ["qwen_image", "i2v", "flf2v"]
+        prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
         prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     elif action_name == "rerender_weak_shots_with_prompt_tightening" and "weak_subject_match" in normalized_reasons:
         prescription["fix_strategy"] = "tighten_subject_identity_anchors"

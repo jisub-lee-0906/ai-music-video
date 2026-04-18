@@ -1005,9 +1005,9 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
                     {
                         "shot_id": "S005",
                         "recommended_action": "rerender_weak_shots_with_prompt_tightening",
-                        "rerender_stage": "stills",
+                        "rerender_stage": "stills_then_clips",
                         "fix_strategy": "tighten_identity_continuity_anchors",
-                        "prompt_contract_focus": ["still_prompt_text"],
+                        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
                         "stage_payloads": {},
                     },
                     {
@@ -1031,12 +1031,17 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
                     ],
                 },
                 "clips": {
-                    "shot_plan": [{"shot_id": "S003"}],
+                    "shot_plan": [{"shot_id": "S003"}, {"shot_id": "S005"}],
                     "render_plan": [
                         {
                             "shot_id": "S003",
                             "clip_prompt_seed": "camera drift forward, stable motion, preserve subject continuity",
                             "clip_positive_prompt": "camera drift forward, stable motion, preserve subject continuity, single continuous motion, no abrupt pose change",
+                        },
+                        {
+                            "shot_id": "S005",
+                            "clip_prompt_seed": "subway sidestep motion, keep protagonist recognizable",
+                            "clip_positive_prompt": "subway sidestep motion, keep protagonist recognizable, stable body silhouette, no abrupt pose change",
                         }
                     ],
                     "still_results": [],
@@ -1056,6 +1061,8 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
     assert still_rows[3]["still_prompt_text"] == "subway reflection heroine, same protagonist, continuity-locked identity details, match adjacent shots, no identity drift, preserve neighboring-shot continuity"
     assert clip_rows[0]["clip_prompt_seed"] == "camera drift forward, clean terminal frame, restrained motion range"
     assert clip_rows[0]["clip_positive_prompt"] == "camera drift forward, clean terminal frame, restrained motion range, shorter motion beat, clean exit frame, no abrupt pose change"
+    assert clip_rows[1]["clip_prompt_seed"] == "subway sidestep motion, same protagonist, preserve neighboring-shot continuity"
+    assert clip_rows[1]["clip_positive_prompt"] == "subway sidestep motion, same protagonist, preserve neighboring-shot continuity, match adjacent shots, no identity drift, no abrupt pose change"
 
 
 
