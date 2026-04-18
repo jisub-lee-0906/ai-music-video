@@ -334,6 +334,41 @@ def test_assemble_mv_runs_ffmpeg(monkeypatch, tmp_path):
     assert len(calls["clips"]) == 1
 
 
+def test_assemble_mv_propagates_review_quality_findings_path_from_config(monkeypatch, tmp_path):
+    final_file = tmp_path / "artifacts" / "runs" / "run-3b" / "final" / "final_mv.mp4"
+    findings_path = tmp_path / "manual-review" / "review-findings.json"
+
+    def _fake_run_file(run_id, name, scope="run"):
+        assert run_id == "run-3b"
+        assert name == "final/final_mv.mp4"
+        final_file.parent.mkdir(parents=True, exist_ok=True)
+        return final_file
+
+    def _fake_resolve_generated_file(_config, ref, _exts, _label):
+        return Path(ref)
+
+    def _fake_run_ffmpeg_mux(clips, audio, out, _config):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"video")
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_file", _fake_run_file)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", _fake_resolve_generated_file)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
+    stage_input = StageInput(
+        run_id="run-3b",
+        config={"review": {"quality_findings_path": str(findings_path)}},
+        payload={
+            "music_file": str(tmp_path / "music.mp3"),
+            "clip_results": [{"shot_id": "S001", "video": str(tmp_path / "clip.mp4")}],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    assert out.payload["review_inputs"]["quality_findings_path"] == str(findings_path)
+
+
 def test_review_outputs_marks_done_when_final_exists():
     final_path = Path("D:/renders/final.mp4")
     existing = {str(final_path), "D:/renders/S001.png", "D:/renders/S001.mp4"}
@@ -582,6 +617,79 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
         ]
     finally:
         _Path.exists = _original_exists
+
+
+
+def test_review_outputs_loads_quality_findings_from_review_inputs_path(monkeypatch, tmp_path):
+    findings_path = tmp_path / "review-findings.json"
+    findings_path.write_text(
+        '{\n'
+        '  "review_inputs": {\n'
+        '    "quality_findings": {\n'
+        '      "S006": ["terminal_frame_corruption", "continuity_break"]\n'
+        '    }\n'
+        '  }\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    existing = {"D:/renders/final.mp4", "D:/renders/S006.png", "D:/renders/S006.mp4", str(findings_path)}
+
+    def _fake_exists(self):
+        return str(self).replace("\\", "/") in {path.replace("\\", "/") for path in existing}
+
+    from pathlib import Path as _Path
+
+    _original_exists = _Path.exists
+    _Path.exists = _fake_exists
+    try:
+        stage_input = StageInput(
+            run_id="run-9b",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "shot_plan": [{"shot_id": "S006"}],
+                "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "status": "done"}],
+                "clip_results": [{"shot_id": "S006", "video": "D:/renders/S006.mp4", "status": "done"}],
+                "review_inputs": {
+                    "music_file": "D:/renders/song.mp3",
+                    "quality_findings_path": str(findings_path),
+                },
+            },
+        )
+
+        out = run_review_outputs(stage_input)
+
+        assert out.payload["review_report"]["status"] == "needs_rerender"
+        assert out.payload["review_report"]["rerender_targets"] == ["S006"]
+        assert out.payload["review_report"]["blocking_checks"]["terminal_frames_clean"] is False
+        assert out.payload["review_report"]["blocking_checks"]["visual_continuity_preserved"] is False
+    finally:
+        _Path.exists = _original_exists
+
+
+
+def test_review_outputs_fails_when_configured_quality_findings_path_is_invalid(tmp_path):
+    import pytest
+
+    findings_path = tmp_path / "review-findings.json"
+    findings_path.write_text('{"review_inputs": ', encoding="utf-8")
+    stage_input = StageInput(
+        run_id="run-9c",
+        config={},
+        payload={
+            "final_video": "D:/renders/final.mp4",
+            "shot_plan": [{"shot_id": "S006"}],
+            "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "status": "done"}],
+            "clip_results": [{"shot_id": "S006", "video": "D:/renders/S006.mp4", "status": "done"}],
+            "review_inputs": {
+                "music_file": "D:/renders/song.mp3",
+                "quality_findings_path": str(findings_path),
+            },
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="invalid review quality findings file"):
+        run_review_outputs(stage_input)
 
 
 

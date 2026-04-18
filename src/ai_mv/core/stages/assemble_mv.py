@@ -22,16 +22,20 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
     ok = run_ffmpeg_mux(clips, audio, final_video, stage_input.config)
     if not ok:
         raise RuntimeError("ffmpeg assemble failed")
+    review_inputs = {
+        "music_file": str(stage_input.payload.get("music_file", "")).strip(),
+        "clip_results": list(stage_input.payload.get("clip_results", [])),
+        "final_video": str(final_video),
+    }
+    quality_findings_path = _review_quality_findings_path(stage_input.config)
+    if quality_findings_path:
+        review_inputs["quality_findings_path"] = quality_findings_path
     return StageOutput(
         "assemble_mv",
         "done",
         {
             "final_video": str(final_video),
-            "review_inputs": {
-                "music_file": str(stage_input.payload.get("music_file", "")).strip(),
-                "clip_results": list(stage_input.payload.get("clip_results", [])),
-                "final_video": str(final_video),
-            },
+            "review_inputs": review_inputs,
         },
         [str(final_video)],
     )
@@ -49,3 +53,11 @@ def _resolve_clip_results(config: dict, payload: dict) -> list[Path]:
     if not out:
         raise RuntimeError("assemble requires at least one rendered clip")
     return out
+
+
+
+def _review_quality_findings_path(config: object) -> str:
+    review_cfg = config.get("review") if isinstance(config, dict) else None
+    if not isinstance(review_cfg, dict):
+        return ""
+    return str(review_cfg.get("quality_findings_path", "")).strip()

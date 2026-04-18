@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.review.models import build_review_report, build_shot_quality_scores
 from ai_mv.core.review.policy import audio_video_drift_sec, file_exists, shot_asset_status
@@ -89,7 +92,43 @@ def _collect_quality_findings(payload: dict) -> dict[str, list[str]]:
                 if not normalized_shot_id:
                     continue
                 _extend_unique(findings.setdefault(normalized_shot_id, []), reasons)
+        file_findings = _load_quality_findings_from_path(review_inputs.get("quality_findings_path"))
+        for shot_id, reasons in file_findings.items():
+            _extend_unique(findings.setdefault(shot_id, []), reasons)
     return {shot_id: reasons for shot_id, reasons in findings.items() if reasons}
+
+
+
+def _load_quality_findings_from_path(path_value: object) -> dict[str, list[str]]:
+    path_str = str(path_value or "").strip()
+    if not path_str:
+        return {}
+    try:
+        payload = json.loads(Path(path_str).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"invalid review quality findings file: {path_str}") from exc
+    explicit = _explicit_quality_findings(payload)
+    findings: dict[str, list[str]] = {}
+    for shot_id, reasons in explicit.items():
+        normalized_shot_id = str(shot_id or "").strip()
+        if not normalized_shot_id:
+            continue
+        _extend_unique(findings.setdefault(normalized_shot_id, []), reasons)
+    return {shot_id: reasons for shot_id, reasons in findings.items() if reasons}
+
+
+
+def _explicit_quality_findings(payload: object) -> dict:
+    if not isinstance(payload, dict):
+        return {}
+    review_inputs = payload.get("review_inputs")
+    if isinstance(review_inputs, dict) and isinstance(review_inputs.get("quality_findings"), dict):
+        return review_inputs.get("quality_findings")
+    if isinstance(payload.get("quality_findings"), dict):
+        return payload.get("quality_findings")
+    if payload and all(isinstance(key, str) for key in payload):
+        return payload
+    return {}
 
 
 
