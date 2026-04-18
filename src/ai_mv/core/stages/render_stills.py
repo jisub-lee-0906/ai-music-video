@@ -4,6 +4,15 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.output_paths import still_prefix
 from ai_mv.engines.flux2_image.runner import run_flux2_still
 
+_RAW_STILL_VISUAL_MODES = {"window_reflection"}
+_RAW_STILL_PROMPT_MARKERS = (
+    "clear face visibility",
+    "visible upper-body framing",
+    "readable medium shot",
+    "motion-safe continuity",
+    "preserved neighboring-shot continuity",
+)
+
 
 def run_render_stills(stage_input: StageInput) -> StageOutput:
     shot_plan = [row for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)]
@@ -92,29 +101,26 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
 
 
 def _apply_still_constraint_policy(prompt_text: str, *, shot: dict, render_item: dict) -> str:
-    if _should_keep_raw_still_prompt(prompt_text, shot=shot, render_item=render_item):
+    if _resolve_still_constraint_mode(prompt_text, shot=shot, render_item=render_item) == "raw":
         return str(prompt_text).strip()
     return _single_keyframe_prompt_text(prompt_text)
 
 
-def _should_keep_raw_still_prompt(prompt_text: str, *, shot: dict, render_item: dict) -> bool:
+def _resolve_still_constraint_mode(prompt_text: str, *, shot: dict, render_item: dict) -> str:
     explicit_mode = str(render_item.get("still_constraint_mode", "")).strip().lower()
-    if explicit_mode == "raw":
-        return True
-    if explicit_mode == "constrained":
-        return False
+    if explicit_mode in {"raw", "constrained"}:
+        return explicit_mode
     visual_mode = str(shot.get("visual_mode", "")).strip().lower()
-    if visual_mode == "window_reflection":
-        return True
+    if visual_mode in _RAW_STILL_VISUAL_MODES:
+        return "raw"
     text = str(prompt_text or "").lower()
-    raw_markers = (
-        "clear face visibility",
-        "visible upper-body framing",
-        "readable medium shot",
-        "motion-safe continuity",
-        "preserved neighboring-shot continuity",
-    )
-    return any(marker in text for marker in raw_markers)
+    if any(marker in text for marker in _RAW_STILL_PROMPT_MARKERS):
+        return "raw"
+    return "constrained"
+
+
+def _should_keep_raw_still_prompt(prompt_text: str, *, shot: dict, render_item: dict) -> bool:
+    return _resolve_still_constraint_mode(prompt_text, shot=shot, render_item=render_item) == "raw"
 
 
 def _sanitize_still_prompt_text(prompt_text: str) -> str:

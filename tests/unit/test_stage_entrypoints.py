@@ -142,6 +142,78 @@ def test_render_stills_keeps_readability_repair_prompt_raw(monkeypatch):
     assert "clear face visibility" in prompt
 
 
+def test_render_stills_defaults_standard_case_to_constrained(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-default-constrained",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S022", "visual_mode": "night_drive"}],
+            "render_plan": [{"shot_id": "S022", "still_prompt_text": "A young woman driving through the city at night with dashboard glow across her face and passing streetlight reflections."}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "single cinematic keyframe" in prompt
+    assert "one uninterrupted composition" in prompt
+
+
+def test_render_stills_allows_explicit_raw_override(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-explicit-raw",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S023", "visual_mode": "night_drive"}],
+            "render_plan": [{"shot_id": "S023", "still_constraint_mode": "raw", "still_prompt_text": "A young woman in the same late-night city world framed in a readable medium shot with restrained reflections."}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "single cinematic keyframe" not in prompt
+    assert prompt.startswith("A young woman in the same late-night city world")
+
+
+def test_render_stills_allows_explicit_constrained_override(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-explicit-constrained",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S024", "visual_mode": "window_reflection"}],
+            "render_plan": [{"shot_id": "S024", "still_constraint_mode": "constrained", "still_prompt_text": "A young woman seen through side glass with layered city reflections in one reflective late-night transit moment."}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "single cinematic keyframe" in prompt
+    assert "one uninterrupted composition" in prompt
+
+
 def test_render_stills_strips_panel_prone_graphic_prompt_tokens(monkeypatch):
     calls = []
 
