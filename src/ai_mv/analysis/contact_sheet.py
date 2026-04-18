@@ -11,6 +11,7 @@ def build_contact_sheet_manifest(
     frame_labels: list[str],
     output_image_path: str | Path,
     max_columns: int = 4,
+    escalation_context: dict[str, object] | None = None,
 ) -> dict[str, object]:
     normalized_paths = [str(Path(path)) for path in frame_paths]
     normalized_labels = [str(label) for label in frame_labels]
@@ -34,5 +35,27 @@ def build_contact_sheet_manifest(
         "columns": columns,
         "rows": rows,
         "reviewer_summary": f"Contact sheet with {count} frames across {rows} rows",
+        "escalation_context": _normalize_escalation_context(escalation_context),
         "frames": frames,
     }
+
+
+
+def _normalize_escalation_context(context: dict[str, object] | None) -> dict[str, object]:
+    if not isinstance(context, dict):
+        return {}
+    normalized = {
+        "source_stage": str(context.get("source_stage", "")).strip(),
+        "run_id": str(context.get("run_id", "")).strip(),
+        "status": str(context.get("status", "")).strip(),
+        "shot_ids": [
+            str(shot_id).strip()
+            for shot_id in context.get("shot_ids", [])
+            if str(shot_id).strip()
+        ]
+        if isinstance(context.get("shot_ids"), list)
+        else [],
+    }
+    if not normalized["source_stage"] and not normalized["run_id"] and not normalized["status"] and not normalized["shot_ids"]:
+        return {}
+    return normalized

@@ -84,6 +84,7 @@ def write_review_packet(
                 frame_paths=list(manifest["frame_paths"]),
                 frame_labels=list(manifest["frame_labels"]),
                 output_image_path=manifest["contact_sheet_image_path"],
+                escalation_context=manifest.get("escalation_context") if isinstance(manifest.get("escalation_context"), dict) else None,
             ),
             indent=2,
         )
@@ -113,7 +114,7 @@ def _normalize_shot_ids(shot_ids: list[str] | tuple[str, ...]) -> list[str]:
 def _normalize_escalation_context(context: dict[str, object] | None) -> dict[str, object]:
     if not isinstance(context, dict):
         return {}
-    return {
+    normalized = {
         "source_stage": str(context.get("source_stage", "")).strip(),
         "run_id": str(context.get("run_id", "")).strip(),
         "status": str(context.get("status", "")).strip(),
@@ -125,6 +126,9 @@ def _normalize_escalation_context(context: dict[str, object] | None) -> dict[str
         if isinstance(context.get("shot_ids"), list)
         else [],
     }
+    if not normalized["source_stage"] and not normalized["run_id"] and not normalized["status"] and not normalized["shot_ids"]:
+        return {}
+    return normalized
 
 
 

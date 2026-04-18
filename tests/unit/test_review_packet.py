@@ -87,3 +87,6 @@ def test_write_review_packet_returns_contact_sheet_image_path(tmp_path):
 
     assert written["contact_sheet_image_path"] == tmp_path / "packet" / "contact-sheet.png"
     assert written["contact_sheet_manifest_path"] == tmp_path / "packet" / "contact-sheet.json"
+
+    contact_sheet = json.loads((tmp_path / "packet" / "contact-sheet.json").read_text(encoding="utf-8"))
+    assert contact_sheet["escalation_context"] == {}
