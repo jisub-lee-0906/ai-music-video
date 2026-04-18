@@ -7,6 +7,7 @@ from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.repair_rerender_prompts import run_repair_rerender_prompts
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
+from ai_mv.core.stages.rerender_loop import run_rerender_loop
 from ai_mv.core.stages.rerender_review import run_rerender_review
 from ai_mv.core.stages.review_outputs import run_review_outputs
 
@@ -947,3 +948,116 @@ def test_repair_rerender_prompts_leaves_inputs_unchanged_when_no_execution_paylo
     out = run_repair_rerender_prompts(stage_input)
 
     assert out.payload["rerender_stage_inputs"] == stage_input.payload["rerender_stage_inputs"]
+
+
+
+def test_rerender_loop_chains_prepare_repair_execute_and_review(monkeypatch):
+    calls = []
+
+    def _fake_prepare(stage_input):
+        calls.append(("prepare", dict(stage_input.payload)))
+        return StageOutput(
+            "prepare_rerender",
+            "done",
+            {
+                "rerender_stage_sequence": ["stills"],
+                "rerender_stage_inputs": {
+                    "stills": {
+                        "shot_plan": [{"shot_id": "S001"}],
+                        "render_plan": [{"shot_id": "S001", "still_prompt_text": "draft"}],
+                    }
+                },
+            },
+            [],
+        )
+
+    def _fake_repair(stage_input):
+        calls.append(("repair", dict(stage_input.payload)))
+        assert stage_input.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]["still_prompt_text"] == "draft"
+        return StageOutput(
+            "repair_rerender_prompts",
+            "done",
+            {
+                "rerender_stage_inputs": {
+                    "stills": {
+                        "shot_plan": [{"shot_id": "S001"}],
+                        "render_plan": [{"shot_id": "S001", "still_prompt_text": "repaired"}],
+                    }
+                }
+            },
+            [],
+        )
+
+    def _fake_execute(stage_input):
+        calls.append(("execute", dict(stage_input.payload)))
+        assert stage_input.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]["still_prompt_text"] == "repaired"
+        return StageOutput(
+            "execute_rerender",
+            "done",
+            {
+                "rerender_results": {
+                    "completed_stages": ["stills"],
+                    "still_results": [{"shot_id": "S001", "image": "retry.png", "status": "done"}],
+                    "clip_results": [],
+                }
+            },
+            [],
+        )
+
+    def _fake_review(stage_input):
+        calls.append(("review", dict(stage_input.payload)))
+        assert stage_input.payload["rerender_results"]["still_results"] == [{"shot_id": "S001", "image": "retry.png", "status": "done"}]
+        return StageOutput(
+            "rerender_review",
+            "done",
+            {
+                "still_results": [{"shot_id": "S001", "image": "retry.png", "status": "done"}],
+                "clip_results": [],
+                "rerender_review_report": {"status": "done", "rerender_targets": []},
+            },
+            [],
+        )
+
+    monkeypatch.setattr("ai_mv.core.stages.rerender_loop.run_prepare_rerender", _fake_prepare)
+    monkeypatch.setattr("ai_mv.core.stages.rerender_loop.run_repair_rerender_prompts", _fake_repair)
+    monkeypatch.setattr("ai_mv.core.stages.rerender_loop.run_execute_rerender", _fake_execute)
+    monkeypatch.setattr("ai_mv.core.stages.rerender_loop.run_rerender_review", _fake_review)
+
+    out = run_rerender_loop(
+        StageInput(
+            run_id="run-rerender-loop-1",
+            config={},
+            payload={"review_report": {"rerender_execution_payloads": [{"shot_id": "S001"}]}, "still_results": []},
+        )
+    )
+
+    assert [name for name, _payload in calls] == ["prepare", "repair", "execute", "review"]
+    assert out.stage == "rerender_loop"
+    assert out.status == "done"
+    assert out.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]["still_prompt_text"] == "repaired"
+    assert out.payload["rerender_results"]["still_results"] == [{"shot_id": "S001", "image": "retry.png", "status": "done"}]
+    assert out.payload["rerender_review_report"] == {"status": "done", "rerender_targets": []}
+
+
+
+def test_rerender_loop_returns_original_payload_when_no_rerender_targets_exist(monkeypatch):
+    seen_prepare = []
+
+    def _fake_prepare(stage_input):
+        seen_prepare.append(True)
+        return StageOutput("prepare_rerender", "done", {"rerender_stage_sequence": [], "rerender_stage_inputs": {}}, [])
+
+    monkeypatch.setattr("ai_mv.core.stages.rerender_loop.run_prepare_rerender", _fake_prepare)
+
+    out = run_rerender_loop(
+        StageInput(
+            run_id="run-rerender-loop-empty",
+            config={},
+            payload={"review_report": {"rerender_execution_payloads": []}, "still_results": [{"shot_id": "S001"}]},
+        )
+    )
+
+    assert seen_prepare == [True]
+    assert out.payload["rerender_stage_inputs"] == {}
+    assert out.payload["rerender_stage_sequence"] == []
+    assert out.payload["still_results"] == [{"shot_id": "S001"}]
