@@ -35,3 +35,5 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
     assert captured["rerender_escalation_reviewer_summary"] == "Manual review required for 1 shots: S001"
     assert captured["rerender_escalation_shot_ids"] == ["S001"]
     assert captured["rerender_escalation_actions"] == ["rerender_continuity_break_shots"]
+    assert captured["rerender_escalation_max_priority"] == 7
+    assert captured["rerender_escalation_unique_actions"] == ["rerender_continuity_break_shots"]

@@ -8,6 +8,16 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     write_manifest(state, payload)
     rerender_escalation = payload.get("rerender_escalation") if isinstance(payload.get("rerender_escalation"), dict) else {}
     summary_by_shot = rerender_escalation.get("summary_by_shot") if isinstance(rerender_escalation.get("summary_by_shot"), list) else []
+    escalation_actions = [
+        str(row.get("recommended_action", "")).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict) and str(row.get("recommended_action", "")).strip()
+    ]
+    escalation_priorities = [
+        int(row.get("priority_score", 0) or 0)
+        for row in summary_by_shot
+        if isinstance(row, dict)
+    ]
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -32,10 +42,8 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
             for row in summary_by_shot
             if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
         ],
-        "rerender_escalation_actions": [
-            str(row.get("recommended_action", "")).strip()
-            for row in summary_by_shot
-            if isinstance(row, dict) and str(row.get("recommended_action", "")).strip()
-        ],
+        "rerender_escalation_actions": escalation_actions,
+        "rerender_escalation_max_priority": max(escalation_priorities) if escalation_priorities else 0,
+        "rerender_escalation_unique_actions": sorted(set(escalation_actions)),
     }
     write_run_summary(state, summary)
