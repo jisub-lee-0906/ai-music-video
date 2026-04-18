@@ -6,6 +6,7 @@ from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
+from ai_mv.core.stages.rerender_review import run_rerender_review
 from ai_mv.core.stages.review_outputs import run_review_outputs
 
 
@@ -778,3 +779,81 @@ def test_execute_rerender_returns_empty_results_when_no_rerender_stage_inputs_ex
             "clip_results": [],
         }
     }
+
+
+
+def test_rerender_review_merges_fresh_assets_and_recomputes_review(monkeypatch):
+    existing = {"D:/renders/final.mp4", "D:/renders/S001_retry.png", "D:/renders/S001_retry.mp4"}
+
+    def _fake_exists(self):
+        return str(self).replace("\\", "/") in {path.replace("\\", "/") for path in existing}
+
+    from pathlib import Path as _Path
+
+    _original_exists = _Path.exists
+    _Path.exists = _fake_exists
+    try:
+        stage_input = StageInput(
+            run_id="run-rerender-review-1",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "music_file": "D:/renders/song.mp3",
+                "shot_plan": [{"shot_id": "S001"}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                "still_results": [{"shot_id": "S001", "image": "", "status": "failed"}],
+                "clip_results": [{"shot_id": "S001", "video": "", "status": "failed"}],
+                "review_inputs": {"music_file": "D:/renders/song.mp3", "quality_findings": {"S001": []}},
+                "rerender_results": {
+                    "completed_stages": ["stills", "clips"],
+                    "still_results": [{"shot_id": "S001", "image": "D:/renders/S001_retry.png", "status": "done"}],
+                    "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001_retry.mp4", "status": "done"}],
+                },
+            },
+        )
+
+        out = run_rerender_review(stage_input)
+
+        assert out.stage == "rerender_review"
+        assert out.status == "done"
+        assert out.payload["still_results"] == [{"shot_id": "S001", "image": "D:/renders/S001_retry.png", "status": "done"}]
+        assert out.payload["clip_results"] == [{"shot_id": "S001", "video": "D:/renders/S001_retry.mp4", "status": "done"}]
+        assert out.payload["rerender_review_report"]["status"] == "done"
+        assert out.payload["rerender_review_report"]["rerender_targets"] == []
+    finally:
+        _Path.exists = _original_exists
+
+
+
+def test_rerender_review_keeps_existing_assets_for_unmodified_shots():
+    out = run_rerender_review(
+        StageInput(
+            run_id="run-rerender-review-2",
+            config={},
+            payload={
+                "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}],
+                "still_results": [
+                    {"shot_id": "S001", "image": "still-1.png", "status": "done"},
+                    {"shot_id": "S002", "image": "still-2.png", "status": "done"},
+                ],
+                "clip_results": [
+                    {"shot_id": "S001", "video": "clip-1.mp4", "status": "done"},
+                    {"shot_id": "S002", "video": "clip-2.mp4", "status": "done"},
+                ],
+                "rerender_results": {
+                    "completed_stages": ["stills"],
+                    "still_results": [{"shot_id": "S001", "image": "still-1-retry.png", "status": "done"}],
+                    "clip_results": [],
+                },
+            },
+        )
+    )
+
+    assert out.payload["still_results"] == [
+        {"shot_id": "S002", "image": "still-2.png", "status": "done"},
+        {"shot_id": "S001", "image": "still-1-retry.png", "status": "done"},
+    ]
+    assert out.payload["clip_results"] == [
+        {"shot_id": "S001", "video": "clip-1.mp4", "status": "done"},
+        {"shot_id": "S002", "video": "clip-2.mp4", "status": "done"},
+    ]
