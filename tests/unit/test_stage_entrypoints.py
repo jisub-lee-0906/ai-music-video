@@ -4,6 +4,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.assemble_mv import run_assemble_mv
 from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
+from ai_mv.core.stages.repair_rerender_prompts import run_repair_rerender_prompts
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
 from ai_mv.core.stages.rerender_review import run_rerender_review
@@ -857,3 +858,92 @@ def test_rerender_review_keeps_existing_assets_for_unmodified_shots():
         {"shot_id": "S001", "video": "clip-1.mp4", "status": "done"},
         {"shot_id": "S002", "video": "clip-2.mp4", "status": "done"},
     ]
+
+
+
+def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
+    stage_input = StageInput(
+        run_id="run-rerender-repair-1",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S001",
+                        "recommended_action": "rerender_panelized_keyframes",
+                        "rerender_stage": "stills",
+                        "fix_strategy": "enforce_single_frame_keyframe_composition",
+                        "prompt_contract_focus": ["still_prompt_text"],
+                        "stage_payloads": {},
+                    },
+                    {
+                        "shot_id": "S002",
+                        "recommended_action": "rerender_scene_intrusion_shots",
+                        "rerender_stage": "stills_then_clips",
+                        "fix_strategy": "tighten_subject_and_world_anchors",
+                        "prompt_contract_focus": ["still_prompt_text"],
+                        "stage_payloads": {},
+                    },
+                    {
+                        "shot_id": "S003",
+                        "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                        "rerender_stage": "clips",
+                        "fix_strategy": "shorter_motion_and_clean_terminal_frames",
+                        "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
+                        "stage_payloads": {},
+                    },
+                ]
+            },
+            "rerender_stage_inputs": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}],
+                    "render_plan": [
+                        {"shot_id": "S001", "still_prompt_text": "neon portrait"},
+                        {"shot_id": "S002", "still_prompt_text": "night street singer"},
+                    ],
+                },
+                "clips": {
+                    "shot_plan": [{"shot_id": "S003"}],
+                    "render_plan": [
+                        {
+                            "shot_id": "S003",
+                            "clip_prompt_seed": "camera drift forward, stable motion, preserve subject continuity",
+                            "clip_positive_prompt": "camera drift forward, stable motion, preserve subject continuity, single continuous motion, no abrupt pose change",
+                        }
+                    ],
+                    "still_results": [],
+                    "music_file": "song.mp3",
+                },
+            },
+        },
+    )
+
+    out = run_repair_rerender_prompts(stage_input)
+
+    still_rows = out.payload["rerender_stage_inputs"]["stills"]["render_plan"]
+    clip_rows = out.payload["rerender_stage_inputs"]["clips"]["render_plan"]
+    assert still_rows[0]["still_prompt_text"] == "neon portrait, single cinematic keyframe, one uninterrupted composition, no panel layout, no collage, no split screen"
+    assert still_rows[1]["still_prompt_text"] == "night street singer, same protagonist, same environment, locked world details, no unrelated scene intrusion"
+    assert clip_rows[0]["clip_prompt_seed"] == "camera drift forward, clean terminal frame, restrained motion range"
+    assert clip_rows[0]["clip_positive_prompt"] == "camera drift forward, clean terminal frame, restrained motion range, shorter motion beat, clean exit frame, no abrupt pose change"
+
+
+
+def test_repair_rerender_prompts_leaves_inputs_unchanged_when_no_execution_payloads_exist():
+    stage_input = StageInput(
+        run_id="run-rerender-repair-empty",
+        config={},
+        payload={
+            "review_report": {"rerender_execution_payloads": []},
+            "rerender_stage_inputs": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S001"}],
+                    "render_plan": [{"shot_id": "S001", "still_prompt_text": "keep me"}],
+                }
+            },
+        },
+    )
+
+    out = run_repair_rerender_prompts(stage_input)
+
+    assert out.payload["rerender_stage_inputs"] == stage_input.payload["rerender_stage_inputs"]
