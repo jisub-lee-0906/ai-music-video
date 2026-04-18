@@ -262,6 +262,35 @@ def test_review_models_include_shot_level_rerender_plan():
     assert report["rerender_plan"][1]["bucket"] == "isolated_asset_quality"
     assert report["rerender_plan"][2]["recommended_action"] == "rerender_motion_fragile_shots_with_safer_keyframes"
     assert report["rerender_plan"][2]["bucket"] == "final_mv_publishability"
+    assert report["rerender_payload"] == [
+        {
+            "shot_id": "S003",
+            "quality_findings": ["unrelated_scene_intrusion", "weak_subject_match"],
+            "rerender_stage": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "recommended_action": "rerender_scene_intrusion_shots",
+            "fix_strategy": "tighten_subject_and_world_anchors",
+        },
+        {
+            "shot_id": "S001",
+            "quality_findings": ["panel_layout", "collage_layout"],
+            "rerender_stage": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "recommended_action": "rerender_panelized_keyframes",
+            "fix_strategy": "enforce_single_frame_keyframe_composition",
+        },
+        {
+            "shot_id": "S002",
+            "quality_findings": ["motion_fragile_frame"],
+            "rerender_stage": "stills_then_clips",
+            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
+            "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
+        },
+    ]
 
 
 
@@ -280,6 +309,7 @@ def test_review_models_leave_rerender_plan_empty_when_no_targets():
     )
 
     assert report["rerender_plan"] == []
+    assert report["rerender_payload"] == []
 
 
 

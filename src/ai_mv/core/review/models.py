@@ -58,6 +58,27 @@ def build_rerender_plan(*, rerender_targets: list[str], rerender_reasons: dict[s
 
 
 
+def build_rerender_payload(rerender_plan: list[dict[str, object]]) -> list[dict[str, object]]:
+    payload: list[dict[str, object]] = []
+    for item in rerender_plan if isinstance(rerender_plan, list) else []:
+        if not isinstance(item, dict):
+            continue
+        prescription = item.get("rerender_prescription") if isinstance(item.get("rerender_prescription"), dict) else {}
+        payload.append(
+            {
+                "shot_id": str(item.get("shot_id", "")).strip(),
+                "quality_findings": [str(reason).strip() for reason in item.get("reason_codes", []) if str(reason).strip()],
+                "rerender_stage": prescription.get("stage_focus"),
+                "workflow_focus": list(prescription.get("workflow_focus") or []) if isinstance(prescription.get("workflow_focus"), list) else prescription.get("workflow_focus"),
+                "prompt_contract_focus": list(prescription.get("prompt_contract_focus") or []) if isinstance(prescription.get("prompt_contract_focus"), list) else [],
+                "recommended_action": str(item.get("recommended_action", "")).strip(),
+                "fix_strategy": prescription.get("fix_strategy"),
+            }
+        )
+    return payload
+
+
+
 def build_review_report(
     *,
     planned_shot_ids: list[str],
@@ -105,6 +126,7 @@ def build_review_report(
         rerender_targets=rerender_targets,
         rerender_reasons=rerender_reasons,
     )
+    rerender_payload = build_rerender_payload(rerender_plan)
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -129,6 +151,7 @@ def build_review_report(
         "rerender_reasons": rerender_reasons,
         "rerender_priority_scores": priority_scores,
         "rerender_plan": rerender_plan,
+        "rerender_payload": rerender_payload,
         "benchmark_dimensions": benchmark_dimensions,
         "review_signal_buckets": review_signal_buckets,
         "publishability_summary": publishability_summary,

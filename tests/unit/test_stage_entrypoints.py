@@ -548,5 +548,16 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
                 },
             }
         ]
+        assert out.payload["review_report"]["rerender_payload"] == [
+            {
+                "shot_id": "S006",
+                "quality_findings": ["terminal_frame_corruption", "continuity_break"],
+                "rerender_stage": "clips",
+                "workflow_focus": ["i2v", "ia2v", "flf2v"],
+                "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
+                "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                "fix_strategy": "shorter_motion_and_clean_terminal_frames",
+            }
+        ]
     finally:
         _Path.exists = _original_exists
