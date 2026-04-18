@@ -49,6 +49,7 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
             )
             if not ok:
                 break
+            _ensure_rerender_outcome(stage_input.payload)
     state["status"] = "done" if state["status"] != "failed" else "failed"
     save_snapshot(state, stage_input.payload)
     write_pipeline_artifacts(state, stage_input.payload, cfg)
@@ -74,3 +75,19 @@ def _review_needs_rerender(review_report: object) -> bool:
     rerender_targets = review_report.get("rerender_targets")
     rerender_payloads = review_report.get("rerender_execution_payloads")
     return status == "needs_rerender" or bool(rerender_targets) or bool(rerender_payloads)
+
+
+
+def _ensure_rerender_outcome(payload: dict) -> None:
+    if not isinstance(payload, dict) or isinstance(payload.get("rerender_outcome"), dict):
+        return
+    review_report = payload.get("review_report")
+    if not isinstance(review_report, dict):
+        payload["rerender_outcome"] = {"attempted": True, "resolved": False, "exhausted": True}
+        return
+    unresolved = _review_needs_rerender(review_report)
+    payload["rerender_outcome"] = {
+        "attempted": True,
+        "resolved": not unresolved,
+        "exhausted": unresolved,
+    }

@@ -14,6 +14,7 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
     merged_payload = {**base_payload, **dict(prepared.payload)}
     stage_sequence = merged_payload.get("rerender_stage_sequence") if isinstance(merged_payload.get("rerender_stage_sequence"), list) else []
     if not stage_sequence:
+        merged_payload["rerender_outcome"] = {"attempted": False, "resolved": False, "exhausted": False}
         return StageOutput("rerender_loop", "done", merged_payload, [])
 
     repaired = run_repair_rerender_prompts(
@@ -32,4 +33,19 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
     merged_payload.update(dict(reviewed.payload))
     if isinstance(merged_payload.get("rerender_review_report"), dict):
         merged_payload["review_report"] = dict(merged_payload["rerender_review_report"])
+    merged_payload["rerender_outcome"] = _rerender_outcome(merged_payload.get("review_report"))
     return StageOutput("rerender_loop", "done", merged_payload, list(reviewed.artifacts))
+
+
+
+def _rerender_outcome(review_report: object) -> dict[str, bool]:
+    if not isinstance(review_report, dict):
+        return {"attempted": True, "resolved": False, "exhausted": True}
+    status = str(review_report.get("status", "")).strip()
+    rerender_targets = review_report.get("rerender_targets")
+    unresolved = status == "needs_rerender" or bool(rerender_targets)
+    return {
+        "attempted": True,
+        "resolved": not unresolved,
+        "exhausted": unresolved,
+    }

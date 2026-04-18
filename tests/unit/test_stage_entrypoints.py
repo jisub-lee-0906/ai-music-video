@@ -1037,6 +1037,46 @@ def test_rerender_loop_chains_prepare_repair_execute_and_review(monkeypatch):
     assert out.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]["still_prompt_text"] == "repaired"
     assert out.payload["rerender_results"]["still_results"] == [{"shot_id": "S001", "image": "retry.png", "status": "done"}]
     assert out.payload["rerender_review_report"] == {"status": "done", "rerender_targets": []}
+    assert out.payload["rerender_outcome"] == {"attempted": True, "resolved": True, "exhausted": False}
+
+
+
+def test_rerender_loop_marks_unresolved_rerender_outcome_when_review_still_fails(monkeypatch):
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_prepare_rerender",
+        lambda stage_input: StageOutput(
+            "prepare_rerender",
+            "done",
+            {"rerender_stage_sequence": ["stills"], "rerender_stage_inputs": {"stills": {"shot_plan": [], "render_plan": []}}},
+            [],
+        ),
+    )
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_repair_rerender_prompts",
+        lambda stage_input: StageOutput("repair_rerender_prompts", "done", {"rerender_stage_inputs": {"stills": {"shot_plan": [], "render_plan": []}}}, []),
+    )
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_execute_rerender",
+        lambda stage_input: StageOutput("execute_rerender", "done", {"rerender_results": {"completed_stages": ["stills"], "still_results": [], "clip_results": []}}, []),
+    )
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_rerender_review",
+        lambda stage_input: StageOutput(
+            "rerender_review",
+            "done",
+            {
+                "rerender_review_report": {"status": "needs_rerender", "rerender_targets": ["S009"]},
+                "still_results": [],
+                "clip_results": [],
+            },
+            [],
+        ),
+    )
+
+    out = run_rerender_loop(StageInput(run_id="run-rerender-loop-fail", config={}, payload={"review_report": {"status": "needs_rerender"}}))
+
+    assert out.payload["review_report"] == {"status": "needs_rerender", "rerender_targets": ["S009"]}
+    assert out.payload["rerender_outcome"] == {"attempted": True, "resolved": False, "exhausted": True}
 
 
 
