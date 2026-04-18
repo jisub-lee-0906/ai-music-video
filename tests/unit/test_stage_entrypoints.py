@@ -1217,15 +1217,18 @@ def test_rerender_loop_marks_unresolved_rerender_outcome_when_review_still_fails
 
 
 def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
+    captured = {}
     monkeypatch.setattr(
         "ai_mv.core.stages.rerender_escalation.write_review_packet",
-        lambda **kwargs: {
-            "manifest_path": kwargs["output_dir"] / "review-packet.json",
-            "quality_findings_path": kwargs["output_dir"] / "review-findings.json",
-            "reviewer_notes_path": kwargs["output_dir"] / "review-notes.md",
-            "contact_sheet_image_path": kwargs["output_dir"] / "contact-sheet.png",
-            "contact_sheet_manifest_path": kwargs["output_dir"] / "contact-sheet.json",
-        },
+        lambda **kwargs: (
+            captured.update(kwargs) or {
+                "manifest_path": kwargs["output_dir"] / "review-packet.json",
+                "quality_findings_path": kwargs["output_dir"] / "review-findings.json",
+                "reviewer_notes_path": kwargs["output_dir"] / "review-notes.md",
+                "contact_sheet_image_path": kwargs["output_dir"] / "contact-sheet.png",
+                "contact_sheet_manifest_path": kwargs["output_dir"] / "contact-sheet.json",
+            }
+        ),
     )
 
     out = run_rerender_escalation(
@@ -1317,6 +1320,12 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         "reviewer_notes": report["reviewer_notes_path"],
         "contact_sheet_image": report["contact_sheet_image_path"],
         "contact_sheet_manifest": report["contact_sheet_manifest_path"],
+    }
+    assert captured["escalation_context"] == {
+        "source_stage": "rerender_escalation",
+        "run_id": "run-rerender-escalate-1",
+        "status": "manual_review_required",
+        "shot_ids": ["S003", "S007"],
     }
     assert out.artifacts == [
         report["review_packet_manifest_path"],

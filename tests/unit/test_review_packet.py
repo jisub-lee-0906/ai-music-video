@@ -31,6 +31,30 @@ def test_build_review_packet_manifest_for_final_includes_expected_paths(tmp_path
     assert manifest["reviewer_summary"] == "Review packet for 2 shots with 4 extracted frames"
 
 
+def test_build_review_packet_manifest_includes_escalation_context_when_provided(tmp_path):
+    manifest = build_review_packet_manifest(
+        video_path=tmp_path / "final.mp4",
+        output_dir=tmp_path / "review-packet",
+        kind="final",
+        shot_ids=["S003", "S007"],
+        sample_count=4,
+        duration_fn=lambda _path: 20.0,
+        escalation_context={
+            "source_stage": "rerender_escalation",
+            "run_id": "run-rerender-escalate-1",
+            "status": "manual_review_required",
+            "shot_ids": ["S003", "S007"],
+        },
+    )
+
+    assert manifest["escalation_context"] == {
+        "source_stage": "rerender_escalation",
+        "run_id": "run-rerender-escalate-1",
+        "status": "manual_review_required",
+        "shot_ids": ["S003", "S007"],
+    }
+
+
 def test_build_review_packet_manifest_is_json_serializable(tmp_path):
     manifest = build_review_packet_manifest(
         video_path=tmp_path / "clip.mp4",

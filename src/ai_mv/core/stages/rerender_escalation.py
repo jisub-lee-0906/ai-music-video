@@ -41,6 +41,12 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         kind="final",
         sample_count=_DEFAULT_SAMPLE_COUNT,
         shot_ids=shot_ids,
+        escalation_context={
+            "source_stage": "rerender_escalation",
+            "run_id": stage_input.run_id,
+            "status": "manual_review_required",
+            "shot_ids": shot_ids,
+        },
     )
     report = {
         "status": "manual_review_required",

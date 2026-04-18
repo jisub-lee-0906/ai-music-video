@@ -17,6 +17,7 @@ def build_review_packet_manifest(
     shot_ids: list[str] | tuple[str, ...],
     sample_count: int = 6,
     duration_fn=None,
+    escalation_context: dict[str, object] | None = None,
 ) -> dict[str, object]:
     output_root = Path(output_dir)
     frames_dir = output_root / "frames"
@@ -37,6 +38,7 @@ def build_review_packet_manifest(
         "frame_labels": [str(row["label"]) for row in plan],
         "frame_count": len(plan),
         "reviewer_summary": f"Review packet for {len(normalized_shot_ids)} shots with {len(plan)} extracted frames",
+        "escalation_context": _normalize_escalation_context(escalation_context),
         "quality_findings_path": str(output_root / "review-findings.json"),
         "reviewer_notes_path": str(output_root / "review-notes.md"),
         "contact_sheet_image_path": str(output_root / "contact-sheet.png"),
@@ -53,6 +55,7 @@ def write_review_packet(
     shot_ids: list[str] | tuple[str, ...],
     sample_count: int = 6,
     duration_fn=None,
+    escalation_context: dict[str, object] | None = None,
 ) -> dict[str, Path]:
     output_root = Path(output_dir)
     output_root.mkdir(parents=True, exist_ok=True)
@@ -63,6 +66,7 @@ def write_review_packet(
         shot_ids=shot_ids,
         sample_count=sample_count,
         duration_fn=duration_fn,
+        escalation_context=escalation_context,
     )
     manifest_path = output_root / "review-packet.json"
     quality_findings_path = Path(manifest["quality_findings_path"])
@@ -103,6 +107,24 @@ def _normalize_shot_ids(shot_ids: list[str] | tuple[str, ...]) -> list[str]:
         if value and value not in out:
             out.append(value)
     return out
+
+
+
+def _normalize_escalation_context(context: dict[str, object] | None) -> dict[str, object]:
+    if not isinstance(context, dict):
+        return {}
+    return {
+        "source_stage": str(context.get("source_stage", "")).strip(),
+        "run_id": str(context.get("run_id", "")).strip(),
+        "status": str(context.get("status", "")).strip(),
+        "shot_ids": [
+            str(shot_id).strip()
+            for shot_id in context.get("shot_ids", [])
+            if str(shot_id).strip()
+        ]
+        if isinstance(context.get("shot_ids"), list)
+        else [],
+    }
 
 
 
