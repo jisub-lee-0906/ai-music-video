@@ -407,6 +407,22 @@ def test_classify_rerender_target_uses_identity_continuity_fix_strategy_for_iden
 
 
 
+def test_classify_rerender_target_uses_composite_continuity_policy_for_identity_drift_and_continuity_break():
+    classification = classify_rerender_target(["continuity_break", "identity_drift"])
+
+    assert classification == {
+        "bucket": "final_mv_publishability",
+        "recommended_action": "rerender_continuity_break_shots",
+        "rerender_prescription": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["qwen_image", "i2v", "flf2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "tighten_identity_continuity_anchors",
+        },
+    }
+
+
+
 def test_review_models_leave_rerender_plan_empty_when_no_targets():
     report = build_review_report(
         planned_shot_ids=["S001"],

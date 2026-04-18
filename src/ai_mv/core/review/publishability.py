@@ -144,6 +144,13 @@ def summarize_publishability(
 
 def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
     normalized_reasons = [str(reason).strip() for reason in reason_codes if str(reason).strip()]
+    normalized_reason_set = {reason for reason in normalized_reasons if reason}
+    if {"continuity_break", "identity_drift"}.issubset(normalized_reason_set):
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "rerender_continuity_break_shots",
+            "rerender_prescription": _rerender_prescription("rerender_continuity_break_shots", normalized_reasons),
+        }
     for bucket_name, reason_to_action in (
         (
             "technical_completion",
@@ -313,6 +320,11 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
         prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     elif action_name == "rerender_weak_shots_with_prompt_tightening" and "weak_subject_match" in normalized_reasons:
         prescription["fix_strategy"] = "tighten_subject_identity_anchors"
+    elif action_name == "rerender_continuity_break_shots" and {"continuity_break", "identity_drift"}.issubset(normalized_reasons):
+        prescription["stage_focus"] = "stills_then_clips"
+        prescription["workflow_focus"] = ["qwen_image", "i2v", "flf2v"]
+        prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
+        prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     return prescription
 
 
