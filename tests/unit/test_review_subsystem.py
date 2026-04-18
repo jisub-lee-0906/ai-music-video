@@ -217,6 +217,69 @@ def test_review_models_include_publishability_summary_levels():
         "target_shots": ["S006"],
         "reason_codes": ["continuity_break"],
     }
+    assert summary["final_mv_publishability"]["rerender_prescription"] == {
+        "stage_focus": "review",
+        "workflow_focus": None,
+        "prompt_contract_focus": [],
+        "fix_strategy": "inspect_review_failures_manually",
+    }
+
+
+
+def test_review_models_include_shot_level_rerender_plan():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        still_status={"S001": True, "S002": True, "S003": True},
+        clip_status={"S001": True, "S002": True, "S003": True},
+        final_video_exists=True,
+        rerender_targets=["S003", "S002", "S001"],
+        rerender_reasons={
+            "S001": ["panel_layout", "collage_layout"],
+            "S002": ["motion_fragile_frame"],
+            "S003": ["unrelated_scene_intrusion", "weak_subject_match"],
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    assert [item["shot_id"] for item in report["rerender_plan"]] == ["S003", "S001", "S002"]
+    assert report["rerender_plan"][0] == {
+        "shot_id": "S003",
+        "reason_codes": ["unrelated_scene_intrusion", "weak_subject_match"],
+        "priority_score": report["rerender_priority_scores"]["S003"],
+        "bucket": "isolated_asset_quality",
+        "recommended_action": "rerender_scene_intrusion_shots",
+        "rerender_prescription": {
+            "stage_focus": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "tighten_subject_and_world_anchors",
+        },
+    }
+    assert report["rerender_plan"][1]["recommended_action"] == "rerender_panelized_keyframes"
+    assert report["rerender_plan"][1]["bucket"] == "isolated_asset_quality"
+    assert report["rerender_plan"][2]["recommended_action"] == "rerender_motion_fragile_shots_with_safer_keyframes"
+    assert report["rerender_plan"][2]["bucket"] == "final_mv_publishability"
+
+
+
+def test_review_models_leave_rerender_plan_empty_when_no_targets():
+    report = build_review_report(
+        planned_shot_ids=["S001"],
+        still_results=[{"shot_id": "S001"}],
+        clip_results=[{"shot_id": "S001"}],
+        still_status={"S001": True},
+        clip_status={"S001": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    assert report["rerender_plan"] == []
 
 
 

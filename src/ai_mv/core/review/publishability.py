@@ -142,6 +142,57 @@ def summarize_publishability(
 
 
 
+def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
+    normalized_reasons = [str(reason).strip() for reason in reason_codes if str(reason).strip()]
+    for bucket_name, reason_to_action in (
+        (
+            "technical_completion",
+            {
+                "missing_final_video": "assemble_or_reassemble_final_video",
+                "drift_too_high": "repair_audio_video_sync",
+                "coverage_too_low": "rerender_missing_stills",
+                "missing_still": "rerender_missing_stills",
+                "missing_clip": "rerender_missing_clips",
+            },
+        ),
+        (
+            "isolated_asset_quality",
+            {
+                "terminal_frame_corruption": "rerender_clips_with_terminal_frame_cleanup",
+                "duplicate_subject": "rerender_weak_shots_with_prompt_tightening",
+                "unrelated_scene_intrusion": "rerender_scene_intrusion_shots",
+                "panel_layout": "rerender_panelized_keyframes",
+                "collage_layout": "rerender_panelized_keyframes",
+                "split_screen": "rerender_panelized_keyframes",
+                "weak_subject_match": "rerender_weak_shots_with_prompt_tightening",
+                "weak_environment_match": "rerender_weak_shots_with_prompt_tightening",
+                "identity_drift": "rerender_weak_shots_with_prompt_tightening",
+            },
+        ),
+        (
+            "final_mv_publishability",
+            {
+                "continuity_break": "rerender_continuity_break_shots",
+                "motion_fragile_frame": "rerender_motion_fragile_shots_with_safer_keyframes",
+                "identity_drift": "rerender_continuity_break_shots",
+            },
+        ),
+    ):
+        for reason, action_name in reason_to_action.items():
+            if reason in normalized_reasons:
+                return {
+                    "bucket": bucket_name,
+                    "recommended_action": action_name,
+                    "rerender_prescription": _rerender_prescription(action_name),
+                }
+    return {
+        "bucket": "unclassified",
+        "recommended_action": "review_failed_checks",
+        "rerender_prescription": _rerender_prescription("review_failed_checks"),
+    }
+
+
+
 def _summary(
     bucket_name: str,
     check_names: tuple[str, ...],

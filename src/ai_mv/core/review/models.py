@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.review.benchmark_dimensions import summarize_benchmark_dimensions
-from ai_mv.core.review.publishability import summarize_publishability
+from ai_mv.core.review.publishability import classify_rerender_target, summarize_publishability
 from ai_mv.core.review.quality_signals import build_quality_signals
 from ai_mv.core.review.rerender_policy import rerender_priority_score
 from ai_mv.core.review.signal_buckets import summarize_review_signal_buckets
@@ -26,6 +26,35 @@ def build_shot_quality_scores(
         score -= float(priority_scores.get(shot_id, 0))
         shot_scores[shot_id] = round(max(0.0, min(100.0, score)), 2)
     return shot_scores
+
+
+
+def build_rerender_plan(*, rerender_targets: list[str], rerender_reasons: dict[str, list[str]]) -> list[dict[str, object]]:
+    plan: list[dict[str, object]] = []
+    reasons_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
+    for shot_id in rerender_targets:
+        normalized_shot_id = str(shot_id or "").strip()
+        if not normalized_shot_id:
+            continue
+        reason_codes = [
+            str(reason).strip()
+            for reason in reasons_map.get(normalized_shot_id, [])
+            if str(reason).strip()
+        ]
+        if not reason_codes:
+            continue
+        classification = classify_rerender_target(reason_codes)
+        plan.append(
+            {
+                "shot_id": normalized_shot_id,
+                "reason_codes": reason_codes,
+                "priority_score": rerender_priority_score(reason_codes),
+                "bucket": classification["bucket"],
+                "recommended_action": classification["recommended_action"],
+                "rerender_prescription": classification["rerender_prescription"],
+            }
+        )
+    return sorted(plan, key=lambda item: (-int(item["priority_score"]), str(item["shot_id"])))
 
 
 
@@ -72,6 +101,10 @@ def build_review_report(
         non_blocking_checks=non_blocking_checks,
         rerender_reasons=rerender_reasons,
     )
+    rerender_plan = build_rerender_plan(
+        rerender_targets=rerender_targets,
+        rerender_reasons=rerender_reasons,
+    )
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -95,6 +128,7 @@ def build_review_report(
         "rerender_targets": rerender_targets,
         "rerender_reasons": rerender_reasons,
         "rerender_priority_scores": priority_scores,
+        "rerender_plan": rerender_plan,
         "benchmark_dimensions": benchmark_dimensions,
         "review_signal_buckets": review_signal_buckets,
         "publishability_summary": publishability_summary,

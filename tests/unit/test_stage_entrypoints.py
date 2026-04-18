@@ -533,5 +533,20 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
             "target_shots": ["S006"],
             "reason_codes": ["continuity_break"],
         }
+        assert out.payload["review_report"]["rerender_plan"] == [
+            {
+                "shot_id": "S006",
+                "reason_codes": ["terminal_frame_corruption", "continuity_break"],
+                "priority_score": out.payload["review_report"]["rerender_priority_scores"]["S006"],
+                "bucket": "isolated_asset_quality",
+                "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                "rerender_prescription": {
+                    "stage_focus": "clips",
+                    "workflow_focus": ["i2v", "ia2v", "flf2v"],
+                    "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
+                    "fix_strategy": "shorter_motion_and_clean_terminal_frames",
+                },
+            }
+        ]
     finally:
         _Path.exists = _original_exists
