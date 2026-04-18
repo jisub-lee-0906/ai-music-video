@@ -1223,6 +1223,7 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
             "manifest_path": kwargs["output_dir"] / "review-packet.json",
             "quality_findings_path": kwargs["output_dir"] / "review-findings.json",
             "reviewer_notes_path": kwargs["output_dir"] / "review-notes.md",
+            "contact_sheet_image_path": kwargs["output_dir"] / "contact-sheet.png",
             "contact_sheet_manifest_path": kwargs["output_dir"] / "contact-sheet.json",
         },
     )
@@ -1246,6 +1247,7 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
     assert report["review_packet_manifest_path"].endswith("review-packet.json")
     assert report["quality_findings_path"].endswith("review-findings.json")
     assert report["reviewer_notes_path"].endswith("review-notes.md")
+    assert report["contact_sheet_image_path"].endswith("contact-sheet.png")
     assert report["contact_sheet_manifest_path"].endswith("contact-sheet.json")
 
 

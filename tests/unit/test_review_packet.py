@@ -1,6 +1,6 @@
 import json
 
-from ai_mv.analysis.review_packet import build_review_packet_manifest
+from ai_mv.analysis.review_packet import build_review_packet_manifest, write_review_packet
 
 
 def test_build_review_packet_manifest_for_final_includes_expected_paths(tmp_path):
@@ -47,3 +47,17 @@ def test_build_review_packet_manifest_is_json_serializable(tmp_path):
         str(tmp_path / "packet" / "frames" / "last.png"),
     ]
     assert data["contact_sheet_image_path"] == str(tmp_path / "packet" / "contact-sheet.png")
+
+
+def test_write_review_packet_returns_contact_sheet_image_path(tmp_path):
+    written = write_review_packet(
+        video_path=tmp_path / "clip.mp4",
+        output_dir=tmp_path / "packet",
+        kind="clip",
+        shot_ids=["S006"],
+        sample_count=6,
+        duration_fn=lambda _path: 12.0,
+    )
+
+    assert written["contact_sheet_image_path"] == tmp_path / "packet" / "contact-sheet.png"
+    assert written["contact_sheet_manifest_path"] == tmp_path / "packet" / "contact-sheet.json"

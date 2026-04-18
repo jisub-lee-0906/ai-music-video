@@ -17,5 +17,6 @@ def run_review_packet(video: str, output_dir: str, kind: str = "clip", sample_co
     print(written["manifest_path"])
     print(written["quality_findings_path"])
     print(written["reviewer_notes_path"])
+    print(written["contact_sheet_image_path"])
     print(written["contact_sheet_manifest_path"])
     return 0

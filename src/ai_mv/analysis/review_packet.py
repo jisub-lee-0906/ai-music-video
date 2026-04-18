@@ -88,6 +88,7 @@ def write_review_packet(
         "manifest_path": manifest_path,
         "quality_findings_path": quality_findings_path,
         "reviewer_notes_path": reviewer_notes_path,
+        "contact_sheet_image_path": Path(manifest["contact_sheet_image_path"]),
         "contact_sheet_manifest_path": contact_sheet_manifest_path,
     }
 

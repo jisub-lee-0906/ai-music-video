@@ -137,6 +137,7 @@ def test_run_review_packet_writes_manifest_and_supporting_files(monkeypatch, tmp
             "manifest_path": output_dir / "review-packet.json",
             "quality_findings_path": output_dir / "review-findings.json",
             "reviewer_notes_path": output_dir / "review-notes.md",
+            "contact_sheet_image_path": output_dir / "contact-sheet.png",
             "contact_sheet_manifest_path": output_dir / "contact-sheet.json",
         },
     )
@@ -156,5 +157,6 @@ def test_run_review_packet_writes_manifest_and_supporting_files(monkeypatch, tmp
     assert "kind=final" in out
     assert str(output_dir / "review-packet.json") in out
     assert str(output_dir / "review-findings.json") in out
+    assert str(output_dir / "contact-sheet.png") in out
     assert str(output_dir / "contact-sheet.json") in out
 
