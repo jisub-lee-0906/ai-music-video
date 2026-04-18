@@ -92,6 +92,56 @@ def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
     assert "no inset portrait" in prompt
 
 
+def test_render_stills_keeps_window_reflection_case_raw(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-window-raw",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S020", "visual_mode": "window_reflection"}],
+            "render_plan": [{"shot_id": "S020", "still_prompt_text": "A young woman leans by a train window while city neon reflects across the glass in a quiet late-night transit interior, as one continuous medium close-up."}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "single cinematic keyframe" not in prompt
+    assert "one uninterrupted composition" not in prompt
+    assert prompt.startswith("A young woman leans by a train window")
+
+
+def test_render_stills_keeps_readability_repair_prompt_raw(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-repair-raw",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S021", "visual_mode": "night_drive"}],
+            "render_plan": [{"shot_id": "S021", "still_prompt_text": "The same young woman in the same satin bomber jacket under station light in the same late-night city world. Keep one readable medium shot with clear face visibility, visible upper-body framing, restrained neon reflection, and motion-safe continuity."}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "single cinematic keyframe" not in prompt
+    assert "one uninterrupted composition" not in prompt
+    assert "clear face visibility" in prompt
+
+
 def test_render_stills_strips_panel_prone_graphic_prompt_tokens(monkeypatch):
     calls = []
 

@@ -127,12 +127,9 @@ This is acceptable as long as:
 - core stays style-neutral
 - citypop remains one style pack, not repo-wide truth
 
-### C. Historical docs that still lie or drift
-These were the largest remaining truth mismatch before this rewrite:
-- `docs/repo-restructure.md`
-- `docs/implementation-change-map.md`
-
-Older plan documents under `docs/plans/` and archived citypop docs remain historical references, not canonical product truth.
+### C. Historical docs that were pruned
+The repo previously carried drift-prone historical docs under `docs/plans/` and `docs/archived/`.
+Those have now been removed from `docs/` so they stop competing with canonical product truth.
 
 ## 6. What has already been removed
 
@@ -141,7 +138,7 @@ These older legacy items have already been removed or demoted from canonical sta
 - `apply_citypop_defaults`
 - legacy review aliases such as `citypop_identity` and `not_kpop_or_cyberpunk`
 - `profiles/director_brief_example.yaml`
-- obsolete `docs/citypop-mv-master-plan.md` path in favor of archived history
+- obsolete `docs/citypop-mv-master-plan.md` path and its drift-prone archived copy under `docs/` removed
 - canonical payload use of `citypop_bible` in favor of `style_bible`
 
 ## 7. Next cleanup priorities
@@ -149,8 +146,7 @@ These older legacy items have already been removed or demoted from canonical sta
 Recommended next legacy-removal order:
 1. remove `citypop_bible` transitional compatibility seams once no caller depends on them
 2. reduce `styles/resolver.py` citypop-first fallback assumptions where possible
-3. rewrite or archive additional historical docs under `docs/plans/` that still read like active truth
-4. keep improving publishability-oriented review, because technical cleanup alone does not reach the success metric
+3. keep improving publishability-oriented review, because technical cleanup alone does not reach the success metric
 
 ## 8. Practical rule for future edits
 

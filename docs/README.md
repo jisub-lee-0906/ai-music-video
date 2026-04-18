@@ -40,17 +40,13 @@ Current flf2v transition routing constraints.
 10. first-run-checklist.md
 Operational checklist for real runs.
 
-Historical / style-pack-specific material:
-- archived/citypop-mv-master-plan.md
-  Historical citypop-first plan. Useful as style-pack reference, not as repo-wide product truth.
+Reference / support material:
 - repo-restructure.md
-  Older restructuring notes that still contain citypop-era assumptions and should be read as transitional context only.
+  Current-state architecture status and remaining legacy seams.
 - implementation-change-map.md
-  Transitional implementation map with historical assumptions mixed in.
-- legacy-deletion-plan.md
-  Useful deletion notes, but some entries reflect an older citypop-first reset and should be reconciled against the current charter.
+  Current-state legacy ledger and cleanup map.
 
 Operating rule for this folder:
 - Treat the product-direction charter and structure-migration mapping as canonical.
-- Treat citypop-specific docs as style-pack history unless they are explicitly rewritten for the current architecture.
-- Treat older files under `docs/plans/` as historical implementation notes when they reference removed stage names, old tests, or citypop-first assumptions.
+- Keep this folder limited to docs that still describe the current architecture or support active workflow/prompt/review work.
+- Remove drifted historical docs instead of leaving them around as quasi-canonical references.

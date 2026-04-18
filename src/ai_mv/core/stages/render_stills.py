@@ -15,7 +15,8 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
         render_item = render_map.get(shot_id, {})
-        prompt_text = _single_keyframe_prompt_text(_still_prompt_text(render_item))
+        base_prompt_text = _still_prompt_text(render_item)
+        prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
         item = {
             "shot_id": shot_id,
@@ -88,6 +89,32 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
             if token not in tokens:
                 tokens.append(token)
     return ", ".join(tokens)
+
+
+def _apply_still_constraint_policy(prompt_text: str, *, shot: dict, render_item: dict) -> str:
+    if _should_keep_raw_still_prompt(prompt_text, shot=shot, render_item=render_item):
+        return str(prompt_text).strip()
+    return _single_keyframe_prompt_text(prompt_text)
+
+
+def _should_keep_raw_still_prompt(prompt_text: str, *, shot: dict, render_item: dict) -> bool:
+    explicit_mode = str(render_item.get("still_constraint_mode", "")).strip().lower()
+    if explicit_mode == "raw":
+        return True
+    if explicit_mode == "constrained":
+        return False
+    visual_mode = str(shot.get("visual_mode", "")).strip().lower()
+    if visual_mode == "window_reflection":
+        return True
+    text = str(prompt_text or "").lower()
+    raw_markers = (
+        "clear face visibility",
+        "visible upper-body framing",
+        "readable medium shot",
+        "motion-safe continuity",
+        "preserved neighboring-shot continuity",
+    )
+    return any(marker in text for marker in raw_markers)
 
 
 def _sanitize_still_prompt_text(prompt_text: str) -> str:

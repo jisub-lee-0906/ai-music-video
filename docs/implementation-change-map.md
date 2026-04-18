@@ -42,7 +42,7 @@ For canonical product direction, defer to:
 
 ### Obsolete doc path
 - `DONE` old `docs/citypop-mv-master-plan.md` path removed
-- `DONE` archived historical version kept at `docs/archived/citypop-mv-master-plan.md`
+- `DONE` drift-prone archived citypop master-plan copy removed from `docs/` during docs cleanup
 
 ## 3. Transitional legacy still present
 
@@ -134,17 +134,12 @@ Status after this cycle: `DONE`
 What changed:
 - replaced obsolete future-plan language with a current-state legacy ledger
 
-### Historical plans under `docs/plans/`
-Status: `TRANSITIONAL`
+### Historical plans formerly under `docs/plans/`
+Status: `DONE`
 
-Why still present:
-- useful for implementation history and rationale
-
-Why not canonical:
-- several still describe active work using old citypop stage names or old milestone assumptions
-
-Target direction:
-- either archive, label historical more aggressively, or rewrite only the still-useful parts into current docs
+What changed:
+- removed from `docs/` to reduce confusion and stop historical implementation notes from acting like active product truth
+- any future rationale worth keeping should be rewritten into current-state docs instead of restored as raw historical plans
 
 ## 6. Keep: current architecture that matches repo direction
 
