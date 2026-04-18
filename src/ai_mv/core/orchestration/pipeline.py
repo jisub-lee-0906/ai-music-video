@@ -11,6 +11,7 @@ from ai_mv.core.stages.assemble_mv import run_assemble_mv
 from ai_mv.core.stages.plan_mv import run_plan_mv
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
+from ai_mv.core.stages.rerender_loop import run_rerender_loop
 from ai_mv.core.stages.review_stage import run_review_stage
 
 
@@ -37,6 +38,17 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
         )
         if not ok:
             break
+        if name == "review" and _review_needs_rerender(stage_input.payload.get("review_report")):
+            ok = run_result_stage(
+                state,
+                stage_input,
+                "rerender",
+                run_rerender_loop,
+                save_snapshot=save_snapshot,
+                validate_stage_input=validate_stage_input,
+            )
+            if not ok:
+                break
     state["status"] = "done" if state["status"] != "failed" else "failed"
     save_snapshot(state, stage_input.payload)
     write_pipeline_artifacts(state, stage_input.payload, cfg)
@@ -52,3 +64,13 @@ def _ordered_stages() -> list[tuple[str, callable]]:
         ("assemble", run_assemble_mv),
         ("review", run_review_stage),
     ]
+
+
+
+def _review_needs_rerender(review_report: object) -> bool:
+    if not isinstance(review_report, dict):
+        return False
+    status = str(review_report.get("status", "")).strip()
+    rerender_targets = review_report.get("rerender_targets")
+    rerender_payloads = review_report.get("rerender_execution_payloads")
+    return status == "needs_rerender" or bool(rerender_targets) or bool(rerender_payloads)

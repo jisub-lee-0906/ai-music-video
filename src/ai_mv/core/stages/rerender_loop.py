@@ -30,4 +30,6 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
         StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=merged_payload)
     )
     merged_payload.update(dict(reviewed.payload))
+    if isinstance(merged_payload.get("rerender_review_report"), dict):
+        merged_payload["review_report"] = dict(merged_payload["rerender_review_report"])
     return StageOutput("rerender_loop", "done", merged_payload, list(reviewed.artifacts))
