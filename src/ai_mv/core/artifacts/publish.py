@@ -6,6 +6,8 @@ from ai_mv.core.artifacts.run_summary import write_run_summary
 
 def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     write_manifest(state, payload)
+    rerender_escalation = payload.get("rerender_escalation") if isinstance(payload.get("rerender_escalation"), dict) else {}
+    summary_by_shot = rerender_escalation.get("summary_by_shot") if isinstance(rerender_escalation.get("summary_by_shot"), list) else []
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -22,5 +24,18 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "rerender_target_count": len(payload.get("review_report", {}).get("rerender_targets", []))
         if isinstance(payload.get("review_report"), dict)
         else 0,
+        "rerender_escalation_status": str(rerender_escalation.get("status", "")).strip(),
+        "rerender_escalation_shot_count": int(rerender_escalation.get("shot_count", 0) or 0),
+        "rerender_escalation_reviewer_summary": str(rerender_escalation.get("reviewer_summary", "")).strip(),
+        "rerender_escalation_shot_ids": [
+            str(row.get("shot_id", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+        ],
+        "rerender_escalation_actions": [
+            str(row.get("recommended_action", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict) and str(row.get("recommended_action", "")).strip()
+        ],
     }
     write_run_summary(state, summary)
