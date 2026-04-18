@@ -65,6 +65,16 @@ def _repair_prompt_text(*, field_name: str, fix_strategy: str, current_value: st
                 "no unrelated scene intrusion",
             ]
         )
+    if fix_strategy == "tighten_subject_identity_anchors" and field_name == "still_prompt_text":
+        return _join_prompt_tokens(
+            [
+                current_value,
+                "same protagonist",
+                "locked identity details",
+                "no identity drift",
+                "no duplicate subject",
+            ]
+        )
     if fix_strategy == "shorter_motion_and_clean_terminal_frames":
         return _repair_terminal_frame_prompt(field_name=field_name, current_value=current_value)
     return current_value
