@@ -7,6 +7,7 @@ from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.repair_rerender_prompts import run_repair_rerender_prompts
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
+from ai_mv.core.stages.rerender_escalation import run_rerender_escalation
 from ai_mv.core.stages.rerender_loop import run_rerender_loop
 from ai_mv.core.stages.rerender_review import run_rerender_review
 from ai_mv.core.stages.review_outputs import run_review_outputs
@@ -1077,6 +1078,64 @@ def test_rerender_loop_marks_unresolved_rerender_outcome_when_review_still_fails
 
     assert out.payload["review_report"] == {"status": "needs_rerender", "rerender_targets": ["S009"]}
     assert out.payload["rerender_outcome"] == {"attempted": True, "resolved": False, "exhausted": True}
+
+
+
+def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_escalation.write_review_packet",
+        lambda **kwargs: {
+            "manifest_path": kwargs["output_dir"] / "review-packet.json",
+            "quality_findings_path": kwargs["output_dir"] / "review-findings.json",
+            "reviewer_notes_path": kwargs["output_dir"] / "review-notes.md",
+            "contact_sheet_manifest_path": kwargs["output_dir"] / "contact-sheet.json",
+        },
+    )
+
+    out = run_rerender_escalation(
+        StageInput(
+            run_id="run-rerender-escalate-1",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "review_report": {"rerender_targets": ["S003", "S007"]},
+                "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
+            },
+        )
+    )
+
+    report = out.payload["rerender_escalation"]
+    assert report["status"] == "manual_review_required"
+    assert report["shot_ids"] == ["S003", "S007"]
+    assert report["video_path"] == "D:/renders/final.mp4"
+    assert report["review_packet_manifest_path"].endswith("review-packet.json")
+    assert report["quality_findings_path"].endswith("review-findings.json")
+    assert report["reviewer_notes_path"].endswith("review-notes.md")
+    assert report["contact_sheet_manifest_path"].endswith("contact-sheet.json")
+
+
+
+def test_rerender_escalation_skips_packet_creation_when_not_exhausted(monkeypatch):
+    called = []
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_escalation.write_review_packet",
+        lambda **kwargs: called.append(True),
+    )
+
+    out = run_rerender_escalation(
+        StageInput(
+            run_id="run-rerender-escalate-2",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "review_report": {"rerender_targets": ["S003"]},
+                "rerender_outcome": {"attempted": True, "resolved": True, "exhausted": False},
+            },
+        )
+    )
+
+    assert called == []
+    assert out.payload["rerender_escalation"] == {"status": "not_required", "shot_ids": [], "video_path": "D:/renders/final.mp4"}
 
 
 

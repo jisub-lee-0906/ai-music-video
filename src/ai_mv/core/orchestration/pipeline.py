@@ -11,6 +11,7 @@ from ai_mv.core.stages.assemble_mv import run_assemble_mv
 from ai_mv.core.stages.plan_mv import run_plan_mv
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
+from ai_mv.core.stages.rerender_escalation import run_rerender_escalation
 from ai_mv.core.stages.rerender_loop import run_rerender_loop
 from ai_mv.core.stages.review_stage import run_review_stage
 
@@ -50,6 +51,17 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
             if not ok:
                 break
             _ensure_rerender_outcome(stage_input.payload)
+            if _rerender_exhausted(stage_input.payload.get("rerender_outcome")):
+                ok = run_result_stage(
+                    state,
+                    stage_input,
+                    "escalation",
+                    run_rerender_escalation,
+                    save_snapshot=save_snapshot,
+                    validate_stage_input=validate_stage_input,
+                )
+                if not ok:
+                    break
     state["status"] = "done" if state["status"] != "failed" else "failed"
     save_snapshot(state, stage_input.payload)
     write_pipeline_artifacts(state, stage_input.payload, cfg)
@@ -91,3 +103,8 @@ def _ensure_rerender_outcome(payload: dict) -> None:
         "resolved": not unresolved,
         "exhausted": unresolved,
     }
+
+
+
+def _rerender_exhausted(rerender_outcome: object) -> bool:
+    return isinstance(rerender_outcome, dict) and bool(rerender_outcome.get("exhausted"))
