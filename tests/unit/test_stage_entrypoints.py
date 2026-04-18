@@ -1234,7 +1234,13 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
             config={},
             payload={
                 "final_video": "D:/renders/final.mp4",
-                "review_report": {"rerender_targets": ["S003", "S007"]},
+                "review_report": {
+                    "rerender_targets": ["S003", "S007"],
+                    "rerender_reasons": {
+                        "S003": ["continuity_break", "identity_drift"],
+                        "S007": ["terminal_frame_corruption"],
+                    },
+                },
                 "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
             },
         )
@@ -1247,13 +1253,15 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
     assert report["summary_by_shot"] == [
         {
             "shot_id": "S003",
+            "reason_codes": ["continuity_break", "identity_drift"],
             "packet_artifacts": report["artifacts"],
-            "reviewer_note": "Inspect shot S003 in the review packet artifacts",
+            "reviewer_note": "Inspect shot S003 in the review packet artifacts (reasons: continuity_break, identity_drift)",
         },
         {
             "shot_id": "S007",
+            "reason_codes": ["terminal_frame_corruption"],
             "packet_artifacts": report["artifacts"],
-            "reviewer_note": "Inspect shot S007 in the review packet artifacts",
+            "reviewer_note": "Inspect shot S007 in the review packet artifacts (reasons: terminal_frame_corruption)",
         },
     ]
     assert report["video_path"] == "D:/renders/final.mp4"

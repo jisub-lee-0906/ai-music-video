@@ -51,7 +51,11 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         "contact_sheet_image": report["contact_sheet_image_path"],
         "contact_sheet_manifest": report["contact_sheet_manifest_path"],
     }
-    report["summary_by_shot"] = _summary_by_shot(shot_ids, report["artifacts"])
+    report["summary_by_shot"] = _summary_by_shot(
+        shot_ids,
+        report["artifacts"],
+        review_report.get("rerender_reasons") if isinstance(review_report.get("rerender_reasons"), dict) else {},
+    )
     return StageOutput(
         "rerender_escalation",
         "done",
@@ -73,13 +77,28 @@ def _reviewer_summary(shot_ids: list[str]) -> str:
     return f"Manual review required for {len(normalized)} shots: {', '.join(normalized)}"
 
 
-def _summary_by_shot(shot_ids: list[str], artifacts: dict[str, str]) -> list[dict[str, object]]:
+def _summary_by_shot(
+    shot_ids: list[str],
+    artifacts: dict[str, str],
+    rerender_reasons: dict[str, list[str]],
+) -> list[dict[str, object]]:
     normalized = [str(shot_id).strip() for shot_id in shot_ids if str(shot_id).strip()]
-    return [
-        {
-            "shot_id": shot_id,
-            "packet_artifacts": dict(artifacts),
-            "reviewer_note": f"Inspect shot {shot_id} in the review packet artifacts",
-        }
-        for shot_id in normalized
-    ]
+    rows: list[dict[str, object]] = []
+    for shot_id in normalized:
+        reason_codes = [
+            str(reason).strip()
+            for reason in rerender_reasons.get(shot_id, [])
+            if str(reason).strip()
+        ]
+        note = f"Inspect shot {shot_id} in the review packet artifacts"
+        if reason_codes:
+            note += f" (reasons: {', '.join(reason_codes)})"
+        rows.append(
+            {
+                "shot_id": shot_id,
+                "reason_codes": reason_codes,
+                "packet_artifacts": dict(artifacts),
+                "reviewer_note": note,
+            }
+        )
+    return rows

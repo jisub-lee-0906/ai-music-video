@@ -189,7 +189,7 @@ def test_pipeline_marks_unresolved_rerender_outcome_when_loop_still_needs_rerend
         lambda stage_input: StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "shot_count": 1, "summary_by_shot": [{"shot_id": "S001", "packet_artifacts": {"review_packet_manifest": "review-packet.json"}, "reviewer_note": "Inspect shot S001 in the review packet artifacts"}], "video_path": "final.mp4", "reviewer_summary": "Manual review required for 1 shots: S001", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
+            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "shot_count": 1, "summary_by_shot": [{"shot_id": "S001", "reason_codes": ["continuity_break"], "packet_artifacts": {"review_packet_manifest": "review-packet.json"}, "reviewer_note": "Inspect shot S001 in the review packet artifacts (reasons: continuity_break)"}], "video_path": "final.mp4", "reviewer_summary": "Manual review required for 1 shots: S001", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
         ),
     )
 
@@ -258,7 +258,7 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
         lambda stage_input: StageOutput(
             "rerender_escalation",
             "done",
-            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "shot_count": 1, "summary_by_shot": [{"shot_id": "S001", "packet_artifacts": {"review_packet_manifest": "review-packet.json"}, "reviewer_note": "Inspect shot S001 in the review packet artifacts"}], "video_path": "final.mp4", "reviewer_summary": "Manual review required for 1 shots: S001", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
+            {"rerender_escalation": {"status": "manual_review_required", "shot_ids": ["S001"], "shot_count": 1, "summary_by_shot": [{"shot_id": "S001", "reason_codes": ["continuity_break"], "packet_artifacts": {"review_packet_manifest": "review-packet.json"}, "reviewer_note": "Inspect shot S001 in the review packet artifacts (reasons: continuity_break)"}], "video_path": "final.mp4", "reviewer_summary": "Manual review required for 1 shots: S001", "artifacts": {"review_packet_manifest": "review-packet.json"}}},
         ),
     )
 
@@ -272,8 +272,9 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
         "summary_by_shot": [
             {
                 "shot_id": "S001",
+                "reason_codes": ["continuity_break"],
                 "packet_artifacts": {"review_packet_manifest": "review-packet.json"},
-                "reviewer_note": "Inspect shot S001 in the review packet artifacts",
+                "reviewer_note": "Inspect shot S001 in the review packet artifacts (reasons: continuity_break)",
             }
         ],
         "video_path": "final.mp4",
