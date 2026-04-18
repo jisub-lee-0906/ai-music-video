@@ -1,5 +1,6 @@
 from ai_mv.core.review.models import build_review_report
 from ai_mv.core.review.policy import rerender_targets
+from ai_mv.core.review.publishability import classify_rerender_target
 from ai_mv.core.review.quality_signals import build_quality_signals
 from ai_mv.core.review.rerender_policy import rerender_priority_score, rerender_reasons
 
@@ -226,7 +227,7 @@ def test_review_models_include_publishability_summary_levels():
 
 
 
-def test_review_models_include_shot_level_rerender_plan():
+def test_review_models_build_rerender_plan_payload_and_execution_payloads():
     report = build_review_report(
         planned_shot_ids=["S001", "S002", "S003"],
         still_results=[
@@ -235,7 +236,11 @@ def test_review_models_include_shot_level_rerender_plan():
             {"shot_id": "S003", "image": "still-3.png"},
             {"shot_id": "S004", "image": "still-4.png"},
         ],
-        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        clip_results=[
+            {"shot_id": "S001", "video": "clip-1.mp4"},
+            {"shot_id": "S002", "video": "clip-2.mp4"},
+            {"shot_id": "S003", "video": "clip-3.mp4"},
+        ],
         still_status={"S001": True, "S002": True, "S003": True},
         clip_status={"S001": True, "S002": True, "S003": True},
         final_video_exists=True,
@@ -351,6 +356,22 @@ def test_review_models_include_shot_level_rerender_plan():
             },
         },
     ]
+
+
+
+def test_classify_rerender_target_uses_world_anchor_fix_strategy_for_environment_match():
+    classification = classify_rerender_target(["weak_environment_match"])
+
+    assert classification == {
+        "bucket": "isolated_asset_quality",
+        "recommended_action": "rerender_weak_shots_with_prompt_tightening",
+        "rerender_prescription": {
+            "stage_focus": "stills",
+            "workflow_focus": ["qwen_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "tighten_subject_and_world_anchors",
+        },
+    }
 
 
 

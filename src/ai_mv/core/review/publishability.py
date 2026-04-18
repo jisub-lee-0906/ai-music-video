@@ -183,12 +183,12 @@ def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
                 return {
                     "bucket": bucket_name,
                     "recommended_action": action_name,
-                    "rerender_prescription": _rerender_prescription(action_name),
+                    "rerender_prescription": _rerender_prescription(action_name, normalized_reasons),
                 }
     return {
         "bucket": "unclassified",
         "recommended_action": "review_failed_checks",
-        "rerender_prescription": _rerender_prescription("review_failed_checks"),
+        "rerender_prescription": _rerender_prescription("review_failed_checks", normalized_reasons),
     }
 
 
@@ -256,7 +256,7 @@ def _rerender_bundle(bucket_name: str, action_name: str, rerender_reasons: dict[
 
 
 
-def _rerender_prescription(action_name: str) -> dict[str, object]:
+def _rerender_prescription(action_name: str, reason_codes: list[str] | None = None) -> dict[str, object]:
     prescriptions = {
         "no_action": {
             "stage_focus": None,
@@ -295,12 +295,18 @@ def _rerender_prescription(action_name: str) -> dict[str, object]:
             "fix_strategy": "enforce_single_frame_keyframe_composition",
         },
     }
-    return dict(prescriptions.get(action_name, {
+    prescription = dict(prescriptions.get(action_name, {
         "stage_focus": "review",
         "workflow_focus": None,
         "prompt_contract_focus": [],
         "fix_strategy": "inspect_review_failures_manually",
     }))
+    normalized_reasons = {str(reason).strip() for reason in reason_codes or [] if str(reason).strip()}
+    if action_name == "rerender_weak_shots_with_prompt_tightening" and (
+        "weak_environment_match" in normalized_reasons or "unrelated_scene_intrusion" in normalized_reasons
+    ):
+        prescription["fix_strategy"] = "tighten_subject_and_world_anchors"
+    return prescription
 
 
 
