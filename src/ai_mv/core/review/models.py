@@ -79,6 +79,70 @@ def build_rerender_payload(rerender_plan: list[dict[str, object]]) -> list[dict[
 
 
 
+def build_rerender_execution_payloads(
+    *,
+    rerender_payload: list[dict[str, object]],
+    shot_plan: list[dict],
+    render_plan: list[dict],
+    still_results: list[dict],
+    music_file: str,
+) -> list[dict[str, object]]:
+    shot_map = {str(row.get("shot_id", "")).strip(): row for row in shot_plan if isinstance(row, dict)}
+    render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan if isinstance(row, dict)}
+    still_map = {str(row.get("shot_id", "")).strip(): row for row in still_results if isinstance(row, dict)}
+    execution_payloads: list[dict[str, object]] = []
+    normalized_music_file = str(music_file or "").strip()
+    for item in rerender_payload if isinstance(rerender_payload, list) else []:
+        if not isinstance(item, dict):
+            continue
+        shot_id = str(item.get("shot_id", "")).strip()
+        if not shot_id:
+            continue
+        stage_focus = str(item.get("rerender_stage", "")).strip()
+        shot_row = shot_map.get(shot_id)
+        render_row = render_map.get(shot_id)
+        stage_payloads: dict[str, dict[str, object]] = {}
+        if stage_focus in {"stills", "stills_then_clips"}:
+            stage_payloads["stills"] = {
+                "shot_plan": [shot_row] if isinstance(shot_row, dict) else [],
+                "render_plan": [render_row] if isinstance(render_row, dict) else [],
+            }
+        if stage_focus in {"clips", "stills_then_clips"}:
+            still_rows: list[dict] = []
+            for dep_shot_id in _clip_dependency_shot_ids(shot_row, render_row):
+                row = still_map.get(dep_shot_id)
+                if isinstance(row, dict):
+                    still_rows.append(row)
+            stage_payloads["clips"] = {
+                "shot_plan": [shot_row] if isinstance(shot_row, dict) else [],
+                "render_plan": [render_row] if isinstance(render_row, dict) else [],
+                "still_results": still_rows,
+                "music_file": normalized_music_file,
+            }
+        execution_payloads.append(
+            {
+                "shot_id": shot_id,
+                "recommended_action": str(item.get("recommended_action", "")).strip(),
+                "rerender_stage": stage_focus,
+                "stage_payloads": stage_payloads,
+            }
+        )
+    return execution_payloads
+
+
+
+def _clip_dependency_shot_ids(shot_row: dict | None, render_row: dict | None) -> list[str]:
+    shot_ids: list[str] = []
+    primary = str((shot_row or {}).get("shot_id", "") or (render_row or {}).get("shot_id", "")).strip()
+    if primary:
+        shot_ids.append(primary)
+    bridge_target = str((render_row or {}).get("still_b", "") or (shot_row or {}).get("bridge_to_shot_id", "")).strip()
+    if bridge_target and bridge_target not in shot_ids:
+        shot_ids.append(bridge_target)
+    return shot_ids
+
+
+
 def build_review_report(
     *,
     planned_shot_ids: list[str],
@@ -91,6 +155,9 @@ def build_review_report(
     rerender_reasons: dict[str, list[str]],
     audio_video_drift_sec: float,
     config: dict,
+    shot_plan: list[dict] | None = None,
+    render_plan: list[dict] | None = None,
+    music_file: str = "",
 ) -> dict:
     signals = build_quality_signals(
         planned_shot_ids=planned_shot_ids,
@@ -127,6 +194,13 @@ def build_review_report(
         rerender_reasons=rerender_reasons,
     )
     rerender_payload = build_rerender_payload(rerender_plan)
+    rerender_execution_payloads = build_rerender_execution_payloads(
+        rerender_payload=rerender_payload,
+        shot_plan=shot_plan or [],
+        render_plan=render_plan or [],
+        still_results=still_results,
+        music_file=music_file,
+    )
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -152,6 +226,7 @@ def build_review_report(
         "rerender_priority_scores": priority_scores,
         "rerender_plan": rerender_plan,
         "rerender_payload": rerender_payload,
+        "rerender_execution_payloads": rerender_execution_payloads,
         "benchmark_dimensions": benchmark_dimensions,
         "review_signal_buckets": review_signal_buckets,
         "publishability_summary": publishability_summary,

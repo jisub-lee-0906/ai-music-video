@@ -62,6 +62,9 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         rerender_reasons={shot_id: all_rerender_reasons[shot_id] for shot_id in selected_rerender_targets if shot_id in all_rerender_reasons},
         audio_video_drift_sec=drift,
         config=stage_input.config,
+        shot_plan=[row for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)],
+        render_plan=[row for row in stage_input.payload.get("render_plan", []) if isinstance(row, dict)],
+        music_file=str(stage_input.payload.get("music_file", "")).strip(),
     )
     return StageOutput("review_outputs", "done", {"review_report": report}, [])
 

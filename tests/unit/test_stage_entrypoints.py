@@ -559,5 +559,20 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
                 "fix_strategy": "shorter_motion_and_clean_terminal_frames",
             }
         ]
+        assert out.payload["review_report"]["rerender_execution_payloads"] == [
+            {
+                "shot_id": "S006",
+                "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                "rerender_stage": "clips",
+                "stage_payloads": {
+                    "clips": {
+                        "shot_plan": [{"shot_id": "S006"}],
+                        "render_plan": [],
+                        "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "status": "done"}],
+                        "music_file": "",
+                    }
+                },
+            }
+        ]
     finally:
         _Path.exists = _original_exists

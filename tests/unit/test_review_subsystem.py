@@ -229,7 +229,12 @@ def test_review_models_include_publishability_summary_levels():
 def test_review_models_include_shot_level_rerender_plan():
     report = build_review_report(
         planned_shot_ids=["S001", "S002", "S003"],
-        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        still_results=[
+            {"shot_id": "S001", "image": "still-1.png"},
+            {"shot_id": "S002", "image": "still-2.png"},
+            {"shot_id": "S003", "image": "still-3.png"},
+            {"shot_id": "S004", "image": "still-4.png"},
+        ],
         clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
         still_status={"S001": True, "S002": True, "S003": True},
         clip_status={"S001": True, "S002": True, "S003": True},
@@ -242,6 +247,17 @@ def test_review_models_include_shot_level_rerender_plan():
         },
         audio_video_drift_sec=0.0,
         config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[
+            {"shot_id": "S001", "render_mode": "i2v"},
+            {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
+            {"shot_id": "S003", "render_mode": "i2v"},
+        ],
+        render_plan=[
+            {"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"},
+            {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+            {"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"},
+        ],
+        music_file="song.mp3",
     )
 
     assert [item["shot_id"] for item in report["rerender_plan"]] == ["S003", "S001", "S002"]
@@ -291,6 +307,50 @@ def test_review_models_include_shot_level_rerender_plan():
             "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
         },
     ]
+    assert report["rerender_execution_payloads"] == [
+        {
+            "shot_id": "S003",
+            "recommended_action": "rerender_scene_intrusion_shots",
+            "rerender_stage": "stills",
+            "stage_payloads": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S003", "render_mode": "i2v"}],
+                    "render_plan": [{"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                }
+            },
+        },
+        {
+            "shot_id": "S001",
+            "recommended_action": "rerender_panelized_keyframes",
+            "rerender_stage": "stills",
+            "stage_payloads": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                    "render_plan": [{"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                }
+            },
+        },
+        {
+            "shot_id": "S002",
+            "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
+            "rerender_stage": "stills_then_clips",
+            "stage_payloads": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                },
+                "clips": {
+                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                    "still_results": [
+                        {"shot_id": "S002", "image": "still-2.png"},
+                        {"shot_id": "S004", "image": "still-4.png"},
+                    ],
+                    "music_file": "song.mp3",
+                },
+            },
+        },
+    ]
 
 
 
@@ -310,6 +370,7 @@ def test_review_models_leave_rerender_plan_empty_when_no_targets():
 
     assert report["rerender_plan"] == []
     assert report["rerender_payload"] == []
+    assert report["rerender_execution_payloads"] == []
 
 
 
