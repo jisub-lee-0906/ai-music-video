@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from ai_mv.cli.args import build_parser
 from ai_mv.core.orchestration.config_defaults import default_config
@@ -20,19 +21,19 @@ def test_default_config_uses_concept_text_not_profile():
     assert "city pop" not in str(cfg["concept_text"]).lower()
 
 
-def test_default_config_sets_flux2_negative_for_single_keyframe_stills():
+def test_default_config_sets_flux2_size_and_flux_workflows_for_stills():
     cfg = default_config()
-    negative = str(cfg["render"]["flux2_negative"])
     assert cfg["render"]["flux2_size"] == "1280x720"
+    assert "flux2_negative" not in cfg["render"]
     assert FLUX2_STILL_WORKFLOW == "image_flux2_text_to_image.json"
     assert FLUX2_KEYFRAME_WORKFLOW == "image_flux2.json"
-    assert "comic panel" in negative
-    assert "contact sheet" in negative
-    assert "collage" in negative
-    assert "split screen" in negative
-    assert "storyboard" in negative
-    assert "inset frame" in negative
-    assert "picture-in-picture" in negative
+
+
+def test_sample_config_uses_flux2_keys_and_has_no_qwen_residue():
+    text = Path("docs/sample-config.yaml").read_text(encoding="utf-8")
+    assert "flux2_size:" in text
+    assert "qwen_size:" not in text
+    assert "qwen_negative:" not in text
 
 
 def test_preflight_accepts_concept_text():

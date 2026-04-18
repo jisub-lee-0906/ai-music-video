@@ -17,7 +17,7 @@ Use one copy of this template per prompt experiment batch.
 - cfg / guidance:
 - sampler:
 - LoRA / adapter state:
-- negative prompt:
+- negative prompt / none:
 - other fixed settings:
 
 ## Variable Under Test
@@ -29,7 +29,7 @@ Examples:
 - environment phrasing
 - motion wording
 - endpoint wording
-- negative prompt wording
+- negative prompt wording or explicit absence of negative input
 - seed only
 
 ## Prompt Variants

@@ -95,8 +95,9 @@ M1 규칙:
 
 prompt 형식:
 
-- 쉼표 나열형
-- `subject, outfit, pose, place, lighting, era texture`
+- 자연어 설명형
+- 한 장면으로 읽히는 짧은 scene instruction
+- rerender 시에는 기존 still을 유지하고 바꾸고 싶은 차이만 추가
 
 still 실패 시 fallback:
 

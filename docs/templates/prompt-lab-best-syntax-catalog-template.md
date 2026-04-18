@@ -20,7 +20,7 @@ Update it only after repeated experiments, not single lucky results.
 
 ### Settings notes
 - aspect ratio / size notes:
-- negative prompt notes:
+- reference-image notes:
 - LoRA notes:
 - seed sensitivity notes:
 

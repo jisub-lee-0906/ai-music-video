@@ -26,10 +26,10 @@ The prompt lab is for direct workflow-facing experiments, not full MV runs.
 
 In-scope:
 - Flux2 still prompt syntax
+- Flux2 reference-image refinement wording
 - LTX i2v prompt syntax
 - LTX ia2v prompt syntax
 - LTX flf2v prompt syntax
-- negative-prompt patterns
 - seed sensitivity notes
 - aspect-ratio or resolution notes when they materially affect prompt adherence
 
@@ -70,16 +70,30 @@ Target:
 
 What to optimize for:
 - prompt adherence
+- instruction adherence with natural-language prompt text
 - single-scene integrity
 - no comic-panel/contact-sheet/collage failure
 - motion-safe keyframe suitability
 - stable subject/environment framing
 
+Official grounding for this track:
+- Black Forest Labs FLUX.1 [dev] model card uses plain natural-language prompt strings in its official diffusers example, e.g. `"A cat holding a sign that says hello world"`.
+- The same model card explicitly says prompt following is heavily influenced by prompting-style.
+- Black Forest Labs FLUX.2 [dev] model card describes the model as generating, editing, and combining images based on text instructions.
+- The FLUX.2 [dev] model card lists single-reference editing and multi-reference editing as first-class capabilities with no finetuning.
+- ComfyUI's official Image-to-Image guide frames the task as creating a new image based on a reference image.
+
 Compare syntax families:
-- comma-token list
-- short declarative sentence
-- structured field style
-- cinematic imperative style
+- short natural descriptive sentence
+- longer natural instruction paragraph
+- subject-first sentence plus one short follow-up constraint sentence
+- reference-refinement instruction that explicitly preserves subject/face/style while changing only the needed shot details
+
+Avoid assuming these until proven locally:
+- comma-list prompting as the repo default
+- a mandatory still negative prompt
+- style-tail stuffing as the default grammar
+- multi-clause cinematic imperative prompting as the first choice for Flux2 stills
 
 Example evaluation questions:
 - Did the requested subject appear clearly?
@@ -184,7 +198,7 @@ The prompt lab should continuously produce two artifacts:
 1. Best Syntax Catalog
 - workflow-specific winning grammar patterns
 - bad grammar patterns to avoid
-- notes on sensitivity and failure modes
+- notes on sensitivity, reference-image behavior, and failure modes
 
 2. Experiment Log
 - exact prompts

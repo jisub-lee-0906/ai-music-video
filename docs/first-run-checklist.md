@@ -63,6 +63,7 @@ WSL에서는 아래 순서를 우선 사용한다.
 - `final_mv.mp4` 생성
 - `review_report.status=done`
 - `rerender_targets=[]`
+- still prompt shape is validated as Flux2-friendly natural language instead of inherited comma-list folklore
 
 ## 7. First Retry Rules
 

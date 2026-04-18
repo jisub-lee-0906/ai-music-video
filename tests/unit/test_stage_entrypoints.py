@@ -49,7 +49,7 @@ def test_render_stills_calls_flux2_runner(monkeypatch):
     monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1",
-        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1024x1024"}},
+        config={"render": {"flux2_size": "1024x1024"}},
         payload={
             "shot_plan": [{"shot_id": "S001"}],
             "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea"}],
@@ -63,6 +63,7 @@ def test_render_stills_calls_flux2_runner(monkeypatch):
     assert "city pop girl by the sea" in calls[0]["positive_prompt"]
     assert "single cinematic keyframe" in calls[0]["positive_prompt"]
     assert "one uninterrupted composition" in calls[0]["positive_prompt"]
+    assert "negative_prompt" not in calls[0]
 
 
 def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
@@ -75,7 +76,7 @@ def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
     monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1b",
-        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1024x1024"}},
+        config={"render": {"flux2_size": "1024x1024"}},
         payload={
             "shot_plan": [{"shot_id": "S009"}],
             "render_plan": [{"shot_id": "S009", "prompt_polish": "night station portrait, reflective glass, film grain"}],
@@ -101,7 +102,7 @@ def test_render_stills_strips_panel_prone_graphic_prompt_tokens(monkeypatch):
     monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1c",
-        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1280x720"}},
+        config={"render": {"flux2_size": "1280x720"}},
         payload={
             "shot_plan": [{"shot_id": "S010"}],
             "render_plan": [
@@ -134,7 +135,7 @@ def test_render_stills_strips_storyboard_like_meta_prompt_tokens(monkeypatch):
     monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1d",
-        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1280x720"}},
+        config={"render": {"flux2_size": "1280x720"}},
         payload={
             "shot_plan": [{"shot_id": "S011"}],
             "render_plan": [
@@ -166,7 +167,7 @@ def test_render_stills_uses_reference_image_when_rerender_source_exists(monkeypa
     monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
         run_id="run-1e",
-        config={"render": {"flux2_negative": "bad anatomy", "flux2_size": "1280x720"}},
+        config={"render": {"flux2_size": "1280x720"}},
         payload={
             "shot_plan": [{"shot_id": "S012"}],
             "render_plan": [{"shot_id": "S012", "still_prompt_text": "same protagonist under station light"}],

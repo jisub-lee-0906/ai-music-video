@@ -121,26 +121,26 @@
 
 프롬프트 예시 문체:
 
-- 단문 쉼표 나열형
-- 피사체 -> 의상/포즈 -> 렌더 스타일 -> 시대감 -> 질감 순서
+- 자연어 설명/지시형
+- 한 문장 또는 짧은 문단으로 장면을 명확히 설명하고, 필요할 때만 짧은 보존 제약을 추가
 
 예시:
 
 ```text
-a girl with short hair in a bomber jacket leaning against a wall, clean cel shading, bold graphic composition, 90s ranma era anime, film grain
+A young woman in a satin bomber jacket leans under late-night station light, with reflective glass and soft neon spill, as one clean cinematic keyframe in the same continuous scene.
 ```
 
 문체 특징:
 
-- 장문 서사형이 아니다
-- 시각 요소를 쉼표로 누적한다
-- 마지막에 스타일/질감을 붙인다
+- 공식 FLUX 예시처럼 자연어 prompt string을 우선한다
+- 문법 선택은 local validation으로 결정하되, 쉼표 나열형을 기본 정답으로 가정하지 않는다
+- FLUX.2 reference workflow에서는 reference image를 유지하면서 바꾸고 싶은 차이만 명시하는 문장이 우선이다
 
 시티팝 적용 원칙:
 
-- `subject, outfit, pose, place, lighting, composition, era texture`
-- 문장을 길게 쓰지 말고 쉼표 나열형으로 유지
-- negative는 초기에 비워도 되지만, 필요 시 별도 고정 규칙을 얹는다
+- 기본 still은 자연어 설명형으로 subject, place, light, mood, composition을 한 장면으로 묶는다
+- rerender/refinement는 기존 still identity를 유지하고 바꾸고 싶은 차이만 더한다
+- still workflow에는 negative prompt node가 없으므로 negative prompt 규칙을 still 문법 중심으로 문서화하지 않는다
 
 ## 3. LTX 2.3 i2v
 

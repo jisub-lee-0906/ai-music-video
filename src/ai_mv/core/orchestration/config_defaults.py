@@ -23,7 +23,6 @@ DEFAULT_CONFIG: dict = {
         "ltx_flf2v_size": "1280x720",
         "ltx_fps": 24,
         "ltx_default_shot_sec": 4.0,
-        "flux2_negative": "comic panel, comic page, manga page, contact sheet, collage, diptych, triptych, split screen, multiple frames, multi-panel layout, grid layout, storyboard, montage, text, subtitles, captions, border lines, panel border, inset frame, picture-in-picture, divided layout, juxtaposed scenes, duplicate scene, duplicate portrait, separate portrait box, magazine layout, poster collage",
         "ltx_negative": "pc game, console game, video game, cartoon, childish, ugly",
     },
     "limits": {

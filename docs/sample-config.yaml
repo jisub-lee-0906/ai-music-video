@@ -1,6 +1,9 @@
-concept_text: "Japanese 80s city pop night drive, neon coast, bittersweet summer romance"
+# Sample config for a short first-run / smoke-style local test.
+# This is an example override file, not the canonical default-config truth.
+# Canonical defaults live in `src/ai_mv/core/orchestration/config_defaults.py`.
+concept_text: "dreamy synthwave night drive with lonely neon romance"
 # Recommended shared anchor example:
-# concept_text: "Japanese 80s city pop night drive, bittersweet summer romance, late-night movement, unresolved longing turning into quiet resolve, neon reflections, station light, sea wind"
+# concept_text: "dreamy synthwave night drive, bittersweet late-night movement, unresolved longing turning into quiet resolve, neon reflections, station light, sea wind"
 
 audio:
   quality: "V0"
@@ -8,8 +11,10 @@ audio:
   beats_per_bar: 4
   target_duration_min_sec: 15
   target_duration_max_sec: 20
-  brief: "" # optional music-only brief; falls back to concept_text when empty
-  hook_brief: "" # optional chorus-hook guidance; falls back to audio.brief, then concept_text
+  # Optional music-only brief; falls back to concept_text when empty.
+  brief: ""
+  # Optional chorus-hook guidance; falls back to audio.brief, then concept_text.
+  hook_brief: ""
   # Best preflight-tested prompt pair so far:
   # brief: "Modern short-form Japanese city pop. Verse should feel tactile and cinematic through concrete detail like wet glass, passing signs, station platforms, convenience-store light, and moving air. Pre-Chorus should stay tighter than the Chorus and build anticipation with fewer, cleaner phrases. Chorus should hit instantly with a short title-grade opening line, then widen emotionally without getting wordy. Bridge should be brief and turning. Final Chorus should answer the song and feel earned. Avoid dense literary wording, abstract monologues, and chorus lines that read like full prose sentences."
   # hook_brief: "The chorus needs a short title-worthy Japanese hook in the first line. Make it compact, memorable, and tied to late-night motion, station light, neon reflection, or the moment longing becomes quiet resolve. Avoid generic slogan hooks and avoid long sentence-shaped chorus openings."
@@ -18,13 +23,14 @@ video:
   target: "1920x1080@24"
 
 render:
-  qwen_size: "1280x720"
+  # Local Flux2 still workflows expose one positive prompt text input and no still-side negative text input.
+  # Keep still prompting in natural descriptive English and let repo-side still-stage constraints handle panel/collage avoidance.
+  flux2_size: "1280x720"
   ltx_i2v_size: "1280x720"
   ltx_ia2v_size: "1280x720"
   ltx_flf2v_size: "1280x720"
   ltx_fps: 24
   ltx_default_shot_sec: 4.0
-  qwen_negative: "comic panel, comic page, manga page, contact sheet, collage, diptych, triptych, split screen, multiple frames, multi-panel layout, grid layout, storyboard, montage, text, subtitles, captions, border lines, panel border, inset frame, picture-in-picture, divided layout, juxtaposed scenes, duplicate scene, duplicate portrait, separate portrait box, magazine layout, poster collage"
   ltx_negative: "pc game, console game, video game, cartoon, childish, ugly"
 
 planning:

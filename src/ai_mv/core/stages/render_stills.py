@@ -20,7 +20,6 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         item = {
             "shot_id": shot_id,
             "positive_prompt": prompt_text,
-            "negative_prompt": str(stage_input.config.get("render", {}).get("flux2_negative", "")).strip(),
             "filename_prefix": still_prefix(shot_id),
             "seed": int(render_item.get("seed", 0) or 0),
             "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),

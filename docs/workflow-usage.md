@@ -61,11 +61,13 @@
 코드에서 바인딩할 핵심 입력:
 
 - positive prompt
-- negative prompt
 - width
 - height
 - seed
+- steps
+- guidance
 - filename prefix
+- optional reference image for rerender/refinement
 
 생성 전략:
 
@@ -83,7 +85,9 @@
 - `image_flux2_text_to_image.json`은 기본 still 생성에 사용한다.
 - `image_flux2.json`은 기존 still을 reference로 받는 rerender/keyframe refinement에 사용한다.
 - Flux2 still stage가 anchor와 shot still 역할을 모두 맡는다.
-- prompt seed는 코드가 짧게 만들고, 자연어 품질은 LLM draft/polish로 넘긴다.
+- Flux2 still prompt는 쉼표 리스트를 정답으로 가정하지 말고, 자연어 설명/지시문으로 검증한다.
+- 기본 still workflow에는 still-side negative text 입력이 없으므로 negative prompt 기본값을 문법 핵심으로 취급하지 않는다.
+- reference rerender에서는 기존 still을 유지하고 바꾸고 싶은 차이만 더하는 방식이 우선이다.
 
 ## 3. LTX 2.3 `i2v`
 
@@ -228,7 +232,7 @@
 허용:
 
 - workflow에 필요한 필수 제약만 코드로 추가
-- negative prompt는 workflow별 고정 규칙으로 관리
+- negative prompt는 실제 node 입력이 있는 workflow에서만 관리한다
 
 ## 8. 산출물 규칙
 
