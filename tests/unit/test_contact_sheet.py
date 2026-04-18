@@ -15,8 +15,10 @@ def test_build_contact_sheet_manifest_assigns_grid_positions(tmp_path):
     )
 
     assert manifest["output_image_path"] == str(tmp_path / "contact-sheet.png")
+    assert manifest["frame_count"] == 5
     assert manifest["columns"] == 4
     assert manifest["rows"] == 2
+    assert manifest["reviewer_summary"] == "Contact sheet with 5 frames across 2 rows"
     assert manifest["frames"][0]["row"] == 0
     assert manifest["frames"][0]["column"] == 0
     assert manifest["frames"][4]["row"] == 1

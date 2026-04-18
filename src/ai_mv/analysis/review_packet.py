@@ -35,6 +35,8 @@ def build_review_packet_manifest(
         "shot_ids": normalized_shot_ids,
         "frame_paths": [str(Path(row["output_path"])) for row in plan],
         "frame_labels": [str(row["label"]) for row in plan],
+        "frame_count": len(plan),
+        "reviewer_summary": f"Review packet for {len(normalized_shot_ids)} shots with {len(plan)} extracted frames",
         "quality_findings_path": str(output_root / "review-findings.json"),
         "reviewer_notes_path": str(output_root / "review-notes.md"),
         "contact_sheet_image_path": str(output_root / "contact-sheet.png"),

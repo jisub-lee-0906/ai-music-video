@@ -30,7 +30,9 @@ def build_contact_sheet_manifest(
         )
     return {
         "output_image_path": str(Path(output_image_path)),
+        "frame_count": count,
         "columns": columns,
         "rows": rows,
+        "reviewer_summary": f"Contact sheet with {count} frames across {rows} rows",
         "frames": frames,
     }

@@ -27,6 +27,8 @@ def test_build_review_packet_manifest_for_final_includes_expected_paths(tmp_path
     assert manifest["reviewer_notes_path"] == str(tmp_path / "review-packet" / "review-notes.md")
     assert manifest["contact_sheet_image_path"] == str(tmp_path / "review-packet" / "contact-sheet.png")
     assert manifest["contact_sheet_manifest_path"] == str(tmp_path / "review-packet" / "contact-sheet.json")
+    assert manifest["frame_count"] == 4
+    assert manifest["reviewer_summary"] == "Review packet for 2 shots with 4 extracted frames"
 
 
 def test_build_review_packet_manifest_is_json_serializable(tmp_path):
