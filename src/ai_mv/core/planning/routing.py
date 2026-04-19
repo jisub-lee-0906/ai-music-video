@@ -58,6 +58,9 @@ def _apply_flf2v_routing(config: dict, shots: list[dict]) -> list[dict]:
 
 def _eligible_for_ia2v(shot: dict, min_sec: float, max_sec: float) -> bool:
     duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)
+    workflow_intent = str(shot.get("workflow_intent", "")).strip()
+    if workflow_intent and workflow_intent != "audio_reactive_candidate":
+        return False
     if str(shot.get("section_type", "")) != "chorus":
         return False
     if str(shot.get("visual_mode", "")) != "chorus_performance":
@@ -67,6 +70,9 @@ def _eligible_for_ia2v(shot: dict, min_sec: float, max_sec: float) -> bool:
 
 
 def _eligible_for_flf2v(shot: dict, next_shot: dict, min_sec: float, max_sec: float) -> bool:
+    workflow_intent = str(shot.get("workflow_intent", "")).strip()
+    if workflow_intent and workflow_intent != "bridge_candidate":
+        return False
     if str(shot.get("render_mode", "")) != "i2v":
         return False
     duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)

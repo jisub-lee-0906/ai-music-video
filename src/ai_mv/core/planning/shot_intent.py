@@ -12,6 +12,12 @@ def build_shot_intent(*, section_type: str, shot_role: str, visual_mode: str) ->
             "coverage_role": "anchor",
             "workflow_intent": "audio_reactive_candidate",
         }
+    if section == "pre_chorus":
+        return {
+            "edit_role": "bridge",
+            "coverage_role": "connective",
+            "workflow_intent": "bridge_candidate",
+        }
     if section == "bridge" or role.startswith("bridge") or visual in {"night_bridge", "bridge_transition"}:
         return {
             "edit_role": "bridge",
