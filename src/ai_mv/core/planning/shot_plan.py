@@ -4,6 +4,7 @@ import math
 
 from ai_mv.core.planning.routing import apply_render_routing
 from ai_mv.core.planning.sections import compress_shots_to_m1_window, use_m1_window
+from ai_mv.core.planning.shot_intent import build_shot_intent
 from ai_mv.styles.resolver import apply_style_section_variants, style_section_shot_specs
 
 
@@ -13,6 +14,11 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
     shots: list[dict] = []
     for section in sections:
         for part in split_section_into_shots(config, section, style_name=style_name):
+            shot_intent = build_shot_intent(
+                section_type=section["section_type"],
+                shot_role=part["shot_role"],
+                visual_mode=part["visual_mode"],
+            )
             shots.append(
                 {
                     "shot_id": "",
@@ -26,6 +32,7 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
                     "energy": part["energy"],
                     "render_mode": part["render_mode"],
                     "source_section_index": section["index"],
+                    **shot_intent,
                 }
             )
     normalized = renumber_shots(shots)
