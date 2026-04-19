@@ -53,7 +53,7 @@ def _run_clip(stage_input: StageInput, shot_id: str, shot: dict, render_item: di
         "negative_prompt": negative_prompt,
         "duration_sec": duration_sec,
         "fps": int(stage_input.config.get("render", {}).get("ltx_fps", 24) or 24),
-        "filename_prefix": ltx_clip_prefix(shot_id, render_mode),
+        "filename_prefix": ltx_clip_prefix(stage_input.run_id, shot_id, render_mode),
     }
     still_image = str(still_map.get(shot_id, {}).get("image", "")).strip()
     _validate_clip_assets(stage_input, shot_id, render_mode, still_image, shot, render_item, still_map)

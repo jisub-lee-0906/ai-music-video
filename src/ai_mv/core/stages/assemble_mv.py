@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ai_mv.core.artifacts.paths import run_file
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.output_paths import final_video_path
 from ai_mv.core.stages.ffmpeg_muxer import run_ffmpeg_mux
 from ai_mv.utils.path_utils import resolve_generated_file
 
@@ -18,7 +18,7 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
             "audio",
         )
     )
-    final_video = run_file(stage_input.run_id, "final/final_mv.mp4")
+    final_video = final_video_path(stage_input.config, stage_input.run_id)
     ok = run_ffmpeg_mux(clips, audio, final_video, stage_input.config)
     if not ok:
         raise RuntimeError("ffmpeg assemble failed")

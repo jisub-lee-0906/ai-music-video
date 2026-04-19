@@ -46,7 +46,7 @@ def build_audio_plan(config: dict, payload: dict) -> dict:
     tags = _audio_tags(audio)
     plan = {
         "tags": tags,
-        "filename_prefix": audio_prefix(payload["run_id"]),
+        "filename_prefix": audio_prefix(payload["run_id"], str(payload.get("scope", "run") or "run")),
     }
     plan.update(_audio_fixed_fields(audio))
     plan.update(_audio_intent_fields(audio))

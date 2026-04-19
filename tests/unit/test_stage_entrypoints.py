@@ -15,7 +15,7 @@ from ai_mv.core.stages.review_outputs import run_review_outputs
 
 def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_path):
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
-    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_file", lambda _run_id, rel: tmp_path / Path(rel).name)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv.mp4")
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
 
     (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
@@ -101,7 +101,7 @@ def test_render_stills_calls_flux2_runner(monkeypatch):
     out = run_render_stills(stage_input)
 
     assert out.payload["still_results"][0]["image"] == "D:/renders/S001.png"
-    assert calls[0]["filename_prefix"] == "stills/S001"
+    assert calls[0]["filename_prefix"] == "ai_mv/runs/run-1/stills/shot-S001"
     assert "city pop girl by the sea" in calls[0]["positive_prompt"]
     assert "single cinematic keyframe" in calls[0]["positive_prompt"]
     assert "one uninterrupted composition" in calls[0]["positive_prompt"]
@@ -437,7 +437,7 @@ def test_render_clips_routes_i2v(monkeypatch):
 
     assert out.payload["clip_results"][0]["video"] == "D:/renders/S001_i2v.mp4"
     assert calls[0][1]["image"] == "D:/renders/S001.png"
-    assert calls[0][1]["filename_prefix"] == "clips/S001_i2v"
+    assert calls[0][1]["filename_prefix"] == "ai_mv/runs/run-2/clips/shot-S001-i2v"
     assert calls[0][1]["prompt_seed"] == "slow windshield drift"
     assert calls[0][1]["positive_prompt"] == "slow windshield drift, stable motion, no abrupt pose change"
 
@@ -518,12 +518,12 @@ def test_render_clips_routes_flf2v_with_bridge_target(monkeypatch):
 
 
 def test_assemble_mv_runs_ffmpeg(monkeypatch, tmp_path):
-    final_file = tmp_path / "artifacts" / "runs" / "run-3" / "final" / "final_mv.mp4"
+    final_file = tmp_path / "ComfyUI" / "output" / "ai_mv" / "runs" / "run-3" / "final" / "mv.mp4"
     calls = {}
 
-    def _fake_run_file(run_id, name, scope="run"):
+    def _fake_final_video_path(_config, run_id, scope="run"):
         assert run_id == "run-3"
-        assert name == "final/final_mv.mp4"
+        assert scope == "run"
         final_file.parent.mkdir(parents=True, exist_ok=True)
         return final_file
 
@@ -538,7 +538,7 @@ def test_assemble_mv_runs_ffmpeg(monkeypatch, tmp_path):
         out.write_bytes(b"video")
         return True
 
-    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_file", _fake_run_file)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", _fake_final_video_path)
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", _fake_resolve_generated_file)
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
     stage_input = StageInput(
@@ -558,12 +558,12 @@ def test_assemble_mv_runs_ffmpeg(monkeypatch, tmp_path):
 
 
 def test_assemble_mv_propagates_review_quality_findings_path_from_config(monkeypatch, tmp_path):
-    final_file = tmp_path / "artifacts" / "runs" / "run-3b" / "final" / "final_mv.mp4"
+    final_file = tmp_path / "ComfyUI" / "output" / "ai_mv" / "runs" / "run-3b" / "final" / "mv.mp4"
     findings_path = tmp_path / "manual-review" / "review-findings.json"
 
-    def _fake_run_file(run_id, name, scope="run"):
+    def _fake_final_video_path(_config, run_id, scope="run"):
         assert run_id == "run-3b"
-        assert name == "final/final_mv.mp4"
+        assert scope == "run"
         final_file.parent.mkdir(parents=True, exist_ok=True)
         return final_file
 
@@ -575,7 +575,7 @@ def test_assemble_mv_propagates_review_quality_findings_path_from_config(monkeyp
         out.write_bytes(b"video")
         return True
 
-    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_file", _fake_run_file)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", _fake_final_video_path)
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", _fake_resolve_generated_file)
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
     stage_input = StageInput(

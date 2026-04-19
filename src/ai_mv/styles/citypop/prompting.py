@@ -7,14 +7,18 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
     subject = _still_subject_phrase(shot)
     location = _still_location_phrase(shot)
     palette = _still_palette_phrase(shot, citypop_bible)
+    ordered_parts = _ordered_seed_parts(
+        shot,
+        concept=concept,
+        continuity=continuity,
+        subject=subject,
+        location=location,
+        palette=palette,
+    )
     return ", ".join(
         part
         for part in [
-            concept,
-            continuity,
-            subject,
-            location,
-            palette,
+            *ordered_parts,
             "clean cel shading",
             "single coherent night-drive world",
             "stable character identity",
@@ -26,10 +30,12 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
 
 def build_citypop_prompt_draft(shot: dict) -> str:
     framing = _still_framing_phrase(shot)
+    composition = _still_composition_constraints(shot)
     return ", ".join(
         part
         for part in [
             framing,
+            composition,
             "soft reflective portrait styling",
             "motion-safe keyframe",
             "no layered collage",
@@ -64,14 +70,29 @@ def _continuity_anchor(shot: dict) -> str:
     return "same protagonist, same summer night-drive world, continuity preserved"
 
 
+def _ordered_seed_parts(shot: dict, *, concept: str, continuity: str, subject: str, location: str, palette: str) -> list[str]:
+    framing_intent = str(shot.get("framing_intent", "")).strip()
+    if framing_intent in {"establishing_wide", "release_wide"}:
+        return [concept, continuity, location, subject, palette]
+    return [concept, continuity, subject, location, palette]
+
+
 def _still_subject_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
+    if visual_mode == "roadway_overview":
+        return "tiny figure held at the curb edge beneath the city lights"
+    if visual_mode == "street_establishing":
+        return "one small figure under the city lights"
     if visual_mode == "profile_mood":
         return "young woman with long dark hair under fluorescent station light"
     if visual_mode == "night_drive":
         return "young woman driver with reflected night light and steady expression"
     if visual_mode == "window_reflection":
         return "young woman seen through side glass with reflected city lights"
+    if visual_mode == "rain_window_detail":
+        return "rain-streaked car window and a partial figure reflection"
+    if visual_mode == "partial_figure_transition":
+        return "partial figure crossing the frame with the face turned away"
     if visual_mode == "city_glance":
         return "young woman turning toward the camera through city reflections"
     if visual_mode == "chorus_performance":
@@ -80,8 +101,12 @@ def _still_subject_phrase(shot: dict) -> str:
         return "young woman framed by neon reflections and moving city light"
     if visual_mode == "night_bridge":
         return "young woman with bridge lights behind her"
+    if visual_mode == "bridge_overlook":
+        return "small figure near the bridge lights seen from a slight distance"
     if visual_mode == "memory_flash":
         return "young woman in a soft afterglow portrait with wind in her hair"
+    if visual_mode == "skyline_release":
+        return "one small figure in the distance"
     if visual_mode == "bridge_transition":
         return "young woman shifting from reflection to open night air"
     return "young woman in a reflective summer night portrait"
@@ -90,14 +115,20 @@ def _still_subject_phrase(shot: dict) -> str:
 def _still_location_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
+        "roadway_overview": "rain-slick boulevard approach with broad roadway depth and neon traffic glow",
+        "street_establishing": "rainy neon boulevard at dusk with long wet-road reflections",
         "profile_mood": "night station interior with dark glass panels",
         "night_drive": "night expressway interior with passing street light and reflected city glow",
         "window_reflection": "car side window with layered reflections and city light spill",
+        "rain_window_detail": "rain-streaked side glass with streetlight reflections in close succession",
+        "partial_figure_transition": "wet boulevard edge with passing reflections and partial body motion",
         "city_glance": "night boulevard glass reflection with passing shop lights",
         "chorus_performance": "glowing city light reflections with a nightlife backdrop",
         "neon_release": "night boulevard light across wet street and polished surfaces",
         "night_bridge": "bridge lights in soft focus behind the subject",
+        "bridge_overlook": "bridge promenade with wet pavement and receding pink bridge lights",
         "memory_flash": "soft city skyline reflection at dusk",
+        "skyline_release": "rainy neon skyline boulevard at dusk",
         "bridge_transition": "transition between street light and reflective glass in the same city",
     }
     return mapping.get(visual_mode, "night city reflections")
@@ -107,6 +138,8 @@ def _still_palette_phrase(shot: dict, citypop_bible: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode in {"night_drive", "window_reflection", "night_bridge", "chorus_performance"}:
         return "deep blue and neon magenta palette"
+    if visual_mode in {"roadway_overview", "street_establishing", "skyline_release"}:
+        return "soft dusk violet and neon pink palette"
     if visual_mode in {"memory_flash", "profile_mood"}:
         return "soft dusk violet and cool pink palette"
     if visual_mode in {"neon_release", "city_glance"}:
@@ -116,7 +149,27 @@ def _still_palette_phrase(shot: dict, citypop_bible: dict) -> str:
 
 
 def _still_framing_phrase(shot: dict) -> str:
+    framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
+    specialized_mapping = {
+        "roadway_overview": "wide establishing frame with roadway-led depth and a tiny edge-held subject",
+        "street_establishing": "wide establishing frame with a small subject and dominant city perspective",
+        "rain_window_detail": "detail insert framing through rain-streaked reflective glass",
+        "partial_figure_transition": "partial-figure transition frame with the environment carrying most of the image",
+        "bridge_overlook": "observational medium shot with bridge-led depth and a smaller subject",
+        "skyline_release": "wide release frame with skyline-led negative space",
+    }
+    if visual_mode in specialized_mapping:
+        return specialized_mapping[visual_mode]
+    intent_mapping = {
+        "establishing_wide": "wide establishing frame with a small subject and dominant city perspective",
+        "hero_medium": "hero medium shot with clear environment context",
+        "connective_medium": "environment-led medium shot with connective framing",
+        "performance_closeup": "bold front-facing close-up",
+        "release_wide": "wide release frame with skyline-led negative space",
+    }
+    if framing_intent in intent_mapping:
+        return intent_mapping[framing_intent]
     mapping = {
         "profile_mood": "tight portrait close-up",
         "night_drive": "tight close-up with reflected night light",
@@ -129,3 +182,18 @@ def _still_framing_phrase(shot: dict) -> str:
         "bridge_transition": "clean reflective close-up",
     }
     return mapping.get(visual_mode, "clean cinematic close-up")
+
+
+
+def _still_composition_constraints(shot: dict) -> str:
+    framing_intent = str(shot.get("framing_intent", "")).strip()
+    visual_mode = str(shot.get("visual_mode", "")).strip()
+    if visual_mode == "roadway_overview":
+        return "off-center composition, subject on the outer third, large negative space, no direct face toward camera, vanishing point separated from the subject"
+    if framing_intent in {"establishing_wide", "release_wide"} or visual_mode in {"street_establishing", "skyline_release"}:
+        return "off-center composition, large negative space, small figure emphasis, no direct face toward camera"
+    if visual_mode == "rain_window_detail":
+        return "detail-first composition, partial figure only, no hero framing, no direct face toward camera"
+    if visual_mode in {"partial_figure_transition", "bridge_overlook"}:
+        return "partial figure only, off-center subject, no direct face toward camera, environment dominates the frame"
+    return ""

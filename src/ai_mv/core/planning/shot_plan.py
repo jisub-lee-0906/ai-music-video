@@ -38,6 +38,7 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
     normalized = renumber_shots(shots)
     if use_m1_window(total_duration):
         normalized = compress_shots_to_m1_window(normalized)
+        normalized = _restore_world_first_opener_after_m1_merge(normalized)
         normalized = renumber_shots(normalized)
     return apply_render_routing(config, normalized)
 
@@ -47,6 +48,7 @@ def split_section_into_shots(config: dict, section: dict, *, style_name: str) ->
     duration_sec = float(section["duration_sec"])
     section_type = str(section["section_type"])
     shot_specs = style_section_shot_specs(style_name, section_type, duration_sec)
+    shot_specs = _apply_world_first_opener_override(section, shot_specs)
     start_sec = float(section["start_sec"])
     out: list[dict] = []
     cursor = start_sec
@@ -66,6 +68,44 @@ def split_section_into_shots(config: dict, section: dict, *, style_name: str) ->
         )
         cursor = end_sec
     return apply_style_section_variants(style_name, section_type, split_oversized_parts(config, out))
+
+
+def _apply_world_first_opener_override(section: dict, shot_specs: list[dict]) -> list[dict]:
+    if not shot_specs:
+        return shot_specs
+    section_name = str(section.get("section_name", "")).strip().lower()
+    start_sec = _float(section.get("start_sec"), 0.0)
+    if start_sec > 0.001 or not section_name.startswith("intro->"):
+        return shot_specs
+    first = {
+        **shot_specs[0],
+        "shot_role": "intro_mood",
+        "visual_mode": "roadway_overview",
+        "energy": "low",
+    }
+    return [first, *shot_specs[1:]]
+
+
+
+def _restore_world_first_opener_after_m1_merge(shots: list[dict]) -> list[dict]:
+    if not shots:
+        return shots
+    first = dict(shots[0])
+    section_name = str(first.get("section_name", "")).strip().lower()
+    start_sec = _float(first.get("start_sec"), 0.0)
+    if start_sec > 0.001 or not section_name.startswith("intro->"):
+        return shots
+    first["shot_role"] = "intro_mood"
+    first["visual_mode"] = "roadway_overview"
+    first["energy"] = "low"
+    first.update(
+        build_shot_intent(
+            section_type="intro",
+            shot_role="intro_mood",
+            visual_mode="roadway_overview",
+        )
+    )
+    return [first, *shots[1:]]
 
 
 

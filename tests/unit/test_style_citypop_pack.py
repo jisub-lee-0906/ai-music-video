@@ -63,6 +63,22 @@ def test_citypop_rules_expose_section_shot_specs():
     assert [item["visual_mode"] for item in specs] == ["chorus_performance", "neon_release"]
 
 
+def test_citypop_rules_use_true_wide_families_for_intro_and_outro():
+    intro_specs = citypop_section_shot_specs("intro", 3.0)
+    outro_specs = citypop_section_shot_specs("outro", 3.0)
+
+    assert intro_specs[0]["visual_mode"] == "roadway_overview"
+    assert outro_specs[0]["visual_mode"] == "skyline_release"
+
+
+def test_citypop_rules_use_less_portrait_biased_connective_families_for_prechorus_and_bridge():
+    prechorus_specs = citypop_section_shot_specs("pre_chorus", 4.0)
+    bridge_specs = citypop_section_shot_specs("bridge", 4.0)
+
+    assert prechorus_specs[0]["visual_mode"] == "partial_figure_transition"
+    assert bridge_specs[0]["visual_mode"] == "bridge_overlook"
+
+
 def test_citypop_rules_apply_progressive_section_variants():
     out = apply_citypop_section_variants(
         "verse",
@@ -75,4 +91,63 @@ def test_citypop_rules_apply_progressive_section_variants():
     )
 
     assert [item["shot_role"] for item in out] == ["verse_setup", "verse_detail", "verse_flow", "verse_glow"]
-    assert [item["visual_mode"] for item in out] == ["night_drive", "window_reflection", "night_drive", "city_glance"]
+    assert [item["visual_mode"] for item in out] == ["night_drive", "rain_window_detail", "night_drive", "city_glance"]
+
+
+def test_citypop_prompt_seed_prioritizes_environment_for_release_wide():
+    seed = build_citypop_prompt_seed(
+        "late-night city pop walk under wet neon lights",
+        get_citypop_bible(),
+        {
+            "section_name": "Outro",
+            "shot_role": "outro_release",
+            "visual_mode": "skyline_release",
+            "framing_intent": "release_wide",
+        },
+    )
+
+    assert "rainy neon skyline boulevard at dusk" in seed
+    assert "one small figure in the distance" in seed
+    assert seed.index("rainy neon skyline boulevard at dusk") < seed.index("one small figure in the distance")
+
+
+def test_citypop_prompt_seed_uses_world_first_intro_family():
+    seed = build_citypop_prompt_seed(
+        "late-night city pop walk under wet neon lights",
+        get_citypop_bible(),
+        {
+            "section_name": "Intro",
+            "shot_role": "intro_mood",
+            "visual_mode": "roadway_overview",
+            "framing_intent": "establishing_wide",
+        },
+    )
+
+    assert "rain-slick boulevard approach with broad roadway depth and neon traffic glow" in seed
+    assert "tiny figure held at the curb edge beneath the city lights" in seed
+    assert seed.index("rain-slick boulevard approach with broad roadway depth and neon traffic glow") < seed.index("tiny figure held at the curb edge beneath the city lights")
+
+
+def test_citypop_prompt_draft_adds_off_center_negative_space_rules_for_true_wide_families():
+    draft = build_citypop_prompt_draft({"visual_mode": "skyline_release", "framing_intent": "release_wide"})
+
+    assert "off-center composition" in draft
+    assert "large negative space" in draft
+    assert "small figure emphasis" in draft
+    assert "no direct face toward camera" in draft
+
+
+def test_citypop_prompt_draft_strengthens_world_first_rules_for_intro_family():
+    draft = build_citypop_prompt_draft({"visual_mode": "roadway_overview", "framing_intent": "establishing_wide"})
+
+    assert "wide establishing frame with roadway-led depth and a tiny edge-held subject" in draft
+    assert "subject on the outer third" in draft
+    assert "vanishing point separated from the subject" in draft
+
+
+def test_citypop_prompt_draft_adds_partial_figure_rules_for_connective_family():
+    draft = build_citypop_prompt_draft({"visual_mode": "partial_figure_transition", "framing_intent": "connective_medium"})
+
+    assert "partial-figure transition frame" in draft
+    assert "partial figure only" in draft
+    assert "no direct face toward camera" in draft

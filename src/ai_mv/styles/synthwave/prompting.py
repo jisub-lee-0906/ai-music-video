@@ -27,18 +27,29 @@ def build_synthwave_prompt_seed(concept_text: str, style_bible: dict, shot: dict
 
 
 def build_synthwave_prompt_draft(shot: dict) -> str:
-    visual_mode = str(shot.get("visual_mode", "")).strip()
-    framing = {
-        "laser_horizon": "low-angle horizon framing with stable vanishing lines",
-        "neon_highway": "windshield-side close-up with controlled road perspective",
-        "mirror_glass": "single-subject reflection close-up with clean glass geometry",
-        "dashboard_pulse": "cockpit close-up with restrained console glow",
-        "grid_surge": "front-facing hero frame with stable skyline depth",
-        "neon_run": "tracking boulevard composition with one dominant subject",
-        "skyline_bloom": "wide skyline release with one anchored silhouette",
-        "tunnel_reveal": "tunnel transition frame with single-scene depth",
-        "afterglow_escape": "afterglow portrait with clean edge separation and no overlays",
-    }.get(visual_mode, "single-scene synthwave cinematic close-up")
+    framing_intent = str(shot.get("framing_intent", "")).strip()
+    intent_mapping = {
+        "establishing_wide": "wide establishing frame with stable skyline depth and one anchored subject",
+        "hero_medium": "hero medium shot with controlled road perspective and visible environment",
+        "connective_medium": "environment-led medium shot with one dominant subject and stable depth",
+        "performance_closeup": "front-facing hero frame with stable skyline depth",
+        "release_wide": "medium-wide release frame with one anchored silhouette and clean road perspective",
+    }
+    if framing_intent in intent_mapping:
+        framing = intent_mapping[framing_intent]
+    else:
+        visual_mode = str(shot.get("visual_mode", "")).strip()
+        framing = {
+            "laser_horizon": "low-angle horizon framing with stable vanishing lines",
+            "neon_highway": "windshield-side close-up with controlled road perspective",
+            "mirror_glass": "single-subject reflection close-up with clean glass geometry",
+            "dashboard_pulse": "cockpit close-up with restrained console glow",
+            "grid_surge": "front-facing hero frame with stable skyline depth",
+            "neon_run": "tracking boulevard composition with one dominant subject",
+            "skyline_bloom": "wide skyline release with one anchored silhouette",
+            "tunnel_reveal": "tunnel transition frame with single-scene depth",
+            "afterglow_escape": "afterglow portrait with clean edge separation and no overlays",
+        }.get(visual_mode, "single-scene synthwave cinematic close-up")
     return ", ".join(
         [
             framing,

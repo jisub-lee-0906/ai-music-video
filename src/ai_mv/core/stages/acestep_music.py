@@ -10,6 +10,7 @@ from ai_mv.engines.acestep_1_5_aio.runner import run_audio_split
 def run_acestep_music(stage_input: StageInput) -> StageOutput:
     payload = dict(stage_input.payload)
     payload["run_id"] = stage_input.run_id
+    payload["scope"] = "run"
     plan = build_audio_plan(stage_input.config, payload)
     audio_map = run_audio_split(stage_input.config, plan)
     audio_map.update(_audio_context(stage_input.config, audio_map, plan))
@@ -58,7 +59,7 @@ def _audio_preview_inputs(config: dict, plan: dict) -> dict:
 
 
 def build_audio_preview_payload(config: dict, payload: dict, run_id: str) -> dict:
-    plan = build_audio_plan(config, dict(payload, run_id=run_id))
+    plan = build_audio_plan(config, dict(payload, run_id=run_id, scope="preflight"))
     audio_map = build_audio_preview_map(plan)
     audio_map.update(_audio_context(config, audio_map, plan))
     return build_stage_payload(

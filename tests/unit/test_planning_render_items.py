@@ -99,6 +99,33 @@ def test_render_item_separates_still_and_clip_prompt_contracts():
     assert "single cinematic keyframe" not in out["clip_positive_prompt"]
 
 
+def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_release_shot():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S012",
+            "render_mode": "i2v",
+            "shot_role": "chorus_hold",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "neon_release",
+            "edit_role": "hook",
+            "coverage_role": "connective",
+            "framing_intent": "release_wide",
+            "workflow_intent": "stable_i2v",
+            "start_sec": 8.0,
+            "duration_sec": 4.0,
+        },
+    )
+
+    assert "wide release frame" in out["still_prompt_text"]
+    assert "skyline-led negative space" in out["still_prompt_text"]
+    assert "close-up" not in out["still_prompt_text"]
+
+
 def test_render_item_uses_short_transition_prompt_for_flf2v():
     out = build_render_item(
         {},

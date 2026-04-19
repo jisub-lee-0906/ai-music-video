@@ -73,7 +73,7 @@ def test_plan_mv_splits_long_sections_for_m1():
 
     verse_shots = [shot for shot in out["shot_plan"] if shot["section_type"] == "verse"]
     assert len(verse_shots) >= 2
-    assert any(shot["visual_mode"] == "window_reflection" for shot in verse_shots)
+    assert any(shot["visual_mode"] == "rain_window_detail" for shot in verse_shots)
 
 
 def test_plan_mv_assigns_progressive_variants_within_long_section():
@@ -108,6 +108,39 @@ def test_plan_mv_falls_back_without_audio_sections():
     assert section_types[0] == "intro"
     assert "chorus" in section_types
     assert section_types[-1] == "outro"
+    intro_shot = out["shot_plan"][0]
+    outro_shot = out["shot_plan"][-1]
+    assert intro_shot["visual_mode"] == "roadway_overview"
+    assert outro_shot["visual_mode"] == "skyline_release"
+
+
+def test_plan_mv_keeps_world_first_opener_when_m1_window_merges_intro_into_verse():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "label": "Intro", "start_sec": 0.0, "end_sec": 2.06},
+                    {"name": "verse_1", "label": "Verse 1", "start_sec": 2.06, "end_sec": 4.305},
+                    {"name": "pre_chorus", "label": "Pre-Chorus", "start_sec": 4.305, "end_sec": 6.536},
+                    {"name": "chorus", "label": "Chorus", "start_sec": 6.536, "end_sec": 8.796},
+                    {"name": "verse_2", "label": "Verse 2", "start_sec": 8.796, "end_sec": 11.019},
+                    {"name": "bridge", "label": "Bridge", "start_sec": 11.019, "end_sec": 12.156},
+                    {"name": "chorus", "label": "Final Chorus", "start_sec": 12.156, "end_sec": 16.478},
+                    {"name": "outro", "label": "Outro", "start_sec": 16.478, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    opener = out["shot_plan"][0]
+    opener_render = out["render_plan"][0]
+    assert opener["section_name"] == "Intro->Verse 1"
+    assert opener["visual_mode"] == "roadway_overview"
+    assert opener["framing_intent"] == "establishing_wide"
+    assert "rain-slick boulevard approach with broad roadway depth and neon traffic glow" in opener_render["prompt_seed"]
 
 
 def test_plan_mv_builds_rich_render_prompts():
