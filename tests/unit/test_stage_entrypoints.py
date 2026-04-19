@@ -101,7 +101,7 @@ def test_single_keyframe_prompt_text_uses_subject_level_environment_constraint()
     assert "close-up portrait integrated into the environment" not in prompt
 
 
-def test_render_stills_constrained_wider_body_case_does_not_force_closeup_portrait_token(monkeypatch):
+def test_render_stills_constrained_wider_body_case_uses_soft_single_scene_variant(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -121,7 +121,9 @@ def test_render_stills_constrained_wider_body_case_does_not_force_closeup_portra
     run_render_stills(stage_input)
 
     prompt = calls[0]["positive_prompt"]
+    assert "Render it as one clean anime film still in a single continuous scene" in prompt
     assert "subject integrated into the environment" in prompt
+    assert "no inset portrait" not in prompt
     assert "close-up portrait integrated into the environment" not in prompt
 
 

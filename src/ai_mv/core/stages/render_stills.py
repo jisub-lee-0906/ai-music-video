@@ -12,6 +12,10 @@ _RAW_STILL_PROMPT_MARKERS = (
     "motion-safe continuity",
     "preserved neighboring-shot continuity",
 )
+_WIDE_STILL_PROMPT_MARKERS = (
+    "full-body readability",
+    "medium-wide frame",
+)
 
 
 def run_render_stills(stage_input: StageInput) -> StageOutput:
@@ -73,6 +77,8 @@ def _still_prompt_text(render_item: dict) -> str:
 
 def _single_keyframe_prompt_text(prompt_text: str) -> str:
     base = _sanitize_still_prompt_text(prompt_text)
+    if _should_use_soft_single_scene_constraint(base):
+        return _soft_single_scene_constraint_prompt_text(base)
     constraints = [
         "anime film still",
         "single cinematic keyframe",
@@ -98,6 +104,20 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
             if token not in tokens:
                 tokens.append(token)
     return ", ".join(tokens)
+
+
+def _soft_single_scene_constraint_prompt_text(prompt_text: str) -> str:
+    base = str(prompt_text).strip()
+    suffix = (
+        "Render it as one clean anime film still in a single continuous scene, "
+        "with the subject integrated into the environment and no inset frame, collage, or split screen."
+    )
+    return f"{base} {suffix}".strip()
+
+
+def _should_use_soft_single_scene_constraint(prompt_text: str) -> bool:
+    text = str(prompt_text or "").lower()
+    return any(marker in text for marker in _WIDE_STILL_PROMPT_MARKERS)
 
 
 def _apply_still_constraint_policy(prompt_text: str, *, shot: dict, render_item: dict) -> str:
