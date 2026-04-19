@@ -3,6 +3,34 @@ from ai_mv.styles.citypop.bible import get_citypop_bible
 from ai_mv.styles.synthwave.bible import get_synthwave_bible
 
 
+def test_render_item_adds_edit_intent_metadata():
+    out = build_render_item(
+        {},
+        "dreamy synthwave neon highway night drive",
+        "synthwave",
+        get_synthwave_bible(),
+        {
+            "shot_id": "S006",
+            "render_mode": "i2v",
+            "shot_role": "chorus_breakout",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "grid_surge",
+            "edit_role": "hook",
+            "coverage_role": "anchor",
+            "workflow_intent": "audio_reactive_candidate",
+            "start_sec": 8.0,
+            "duration_sec": 5.0,
+        },
+    )
+
+    assert out["edit_intent"]["edit_priority"] == "high"
+    assert out["edit_intent"]["section_emphasis"] == "chorus_push"
+    assert out["edit_intent"]["target_clip_sec"] == 5.0
+    assert out["edit_intent"]["transition_in"] == "accent_in"
+    assert out["edit_intent"]["transition_out"] == "accent_out"
+
+
 def test_render_item_builds_prompt_fields_and_still_bridge():
     out = build_render_item(
         {},

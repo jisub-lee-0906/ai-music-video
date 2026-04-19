@@ -21,6 +21,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     still_prompt_text = build_still_prompt_text(prompt_seed, prompt_draft, prompt_polish)
     clip_prompt_seed = build_clip_prompt_seed(render_mode, shot, prompt_seed)
     clip_positive_prompt = build_clip_positive_prompt(render_mode, shot, clip_prompt_seed)
+    edit_intent = build_edit_intent(shot)
     out = {
         "shot_id": shot["shot_id"],
         "render_mode": render_mode,
@@ -30,6 +31,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         "still_prompt_text": still_prompt_text,
         "clip_prompt_seed": clip_prompt_seed,
         "clip_positive_prompt": clip_positive_prompt,
+        "edit_intent": edit_intent,
         "still_a": "",
         "still_b": str(shot.get("bridge_to_shot_id", "")).strip(),
     }
@@ -117,6 +119,43 @@ def build_clip_positive_prompt(render_mode: str, shot: dict, clip_prompt_seed: s
             "no abrupt pose change",
         ]
     )
+
+
+
+def build_edit_intent(shot: dict) -> dict:
+    edit_role = str(shot.get("edit_role", "support")).strip()
+    duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)
+    if edit_role == "hook":
+        return {
+            "edit_priority": "high",
+            "section_emphasis": "chorus_push",
+            "target_clip_sec": duration_sec,
+            "transition_in": "accent_in",
+            "transition_out": "accent_out",
+        }
+    if edit_role == "bridge":
+        return {
+            "edit_priority": "medium",
+            "section_emphasis": "bridge_contrast",
+            "target_clip_sec": duration_sec,
+            "transition_in": "glide_in",
+            "transition_out": "handoff_out",
+        }
+    if edit_role == "release":
+        return {
+            "edit_priority": "medium",
+            "section_emphasis": "release_fade",
+            "target_clip_sec": duration_sec,
+            "transition_in": "hold_in",
+            "transition_out": "fade_out",
+        }
+    return {
+        "edit_priority": "medium",
+        "section_emphasis": "sequence_support",
+        "target_clip_sec": duration_sec,
+        "transition_in": "cut_in",
+        "transition_out": "cut_out",
+    }
 
 
 
