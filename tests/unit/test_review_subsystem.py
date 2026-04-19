@@ -149,6 +149,45 @@ def test_review_models_include_edit_intent_summary():
 
 
 
+def test_review_models_include_mv_intent_checks():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {
+                "edit_priority": "high",
+                "section_emphasis": "chorus_push",
+                "target_clip_sec": 5.0,
+                "transition_in": "accent_in",
+                "transition_out": "accent_out",
+            },
+            "S002": {
+                "edit_priority": "medium",
+                "section_emphasis": "bridge_contrast",
+                "target_clip_sec": 4.0,
+                "transition_in": "glide_in",
+                "transition_out": "handoff_out",
+            },
+        },
+    )
+
+    assert report["mv_intent_checks"] == {
+        "hook_shot_present": True,
+        "section_emphasis_present": True,
+        "chorus_emphasis_present": True,
+        "bridge_emphasis_present": True,
+    }
+
+
+
 def test_review_models_include_benchmark_dimension_summary():
     report = build_review_report(
         planned_shot_ids=["S001", "S006"],

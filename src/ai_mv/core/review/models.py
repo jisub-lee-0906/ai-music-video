@@ -166,6 +166,19 @@ def summarize_edit_intent(edit_intent_by_shot: dict[str, dict] | None) -> dict:
 
 
 
+def build_mv_intent_checks(edit_intent_summary: dict | None) -> dict[str, bool]:
+    summary = edit_intent_summary if isinstance(edit_intent_summary, dict) else {}
+    emphasis_counts = summary.get("section_emphasis_counts") if isinstance(summary.get("section_emphasis_counts"), dict) else {}
+    high_priority_shots = summary.get("high_priority_shots") if isinstance(summary.get("high_priority_shots"), list) else []
+    return {
+        "hook_shot_present": bool(high_priority_shots),
+        "section_emphasis_present": bool(emphasis_counts),
+        "chorus_emphasis_present": bool(emphasis_counts.get("chorus_push", 0)),
+        "bridge_emphasis_present": bool(emphasis_counts.get("bridge_contrast", 0)),
+    }
+
+
+
 def build_review_report(
     *,
     planned_shot_ids: list[str],
@@ -226,6 +239,7 @@ def build_review_report(
         music_file=music_file,
     )
     edit_intent_summary = summarize_edit_intent(edit_intent_by_shot)
+    mv_intent_checks = build_mv_intent_checks(edit_intent_summary)
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -256,4 +270,5 @@ def build_review_report(
         "review_signal_buckets": review_signal_buckets,
         "publishability_summary": publishability_summary,
         "edit_intent_summary": edit_intent_summary,
+        "mv_intent_checks": mv_intent_checks,
     }
