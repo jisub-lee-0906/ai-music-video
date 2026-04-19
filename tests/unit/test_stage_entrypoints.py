@@ -1041,8 +1041,45 @@ def test_prepare_rerender_returns_empty_stage_inputs_when_review_has_no_targets(
     }
 
 
+def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
+    stage_input = StageInput(
+        run_id="run-rerender-review-stage",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S001",
+                        "recommended_action": "repair_audio_video_sync",
+                        "rerender_stage": "review",
+                        "stage_payloads": {
+                            "review": {
+                                "final_video": "final.mp4",
+                                "music_file": "song.mp3",
+                            }
+                        },
+                    }
+                ]
+            }
+        },
+    )
+
+    out = run_prepare_rerender(stage_input)
+
+    assert out.payload == {
+        "rerender_target_ids": ["S001"],
+        "rerender_stage_sequence": ["review"],
+        "rerender_stage_inputs": {
+            "review": {
+                "final_video": "final.mp4",
+                "music_file": "song.mp3",
+            }
+        },
+    }
+
 
 def test_execute_rerender_runs_stills_then_clips_with_fresh_still_results(monkeypatch):
+
     calls = []
 
     def _fake_run_render_stills(stage_input):
@@ -1098,6 +1135,52 @@ def test_execute_rerender_runs_stills_then_clips_with_fresh_still_results(monkey
 
 
 
+def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
+    calls = []
+
+    def _fake_repair_audio_video_sync(stage_input):
+        calls.append(("review", stage_input.payload))
+        return StageOutput(
+            "repair_audio_video_sync",
+            "done",
+            {
+                "final_video": "synced-final.mp4",
+                "music_file": "song.mp3",
+            },
+            ["synced-final.mp4"],
+        )
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_repair_audio_video_sync", _fake_repair_audio_video_sync)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-exec-review",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["review"],
+                "rerender_stage_inputs": {
+                    "review": {
+                        "final_video": "final.mp4",
+                        "music_file": "song.mp3",
+                    }
+                },
+            },
+        )
+    )
+
+    assert calls == [("review", {"final_video": "final.mp4", "music_file": "song.mp3"})]
+    assert out.payload == {
+        "rerender_results": {
+            "completed_stages": ["review"],
+            "still_results": [],
+            "clip_results": [],
+        },
+        "final_video": "synced-final.mp4",
+        "music_file": "song.mp3",
+    }
+    assert out.artifacts == ["synced-final.mp4"]
+
+
 def test_execute_rerender_returns_empty_results_when_no_rerender_stage_inputs_exist():
     out = run_execute_rerender(
         StageInput(
@@ -1116,8 +1199,8 @@ def test_execute_rerender_returns_empty_results_when_no_rerender_stage_inputs_ex
     }
 
 
-
 def test_rerender_review_merges_fresh_assets_and_recomputes_review(monkeypatch):
+
     existing = {"D:/renders/final.mp4", "D:/renders/S001_retry.png", "D:/renders/S001_retry.mp4"}
 
     def _fake_exists(self):
@@ -1399,6 +1482,42 @@ def test_rerender_loop_chains_prepare_repair_execute_and_review(monkeypatch):
     assert out.payload["rerender_review_report"] == {"status": "done", "rerender_targets": []}
     assert out.payload["rerender_outcome"] == {"attempted": True, "resolved": True, "exhausted": False}
 
+
+def test_rerender_loop_preserves_execute_stage_artifacts(monkeypatch):
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_prepare_rerender",
+        lambda stage_input: StageOutput("prepare_rerender", "done", {"rerender_stage_sequence": ["review"], "rerender_stage_inputs": {"review": {"final_video": "final.mp4", "music_file": "song.mp3"}}}, []),
+    )
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_repair_rerender_prompts",
+        lambda stage_input: StageOutput("repair_rerender_prompts", "done", {"rerender_stage_inputs": {"review": {"final_video": "final.mp4", "music_file": "song.mp3"}}}, []),
+    )
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_execute_rerender",
+        lambda stage_input: StageOutput(
+            "execute_rerender",
+            "done",
+            {
+                "rerender_results": {"completed_stages": ["review"], "still_results": [], "clip_results": []},
+                "final_video": "synced-final.mp4",
+            },
+            ["synced-final.mp4"],
+        ),
+    )
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_loop.run_rerender_review",
+        lambda stage_input: StageOutput(
+            "rerender_review",
+            "done",
+            {"rerender_review_report": {"status": "done", "rerender_targets": []}, "still_results": [], "clip_results": []},
+            [],
+        ),
+    )
+
+    out = run_rerender_loop(StageInput(run_id="run-rerender-loop-artifacts", config={}, payload={"review_report": {"status": "needs_rerender"}}))
+
+    assert out.payload["final_video"] == "synced-final.mp4"
+    assert out.artifacts == ["synced-final.mp4"]
 
 
 def test_rerender_loop_marks_unresolved_rerender_outcome_when_review_still_fails(monkeypatch):

@@ -34,7 +34,11 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
     if isinstance(merged_payload.get("rerender_review_report"), dict):
         merged_payload["review_report"] = dict(merged_payload["rerender_review_report"])
     merged_payload["rerender_outcome"] = _rerender_outcome(merged_payload.get("review_report"))
-    return StageOutput("rerender_loop", "done", merged_payload, list(reviewed.artifacts))
+    artifacts = [
+        *[str(path) for path in executed.artifacts if str(path).strip()],
+        *[str(path) for path in reviewed.artifacts if str(path).strip()],
+    ]
+    return StageOutput("rerender_loop", "done", merged_payload, artifacts)
 
 
 

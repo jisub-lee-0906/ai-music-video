@@ -110,7 +110,7 @@ def test_plan_mv_falls_back_without_audio_sections():
     assert section_types[-1] == "outro"
     intro_shot = out["shot_plan"][0]
     outro_shot = out["shot_plan"][-1]
-    assert intro_shot["visual_mode"] == "roadway_overview"
+    assert intro_shot["visual_mode"] == "empty_boulevard_anchor"
     assert outro_shot["visual_mode"] == "skyline_release"
 
 
@@ -138,9 +138,9 @@ def test_plan_mv_keeps_world_first_opener_when_m1_window_merges_intro_into_verse
     opener = out["shot_plan"][0]
     opener_render = out["render_plan"][0]
     assert opener["section_name"] == "Intro->Verse 1"
-    assert opener["visual_mode"] == "roadway_overview"
+    assert opener["visual_mode"] == "empty_boulevard_anchor"
     assert opener["framing_intent"] == "establishing_wide"
-    assert "rain-slick boulevard approach with broad roadway depth and neon traffic glow" in opener_render["prompt_seed"]
+    assert "near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow" in opener_render["prompt_seed"]
 
 
 def test_plan_mv_builds_rich_render_prompts():

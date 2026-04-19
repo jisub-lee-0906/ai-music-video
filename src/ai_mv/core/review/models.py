@@ -86,12 +86,14 @@ def build_rerender_execution_payloads(
     render_plan: list[dict],
     still_results: list[dict],
     music_file: str,
+    final_video_path: str = "",
 ) -> list[dict[str, object]]:
     shot_map = {str(row.get("shot_id", "")).strip(): row for row in shot_plan if isinstance(row, dict)}
     render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan if isinstance(row, dict)}
     still_map = {str(row.get("shot_id", "")).strip(): row for row in still_results if isinstance(row, dict)}
     execution_payloads: list[dict[str, object]] = []
     normalized_music_file = str(music_file or "").strip()
+    normalized_final_video = str(final_video_path or "").strip()
     for item in rerender_payload if isinstance(rerender_payload, list) else []:
         if not isinstance(item, dict):
             continue
@@ -117,6 +119,11 @@ def build_rerender_execution_payloads(
                 "shot_plan": [shot_row] if isinstance(shot_row, dict) else [],
                 "render_plan": [render_row] if isinstance(render_row, dict) else [],
                 "still_results": still_rows,
+                "music_file": normalized_music_file,
+            }
+        if stage_focus == "review":
+            stage_payloads["review"] = {
+                "final_video": normalized_final_video,
                 "music_file": normalized_music_file,
             }
         execution_payloads.append(
@@ -194,6 +201,7 @@ def build_review_report(
     shot_plan: list[dict] | None = None,
     render_plan: list[dict] | None = None,
     music_file: str = "",
+    final_video_path: str = "",
     edit_intent_by_shot: dict[str, dict] | None = None,
 ) -> dict:
     signals = build_quality_signals(
@@ -237,6 +245,7 @@ def build_review_report(
         render_plan=render_plan or [],
         still_results=still_results,
         music_file=music_file,
+        final_video_path=final_video_path,
     )
     edit_intent_summary = summarize_edit_intent(edit_intent_by_shot)
     mv_intent_checks = build_mv_intent_checks(edit_intent_summary)

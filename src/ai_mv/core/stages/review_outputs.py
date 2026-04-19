@@ -69,6 +69,7 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         shot_plan=[row for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)],
         render_plan=[row for row in stage_input.payload.get("render_plan", []) if isinstance(row, dict)],
         music_file=str(stage_input.payload.get("music_file", "")).strip(),
+        final_video_path=final_video,
         edit_intent_by_shot=review_inputs.get("edit_intent_by_shot", {}) if isinstance(review_inputs, dict) else {},
     )
     return StageOutput("review_outputs", "done", {"review_report": report}, [])

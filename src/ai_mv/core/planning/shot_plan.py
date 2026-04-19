@@ -80,7 +80,7 @@ def _apply_world_first_opener_override(section: dict, shot_specs: list[dict]) ->
     first = {
         **shot_specs[0],
         "shot_role": "intro_mood",
-        "visual_mode": "roadway_overview",
+        "visual_mode": "empty_boulevard_anchor",
         "energy": "low",
     }
     return [first, *shot_specs[1:]]
@@ -96,13 +96,13 @@ def _restore_world_first_opener_after_m1_merge(shots: list[dict]) -> list[dict]:
     if start_sec > 0.001 or not section_name.startswith("intro->"):
         return shots
     first["shot_role"] = "intro_mood"
-    first["visual_mode"] = "roadway_overview"
+    first["visual_mode"] = "empty_boulevard_anchor"
     first["energy"] = "low"
     first.update(
         build_shot_intent(
             section_type="intro",
             shot_role="intro_mood",
-            visual_mode="roadway_overview",
+            visual_mode="empty_boulevard_anchor",
         )
     )
     return [first, *shots[1:]]

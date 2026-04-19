@@ -67,7 +67,7 @@ def test_citypop_rules_use_true_wide_families_for_intro_and_outro():
     intro_specs = citypop_section_shot_specs("intro", 3.0)
     outro_specs = citypop_section_shot_specs("outro", 3.0)
 
-    assert intro_specs[0]["visual_mode"] == "roadway_overview"
+    assert intro_specs[0]["visual_mode"] == "empty_boulevard_anchor"
     assert outro_specs[0]["visual_mode"] == "skyline_release"
 
 
@@ -118,14 +118,14 @@ def test_citypop_prompt_seed_uses_world_first_intro_family():
         {
             "section_name": "Intro",
             "shot_role": "intro_mood",
-            "visual_mode": "roadway_overview",
+            "visual_mode": "empty_boulevard_anchor",
             "framing_intent": "establishing_wide",
         },
     )
 
-    assert "rain-slick boulevard approach with broad roadway depth and neon traffic glow" in seed
-    assert "tiny figure held at the curb edge beneath the city lights" in seed
-    assert seed.index("rain-slick boulevard approach with broad roadway depth and neon traffic glow") < seed.index("tiny figure held at the curb edge beneath the city lights")
+    assert "near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow" in seed
+    assert "no foreground figure, only a barely noticeable distant human presence" in seed
+    assert seed.index("near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow") < seed.index("no foreground figure, only a barely noticeable distant human presence")
 
 
 def test_citypop_prompt_draft_adds_off_center_negative_space_rules_for_true_wide_families():
@@ -138,11 +138,11 @@ def test_citypop_prompt_draft_adds_off_center_negative_space_rules_for_true_wide
 
 
 def test_citypop_prompt_draft_strengthens_world_first_rules_for_intro_family():
-    draft = build_citypop_prompt_draft({"visual_mode": "roadway_overview", "framing_intent": "establishing_wide"})
+    draft = build_citypop_prompt_draft({"visual_mode": "empty_boulevard_anchor", "framing_intent": "establishing_wide"})
 
-    assert "wide establishing frame with roadway-led depth and a tiny edge-held subject" in draft
-    assert "subject on the outer third" in draft
-    assert "vanishing point separated from the subject" in draft
+    assert "world-first establishing frame with the boulevard and city light as the unquestioned subject" in draft
+    assert "no foreground figure" in draft
+    assert "only a tiny distant human trace if any" in draft
 
 
 def test_citypop_prompt_draft_adds_partial_figure_rules_for_connective_family():

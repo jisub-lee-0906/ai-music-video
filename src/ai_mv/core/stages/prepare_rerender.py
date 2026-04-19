@@ -6,6 +6,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 _STAGE_SCHEMA = {
     "stills": ("shot_plan", "render_plan", "still_results"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
+    "review": ("final_video", "music_file"),
 }
 
 
@@ -46,15 +47,17 @@ def run_prepare_rerender(stage_input: StageInput) -> StageOutput:
 def _empty_stage_payload(stage_name: str) -> dict[str, object]:
     if stage_name == "clips":
         return {"shot_plan": [], "render_plan": [], "still_results": [], "music_file": ""}
+    if stage_name == "review":
+        return {"final_video": "", "music_file": ""}
     return {"shot_plan": [], "render_plan": [], "still_results": []}
 
 
 
 def _merge_stage_field(target: dict[str, object], key: str, value: object) -> None:
-    if key == "music_file":
+    if key in {"music_file", "final_video"}:
         text = str(value or "").strip()
-        if text and not str(target.get("music_file", "")).strip():
-            target["music_file"] = text
+        if text and not str(target.get(key, "")).strip():
+            target[key] = text
         return
     if not isinstance(value, list):
         return

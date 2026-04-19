@@ -561,6 +561,46 @@ def test_review_models_marks_report_needing_rerender_when_drift_exceeds_toleranc
     assert report["rerender_reasons"]["S001"] == ["drift_too_high"]
 
 
+def test_review_models_build_review_stage_execution_payload_for_audio_sync_repairs():
+    report = build_review_report(
+        planned_shot_ids=["S001"],
+        still_results=[{"shot_id": "S001", "image": "still-1.png"}],
+        clip_results=[{"shot_id": "S001", "video": "clip-1.mp4"}],
+        still_status={"S001": True},
+        clip_status={"S001": True},
+        final_video_exists=True,
+        rerender_targets=["S001"],
+        rerender_reasons={"S001": ["drift_too_high"]},
+        audio_video_drift_sec=0.75,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[{"shot_id": "S001", "render_mode": "i2v"}],
+        render_plan=[{"shot_id": "S001", "render_mode": "i2v", "clip_prompt_seed": "clip-1"}],
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+    )
+
+    assert report["rerender_execution_payloads"] == [
+        {
+            "shot_id": "S001",
+            "recommended_action": "repair_audio_video_sync",
+            "rerender_stage": "review",
+            "stage_payloads": {
+                "review": {
+                    "final_video": "final.mp4",
+                    "music_file": "song.mp3",
+                }
+            },
+        }
+    ]
+
+
+def test_classify_rerender_target_prioritizes_missing_assets_before_audio_sync_repair():
+    classification = classify_rerender_target(["missing_still", "missing_clip", "drift_too_high"])
+
+    assert classification["bucket"] == "technical_completion"
+    assert classification["recommended_action"] == "rerender_missing_stills"
+
+
 def test_review_models_include_severity_and_priority():
     report = build_review_report(
         planned_shot_ids=["S001"],

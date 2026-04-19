@@ -4,7 +4,7 @@ from __future__ import annotations
 def citypop_section_shot_specs(section_type: str, duration_sec: float) -> list[dict]:
     m1_mode = "i2v"
     if section_type == "intro":
-        return [_spec("intro_mood", "roadway_overview", "low", m1_mode, 1.0)]
+        return [_spec("intro_mood", "empty_boulevard_anchor", "low", m1_mode, 1.0)]
     if section_type == "outro":
         return [_spec("outro_release", "skyline_release", "low", m1_mode, 1.0)]
     if section_type == "chorus":
@@ -47,7 +47,7 @@ def apply_citypop_section_variants(section_type: str, parts: list[dict]) -> list
 
 def _shot_variant(section_type: str, idx: int, split_count: int, shot_role: str, visual_mode: str) -> tuple[str, str]:
     sequences = {
-        "intro": [("intro_mood", "roadway_overview"), ("intro_drive", "night_drive")],
+        "intro": [("intro_mood", "empty_boulevard_anchor"), ("intro_drive", "night_drive")],
         "verse": [("verse_setup", "night_drive"), ("verse_detail", "rain_window_detail"), ("verse_flow", "night_drive"), ("verse_glow", "city_glance")],
         "pre_chorus": [("prechorus_lift", "partial_figure_transition"), ("prechorus_tension", "rain_window_detail")],
         "chorus": [("chorus_arrive", "chorus_performance"), ("chorus_hold", "neon_release"), ("chorus_sweep", "chorus_performance"), ("chorus_afterglow", "neon_release")],

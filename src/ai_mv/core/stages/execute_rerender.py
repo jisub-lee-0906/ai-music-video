@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
 
@@ -10,6 +11,8 @@ def _stage_runner(stage_name: str):
         return run_render_stills
     if stage_name == "clips":
         return run_render_clips
+    if stage_name == "review":
+        return run_repair_audio_video_sync
     return None
 
 
@@ -19,6 +22,8 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
     rerendered_stills: list[dict] = []
     rerendered_clips: list[dict] = []
     completed_stages: list[str] = []
+    passthrough_payload: dict[str, object] = {}
+    artifacts: list[str] = []
 
     for stage_name in stage_sequence:
         runner = _stage_runner(stage_name)
@@ -36,7 +41,13 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
             rerendered_stills = [row for row in result.payload.get("still_results", []) if isinstance(row, dict)]
         if stage_name == "clips":
             rerendered_clips = [row for row in result.payload.get("clip_results", []) if isinstance(row, dict)]
+        if stage_name == "review":
+            for key in ("final_video", "music_file", "review_inputs"):
+                value = result.payload.get(key)
+                if value:
+                    passthrough_payload[key] = value
         completed_stages.append(stage_name)
+        artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
 
     return StageOutput(
         "execute_rerender",
@@ -46,9 +57,10 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
                 "completed_stages": completed_stages,
                 "still_results": rerendered_stills,
                 "clip_results": rerendered_clips,
-            }
+            },
+            **passthrough_payload,
         },
-        [],
+        artifacts,
     )
 
 

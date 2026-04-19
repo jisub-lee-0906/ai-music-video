@@ -51,11 +51,11 @@ _GUIDANCE_BY_CHECK = {
 
 _TECHNICAL_PRIORITY = (
     ("final_video_exists", "assemble_or_reassemble_final_video"),
-    ("audio_video_sync_within_tolerance", "repair_audio_video_sync"),
     ("all_stills_rendered", "rerender_missing_stills"),
     ("stills_coverage_within_threshold", "rerender_missing_stills"),
     ("all_clips_rendered", "rerender_missing_clips"),
     ("clips_coverage_within_threshold", "rerender_missing_clips"),
+    ("audio_video_sync_within_tolerance", "repair_audio_video_sync"),
 )
 
 _ISOLATED_PRIORITY = (
@@ -156,10 +156,10 @@ def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
             "technical_completion",
             {
                 "missing_final_video": "assemble_or_reassemble_final_video",
-                "drift_too_high": "repair_audio_video_sync",
                 "coverage_too_low": "rerender_missing_stills",
                 "missing_still": "rerender_missing_stills",
                 "missing_clip": "rerender_missing_clips",
+                "drift_too_high": "repair_audio_video_sync",
             },
         ),
         (

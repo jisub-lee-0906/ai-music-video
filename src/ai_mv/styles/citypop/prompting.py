@@ -79,6 +79,10 @@ def _ordered_seed_parts(shot: dict, *, concept: str, continuity: str, subject: s
 
 def _still_subject_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
+    if visual_mode == "empty_boulevard_anchor":
+        return "no foreground figure, only a barely noticeable distant human presence"
+    if visual_mode == "curbside_silhouette":
+        return "tiny curbside silhouette with the face turned away from camera"
     if visual_mode == "roadway_overview":
         return "tiny figure held at the curb edge beneath the city lights"
     if visual_mode == "street_establishing":
@@ -115,6 +119,8 @@ def _still_subject_phrase(shot: dict) -> str:
 def _still_location_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
+        "empty_boulevard_anchor": "near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow",
+        "curbside_silhouette": "rain-slick boulevard with passing traffic bands and dominant roadway depth",
         "roadway_overview": "rain-slick boulevard approach with broad roadway depth and neon traffic glow",
         "street_establishing": "rainy neon boulevard at dusk with long wet-road reflections",
         "profile_mood": "night station interior with dark glass panels",
@@ -138,7 +144,7 @@ def _still_palette_phrase(shot: dict, citypop_bible: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode in {"night_drive", "window_reflection", "night_bridge", "chorus_performance"}:
         return "deep blue and neon magenta palette"
-    if visual_mode in {"roadway_overview", "street_establishing", "skyline_release"}:
+    if visual_mode in {"empty_boulevard_anchor", "curbside_silhouette", "roadway_overview", "street_establishing", "skyline_release"}:
         return "soft dusk violet and neon pink palette"
     if visual_mode in {"memory_flash", "profile_mood"}:
         return "soft dusk violet and cool pink palette"
@@ -152,6 +158,8 @@ def _still_framing_phrase(shot: dict) -> str:
     framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
     specialized_mapping = {
+        "empty_boulevard_anchor": "world-first establishing frame with the boulevard and city light as the unquestioned subject",
+        "curbside_silhouette": "world-first establishing frame with boulevard depth and an incidental edge-held silhouette",
         "roadway_overview": "wide establishing frame with roadway-led depth and a tiny edge-held subject",
         "street_establishing": "wide establishing frame with a small subject and dominant city perspective",
         "rain_window_detail": "detail insert framing through rain-streaked reflective glass",
@@ -188,6 +196,10 @@ def _still_framing_phrase(shot: dict) -> str:
 def _still_composition_constraints(shot: dict) -> str:
     framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
+    if visual_mode == "empty_boulevard_anchor":
+        return "no foreground figure, only a tiny distant human trace if any, large negative space, vanishing point separated from any human presence, roadway and city light dominate the frame"
+    if visual_mode == "curbside_silhouette":
+        return "subject on the extreme outer edge, subject barely legible, no readable face, large negative space, vanishing point separated from the subject, roadway and city light dominate the frame"
     if visual_mode == "roadway_overview":
         return "off-center composition, subject on the outer third, large negative space, no direct face toward camera, vanishing point separated from the subject"
     if framing_intent in {"establishing_wide", "release_wide"} or visual_mode in {"street_establishing", "skyline_release"}:
