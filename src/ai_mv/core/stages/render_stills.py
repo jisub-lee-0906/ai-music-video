@@ -81,7 +81,7 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
         "one uninterrupted composition",
         "full-bleed frame",
         "continuous background perspective",
-        "close-up portrait integrated into the environment",
+        "subject integrated into the environment",
         "reflections within the same shot",
         "diegetic reflections only",
         "no inset portrait",

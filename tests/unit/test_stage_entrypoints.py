@@ -6,7 +6,7 @@ from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.repair_rerender_prompts import run_repair_rerender_prompts
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
-from ai_mv.core.stages.render_stills import _still_prompt_text, run_render_stills
+from ai_mv.core.stages.render_stills import _single_keyframe_prompt_text, _still_prompt_text, run_render_stills
 from ai_mv.core.stages.rerender_escalation import run_rerender_escalation
 from ai_mv.core.stages.rerender_loop import run_rerender_loop
 from ai_mv.core.stages.rerender_review import run_rerender_review
@@ -89,7 +89,40 @@ def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
     assert "night station portrait, reflective glass, film grain" in prompt
     assert "anime film still" in prompt
     assert "single cinematic keyframe" in prompt
+    assert "subject integrated into the environment" in prompt
+    assert "close-up portrait integrated into the environment" not in prompt
     assert "no inset portrait" in prompt
+
+
+def test_single_keyframe_prompt_text_uses_subject_level_environment_constraint():
+    prompt = _single_keyframe_prompt_text("A young woman walking through a neon street.")
+
+    assert "subject integrated into the environment" in prompt
+    assert "close-up portrait integrated into the environment" not in prompt
+
+
+def test_render_stills_constrained_wider_body_case_does_not_force_closeup_portrait_token(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-wide-constrained",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S009B", "visual_mode": "night_drive"}],
+            "render_plan": [{"shot_id": "S009B", "still_constraint_mode": "constrained", "still_prompt_text": "A young woman in an oversized varsity jacket walking through a neon side street with wet pavement reflections and convenience-store glow. Keep one continuous medium-wide frame with clear full-body readability."}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    prompt = calls[0]["positive_prompt"]
+    assert "subject integrated into the environment" in prompt
+    assert "close-up portrait integrated into the environment" not in prompt
 
 
 def test_render_stills_keeps_window_reflection_case_raw(monkeypatch):
