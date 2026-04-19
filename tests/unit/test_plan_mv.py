@@ -2,6 +2,34 @@ from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.core.planning.sections import merged_shot_section_type, normalized_sections
 
 
+def test_plan_mv_builds_creative_direction_payload():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "dreamy synthwave night drive with lonely neon romance",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse", "start_sec": 3.0, "end_sec": 9.0},
+                    {"name": "chorus", "start_sec": 9.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    creative_direction = out["creative_direction"]
+    assert creative_direction["mv_mode"] == "visualizer"
+    assert creative_direction["hook_visual"]
+    assert creative_direction["emotional_arc"]
+    assert creative_direction["chorus_intent"]
+    assert creative_direction["bridge_intent"]
+    assert creative_direction["continuity_rules"]
+    assert creative_direction["style_name"] == out["style_name"]
+    assert creative_direction["section_count"] == 4
+
+
 def test_plan_mv_uses_audio_sections_and_stays_within_m1_bounds():
     payload = {
         "concept_text": "Japanese 80s city pop night drive, neon coast, bittersweet summer romance",
