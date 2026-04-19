@@ -1516,7 +1516,8 @@ def test_rerender_loop_preserves_execute_stage_artifacts(monkeypatch):
 
     out = run_rerender_loop(StageInput(run_id="run-rerender-loop-artifacts", config={}, payload={"review_report": {"status": "needs_rerender"}}))
 
-    assert out.payload["final_video"] == "synced-final.mp4"
+    assert out.payload["rerender_final_video"] == "synced-final.mp4"
+    assert "final_video" not in out.payload
     assert out.artifacts == ["synced-final.mp4"]
 
 
@@ -1554,7 +1555,8 @@ def test_rerender_loop_marks_unresolved_rerender_outcome_when_review_still_fails
 
     out = run_rerender_loop(StageInput(run_id="run-rerender-loop-fail", config={}, payload={"review_report": {"status": "needs_rerender"}}))
 
-    assert out.payload["review_report"] == {"status": "needs_rerender", "rerender_targets": ["S009"]}
+    assert out.payload["rerender_review_report"] == {"status": "needs_rerender", "rerender_targets": ["S009"]}
+    assert "review_report" not in out.payload
     assert out.payload["rerender_outcome"] == {"attempted": True, "resolved": False, "exhausted": True}
 
 

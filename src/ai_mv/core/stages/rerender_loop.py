@@ -31,9 +31,17 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
         StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=merged_payload)
     )
     merged_payload.update(dict(reviewed.payload))
-    if isinstance(merged_payload.get("rerender_review_report"), dict):
-        merged_payload["review_report"] = dict(merged_payload["rerender_review_report"])
-    merged_payload["rerender_outcome"] = _rerender_outcome(merged_payload.get("review_report"))
+    review_report = merged_payload.get("rerender_review_report") if isinstance(merged_payload.get("rerender_review_report"), dict) else None
+    if review_report is not None:
+        merged_payload["rerender_outcome"] = _rerender_outcome(review_report)
+    else:
+        merged_payload["rerender_outcome"] = _rerender_outcome(merged_payload.get("review_report"))
+
+    final_video = str(merged_payload.get("final_video", "")).strip()
+    if final_video:
+        merged_payload["rerender_final_video"] = final_video
+        merged_payload.pop("final_video", None)
+    merged_payload.pop("review_report", None)
     artifacts = [
         *[str(path) for path in executed.artifacts if str(path).strip()],
         *[str(path) for path in reviewed.artifacts if str(path).strip()],

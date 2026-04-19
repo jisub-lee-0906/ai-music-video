@@ -116,9 +116,9 @@ def test_pipeline_runs_rerender_loop_when_review_needs_rerender(monkeypatch):
             "rerender_loop",
             "done",
             {
-                "review_report": {"status": "done", "rerender_targets": []},
                 "rerender_review_report": {"status": "done", "rerender_targets": []},
                 "rerender_results": {"completed_stages": ["stills"]},
+                "rerender_final_video": "final-synced.mp4",
             },
         ),
     )
@@ -128,6 +128,7 @@ def test_pipeline_runs_rerender_loop_when_review_needs_rerender(monkeypatch):
     assert run_id == "rerender-test"
     assert order == ["audio", "plan", "stills", "clips", "assemble", "review", "rerender"]
     assert final_payload["review_report"] == {"status": "done", "rerender_targets": []}
+    assert final_payload["final_video"] == "final-synced.mp4"
     assert final_payload["rerender_results"] == {"completed_stages": ["stills"]}
     assert final_payload["rerender_outcome"] == {"attempted": True, "resolved": True, "exhausted": False}
 
@@ -177,7 +178,6 @@ def test_pipeline_marks_unresolved_rerender_outcome_when_loop_still_needs_rerend
             "rerender_loop",
             "done",
             {
-                "review_report": {"status": "needs_rerender", "rerender_targets": ["S001"]},
                 "rerender_review_report": {"status": "needs_rerender", "rerender_targets": ["S001"]},
                 "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
             },
@@ -246,7 +246,6 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
             "rerender_loop",
             "done",
             {
-                "review_report": {"status": "needs_rerender", "rerender_targets": ["S001"]},
                 "rerender_review_report": {"status": "needs_rerender", "rerender_targets": ["S001"]},
                 "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
             },

@@ -50,6 +50,7 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
             )
             if not ok:
                 break
+            _apply_rerender_canonical_updates(stage_input.payload)
             _ensure_rerender_outcome(stage_input.payload)
             if _rerender_exhausted(stage_input.payload.get("rerender_outcome")):
                 ok = run_result_stage(
@@ -103,6 +104,18 @@ def _ensure_rerender_outcome(payload: dict) -> None:
         "resolved": not unresolved,
         "exhausted": unresolved,
     }
+
+
+
+def _apply_rerender_canonical_updates(payload: dict) -> None:
+    if not isinstance(payload, dict):
+        return
+    rerender_review_report = payload.get("rerender_review_report")
+    if isinstance(rerender_review_report, dict):
+        payload["review_report"] = dict(rerender_review_report)
+    rerender_final_video = str(payload.get("rerender_final_video", "")).strip()
+    if rerender_final_video:
+        payload["final_video"] = rerender_final_video
 
 
 
