@@ -143,6 +143,29 @@ def _clip_dependency_shot_ids(shot_row: dict | None, render_row: dict | None) ->
 
 
 
+def summarize_edit_intent(edit_intent_by_shot: dict[str, dict] | None) -> dict:
+    data = edit_intent_by_shot if isinstance(edit_intent_by_shot, dict) else {}
+    high_priority_shots: list[str] = []
+    section_emphasis_counts: dict[str, int] = {}
+    for shot_id, row in data.items():
+        if not isinstance(row, dict):
+            continue
+        normalized_shot_id = str(shot_id or "").strip()
+        if not normalized_shot_id:
+            continue
+        if str(row.get("edit_priority", "")).strip() == "high":
+            high_priority_shots.append(normalized_shot_id)
+        emphasis = str(row.get("section_emphasis", "")).strip()
+        if emphasis:
+            section_emphasis_counts[emphasis] = int(section_emphasis_counts.get(emphasis, 0)) + 1
+    return {
+        "shot_count": len([shot_id for shot_id, row in data.items() if str(shot_id or "").strip() and isinstance(row, dict)]),
+        "high_priority_shots": sorted(high_priority_shots),
+        "section_emphasis_counts": section_emphasis_counts,
+    }
+
+
+
 def build_review_report(
     *,
     planned_shot_ids: list[str],
@@ -158,6 +181,7 @@ def build_review_report(
     shot_plan: list[dict] | None = None,
     render_plan: list[dict] | None = None,
     music_file: str = "",
+    edit_intent_by_shot: dict[str, dict] | None = None,
 ) -> dict:
     signals = build_quality_signals(
         planned_shot_ids=planned_shot_ids,
@@ -201,6 +225,7 @@ def build_review_report(
         still_results=still_results,
         music_file=music_file,
     )
+    edit_intent_summary = summarize_edit_intent(edit_intent_by_shot)
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -230,4 +255,5 @@ def build_review_report(
         "benchmark_dimensions": benchmark_dimensions,
         "review_signal_buckets": review_signal_buckets,
         "publishability_summary": publishability_summary,
+        "edit_intent_summary": edit_intent_summary,
     }

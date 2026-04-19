@@ -54,6 +54,7 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         shot_scores=provisional_shot_scores,
         quality_findings=quality_findings,
     )
+    review_inputs = stage_input.payload.get("review_inputs") if isinstance(stage_input.payload, dict) else None
     report = build_review_report(
         planned_shot_ids=planned_shot_ids,
         still_results=still_results,
@@ -68,6 +69,7 @@ def run_review_outputs(stage_input: StageInput) -> StageOutput:
         shot_plan=[row for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)],
         render_plan=[row for row in stage_input.payload.get("render_plan", []) if isinstance(row, dict)],
         music_file=str(stage_input.payload.get("music_file", "")).strip(),
+        edit_intent_by_shot=review_inputs.get("edit_intent_by_shot", {}) if isinstance(review_inputs, dict) else {},
     )
     return StageOutput("review_outputs", "done", {"review_report": report}, [])
 

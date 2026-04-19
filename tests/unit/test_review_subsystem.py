@@ -111,6 +111,44 @@ def test_rerender_priority_score_ranks_quality_failures():
     assert score >= 12
 
 
+def test_review_models_include_edit_intent_summary():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {
+                "edit_priority": "high",
+                "section_emphasis": "chorus_push",
+                "target_clip_sec": 5.0,
+                "transition_in": "accent_in",
+                "transition_out": "accent_out",
+            },
+            "S002": {
+                "edit_priority": "medium",
+                "section_emphasis": "bridge_contrast",
+                "target_clip_sec": 4.0,
+                "transition_in": "glide_in",
+                "transition_out": "handoff_out",
+            },
+        },
+    )
+
+    assert report["edit_intent_summary"] == {
+        "shot_count": 2,
+        "high_priority_shots": ["S001"],
+        "section_emphasis_counts": {"chorus_push": 1, "bridge_contrast": 1},
+    }
+
+
+
 def test_review_models_include_benchmark_dimension_summary():
     report = build_review_report(
         planned_shot_ids=["S001", "S006"],
