@@ -26,6 +26,7 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         "music_file": str(stage_input.payload.get("music_file", "")).strip(),
         "clip_results": list(stage_input.payload.get("clip_results", [])),
         "final_video": str(final_video),
+        "edit_intent_by_shot": _edit_intent_by_shot(stage_input.payload),
     }
     quality_findings_path = _review_quality_findings_path(stage_input.config)
     if quality_findings_path:
@@ -61,3 +62,19 @@ def _review_quality_findings_path(config: object) -> str:
     if not isinstance(review_cfg, dict):
         return ""
     return str(review_cfg.get("quality_findings_path", "")).strip()
+
+
+
+def _edit_intent_by_shot(payload: dict) -> dict[str, dict]:
+    render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
+    if not isinstance(render_plan, list):
+        return {}
+    out: dict[str, dict] = {}
+    for row in render_plan:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        edit_intent = row.get("edit_intent")
+        if shot_id and isinstance(edit_intent, dict):
+            out[shot_id] = dict(edit_intent)
+    return out

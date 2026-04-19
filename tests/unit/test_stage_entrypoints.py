@@ -13,6 +13,48 @@ from ai_mv.core.stages.rerender_review import run_rerender_review
 from ai_mv.core.stages.review_outputs import run_review_outputs
 
 
+def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_file", lambda _run_id, rel: tmp_path / Path(rel).name)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
+
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-assemble-edit-intent",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "clip_results": [{"shot_id": "S001", "video": "clip1.mp4"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "edit_intent": {
+                        "edit_priority": "high",
+                        "section_emphasis": "chorus_push",
+                        "target_clip_sec": 5.0,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                }
+            ],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    assert out.payload["review_inputs"]["edit_intent_by_shot"] == {
+        "S001": {
+            "edit_priority": "high",
+            "section_emphasis": "chorus_push",
+            "target_clip_sec": 5.0,
+            "transition_in": "accent_in",
+            "transition_out": "accent_out",
+        }
+    }
+
+
 def test_render_stills_uses_generic_fallback_prompt_text_when_empty():
     prompt = _still_prompt_text({})
 
