@@ -143,6 +143,9 @@ A young woman in a satin bomber jacket leans under late-night station light, wit
 - still workflow에는 negative prompt node가 없으므로 negative prompt 규칙을 still 문법 중심으로 문서화하지 않는다
 - repo의 single-keyframe constraint layer는 universal suffix가 아니라 conditional tool이다
 - 기본적으로 constrained mode를 쓰되, reflective-window 보존 샷과 continuity/readability repair 샷은 raw prompt 유지가 우선이다
+- constrained mode 내부에서도 portrait-like shot과 wider/full-body shot이 같은 suffix를 공유한다고 가정하지 않는다
+- portrait-like constrained shot은 기존 constrained stack을 유지하고, wider/full-body readability marker가 있는 constrained shot은 softer single-scene sentence variant를 우선 사용한다
+- 현재 wider/full-body soft variant marker는 `full-body readability`, `medium-wide frame`이다
 - shot별 예외가 필요하면 `render_plan[].still_constraint_mode = raw|constrained`로 명시한다
 
 ## 3. LTX 2.3 i2v

@@ -90,6 +90,9 @@
 - reference rerender에서는 기존 still을 유지하고 바꾸고 싶은 차이만 더하는 방식이 우선이다.
 - `render_stills.py`는 single-keyframe constraint를 universal default로 취급하지 않는다.
 - 현재 policy는 기본적으로 constrained prompt를 쓰되, `window_reflection` 계열과 continuity/readability repair prompt는 raw prompt를 유지한다.
+- constrained prompt 안에서도 한 가지 suffix를 모든 case에 재사용하지 않는다.
+- portrait-like constrained shot은 기존 constrained stack을 유지하고, wider/full-body readability가 필요한 constrained shot은 더 부드러운 single-scene sentence variant를 사용한다.
+- wider/full-body soft variant는 `full-body readability`, `medium-wide frame` 같은 marker가 있을 때 적용된다.
 - `render_plan[].still_constraint_mode`에 `raw` 또는 `constrained`를 넣으면 shot별 override가 가능하다.
 
 ## 3. LTX 2.3 `i2v`
