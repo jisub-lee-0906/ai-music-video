@@ -5,6 +5,9 @@ M1_TARGET_DURATION_MIN = 15.0
 M1_TARGET_DURATION_MAX = 20.0
 M1_MIN_SHOTS = 4
 M1_MAX_SHOTS = 6
+SECTION_MIN_DURATION_SEC = 2.5
+SECTION_MICRO_MERGE_SEC = 3.0
+
 
 
 def normalized_sections(audio_map: dict, duration_sec: float) -> list[dict]:
@@ -15,20 +18,24 @@ def normalized_sections(audio_map: dict, duration_sec: float) -> list[dict]:
         end_sec = max(start_sec, min(_float(row.get("end_sec"), 0.0), float(duration_sec)))
         if end_sec <= start_sec:
             continue
-        section_type = canonical_section_type(row)
+        section_type, normalization_confidence = canonical_section_type(row)
+        source_label = str(row.get("label") or row.get("name") or row.get("section_name") or row.get("section") or section_type.upper()).strip()
         normalized.append(
             {
                 "index": idx,
-                "section_name": str(row.get("label") or row.get("name") or row.get("section_name") or section_type.upper()).strip(),
+                "source_label": source_label,
+                "section_name": source_label,
                 "section_type": section_type,
                 "start_sec": start_sec,
                 "end_sec": end_sec,
                 "duration_sec": round(end_sec - start_sec, 3),
+                "normalization_confidence": normalization_confidence,
             }
         )
     if not normalized:
         return fallback_sections(duration_sec)
     normalized.sort(key=lambda row: (float(row["start_sec"]), float(row["end_sec"]), int(row["index"])))
+    normalized = merge_micro_sections(normalized)
     for idx, row in enumerate(normalized, start=1):
         row["index"] = idx
     return compress_sections(normalized, duration_sec)
@@ -40,7 +47,7 @@ def compress_sections(sections: list[dict], duration_sec: float) -> list[dict]:
     if not use_m1_window(duration_sec):
         return rows
     if len(rows) < M1_MIN_SHOTS:
-        return expand_sparse_sections(rows, duration_sec)
+        return rows
     if len(rows) > M1_MAX_SHOTS:
         return merge_shortest_adjacent(rows)
     return rows
@@ -135,6 +142,30 @@ def merge_shortest_adjacent(sections: list[dict]) -> list[dict]:
 
 
 
+def merge_micro_sections(sections: list[dict]) -> list[dict]:
+    rows = [dict(row) for row in sections]
+    merged: list[dict] = []
+    for row in rows:
+        duration_sec = float(row.get("duration_sec", 0.0) or 0.0)
+        confidence = float(row.get("normalization_confidence", 0.0) or 0.0)
+        should_merge = duration_sec < SECTION_MIN_DURATION_SEC and confidence < 0.8
+        if not should_merge or not merged:
+            merged.append(row)
+            continue
+        previous = dict(merged.pop())
+        merged.append(
+            {
+                **previous,
+                "section_name": merged_section_name(previous, row),
+                "end_sec": row["end_sec"],
+                "duration_sec": round(float(row["end_sec"]) - float(previous["start_sec"]), 3),
+                "normalization_confidence": min(float(previous.get("normalization_confidence", 1.0)), float(row.get("normalization_confidence", 1.0))),
+            }
+        )
+    return merged
+
+
+
 def fallback_sections(duration_sec: float) -> list[dict]:
     safe_duration = max(M1_TARGET_DURATION_MIN, min(duration_sec, M1_TARGET_DURATION_MAX))
     section_types = ["intro", "verse", "chorus", "outro"] if safe_duration < 18.0 else ["intro", "verse", "verse", "chorus", "outro"]
@@ -146,30 +177,39 @@ def fallback_sections(duration_sec: float) -> list[dict]:
         out.append(
             {
                 "index": idx,
+                "source_label": section_type.upper(),
                 "section_name": section_type.upper(),
                 "section_type": section_type,
                 "start_sec": start_sec,
                 "end_sec": end_sec,
                 "duration_sec": round(end_sec - start_sec, 3),
+                "normalization_confidence": 0.6,
             }
         )
     return out
 
 
 
-def canonical_section_type(row: dict) -> str:
+def canonical_section_type(row: dict) -> tuple[str, float]:
     raw = str(row.get("section") or row.get("name") or row.get("section_name") or row.get("label") or "").strip().lower()
-    if "pre" in raw and "chorus" in raw:
-        return "pre_chorus"
-    if "chorus" in raw:
-        return "chorus"
-    if "bridge" in raw:
-        return "bridge"
-    if "outro" in raw:
-        return "outro"
-    if "intro" in raw:
-        return "intro"
-    return "verse"
+    normalized = raw.replace("-", " ").replace("_", " ")
+    if "pre" in normalized and ("chorus" in normalized or "hook" in normalized):
+        return "pre_chorus", 0.98
+    if "post" in normalized and ("chorus" in normalized or "hook" in normalized):
+        return "post_chorus", 0.96
+    if "chorus" in normalized or "refrain" in normalized or "hook" in normalized:
+        return "chorus", 0.94
+    if "middle 8" in normalized or "middle8" in normalized or "bridge" in normalized:
+        return "bridge", 0.92
+    if "instrumental" in normalized or "solo" in normalized:
+        return "instrumental_break", 0.9
+    if "outro" in normalized or "ending" in normalized or "coda" in normalized:
+        return "outro", 0.96
+    if "intro" in normalized or "opening" in normalized or "prelude" in normalized:
+        return "intro", 0.96
+    if "break" in normalized:
+        return "instrumental_break", 0.7
+    return "verse", 0.6
 
 
 
@@ -185,7 +225,7 @@ def merged_shot_section_type(left: dict, right: dict) -> str:
     right_type = str(right.get("section_type", "")).strip()
     if left_type == right_type:
         return left_type
-    priority = {"outro": 5, "chorus": 4, "bridge": 3, "pre_chorus": 2, "verse": 1, "intro": 0}
+    priority = {"outro": 7, "chorus": 6, "bridge": 5, "post_chorus": 4, "pre_chorus": 3, "instrumental_break": 2, "verse": 1, "intro": 0}
     return right_type if priority.get(right_type, -1) >= priority.get(left_type, -1) else left_type
 
 
