@@ -1,25 +1,15 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 from pathlib import Path
 
+from ai_mv.analysis import flux2_track_a_batch as module
 
-SCRIPT_PATH = Path(__file__).resolve().parents[2] / ".analysis" / "run_flux2_track_a_batch.py"
+
 WORKFLOW_DIR = Path(__file__).resolve().parents[2] / "workflows"
 
 
-def _load_module():
-    spec = importlib.util.spec_from_file_location("flux2_track_a_batch", SCRIPT_PATH)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def test_build_track_a_runs_covers_all_cases_variants_and_seeds():
-    module = _load_module()
-
     runs = module.build_track_a_runs()
 
     assert len(runs) == 36
@@ -33,8 +23,6 @@ def test_build_track_a_runs_covers_all_cases_variants_and_seeds():
 
 
 def test_build_batch_metadata_matches_flux2_track_a_contract():
-    module = _load_module()
-
     metadata = module.build_batch_metadata(batch_id="flux2-track-a-20260418T150000Z")
 
     assert metadata["batch_id"] == "flux2-track-a-20260418T150000Z"
@@ -49,8 +37,6 @@ def test_build_batch_metadata_matches_flux2_track_a_contract():
 
 
 def test_save_results_writes_json_contract(tmp_path):
-    module = _load_module()
-
     batch_dir = tmp_path / "flux2-track-a-20260418T150000Z"
     batch_dir.mkdir(parents=True)
     metadata = module.build_batch_metadata(batch_id="flux2-track-a-20260418T150000Z")
@@ -78,8 +64,6 @@ def test_save_results_writes_json_contract(tmp_path):
 
 
 def test_pending_runs_skips_already_recorded_run_ids():
-    module = _load_module()
-
     runs = module.build_track_a_runs()
     existing = [{"run_id": "F001_A1_s1001"}, {"run_id": "F001_A1_s1002"}]
 
@@ -92,4 +76,4 @@ def test_pending_runs_skips_already_recorded_run_ids():
 def test_flux2_workflows_use_current_comfy_vae_name():
     for name, node_id in (("image_flux2_text_to_image.json", "98:10"), ("image_flux2.json", "68:10")):
         payload = json.loads((WORKFLOW_DIR / name).read_text(encoding="utf-8"))
-        assert payload[node_id]["inputs"]["vae_name"] == "flux2-vae.safetensors"
+        assert payload[node_id]["inputs"]["vae_name"] == "full_encoder_small_decoder.safetensors"

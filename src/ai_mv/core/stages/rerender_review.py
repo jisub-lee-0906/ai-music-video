@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.review_outputs import run_review_outputs
+from ai_mv.core.stages.review_stage import run_review_stage
 
 
 _RESULT_KEYS = {
@@ -18,7 +18,7 @@ def run_rerender_review(stage_input: StageInput) -> StageOutput:
     merged_payload["still_results"] = merged_stills
     merged_payload["clip_results"] = merged_clips
 
-    review_out = run_review_outputs(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=merged_payload))
+    review_out = run_review_stage(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=merged_payload))
     return StageOutput(
         "rerender_review",
         "done",

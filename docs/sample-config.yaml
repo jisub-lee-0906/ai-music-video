@@ -1,0 +1,54 @@
+# Sample config for a short first-run / smoke-style local test.
+# This is an example override file, not the canonical default-config truth.
+# Canonical defaults live in `src/ai_mv/core/orchestration/config_defaults.py`.
+concept_text: "dreamy synthwave night drive with lonely neon romance"
+# Recommended shared anchor example:
+# concept_text: "dreamy synthwave night drive, bittersweet late-night movement, unresolved longing turning into quiet resolve, neon reflections, station light, sea wind"
+
+audio:
+  quality: "V0"
+  language: "ja"
+  beats_per_bar: 4
+  target_duration_min_sec: 15
+  target_duration_max_sec: 20
+  brief: ""
+  hook_brief: ""
+
+video:
+  target: "1920x1080@24"
+
+render:
+  # Local Flux2 still workflows expose one positive prompt text input and no still-side negative text input.
+  # Keep still prompting in natural descriptive English and let repo-side still-stage constraints handle panel/collage avoidance.
+  flux2_size: "1280x720"
+  ltx_i2v_size: "1280x720"
+  ltx_ia2v_size: "1280x720"
+  ltx_flf2v_size: "1280x720"
+  ltx_fps: 24
+  ltx_default_shot_sec: 4.0
+  ltx_negative: "pc game, console game, video game, cartoon, childish, ugly"
+
+planning:
+  enable_ia2v: false
+  enable_flf2v: false
+  max_ia2v_shots: 2
+  ia2v_min_sec: 4.0
+  ia2v_max_sec: 8.0
+  max_flf2v_shots: 1
+  flf2v_min_sec: 3.0
+  flf2v_max_sec: 6.0
+
+integrations:
+  comfyui_base_url: "http://172.28.224.1:8000"
+  comfyui_input_dir: "/mnt/c/Users/Desktop/Documents/ComfyUI/input"
+  comfyui_output_dir: "/mnt/c/Users/Desktop/Documents/ComfyUI/output"
+  workflows_dir: "workflows"
+
+runtime:
+  template_hash_lock: false
+  template_hashes: {}
+  interrupt_comfy_before_start: true
+  clear_comfy_queue_before_start: true
+
+review:
+  max_rerender_targets: 3
