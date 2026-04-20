@@ -52,7 +52,7 @@
   },
   "98:10": {
     "inputs": {
-      "vae_name": "flux2-vae.safetensors"
+      "vae_name": "full_encoder_small_decoder.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
