@@ -7,6 +7,53 @@ M1_MIN_SHOTS = 4
 M1_MAX_SHOTS = 6
 SECTION_MIN_DURATION_SEC = 2.5
 SECTION_MICRO_MERGE_SEC = 3.0
+SECTION_NORMALIZATION_STRONG_CONFIDENCE = 0.8
+SECTION_NORMALIZATION_WEAK_CONFIDENCE = 0.6
+
+SECTION_LABEL_ALIASES = {
+    "intro": "intro",
+    "opening": "intro",
+    "open": "intro",
+    "cold open": "intro",
+    "prelude": "intro",
+    "verse": "verse",
+    "v1": "verse",
+    "v2": "verse",
+    "verse 1": "verse",
+    "verse 2": "verse",
+    "rap verse": "verse",
+    "pre": "pre_chorus",
+    "prechorus": "pre_chorus",
+    "pre chorus": "pre_chorus",
+    "build": "pre_chorus",
+    "lift": "pre_chorus",
+    "chorus": "chorus",
+    "hook": "chorus",
+    "refrain": "chorus",
+    "drop hook": "chorus",
+    "main hook": "chorus",
+    "post": "post_chorus",
+    "postchorus": "post_chorus",
+    "post chorus": "post_chorus",
+    "refrain tail": "post_chorus",
+    "bridge": "bridge",
+    "breakdown bridge": "bridge",
+    "middle8": "bridge",
+    "middle 8": "bridge",
+    "instrumental": "instrumental_break",
+    "instrumental break": "instrumental_break",
+    "solo": "instrumental_break",
+    "break": "instrumental_break",
+    "dance break": "instrumental_break",
+    "outro": "outro",
+    "ending": "outro",
+    "end": "outro",
+    "coda": "outro",
+}
+
+SECTION_LABEL_ALIAS_CONFIDENCE = {
+    "break": 0.7,
+}
 
 
 
@@ -148,7 +195,11 @@ def merge_micro_sections(sections: list[dict]) -> list[dict]:
     for row in rows:
         duration_sec = float(row.get("duration_sec", 0.0) or 0.0)
         confidence = float(row.get("normalization_confidence", 0.0) or 0.0)
-        should_merge = duration_sec < SECTION_MIN_DURATION_SEC and confidence < 0.8
+        should_merge = duration_sec < SECTION_MIN_DURATION_SEC and (
+            confidence < SECTION_NORMALIZATION_STRONG_CONFIDENCE or _force_merge_micro_section(row)
+        )
+        if not should_merge and duration_sec <= SECTION_MICRO_MERGE_SEC and confidence < SECTION_NORMALIZATION_WEAK_CONFIDENCE and merged:
+            should_merge = _same_energy_band(merged[-1], row)
         if not should_merge or not merged:
             merged.append(row)
             continue
@@ -193,6 +244,11 @@ def fallback_sections(duration_sec: float) -> list[dict]:
 def canonical_section_type(row: dict) -> tuple[str, float]:
     raw = str(row.get("section") or row.get("name") or row.get("section_name") or row.get("label") or "").strip().lower()
     normalized = raw.replace("-", " ").replace("_", " ")
+    compact = normalized.replace(" ", "")
+    if normalized in SECTION_LABEL_ALIASES:
+        return SECTION_LABEL_ALIASES[normalized], SECTION_LABEL_ALIAS_CONFIDENCE.get(normalized, 0.96)
+    if compact in SECTION_LABEL_ALIASES:
+        return SECTION_LABEL_ALIASES[compact], SECTION_LABEL_ALIAS_CONFIDENCE.get(compact, 0.96)
     if "pre" in normalized and ("chorus" in normalized or "hook" in normalized):
         return "pre_chorus", 0.98
     if "post" in normalized and ("chorus" in normalized or "hook" in normalized):
@@ -209,7 +265,7 @@ def canonical_section_type(row: dict) -> tuple[str, float]:
         return "intro", 0.96
     if "break" in normalized:
         return "instrumental_break", 0.7
-    return "verse", 0.6
+    return "verse", 0.55
 
 
 
@@ -236,6 +292,28 @@ def merged_source_section_index(left: dict, right: dict) -> int:
     if str(left.get("section_type", "")).strip() == str(right.get("section_type", "")).strip():
         return left_index
     return right_index or left_index
+
+
+
+def _same_energy_band(left: dict, right: dict) -> bool:
+    return _section_energy_band(left) == _section_energy_band(right)
+
+
+
+def _force_merge_micro_section(row: dict) -> bool:
+    return str(row.get("section_type", "")).strip() in {"instrumental_break", "post_chorus"}
+
+
+
+def _section_energy_band(row: dict) -> str:
+    section_type = str(row.get("section_type", "")).strip()
+    if section_type in {"intro", "verse", "pre_chorus", "post_chorus", "outro"}:
+        return "narrative"
+    if section_type == "chorus":
+        return "peak"
+    if section_type in {"bridge", "instrumental_break"}:
+        return "transition"
+    return "other"
 
 
 
