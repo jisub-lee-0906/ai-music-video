@@ -11,6 +11,7 @@ from ai_mv.styles.resolver import apply_style_section_variants, style_section_sh
 
 def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> list[dict]:
     total_duration = sum(float(section.get("duration_sec", 0.0) or 0.0) for section in sections)
+    continuity_mode = _continuity_mode(config)
     shots: list[dict] = []
     for section in sections:
         for part in split_section_into_shots(config, section, style_name=style_name):
@@ -32,6 +33,7 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
                     "energy": part["energy"],
                     "render_mode": part["render_mode"],
                     "source_section_index": section["index"],
+                    "continuity_mode": continuity_mode,
                     **shot_intent,
                 }
             )
@@ -149,6 +151,15 @@ def renumber_shots(shots: list[dict]) -> list[dict]:
 def max_shot_seconds(config: dict) -> float:
     planning = config.get("planning", {}) if isinstance(config, dict) else {}
     return max(1.0, _float(planning.get("max_shot_sec"), 8.0))
+
+
+
+def _continuity_mode(config: dict) -> str:
+    planning = config.get("planning", {}) if isinstance(config, dict) else {}
+    mode = str(planning.get("continuity_mode", "strict")).strip().lower()
+    if mode in {"strict", "moderate", "expressive"}:
+        return mode
+    return "strict"
 
 
 

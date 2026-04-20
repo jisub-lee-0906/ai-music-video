@@ -7,6 +7,7 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
     subject = _still_subject_phrase(shot)
     location = _still_location_phrase(shot)
     palette = _still_palette_phrase(shot, citypop_bible)
+    continuity_mode = str(shot.get("continuity_mode", "strict")).strip().lower()
     ordered_parts = _ordered_seed_parts(
         shot,
         concept=concept,
@@ -15,14 +16,17 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
         location=location,
         palette=palette,
     )
+    tail_parts = [
+        "clean cel shading",
+        _world_continuity_phrase(continuity_mode),
+        _identity_continuity_phrase(continuity_mode),
+        "film grain",
+    ]
     return ", ".join(
         part
         for part in [
             *ordered_parts,
-            "clean cel shading",
-            "single coherent night-drive world",
-            "stable character identity",
-            "film grain",
+            *tail_parts,
         ]
         if part
     )
@@ -57,6 +61,31 @@ def _concept_seed_phrase(concept_text: str) -> str:
 def _continuity_anchor(shot: dict) -> str:
     role = str(shot.get("shot_role", "")).strip()
     section_name = str(shot.get("section_name", "")).strip().lower()
+    continuity_mode = str(shot.get("continuity_mode", "strict")).strip().lower()
+    if continuity_mode == "expressive":
+        if role.startswith("chorus"):
+            return "echo the established night mood while allowing a deliberate visual reset at the hook"
+        if role.startswith("verse"):
+            return "keep the emotional thread of the night while allowing fresh staging and local scene variation"
+        if role.startswith("prechorus"):
+            return "carry tension forward while allowing the frame language to pivot before the lift"
+        if role.startswith("bridge"):
+            return "echo the established night mood while allowing a deliberate visual reset for the inward turn"
+        if role.startswith("outro") or "outro" in section_name:
+            return "preserve the emotional afterglow while allowing the ending image to resolve in a new visual arrangement"
+        return "preserve emotional continuity while allowing intentional visual resets across the MV"
+    if continuity_mode == "moderate":
+        if role.startswith("chorus"):
+            return "same protagonist, same night-world mood, hook arrival can widen staging without losing continuity"
+        if role.startswith("verse"):
+            return "same protagonist, same night-world mood, intimate movement can vary within the city"
+        if role.startswith("prechorus"):
+            return "same protagonist, same night-world mood, anticipation tightens with controlled scene variation"
+        if role.startswith("bridge"):
+            return "same protagonist, same night-world mood, the bridge turns inward with controlled visual variation"
+        if role.startswith("outro") or "outro" in section_name:
+            return "same protagonist, same night-world mood, afterglow fades with controlled release variation"
+        return "same protagonist, same night-world mood, continuity preserved without over-locking every frame"
     if role.startswith("chorus"):
         return "same protagonist, same summer night-drive world, hook arrival in the same city"
     if role.startswith("verse"):
@@ -70,11 +99,33 @@ def _continuity_anchor(shot: dict) -> str:
     return "same protagonist, same summer night-drive world, continuity preserved"
 
 
+
+def _world_continuity_phrase(continuity_mode: str) -> str:
+    mode = str(continuity_mode or "strict").strip().lower()
+    if mode == "expressive":
+        return "emotionally coherent night-world mood"
+    if mode == "moderate":
+        return "coherent night-world mood with controlled scene variation"
+    return "single coherent night-drive world"
+
+
+
+def _identity_continuity_phrase(continuity_mode: str) -> str:
+    mode = str(continuity_mode or "strict").strip().lower()
+    if mode == "expressive":
+        return "identity can restage while preserving emotional continuity"
+    if mode == "moderate":
+        return "stable character identity with controlled staging variation"
+    return "stable character identity"
+
+
+
 def _ordered_seed_parts(shot: dict, *, concept: str, continuity: str, subject: str, location: str, palette: str) -> list[str]:
     framing_intent = str(shot.get("framing_intent", "")).strip()
     if framing_intent in {"establishing_wide", "release_wide"}:
         return [concept, continuity, location, subject, palette]
     return [concept, continuity, subject, location, palette]
+
 
 
 def _still_subject_phrase(shot: dict) -> str:

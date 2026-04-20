@@ -27,6 +27,7 @@ def test_plan_mv_builds_creative_direction_payload():
     assert creative_direction["chorus_intent"]
     assert creative_direction["bridge_intent"]
     assert creative_direction["continuity_rules"]
+    assert creative_direction["continuity_mode"] == "strict"
     assert creative_direction["style_name"] == out["style_name"]
     assert creative_direction["section_count"] == 4
 
@@ -196,6 +197,26 @@ def test_plan_mv_builds_rich_render_prompts():
     assert item["prompt_draft"]
     assert item["prompt_polish"]
     assert "audio_segment" not in item
+
+
+def test_plan_mv_threads_expressive_continuity_mode_into_direction_and_prompts():
+    out = build_plan_preview_payload(
+        {"planning": {"continuity_mode": "expressive"}},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 12.0,
+                "sections": [{"name": "bridge", "start_sec": 0.0, "end_sec": 12.0}],
+            },
+        },
+    )
+
+    assert out["creative_direction"]["continuity_mode"] == "expressive"
+    assert any("allow intentional visual resets" in rule for rule in out["creative_direction"]["continuity_rules"])
+    item = out["render_plan"][0]
+    assert "same protagonist" not in item["prompt_seed"]
+    assert "same summer night-drive world" not in item["prompt_seed"]
+    assert "allowing a deliberate visual reset" in item["prompt_seed"]
 
 
 def test_plan_mv_uses_prechorus_progression_hint_before_chorus_hint():

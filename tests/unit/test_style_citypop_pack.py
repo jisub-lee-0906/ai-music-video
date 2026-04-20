@@ -53,6 +53,23 @@ def test_citypop_prompting_builds_seed_from_style_pack_helpers():
     assert "a close-up of a singer facing the camera" in seed
 
 
+def test_citypop_prompting_supports_expressive_continuity_mode():
+    seed = build_citypop_prompt_seed(
+        "late-night city pop walk under wet neon lights",
+        get_citypop_bible(),
+        {
+            "section_name": "Bridge",
+            "shot_role": "bridge_shift",
+            "visual_mode": "bridge_overlook",
+            "continuity_mode": "expressive",
+        },
+    )
+
+    assert "same protagonist" not in seed
+    assert "same summer night-drive world" not in seed
+    assert "echo the established night mood while allowing a deliberate visual reset" in seed
+
+
 def test_citypop_prompting_builds_draft_from_style_pack_helpers():
     draft = build_citypop_prompt_draft({"visual_mode": "profile_mood"})
 

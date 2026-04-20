@@ -21,10 +21,16 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     duration = float(audio_map.get("duration_sec", 16.0) or 16.0)
     planning = config.get("planning", {}) if isinstance(config, dict) else {}
     default_style_name = str(planning.get("default_style_name", "")).strip() or None
+    continuity_mode = str(planning.get("continuity_mode", "strict")).strip() or "strict"
     style_name = resolve_style_name(concept_text, default_style_name=default_style_name)
     style_bible = get_style_bible(style_name)
     sections = normalized_sections(audio_map, duration)
-    creative_direction = build_creative_direction(concept_text=concept_text, style_name=style_name, sections=sections)
+    creative_direction = build_creative_direction(
+        concept_text=concept_text,
+        style_name=style_name,
+        sections=sections,
+        continuity_mode=continuity_mode,
+    )
     shot_plan = build_shot_plan(config, sections, style_name=style_name)
     render_plan = [build_render_item(config, concept_text, style_name, style_bible, shot) for shot in shot_plan]
     return {
