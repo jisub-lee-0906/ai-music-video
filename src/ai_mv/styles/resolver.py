@@ -6,6 +6,18 @@ from ai_mv.styles.citypop.rules import apply_citypop_section_variants, citypop_s
 from ai_mv.styles.synthwave.bible import get_synthwave_bible
 from ai_mv.styles.synthwave.prompting import build_synthwave_prompt_draft, build_synthwave_prompt_seed
 from ai_mv.styles.synthwave.rules import apply_synthwave_section_variants, synthwave_section_shot_specs
+from ai_mv.styles.dream_pop.bible import get_dream_pop_bible
+from ai_mv.styles.dream_pop.prompting import build_dream_pop_prompt_draft, build_dream_pop_prompt_seed
+from ai_mv.styles.dream_pop.rules import apply_dream_pop_section_variants, dream_pop_section_shot_specs
+from ai_mv.styles.alt_pop.bible import get_alt_pop_bible
+from ai_mv.styles.alt_pop.prompting import build_alt_pop_prompt_draft, build_alt_pop_prompt_seed
+from ai_mv.styles.alt_pop.rules import apply_alt_pop_section_variants, alt_pop_section_shot_specs
+from ai_mv.styles.k_indie.bible import get_k_indie_bible
+from ai_mv.styles.k_indie.prompting import build_k_indie_prompt_draft, build_k_indie_prompt_seed
+from ai_mv.styles.k_indie.rules import apply_k_indie_section_variants, k_indie_section_shot_specs
+from ai_mv.styles.j_rock.bible import get_j_rock_bible
+from ai_mv.styles.j_rock.prompting import build_j_rock_prompt_draft, build_j_rock_prompt_seed
+from ai_mv.styles.j_rock.rules import apply_j_rock_section_variants, j_rock_section_shot_specs
 
 
 STYLE_PACKS = {
@@ -22,6 +34,34 @@ STYLE_PACKS = {
         "prompt_draft": build_synthwave_prompt_draft,
         "section_specs": synthwave_section_shot_specs,
         "section_variants": apply_synthwave_section_variants,
+    },
+    "dream_pop": {
+        "bible": get_dream_pop_bible,
+        "prompt_seed": build_dream_pop_prompt_seed,
+        "prompt_draft": build_dream_pop_prompt_draft,
+        "section_specs": dream_pop_section_shot_specs,
+        "section_variants": apply_dream_pop_section_variants,
+    },
+    "alt_pop": {
+        "bible": get_alt_pop_bible,
+        "prompt_seed": build_alt_pop_prompt_seed,
+        "prompt_draft": build_alt_pop_prompt_draft,
+        "section_specs": alt_pop_section_shot_specs,
+        "section_variants": apply_alt_pop_section_variants,
+    },
+    "k_indie": {
+        "bible": get_k_indie_bible,
+        "prompt_seed": build_k_indie_prompt_seed,
+        "prompt_draft": build_k_indie_prompt_draft,
+        "section_specs": k_indie_section_shot_specs,
+        "section_variants": apply_k_indie_section_variants,
+    },
+    "j_rock": {
+        "bible": get_j_rock_bible,
+        "prompt_seed": build_j_rock_prompt_seed,
+        "prompt_draft": build_j_rock_prompt_draft,
+        "section_specs": j_rock_section_shot_specs,
+        "section_variants": apply_j_rock_section_variants,
     },
 }
 
