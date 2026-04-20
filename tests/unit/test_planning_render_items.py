@@ -191,3 +191,116 @@ def test_render_item_requires_explicit_render_mode():
                 "duration_sec": 5.0,
             },
         )
+
+
+
+def test_render_item_emits_render_planning_metadata_from_appendix_formula():
+    out = build_render_item(
+        {},
+        "dreamy synthwave neon highway night drive",
+        "synthwave",
+        get_synthwave_bible(),
+        {
+            "shot_id": "S013",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_breakout",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "grid_surge",
+            "edit_role": "hook",
+            "framing_intent": "performance_closeup",
+            "continuity_mode": "strict",
+            "energy": "high",
+            "start_sec": 8.0,
+            "duration_sec": 5.0,
+        },
+    )
+
+    assert out["render_count"] == 1
+    assert out["render_planning"]["section_energy_score"] == 0.75
+    assert out["render_planning"]["section_emphasis_score"] == 1.0
+    assert out["render_planning"]["mode_importance_score"] == 1.0
+    assert out["render_planning"]["lane_priority_score"] == 0.85
+    assert out["render_planning"]["continuity_need_score"] == 1.0
+    assert out["render_priority_score"] == 0.9
+
+
+
+def test_render_item_render_count_follows_appendix_duration_bands():
+    short_out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S014",
+            "render_mode": "i2v",
+            "shot_role": "intro_mood",
+            "section_type": "intro",
+            "section_name": "Intro",
+            "visual_mode": "empty_boulevard_anchor",
+            "continuity_mode": "high",
+            "energy": "low",
+            "start_sec": 0.0,
+            "duration_sec": 6.5,
+        },
+    )
+    medium_out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S015",
+            "render_mode": "i2v",
+            "shot_role": "verse_drift",
+            "section_type": "verse",
+            "section_name": "Verse",
+            "visual_mode": "street_glance",
+            "continuity_mode": "high",
+            "energy": "medium",
+            "start_sec": 0.0,
+            "duration_sec": 9.0,
+        },
+    )
+    long_out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S016",
+            "render_mode": "i2v",
+            "shot_role": "verse_drift",
+            "section_type": "verse",
+            "section_name": "Verse",
+            "visual_mode": "street_glance",
+            "continuity_mode": "high",
+            "energy": "medium",
+            "start_sec": 0.0,
+            "duration_sec": 15.0,
+        },
+    )
+    capped_out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S017",
+            "render_mode": "i2v",
+            "shot_role": "verse_drift",
+            "section_type": "verse",
+            "section_name": "Verse",
+            "visual_mode": "street_glance",
+            "continuity_mode": "medium",
+            "energy": "medium",
+            "start_sec": 0.0,
+            "duration_sec": 25.0,
+        },
+    )
+
+    assert short_out["render_count"] == 1
+    assert medium_out["render_count"] == 2
+    assert long_out["render_count"] == 3
+    assert capped_out["render_count"] == 4
