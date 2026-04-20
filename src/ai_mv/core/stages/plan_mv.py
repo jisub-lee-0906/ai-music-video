@@ -5,7 +5,7 @@ from ai_mv.core.planning.creative_direction import build_creative_direction
 from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.core.planning.sections import normalized_sections
 from ai_mv.core.planning.shot_plan import build_shot_plan
-from ai_mv.styles.resolver import get_style_bible, resolve_style_name
+from ai_mv.styles.resolver import get_style_bible, resolve_style_selection
 
 
 
@@ -22,7 +22,8 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     planning = config.get("planning", {}) if isinstance(config, dict) else {}
     default_style_name = str(planning.get("default_style_name", "")).strip() or None
     continuity_mode = str(planning.get("continuity_mode", "strict")).strip() or "strict"
-    style_name = resolve_style_name(concept_text, default_style_name=default_style_name)
+    style_resolution = resolve_style_selection(concept_text, default_style_name=default_style_name)
+    style_name = style_resolution["style_name"]
     style_bible = get_style_bible(style_name)
     sections = normalized_sections(audio_map, duration)
     creative_direction = build_creative_direction(
@@ -35,6 +36,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     render_plan = [build_render_item(config, concept_text, style_name, style_bible, shot) for shot in shot_plan]
     return {
         "style_name": style_name,
+        "style_resolution": style_resolution,
         "style_bible": style_bible,
         "creative_direction": creative_direction,
         "shot_plan": shot_plan,

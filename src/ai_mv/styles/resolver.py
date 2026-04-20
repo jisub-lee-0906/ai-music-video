@@ -25,6 +25,9 @@ STYLE_PACKS = {
     },
 }
 
+STYLE_SELECTION_MIN_CONFIDENCE = 0.58
+STYLE_SELECTION_MIN_MARGIN = 0.08
+
 
 
 def _style_pack(style_name: str) -> dict:
@@ -36,14 +39,38 @@ def _style_pack(style_name: str) -> dict:
 
 
 def resolve_style_name(concept_text: str, *, default_style_name: str | None = None) -> str:
+    return resolve_style_selection(concept_text, default_style_name=default_style_name)["style_name"]
+
+
+
+def resolve_style_selection(concept_text: str, *, default_style_name: str | None = None) -> dict:
+    normalized_default = str(default_style_name or "").strip()
+    if normalized_default:
+        _style_pack(normalized_default)
     text = _normalized_text(concept_text)
-    scores = {style_name: _style_match_score(text, pack["bible"]()) for style_name, pack in STYLE_PACKS.items()}
-    best_style = max(scores, key=scores.get)
-    if scores[best_style] > 0:
-        return best_style
-    if default_style_name is not None and str(default_style_name).strip():
-        return str(default_style_name).strip() if _style_pack(default_style_name) else ""
-    raise KeyError("style_name could not be resolved from concept_text and no explicit default_style_name was provided")
+    raw_scores = {style_name: _style_match_score(text, pack["bible"]()) for style_name, pack in STYLE_PACKS.items()}
+    best_style = max(raw_scores, key=raw_scores.get)
+    best_score = raw_scores[best_style]
+    if best_score <= 0:
+        if normalized_default:
+            return {
+                "style_name": normalized_default,
+                "selection_source": "override",
+                "selection_stability": "override",
+                "confidence": 1.0,
+                "runner_up_lanes": _runner_up_lanes(raw_scores, exclude=normalized_default),
+            }
+        raise KeyError("style_name could not be resolved from concept_text and no explicit default_style_name was provided")
+    confidence = _selection_confidence(raw_scores, best_style)
+    margin = _selection_margin(raw_scores, best_style)
+    return {
+        "style_name": best_style,
+        "selection_source": "auto",
+        "selection_stability": _selection_stability(confidence, margin),
+        "confidence": confidence,
+        "runner_up_lanes": _runner_up_lanes(raw_scores, exclude=best_style),
+    }
+
 
 
 def get_style_bible(style_name: str) -> dict:
@@ -87,6 +114,7 @@ def _style_match_score(text: str, bible: dict) -> int:
     return score
 
 
+
 def _style_signals(bible: dict) -> list[str]:
     signals: list[str] = []
     for key in ("style", "style_aliases", "palette", "motifs", "wardrobe_rules", "camera_rules", "negative_rules"):
@@ -96,3 +124,38 @@ def _style_signals(bible: dict) -> list[str]:
         elif isinstance(value, list):
             signals.extend(str(item).strip() for item in value if str(item).strip())
     return signals
+
+
+
+def _selection_confidence(scores: dict[str, int], best_style: str) -> float:
+    best_score = float(scores.get(best_style, 0))
+    total = float(sum(max(0, score) for score in scores.values()))
+    if total <= 0.0:
+        return 0.0
+    return round(best_score / total, 3)
+
+
+
+def _selection_margin(scores: dict[str, int], best_style: str) -> float:
+    total = float(sum(max(0, score) for score in scores.values()))
+    if total <= 0.0:
+        return 0.0
+    runner_up_scores = [float(score) for style_name, score in scores.items() if style_name != best_style]
+    runner_up = max(runner_up_scores) if runner_up_scores else 0.0
+    return round((float(scores.get(best_style, 0)) / total) - (runner_up / total), 3)
+
+
+
+def _selection_stability(confidence: float, margin: float) -> str:
+    if confidence >= STYLE_SELECTION_MIN_CONFIDENCE and margin >= STYLE_SELECTION_MIN_MARGIN:
+        return "stable"
+    return "contested"
+
+
+
+def _runner_up_lanes(scores: dict[str, int], *, exclude: str) -> list[dict]:
+    return [
+        {"lane": style_name, "score": float(score)}
+        for style_name, score in sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+        if style_name != exclude
+    ]
