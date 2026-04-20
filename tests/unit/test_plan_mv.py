@@ -1,5 +1,6 @@
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.core.planning.sections import merged_shot_section_type, normalized_sections
+from ai_mv.styles.citypop.rules import BRIDGE_CONNECTIVE_FAMILIES, INTRO_WORLD_FIRST_FAMILIES, OUTRO_RELEASE_FAMILIES
 
 
 def test_plan_mv_builds_creative_direction_payload():
@@ -110,8 +111,8 @@ def test_plan_mv_falls_back_without_audio_sections():
     assert section_types[-1] == "outro"
     intro_shot = out["shot_plan"][0]
     outro_shot = out["shot_plan"][-1]
-    assert intro_shot["visual_mode"] == "empty_boulevard_anchor"
-    assert outro_shot["visual_mode"] == "skyline_release"
+    assert intro_shot["visual_mode"] in INTRO_WORLD_FIRST_FAMILIES
+    assert outro_shot["visual_mode"] in OUTRO_RELEASE_FAMILIES
 
 
 def test_plan_mv_keeps_world_first_opener_when_m1_window_merges_intro_into_verse():
@@ -138,9 +139,41 @@ def test_plan_mv_keeps_world_first_opener_when_m1_window_merges_intro_into_verse
     opener = out["shot_plan"][0]
     opener_render = out["render_plan"][0]
     assert opener["section_name"] == "Intro->Verse 1"
-    assert opener["visual_mode"] == "empty_boulevard_anchor"
+    assert opener["visual_mode"] in INTRO_WORLD_FIRST_FAMILIES
     assert opener["framing_intent"] == "establishing_wide"
-    assert "near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow" in opener_render["prompt_seed"]
+    assert any(
+        token in opener_render["prompt_seed"]
+        for token in (
+            "rain-slick boulevard",
+            "roadway depth",
+            "small figure",
+            "distant human presence",
+            "city lights",
+        )
+    )
+
+
+def test_plan_mv_uses_allowed_connective_family_for_bridge_sections():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "verse_1", "start_sec": 0.0, "end_sec": 5.0},
+                    {"name": "bridge", "start_sec": 5.0, "end_sec": 9.0},
+                    {"name": "chorus", "start_sec": 9.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    bridge_shots = [shot for shot in out["shot_plan"] if shot["section_type"] == "bridge"]
+    assert bridge_shots
+    assert all(shot["visual_mode"] in BRIDGE_CONNECTIVE_FAMILIES for shot in bridge_shots)
+    assert all(shot["framing_intent"] == "connective_medium" for shot in bridge_shots)
 
 
 def test_plan_mv_builds_rich_render_prompts():

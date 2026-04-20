@@ -1,4 +1,5 @@
 from ai_mv.core.planning.shot_plan import build_shot_plan
+from ai_mv.styles.citypop.rules import BRIDGE_CONNECTIVE_FAMILIES, INTRO_WORLD_FIRST_FAMILIES, OUTRO_RELEASE_FAMILIES
 
 
 def test_shot_plan_adds_shot_intent_fields():
@@ -112,6 +113,50 @@ def test_shot_plan_splits_oversized_parts_using_max_shot_sec():
 
     assert len(out) >= 3
     assert all(float(shot["duration_sec"]) <= 4.0 for shot in out)
+
+
+def test_shot_plan_preserves_section_role_contracts_while_allowing_bounded_families():
+    out = build_shot_plan(
+        {"planning": {"max_shot_sec": 8.0}},
+        [
+            {
+                "index": 1,
+                "section_name": "INTRO",
+                "section_type": "intro",
+                "start_sec": 0.0,
+                "end_sec": 3.0,
+                "duration_sec": 3.0,
+            },
+            {
+                "index": 2,
+                "section_name": "BRIDGE",
+                "section_type": "bridge",
+                "start_sec": 3.0,
+                "end_sec": 7.0,
+                "duration_sec": 4.0,
+            },
+            {
+                "index": 3,
+                "section_name": "OUTRO",
+                "section_type": "outro",
+                "start_sec": 7.0,
+                "end_sec": 10.0,
+                "duration_sec": 3.0,
+            },
+        ],
+        style_name="citypop",
+    )
+
+    intro_shot = next(shot for shot in out if shot["section_type"] == "intro")
+    bridge_shot = next(shot for shot in out if shot["section_type"] == "bridge")
+    outro_shot = next(shot for shot in out if shot["section_type"] == "outro")
+
+    assert intro_shot["visual_mode"] in INTRO_WORLD_FIRST_FAMILIES
+    assert intro_shot["framing_intent"] == "establishing_wide"
+    assert bridge_shot["visual_mode"] in BRIDGE_CONNECTIVE_FAMILIES
+    assert bridge_shot["framing_intent"] == "connective_medium"
+    assert outro_shot["visual_mode"] in OUTRO_RELEASE_FAMILIES
+    assert outro_shot["framing_intent"] == "release_wide"
 
 
 def test_shot_plan_rejects_unknown_style_name():

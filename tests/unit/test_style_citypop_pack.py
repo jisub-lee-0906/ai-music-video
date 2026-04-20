@@ -1,7 +1,13 @@
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.styles.citypop.bible import get_citypop_bible
 from ai_mv.styles.citypop.prompting import build_citypop_prompt_draft, build_citypop_prompt_seed
-from ai_mv.styles.citypop.rules import apply_citypop_section_variants, citypop_section_shot_specs
+from ai_mv.styles.citypop.rules import (
+    BRIDGE_CONNECTIVE_FAMILIES,
+    INTRO_WORLD_FIRST_FAMILIES,
+    OUTRO_RELEASE_FAMILIES,
+    apply_citypop_section_variants,
+    citypop_section_shot_specs,
+)
 
 
 def test_citypop_style_pack_exposes_bible():
@@ -67,8 +73,8 @@ def test_citypop_rules_use_true_wide_families_for_intro_and_outro():
     intro_specs = citypop_section_shot_specs("intro", 3.0)
     outro_specs = citypop_section_shot_specs("outro", 3.0)
 
-    assert intro_specs[0]["visual_mode"] == "empty_boulevard_anchor"
-    assert outro_specs[0]["visual_mode"] == "skyline_release"
+    assert intro_specs[0]["visual_mode"] in INTRO_WORLD_FIRST_FAMILIES
+    assert outro_specs[0]["visual_mode"] in OUTRO_RELEASE_FAMILIES
 
 
 def test_citypop_rules_use_less_portrait_biased_connective_families_for_prechorus_and_bridge():
@@ -76,7 +82,7 @@ def test_citypop_rules_use_less_portrait_biased_connective_families_for_prechoru
     bridge_specs = citypop_section_shot_specs("bridge", 4.0)
 
     assert prechorus_specs[0]["visual_mode"] == "partial_figure_transition"
-    assert bridge_specs[0]["visual_mode"] == "bridge_overlook"
+    assert bridge_specs[0]["visual_mode"] in BRIDGE_CONNECTIVE_FAMILIES
 
 
 def test_citypop_rules_apply_progressive_section_variants():
