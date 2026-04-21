@@ -157,6 +157,11 @@ def _assembly_plan(payload: dict) -> dict:
         for row in render_rows
         if str(row.get("shot_id", "")).strip()
     }
+    material_id_by_shot = {
+        str(row.get("shot_id", "")).strip(): str(row.get("material_id", "")).strip()
+        for row in render_rows
+        if str(row.get("shot_id", "")).strip() and str(row.get("material_id", "")).strip()
+    }
     section_edits = []
     section_edit_map = {}
     transition_map = {}
@@ -166,7 +171,8 @@ def _assembly_plan(payload: dict) -> dict:
         shot_id = str(row.get("shot_id", "")).strip()
         if not shot_id:
             continue
-        section_id = section_id_by_shot.get(shot_id) or shot_id
+        section_id = str(row.get("section_id", "")).strip() or section_id_by_shot.get(shot_id) or shot_id
+        material_id = str(row.get("material_id", "")).strip() or material_id_by_shot.get(shot_id, "")
         edit_intent = edit_intent_by_shot.get(shot_id, {})
         coverage_sec = float(edit_intent.get("target_clip_sec", 0.0) or 0.0)
         editorial_weight = str(edit_intent.get("edit_priority", "medium")).strip() or "medium"
@@ -175,6 +181,8 @@ def _assembly_plan(payload: dict) -> dict:
         existing = section_edit_map.get(section_id)
         if existing:
             existing["selected_clip_ids"].append(shot_id)
+            if material_id and material_id not in existing["selected_material_ids"]:
+                existing["selected_material_ids"].append(material_id)
             existing["coverage_sec"] = float(existing.get("coverage_sec", 0.0) or 0.0) + coverage_sec
             existing["editorial_weight"] = _higher_priority_weight(str(existing.get("editorial_weight", "medium")), editorial_weight)
             existing["transition_out"] = transition_out
@@ -182,6 +190,7 @@ def _assembly_plan(payload: dict) -> dict:
             existing = {
                 "section_id": section_id,
                 "selected_clip_ids": [shot_id],
+                "selected_material_ids": [material_id] if material_id else [],
                 "coverage_sec": coverage_sec,
                 "editorial_weight": editorial_weight,
                 "transition_in": transition_in,

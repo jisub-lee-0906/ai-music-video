@@ -26,6 +26,8 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
                 "shot_id": shot_id,
                 "video": video_path,
                 "render_mode": render_mode,
+                "material_id": _clip_material_id(shot, render_item, still_map.get(shot_id, {})),
+                "section_id": _clip_section_id(shot, render_item, still_map.get(shot_id, {})),
                 "status": "done",
             }
         )
@@ -102,6 +104,24 @@ def _bridge_target_image(shot_id: str, shot: dict, render_item: dict, still_map:
     if target:
         return target
     raise RuntimeError(f"missing bridge target still for shot: {shot_id}")
+
+
+def _clip_material_id(shot: dict, render_item: dict, still_row: dict) -> str:
+    return str(
+        still_row.get("material_id")
+        or render_item.get("material_id")
+        or shot.get("material_id")
+        or ""
+    ).strip()
+
+
+def _clip_section_id(shot: dict, render_item: dict, still_row: dict) -> str:
+    return str(
+        still_row.get("section_id")
+        or render_item.get("section_id")
+        or shot.get("section_id")
+        or ""
+    ).strip()
 
 
 def _validate_clip_assets(stage_input: StageInput, shot_id: str, render_mode: str, still_image: str, shot: dict, render_item: dict, still_map: dict) -> None:

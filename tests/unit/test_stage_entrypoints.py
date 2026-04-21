@@ -28,11 +28,12 @@ def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_
         config={},
         payload={
             "music_file": "song.wav",
-            "clip_results": [{"shot_id": "S001", "video": "clip1.mp4"}],
+            "clip_results": [{"shot_id": "S001", "video": "clip1.mp4", "material_id": "MAT_001", "section_id": "SEC_001"}],
             "render_plan": [
                 {
                     "shot_id": "S001",
                     "section_id": "SEC_001",
+                    "material_id": "MAT_001",
                     "edit_intent": {
                         "edit_priority": "high",
                         "section_emphasis": "chorus_push",
@@ -58,6 +59,7 @@ def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_
     }
     assert out.payload["assembly_plan"]["section_edits"][0]["section_id"] == "SEC_001"
     assert out.payload["assembly_plan"]["section_edits"][0]["selected_clip_ids"] == ["S001"]
+    assert out.payload["assembly_plan"]["section_edits"][0]["selected_material_ids"] == ["MAT_001"]
     assert out.payload["assembly_plan"]["section_edits"][0]["transition_in"]
     assert out.payload["assembly_plan"]["section_edits"][0]["transition_out"]
     assert out.payload["assembly_plan"]["section_edit_map"]["SEC_001"]["selected_clip_ids"] == ["S001"]
@@ -82,13 +84,14 @@ def test_assemble_mv_aggregates_multiple_shots_under_one_section_id(monkeypatch,
         payload={
             "music_file": "song.wav",
             "clip_results": [
-                {"shot_id": "S001", "video": "clip1.mp4"},
-                {"shot_id": "S002", "video": "clip2.mp4"},
+                {"shot_id": "S001", "video": "clip1.mp4", "material_id": "MAT_001", "section_id": "SEC_001"},
+                {"shot_id": "S002", "video": "clip2.mp4", "material_id": "MAT_002", "section_id": "SEC_001"},
             ],
             "render_plan": [
                 {
                     "shot_id": "S001",
                     "section_id": "SEC_001",
+                    "material_id": "MAT_001",
                     "edit_intent": {
                         "edit_priority": "high",
                         "target_clip_sec": 3.0,
@@ -99,6 +102,7 @@ def test_assemble_mv_aggregates_multiple_shots_under_one_section_id(monkeypatch,
                 {
                     "shot_id": "S002",
                     "section_id": "SEC_001",
+                    "material_id": "MAT_002",
                     "edit_intent": {
                         "edit_priority": "medium",
                         "target_clip_sec": 2.0,
@@ -116,6 +120,7 @@ def test_assemble_mv_aggregates_multiple_shots_under_one_section_id(monkeypatch,
         {
             "section_id": "SEC_001",
             "selected_clip_ids": ["S001", "S002"],
+            "selected_material_ids": ["MAT_001", "MAT_002"],
             "coverage_sec": 5.0,
             "editorial_weight": "high",
             "transition_in": "accent_in",
@@ -637,23 +642,27 @@ def test_render_clips_routes_i2v(monkeypatch):
         config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
         payload={
             "music_file": "music/song.mp3",
-            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "i2v"}],
+            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "i2v", "material_id": "MAT_001", "section_id": "SEC_001"}],
             "render_plan": [
                 {
                     "shot_id": "S001",
                     "render_mode": "i2v",
+                    "material_id": "MAT_001",
+                    "section_id": "SEC_001",
                     "prompt_seed": "night drive",
                     "clip_prompt_seed": "slow windshield drift",
                     "clip_positive_prompt": "slow windshield drift, stable motion, no abrupt pose change",
                 }
             ],
-            "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png"}],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "material_id": "MAT_001", "section_id": "SEC_001"}],
         },
     )
 
     out = run_render_clips(stage_input)
 
     assert out.payload["clip_results"][0]["video"] == "D:/renders/S001_i2v.mp4"
+    assert out.payload["clip_results"][0]["material_id"] == "MAT_001"
+    assert out.payload["clip_results"][0]["section_id"] == "SEC_001"
     assert calls[0][1]["image"] == "D:/renders/S001.png"
     assert calls[0][1]["filename_prefix"] == "ai_mv/runs/run-2/clips/shot-S001-i2v"
     assert calls[0][1]["prompt_seed"] == "slow windshield drift"
