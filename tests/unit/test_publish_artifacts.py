@@ -1,4 +1,56 @@
 from ai_mv.core.artifacts.publish import write_pipeline_artifacts
+from ai_mv.core.artifacts.manifest import write_manifest
+
+
+def test_write_manifest_includes_schema_version_and_required_root_sections(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.run_file", lambda run_id, name, scope: f"/tmp/{run_id}/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_file", lambda name, scope: f"/tmp/latest/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_success_file", lambda name, scope: f"/tmp/latest-success/{scope}/{name}")
+
+    write_manifest(
+        {"run_id": "run-200", "status": "done", "failure_reason": "", "scope": "run"},
+        {
+            "concept_text": "citypop night drive",
+            "music_file": "music.mp3",
+            "audio_plan": {"genre_description": "citypop"},
+            "audio_map": {"sections": [{"name": "verse"}]},
+            "style_name": "citypop",
+            "style_resolution": {"style_name": "citypop", "selection_source": "auto"},
+            "shot_plan": [{"shot_id": "S001"}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
+            "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
+            "review_report": {"status": "done", "rerender_targets": []},
+            "final_video": "final.mp4",
+            "review_inputs": {"music_file": "music.mp3"},
+        },
+    )
+
+    manifest = captured[0][1]
+    assert manifest["schema_version"] == "ai_mv_schema_v1"
+    assert manifest["input"] == {"concept_text": "citypop night drive"}
+    assert manifest["song"] == {
+        "music_file": "music.mp3",
+        "audio_plan": {"genre_description": "citypop"},
+        "audio_map": {"sections": [{"name": "verse"}]},
+    }
+    assert manifest["style_resolution"] == {"style_name": "citypop", "selection_source": "auto"}
+    assert manifest["sections"] == [{"shot_id": "S001"}]
+    assert manifest["materials"] == {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]}
+    assert manifest["renders"] == {
+        "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+        "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
+    }
+    assert manifest["assembly"] == {
+        "final_video": "final.mp4",
+        "review_inputs": {"music_file": "music.mp3"},
+    }
+    assert manifest["review"] == {"status": "done", "rerender_targets": []}
+    assert manifest["artifacts"] == {"scope": "run"}
+
 
 
 def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypatch):

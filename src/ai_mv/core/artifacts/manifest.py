@@ -10,15 +10,43 @@ def write_manifest(state: dict, payload: dict) -> None:
         "run_id": state["run_id"],
         "status": state["status"],
         "failure_reason": state["failure_reason"],
+        "schema_version": "ai_mv_schema_v1",
+        "input": {
+            "concept_text": str(payload.get("concept_text", "")),
+        },
+        "song": {
+            "music_file": str(payload.get("music_file", "")),
+            "audio_plan": dict(payload.get("audio_plan", {})),
+            "audio_map": dict(payload.get("audio_map", {})),
+        },
+        "style_resolution": dict(payload.get("style_resolution", {})) or {
+            "style_name": str(payload.get("style_name", "")),
+        },
+        "sections": list(payload.get("shot_plan", [])),
+        "materials": {
+            "still_results": list(payload.get("still_results", [])),
+        },
+        "renders": {
+            "render_plan": list(payload.get("render_plan", [])),
+            "clip_results": list(payload.get("clip_results", [])),
+        },
+        "assembly": {
+            "final_video": str(payload.get("final_video", "")),
+            "review_inputs": dict(payload.get("review_inputs", {})),
+        },
+        "review": dict(payload.get("review_report", {})),
+        "artifacts": {
+            "scope": scope,
+        },
         "concept_text": str(payload.get("concept_text", "")),
         "style_name": str(payload.get("style_name", "")),
+        "style_bible": dict(payload.get("style_bible", {})),
         "planner_prompts": dict(payload.get("planner_prompts", {})),
         "workflow_inputs": dict(payload.get("workflow_inputs", {})),
         "workflow_inputs_preview": dict(payload.get("workflow_inputs_preview", {})),
         "render_inputs": dict(payload.get("render_inputs", {})),
         "audio_plan": dict(payload.get("audio_plan", {})),
         "audio_map": dict(payload.get("audio_map", {})),
-        "style_bible": dict(payload.get("style_bible", {})),
         "shot_plan": list(payload.get("shot_plan", [])),
         "render_plan": list(payload.get("render_plan", [])),
         "still_results": list(payload.get("still_results", [])),
@@ -26,6 +54,22 @@ def write_manifest(state: dict, payload: dict) -> None:
         "review_report": dict(payload.get("review_report", {})),
         "final_video": str(payload.get("final_video", "")),
         "music_file": str(payload.get("music_file", "")),
+        "legacy": {
+            "concept_text": str(payload.get("concept_text", "")),
+            "style_name": str(payload.get("style_name", "")),
+            "planner_prompts": dict(payload.get("planner_prompts", {})),
+            "workflow_inputs": dict(payload.get("workflow_inputs", {})),
+            "workflow_inputs_preview": dict(payload.get("workflow_inputs_preview", {})),
+            "render_inputs": dict(payload.get("render_inputs", {})),
+            "style_bible": dict(payload.get("style_bible", {})),
+            "shot_plan": list(payload.get("shot_plan", [])),
+            "render_plan": list(payload.get("render_plan", [])),
+            "still_results": list(payload.get("still_results", [])),
+            "clip_results": list(payload.get("clip_results", [])),
+            "review_report": dict(payload.get("review_report", {})),
+            "final_video": str(payload.get("final_video", "")),
+            "music_file": str(payload.get("music_file", "")),
+        },
     }
     write_json(run_file(state["run_id"], "manifest.json", scope), out)
     write_json(latest_file("manifest.json", scope), out)
