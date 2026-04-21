@@ -42,6 +42,8 @@ def _environment_anchor(shot: dict) -> str:
     mapping = {
         "live_house_entry": "live house alley with amp glow and wet asphalt",
         "amp_corridor": "backstage corridor with stage spill and hard night contrast",
+        "pre_chorus_lift": "backstage stairwell with rising stage spill and tightening electric haze",
+        "bridge_break": "service alley break with distant stage rumble and isolated sodium backlight",
         "chorus_charge": "performance-forward night street with electric backlight",
         "outro_stride": "wet asphalt release path with receding stage light",
     }

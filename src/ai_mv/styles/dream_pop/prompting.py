@@ -42,6 +42,8 @@ def _environment_anchor(shot: dict) -> str:
     mapping = {
         "moonlit_overpass": "moonlit overpass with misty depth and reflective air",
         "window_haze": "soft window haze with city bokeh and pearl reflections",
+        "pre_chorus_lift": "soft stairwell glow with suspended haze and rising moonlit reflections",
+        "bridge_hush": "quiet side street bridge with softened fog pockets and distant silver lamps",
         "chorus_bloom": "open skyline bloom with dreamy light spill",
         "afterglow_walk": "quiet afterglow street with silver haze",
     }

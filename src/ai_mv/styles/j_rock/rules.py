@@ -7,8 +7,10 @@ def j_rock_section_shot_specs(section_type: str, duration_sec: float) -> list[di
         return [_spec("intro_entry", "live_house_entry", "low", render_mode, 1.0)]
     if section_type == "chorus":
         return [_spec("chorus_charge", "chorus_charge", "high", render_mode, 1.0)]
+    if section_type == "pre_chorus":
+        return [_spec("pre_chorus_lift", "pre_chorus_lift", "medium", render_mode, 1.0)]
     if section_type == "bridge":
-        return [_spec("bridge_amp", "amp_corridor", "medium", render_mode, 1.0)]
+        return [_spec("bridge_amp", "bridge_break", "medium", render_mode, 1.0)]
     if section_type == "outro":
         return [_spec("outro_stride", "outro_stride", "low", render_mode, 1.0)]
     return [_spec("verse_drive", "amp_corridor", "medium", render_mode, 1.0)]

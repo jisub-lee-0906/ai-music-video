@@ -42,6 +42,8 @@ def _environment_anchor(shot: dict) -> str:
     mapping = {
         "bookstore_window": "bookstore window with rain reflections and quiet street depth",
         "crosswalk_wait": "quiet crosswalk under soft night lamps",
+        "pre_chorus_tension": "narrow side street with convenience-store spill and hesitant rain shimmer",
+        "bridge_pause": "underpass bench pause with sparse traffic glow and damp concrete calm",
         "chorus_portrait": "rain-lit street portrait with intimate urban glow",
         "bus_stop_afterglow": "late bus stop with soft afterglow and light drizzle",
     }

@@ -42,6 +42,8 @@ def _environment_anchor(shot: dict) -> str:
     mapping = {
         "rooftop_edge": "night rooftop with chrome spill and concrete geometry",
         "glass_corridor": "glass corridor with club-adjacent light spill",
+        "pre_chorus_tension": "elevator lobby tension with mirrored steel and tightening city reflections",
+        "bridge_glass": "glass skybridge with isolated backlight and drifting club spill",
         "chorus_front": "open rooftop edge with direct city backlight",
         "release_stride": "night street stride with chrome reflections",
     }

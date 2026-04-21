@@ -7,8 +7,10 @@ def dream_pop_section_shot_specs(section_type: str, duration_sec: float) -> list
         return [_spec("intro_haze", "moonlit_overpass", "low", render_mode, 1.0)]
     if section_type == "chorus":
         return [_spec("chorus_bloom", "chorus_bloom", "high", render_mode, 1.0)]
+    if section_type == "pre_chorus":
+        return [_spec("pre_chorus_lift", "pre_chorus_lift", "medium", render_mode, 1.0)]
     if section_type == "bridge":
-        return [_spec("bridge_hush", "window_haze", "medium", render_mode, 1.0)]
+        return [_spec("bridge_hush", "bridge_hush", "medium", render_mode, 1.0)]
     if section_type == "outro":
         return [_spec("outro_afterglow", "afterglow_walk", "low", render_mode, 1.0)]
     return [_spec("verse_drift", "window_haze", "medium", render_mode, 1.0)]
