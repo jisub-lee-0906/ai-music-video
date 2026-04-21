@@ -55,6 +55,55 @@ def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_
     }
 
 
+
+def test_assemble_mv_propagates_render_planning_metadata_into_review_inputs(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-assembly-metadata.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
+
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-assemble-render-planning",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "clip_results": [{"shot_id": "S001", "video": "clip1.mp4"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "render_count": 2,
+                    "render_priority_score": 0.9,
+                    "render_planning": {
+                        "section_energy_score": 0.75,
+                        "section_emphasis_score": 1.0,
+                        "mode_importance_score": 1.0,
+                        "lane_priority_score": 0.85,
+                        "continuity_need_score": 1.0,
+                        "render_priority_score": 0.9,
+                    },
+                }
+            ],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    assert out.payload["review_inputs"]["render_count_by_shot"] == {"S001": 2}
+    assert out.payload["review_inputs"]["render_priority_by_shot"] == {"S001": 0.9}
+    assert out.payload["review_inputs"]["render_planning_by_shot"] == {
+        "S001": {
+            "section_energy_score": 0.75,
+            "section_emphasis_score": 1.0,
+            "mode_importance_score": 1.0,
+            "lane_priority_score": 0.85,
+            "continuity_need_score": 1.0,
+            "render_priority_score": 0.9,
+        }
+    }
+
+
 def test_render_stills_uses_generic_fallback_prompt_text_when_empty():
     prompt = _still_prompt_text({})
 
