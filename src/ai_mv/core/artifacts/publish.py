@@ -1,18 +1,9 @@
 from __future__ import annotations
 
-import math
-
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.run_summary import write_run_summary
 from ai_mv.core.artifacts.schema import artifact_schema_version
-
-
-def _safe_float(value: object, default: float = 0.0) -> float:
-    try:
-        parsed = float(value)
-    except Exception:
-        return default
-    return parsed if math.isfinite(parsed) else default
+from ai_mv.core.artifacts.summary_fields import derive_summary_fields
 
 
 def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
@@ -36,9 +27,8 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         if isinstance(row, dict)
         for reason in row.get("reason_codes", []) if str(reason).strip()
     ]
-    style_resolution = payload.get("style_resolution") if isinstance(payload.get("style_resolution"), dict) else {}
+    summary_fields = derive_summary_fields(payload)
     review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
-    assembly_revision_summary = review_report.get("assembly_revision_summary") if isinstance(review_report.get("assembly_revision_summary"), dict) else {}
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -48,19 +38,11 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "completed_stages": list(state.get("completed_stages", [])),
         "schema_version": artifact_schema_version(),
         "concept_text": str(payload.get("concept_text", "")).strip(),
-        "style_name": str(style_resolution.get("style_name") or payload.get("style_name", "")).strip(),
-        "style_selection_source": str(style_resolution.get("selection_source", "")).strip(),
-        "style_selection_stability": str(style_resolution.get("selection_stability", "")).strip(),
-        "style_selection_confidence": _safe_float(style_resolution.get("confidence", 0.0), 0.0),
+        **summary_fields,
         "final_video": str(payload.get("final_video", "")).strip(),
         "music_file": str(payload.get("music_file", "")).strip(),
         "review_status": str(review_report.get("status", "")).strip(),
         "rerender_target_count": len(review_report.get("rerender_targets", [])),
-        "assembly_revision_present": bool(assembly_revision_summary.get("present", False)),
-        "assembly_revision_action": str(assembly_revision_summary.get("action", "")).strip(),
-        "assembly_revision_target": str(assembly_revision_summary.get("target", "")).strip(),
-        "assembly_revision_final_video": str(assembly_revision_summary.get("final_video", "")).strip(),
-        "assembly_revision_music_file": str(assembly_revision_summary.get("music_file", "")).strip(),
         "rerender_escalation_status": str(rerender_escalation.get("status", "")).strip(),
         "rerender_escalation_shot_count": int(rerender_escalation.get("shot_count", 0) or 0),
         "rerender_escalation_reviewer_summary": str(rerender_escalation.get("reviewer_summary", "")).strip(),
