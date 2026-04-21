@@ -1422,8 +1422,55 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
         "final_video": "final.mp4",
         "music_file": "song.mp3",
         "review_action": "revise_assembly_weights_before_clip_rerender",
+        "review_inputs": {
+            "assembly_revision": {
+                "action": "revise_assembly_weights_before_clip_rerender",
+                "target": "assembly",
+                "final_video": "final.mp4",
+                "music_file": "song.mp3",
+            }
+        },
     }
     assert out.artifacts == []
+
+
+
+def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch):
+    calls = []
+
+    def _fake_repair_audio_video_sync(stage_input):
+        calls.append(stage_input.payload)
+        return StageOutput("repair_audio_video_sync", "done", {"final_video": "should-not-run.mp4"}, [])
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_repair_audio_video_sync", _fake_repair_audio_video_sync)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-exec-transition-review",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["review"],
+                "rerender_stage_inputs": {
+                    "review": {
+                        "final_video": "final.mp4",
+                        "music_file": "song.mp3",
+                        "recommended_action": "revise_transition_selection",
+                    }
+                },
+            },
+        )
+    )
+
+    assert calls == []
+    assert out.payload["review_action"] == "revise_transition_selection"
+    assert out.payload["review_inputs"] == {
+        "assembly_revision": {
+            "action": "revise_transition_selection",
+            "target": "assembly",
+            "final_video": "final.mp4",
+            "music_file": "song.mp3",
+        }
+    }
 
 
 

@@ -7,6 +7,10 @@ from ai_mv.core.stages.render_stills import run_render_stills
 
 
 REVIEW_ACTIONS_REQUIRING_SYNC_REPAIR = {"repair_audio_video_sync"}
+ASSEMBLY_REVIEW_ACTIONS = {
+    "revise_assembly_weights_before_clip_rerender",
+    "revise_transition_selection",
+}
 
 
 def _stage_runner(stage_name: str):
@@ -99,5 +103,15 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
         for key in ("final_video", "music_file", "review_inputs")
         if key in stage_payload and stage_payload[key]
     }
+    if recommended_action in ASSEMBLY_REVIEW_ACTIONS:
+        passthrough_payload["review_inputs"] = {
+            **(passthrough_payload.get("review_inputs") if isinstance(passthrough_payload.get("review_inputs"), dict) else {}),
+            "assembly_revision": {
+                "action": recommended_action,
+                "target": "assembly",
+                "final_video": str(stage_payload.get("final_video", "")).strip(),
+                "music_file": str(stage_payload.get("music_file", "")).strip(),
+            },
+        }
     passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
     return StageOutput("review_action", "done", passthrough_payload, [])
