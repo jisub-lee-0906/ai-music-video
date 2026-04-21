@@ -92,9 +92,15 @@ def test_write_manifest_emits_generic_style_fields(monkeypatch, tmp_path):
 
     assert writes
     manifest = writes[0][1]
-    assert manifest["style_resolution"] == {"style_lane": "synthwave"}
+    assert manifest["plan"] == {
+        "style_lane": "synthwave",
+        "style_resolution": {"style_lane": "synthwave"},
+        "section_plan": [],
+        "material_plan": [],
+        "render_plan": [],
+    }
     assert manifest["input"] == {"concept_text": "dreamy synthwave neon highway night drive"}
-    assert manifest["song"]["music_file"] == "music.mp3"
+    assert manifest["song"]["master_audio"] == "music.mp3"
     assert "style_bible" not in manifest
     assert "citypop_bible" not in manifest
 
@@ -130,6 +136,12 @@ def test_write_manifest_does_not_backfill_style_bible_from_legacy_citypop_bible(
     )
 
     manifest = writes[0][1]
-    assert manifest["style_resolution"] == {"style_lane": "citypop"}
+    assert manifest["plan"] == {
+        "style_lane": "citypop",
+        "style_resolution": {"style_lane": "citypop"},
+        "section_plan": [],
+        "material_plan": [],
+        "render_plan": [],
+    }
     assert "style_bible" not in manifest
     assert "citypop_bible" not in manifest

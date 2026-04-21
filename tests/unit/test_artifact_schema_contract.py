@@ -8,8 +8,8 @@ from ai_mv.utils.json_utils import read_json
 def test_artifact_schema_module_exposes_canonical_schema_version():
     schema_module = importlib.import_module("ai_mv.core.artifacts.schema")
 
-    assert schema_module.ARTIFACT_SCHEMA_VERSION == "ai_mv_schema_v1"
-    assert schema_module.artifact_schema_version() == "ai_mv_schema_v1"
+    assert schema_module.ARTIFACT_SCHEMA_VERSION == "ai_mv_schema_v2"
+    assert schema_module.artifact_schema_version() == "ai_mv_schema_v2"
 
 
 

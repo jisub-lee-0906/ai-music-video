@@ -11,6 +11,7 @@ def test_render_item_adds_edit_intent_metadata():
         get_synthwave_bible(),
         {
             "shot_id": "S006",
+            "section_id": "SEC_003",
             "render_mode": "i2v",
             "shot_role": "chorus_breakout",
             "section_type": "chorus",
@@ -24,6 +25,7 @@ def test_render_item_adds_edit_intent_metadata():
         },
     )
 
+    assert out["section_id"] == "SEC_003"
     assert out["edit_intent"]["edit_priority"] == "high"
     assert out["edit_intent"]["section_emphasis"] == "chorus_push"
     assert out["edit_intent"]["target_clip_sec"] == 5.0

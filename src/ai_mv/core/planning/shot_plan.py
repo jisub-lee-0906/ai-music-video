@@ -23,6 +23,7 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
             shots.append(
                 {
                     "shot_id": "",
+                    "section_id": section.get("section_id", ""),
                     "section_name": section["section_name"],
                     "section_type": section["section_type"],
                     "start_sec": part["start_sec"],

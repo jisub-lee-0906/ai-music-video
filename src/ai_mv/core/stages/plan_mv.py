@@ -40,6 +40,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
         "style_resolution": style_resolution,
         "style_bible": style_bible,
         "creative_direction": creative_direction,
+        "section_plan": sections,
         "shot_plan": shot_plan,
         "material_plan": material_plan,
         "render_plan": render_plan,
@@ -64,7 +65,7 @@ def build_material_plan(style_name: str, shot_plan: list[dict]) -> list[dict]:
         material_plan.append(
             {
                 "material_id": f"MAT_{idx:03d}",
-                "section_id": str(shot.get("shot_id", "")).strip(),
+                "section_id": str(shot.get("section_id", "")).strip(),
                 "role": role,
                 "style_lane": style_name,
                 "mode_hint": _mode_hint_for_shot(shot),

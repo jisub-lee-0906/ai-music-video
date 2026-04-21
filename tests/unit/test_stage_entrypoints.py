@@ -30,6 +30,7 @@ def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_
             "render_plan": [
                 {
                     "shot_id": "S001",
+                    "section_id": "SEC_001",
                     "edit_intent": {
                         "edit_priority": "high",
                         "section_emphasis": "chorus_push",
@@ -53,13 +54,74 @@ def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_
             "transition_out": "accent_out",
         }
     }
+    assert out.payload["assembly_plan"]["section_edits"][0]["section_id"] == "SEC_001"
     assert out.payload["assembly_plan"]["section_edits"][0]["selected_clip_ids"] == ["S001"]
     assert out.payload["assembly_plan"]["section_edits"][0]["transition_in"]
     assert out.payload["assembly_plan"]["section_edits"][0]["transition_out"]
-    assert out.payload["assembly_plan"]["section_edit_map"]["S001"]["selected_clip_ids"] == ["S001"]
-    assert out.payload["assembly_plan"]["transition_map"]
-    assert out.payload["assembly_plan"]["timing_map"]
+    assert out.payload["assembly_plan"]["section_edit_map"]["SEC_001"]["selected_clip_ids"] == ["S001"]
+    assert out.payload["assembly_plan"]["transition_map"]["SEC_001"]["transition_in"] == "accent_in"
+    assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["selected_clip_ids"] == ["S001"]
     assert out.payload["assembly_plan"]["rejected_clip_map"] == {}
+
+
+
+def test_assemble_mv_aggregates_multiple_shots_under_one_section_id(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-section-aggregate.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
+
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "clip2.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-assemble-section-aggregate",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "clip_results": [
+                {"shot_id": "S001", "video": "clip1.mp4"},
+                {"shot_id": "S002", "video": "clip2.mp4"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "edit_priority": "high",
+                        "target_clip_sec": 3.0,
+                        "transition_in": "accent_in",
+                        "transition_out": "cut_out",
+                    },
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "edit_priority": "medium",
+                        "target_clip_sec": 2.0,
+                        "transition_in": "cut_in",
+                        "transition_out": "glide_out",
+                    },
+                },
+            ],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    assert out.payload["assembly_plan"]["section_edits"] == [
+        {
+            "section_id": "SEC_001",
+            "selected_clip_ids": ["S001", "S002"],
+            "coverage_sec": 5.0,
+            "editorial_weight": "high",
+            "transition_in": "accent_in",
+            "transition_out": "glide_out",
+        }
+    ]
+    assert out.payload["assembly_plan"]["section_edit_map"]["SEC_001"]["selected_clip_ids"] == ["S001", "S002"]
+    assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["selected_clip_ids"] == ["S001", "S002"]
 
 
 

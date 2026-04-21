@@ -30,11 +30,15 @@ def test_plan_mv_builds_creative_direction_payload():
     assert creative_direction["continuity_mode"] == "strict"
     assert creative_direction["style_lane"] == out["style_lane"]
     assert creative_direction["section_count"] == 4
+    assert out["section_plan"]
+    assert out["section_plan"][0]["section_type"] == "intro"
+    assert out["section_plan"][0]["section_id"] == "SEC_001"
     assert out["material_plan"]
     first_material = out["material_plan"][0]
     assert first_material["material_id"].startswith("MAT_")
     assert first_material["role"]
     assert first_material["style_lane"] == out["style_lane"]
+    assert first_material["section_id"] == "SEC_001"
     assert first_material["mode_hint"]
 
 
@@ -116,6 +120,7 @@ def test_plan_mv_falls_back_without_audio_sections():
     assert section_types[0] == "intro"
     assert "chorus" in section_types
     assert section_types[-1] == "outro"
+    assert [section["section_id"] for section in out["section_plan"]] == [f"SEC_{idx:03d}" for idx in range(1, len(out["section_plan"]) + 1)]
     intro_shot = out["shot_plan"][0]
     outro_shot = out["shot_plan"][-1]
     assert intro_shot["visual_mode"] in INTRO_WORLD_FIRST_FAMILIES
@@ -410,4 +415,6 @@ def test_normalized_sections_can_be_used_from_core_planning_module():
     )
 
     assert out[0]["section_type"] == "intro"
+    assert out[0]["section_id"] == "SEC_001"
+    assert [row["section_id"] for row in out] == [f"SEC_{idx:03d}" for idx in range(1, len(out) + 1)]
     assert float(out[-1]["end_sec"]) == 20.0

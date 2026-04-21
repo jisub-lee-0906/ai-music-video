@@ -4,7 +4,7 @@ from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.utils.json_utils import read_json
 
 
-def test_write_manifest_includes_schema_version_and_required_root_sections(monkeypatch):
+def test_write_manifest_emits_blueprint_aligned_public_output_contract(monkeypatch):
     captured = []
 
     monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
@@ -21,36 +21,46 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
             "audio_map": {"sections": [{"name": "verse"}]},
             "style_lane": "citypop",
             "style_resolution": {"style_lane": "citypop", "selection_source": "auto"},
+            "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
+            "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
             "shot_plan": [{"shot_id": "S001"}],
             "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
             "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
             "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
             "review_report": {"status": "done", "rerender_targets": []},
             "final_video": "final.mp4",
+            "assembly_plan": {"section_edits": [{"section_id": "SEC_001"}]},
             "review_inputs": {"music_file": "music.mp3"},
+            "rerender_escalation": {"artifacts": {"review_packet_manifest": "review/review-packet.json"}},
         },
     )
 
     manifest = captured[0][1]
-    assert manifest["schema_version"] == "ai_mv_schema_v1"
+    assert manifest["schema_version"] == "ai_mv_schema_v2"
     assert manifest["input"] == {"concept_text": "citypop night drive"}
     assert manifest["song"] == {
-        "music_file": "music.mp3",
+        "master_audio": "music.mp3",
+        "section_map": {"sections": [{"name": "verse"}]},
         "audio_plan": {"genre_description": "citypop"},
-        "audio_map": {"sections": [{"name": "verse"}]},
     }
-    assert manifest["style_resolution"] == {"style_lane": "citypop", "selection_source": "auto"}
-    assert manifest["sections"] == [{"shot_id": "S001"}]
-    assert manifest["materials"] == {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]}
-    assert manifest["renders"] == {
+    assert manifest["plan"] == {
+        "style_lane": "citypop",
+        "style_resolution": {"style_lane": "citypop", "selection_source": "auto"},
+        "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
+        "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
         "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
-        "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
     }
+    assert manifest["stills"] == {"material_results": [{"shot_id": "S001", "image": "stills/S001.png"}]}
+    assert manifest["clips"] == {"clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}]}
     assert manifest["assembly"] == {
         "final_video": "final.mp4",
+        "assembly_plan": {"section_edits": [{"section_id": "SEC_001"}]},
         "review_inputs": {"music_file": "music.mp3"},
     }
-    assert manifest["review"] == {"status": "done", "rerender_targets": []}
+    assert manifest["review"] == {
+        "review_report": {"status": "done", "rerender_targets": []},
+        "review_packet_manifest": "review/review-packet.json",
+    }
     assert manifest["artifacts"] == {"scope": "run"}
     assert "concept_text" not in manifest
     assert "style_lane" not in manifest
@@ -61,10 +71,14 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
     assert "render_inputs" not in manifest
     assert "audio_plan" not in manifest
     assert "audio_map" not in manifest
+    assert "style_resolution" not in manifest
     assert "shot_plan" not in manifest
+    assert "section_plan" not in manifest
+    assert "material_plan" not in manifest
     assert "render_plan" not in manifest
     assert "still_results" not in manifest
     assert "clip_results" not in manifest
+    assert "assembly_plan" not in manifest
     assert "review_report" not in manifest
     assert "final_video" not in manifest
     assert "music_file" not in manifest
@@ -72,7 +86,7 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
 
 
 
-def test_write_manifest_falls_back_to_style_name_and_empty_safe_canonical_sections(monkeypatch):
+def test_write_manifest_is_empty_safe_for_blueprint_public_output_sections(monkeypatch):
     captured = []
 
     monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
@@ -89,15 +103,101 @@ def test_write_manifest_falls_back_to_style_name_and_empty_safe_canonical_sectio
     )
 
     manifest = captured[0][1]
-    assert manifest["schema_version"] == "ai_mv_schema_v1"
-    assert manifest["style_resolution"] == {"style_lane": "dream_pop"}
-    assert manifest["song"] == {"music_file": "", "audio_plan": {}, "audio_map": {}}
-    assert manifest["sections"] == []
-    assert manifest["materials"] == {"still_results": []}
-    assert manifest["renders"] == {"render_plan": [], "clip_results": []}
-    assert manifest["assembly"] == {"final_video": "", "review_inputs": {}}
-    assert manifest["review"] == {}
+    assert manifest["schema_version"] == "ai_mv_schema_v2"
+    assert manifest["song"] == {"master_audio": "", "section_map": {}, "audio_plan": {}}
+    assert manifest["plan"] == {
+        "style_lane": "dream_pop",
+        "style_resolution": {"style_lane": "dream_pop"},
+        "section_plan": [],
+        "material_plan": [],
+        "render_plan": [],
+    }
+    assert manifest["stills"] == {"material_results": []}
+    assert manifest["clips"] == {"clip_results": []}
+    assert manifest["assembly"] == {"final_video": "", "assembly_plan": {}, "review_inputs": {}}
+    assert manifest["review"] == {"review_report": {}, "review_packet_manifest": ""}
     assert manifest["artifacts"] == {"scope": "run"}
+
+
+
+def test_write_manifest_backfills_section_plan_from_audio_map_when_public_section_plan_is_absent(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.run_file", lambda run_id, name, scope: f"/tmp/{run_id}/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_file", lambda name, scope: f"/tmp/latest/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_success_file", lambda name, scope: f"/tmp/latest-success/{scope}/{name}")
+
+    write_manifest(
+        {"run_id": "run-201b", "status": "done", "failure_reason": "", "scope": "run"},
+        {
+            "concept_text": "dreamy dusk drive",
+            "style_lane": "dream_pop",
+            "audio_map": {
+                "duration_sec": 12.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 4.0},
+                    {"name": "chorus", "start_sec": 4.0, "end_sec": 12.0},
+                ],
+            },
+        },
+    )
+
+    manifest = captured[0][1]
+    assert [row["section_type"] for row in manifest["plan"]["section_plan"]] == ["intro", "chorus"]
+    assert manifest["plan"]["section_plan"][0]["start_sec"] == 0.0
+    assert manifest["plan"]["section_plan"][1]["end_sec"] == 12.0
+
+
+
+def test_write_manifest_does_not_synthesize_section_plan_from_audio_duration_alone(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.run_file", lambda run_id, name, scope: f"/tmp/{run_id}/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_file", lambda name, scope: f"/tmp/latest/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_success_file", lambda name, scope: f"/tmp/latest-success/{scope}/{name}")
+
+    write_manifest(
+        {"run_id": "run-201c", "status": "done", "failure_reason": "", "scope": "run"},
+        {
+            "concept_text": "dreamy dusk drive",
+            "style_lane": "dream_pop",
+            "audio_map": {"duration_sec": 16.0},
+        },
+    )
+
+    manifest = captured[0][1]
+    assert manifest["song"]["section_map"] == {"duration_sec": 16.0}
+    assert manifest["plan"]["section_plan"] == []
+
+
+
+def test_write_manifest_does_not_synthesize_section_plan_from_malformed_section_rows(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.run_file", lambda run_id, name, scope: f"/tmp/{run_id}/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_file", lambda name, scope: f"/tmp/latest/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_success_file", lambda name, scope: f"/tmp/latest-success/{scope}/{name}")
+
+    write_manifest(
+        {"run_id": "run-201d", "status": "done", "failure_reason": "", "scope": "run"},
+        {
+            "concept_text": "dreamy dusk drive",
+            "style_lane": "dream_pop",
+            "audio_map": {
+                "duration_sec": 16.0,
+                "sections": [
+                    {"name": "verse"},
+                    {"name": "chorus", "start_sec": 4.0, "end_sec": 4.0},
+                ],
+            },
+        },
+    )
+
+    manifest = captured[0][1]
+    assert manifest["plan"]["section_plan"] == []
 
 
 
@@ -143,7 +243,7 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
         {},
     )
 
-    assert captured["schema_version"] == "ai_mv_schema_v1"
+    assert captured["schema_version"] == "ai_mv_schema_v2"
     assert captured["style_lane"] == "citypop"
     assert captured["style_selection_source"] == "auto"
     assert captured["style_selection_stability"] == "stable"
@@ -211,11 +311,14 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
         "music_file": "music.mp3",
         "audio_plan": {"genre_description": "citypop"},
         "audio_map": {"sections": [{"name": "verse"}]},
+        "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
+        "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
         "shot_plan": [{"shot_id": "S001"}],
         "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
         "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
         "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
         "final_video": "final.mp4",
+        "assembly_plan": {"section_edits": [{"section_id": "SEC_001"}]},
         "review_inputs": {"music_file": "music.mp3"},
         "review_report": {
             "status": "done",
@@ -237,6 +340,7 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
                 "music_file": "music.mp3",
             },
         },
+        "rerender_escalation": {"artifacts": {"review_packet_manifest": "review/review-packet.json"}},
     }
 
     write_pipeline_artifacts(state, payload, {})
@@ -250,14 +354,55 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
 
     assert run_manifest == latest_manifest == latest_success_manifest
     assert run_summary == latest_summary == latest_success_summary
-    assert run_manifest["schema_version"] == "ai_mv_schema_v1"
-    assert run_manifest["style_resolution"] == {
-        "style_lane": "citypop",
-        "selection_source": "auto",
-        "selection_stability": "stable",
-        "confidence": 0.93,
+    assert run_manifest["schema_version"] == "ai_mv_schema_v2"
+    assert run_manifest["song"] == {
+        "master_audio": "music.mp3",
+        "section_map": {"sections": [{"name": "verse"}]},
+        "audio_plan": {"genre_description": "citypop"},
     }
-    assert run_summary["schema_version"] == "ai_mv_schema_v1"
+    assert run_manifest["plan"] == {
+        "style_lane": "citypop",
+        "style_resolution": {
+            "style_lane": "citypop",
+            "selection_source": "auto",
+            "selection_stability": "stable",
+            "confidence": 0.93,
+        },
+        "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
+        "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
+        "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+    }
+    assert run_manifest["stills"] == {"material_results": [{"shot_id": "S001", "image": "stills/S001.png"}]}
+    assert run_manifest["clips"] == {"clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}]}
+    assert run_manifest["assembly"] == {
+        "final_video": "final.mp4",
+        "assembly_plan": {"section_edits": [{"section_id": "SEC_001"}]},
+        "review_inputs": {"music_file": "music.mp3"},
+    }
+    assert run_manifest["review"] == {
+        "review_report": {
+            "status": "done",
+            "rerender_targets": [],
+            "overall_status": "pass",
+            "publishability_tier": "publishable",
+            "recommended_next_action": "publish",
+            "scores": {
+                "overall": 100.0,
+                "technical_completion": 100.0,
+                "material_quality": 100.0,
+                "final_mv_quality": 84.0,
+            },
+            "assembly_revision_summary": {
+                "present": True,
+                "action": "revise_transition_selection",
+                "target": "assembly",
+                "final_video": "final.mp4",
+                "music_file": "music.mp3",
+            },
+        },
+        "review_packet_manifest": "review/review-packet.json",
+    }
+    assert run_summary["schema_version"] == "ai_mv_schema_v2"
     assert run_summary["style_lane"] == "citypop"
     assert run_summary["style_selection_source"] == "auto"
     assert run_summary["style_selection_stability"] == "stable"

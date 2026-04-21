@@ -152,6 +152,11 @@ def _assembly_plan(payload: dict) -> dict:
         for row in render_rows
         if str(row.get("shot_id", "")).strip() and isinstance(row.get("edit_intent"), dict)
     }
+    section_id_by_shot = {
+        str(row.get("shot_id", "")).strip(): str(row.get("section_id", "")).strip()
+        for row in render_rows
+        if str(row.get("shot_id", "")).strip()
+    }
     section_edits = []
     section_edit_map = {}
     transition_map = {}
@@ -161,24 +166,42 @@ def _assembly_plan(payload: dict) -> dict:
         shot_id = str(row.get("shot_id", "")).strip()
         if not shot_id:
             continue
+        section_id = section_id_by_shot.get(shot_id) or shot_id
         edit_intent = edit_intent_by_shot.get(shot_id, {})
-        section_edit = {
-            "section_id": shot_id,
-            "selected_clip_ids": [shot_id],
-            "coverage_sec": float(edit_intent.get("target_clip_sec", 0.0) or 0.0),
-            "editorial_weight": str(edit_intent.get("edit_priority", "medium")).strip() or "medium",
-            "transition_in": str(edit_intent.get("transition_in", "hard_cut")).strip() or "hard_cut",
-            "transition_out": str(edit_intent.get("transition_out", "hard_cut")).strip() or "hard_cut",
+        coverage_sec = float(edit_intent.get("target_clip_sec", 0.0) or 0.0)
+        editorial_weight = str(edit_intent.get("edit_priority", "medium")).strip() or "medium"
+        transition_in = str(edit_intent.get("transition_in", "hard_cut")).strip() or "hard_cut"
+        transition_out = str(edit_intent.get("transition_out", "hard_cut")).strip() or "hard_cut"
+        existing = section_edit_map.get(section_id)
+        if existing:
+            existing["selected_clip_ids"].append(shot_id)
+            existing["coverage_sec"] = float(existing.get("coverage_sec", 0.0) or 0.0) + coverage_sec
+            existing["editorial_weight"] = _higher_priority_weight(str(existing.get("editorial_weight", "medium")), editorial_weight)
+            existing["transition_out"] = transition_out
+        else:
+            existing = {
+                "section_id": section_id,
+                "selected_clip_ids": [shot_id],
+                "coverage_sec": coverage_sec,
+                "editorial_weight": editorial_weight,
+                "transition_in": transition_in,
+                "transition_out": transition_out,
+            }
+            section_edits.append(existing)
+            section_edit_map[section_id] = existing
+            timing_map[section_id] = {
+                "sequence_index": idx,
+                "coverage_sec": coverage_sec,
+                "selected_clip_ids": [shot_id],
+            }
+        transition_map[section_id] = {
+            "transition_in": str(existing.get("transition_in", "hard_cut")),
+            "transition_out": str(existing.get("transition_out", "hard_cut")),
         }
-        section_edits.append(section_edit)
-        section_edit_map[shot_id] = dict(section_edit)
-        transition_map[shot_id] = {
-            "transition_in": section_edit["transition_in"],
-            "transition_out": section_edit["transition_out"],
-        }
-        timing_map[shot_id] = {
-            "sequence_index": idx,
-            "coverage_sec": section_edit["coverage_sec"],
+        timing_map[section_id] = {
+            "sequence_index": int(timing_map.get(section_id, {}).get("sequence_index", idx)),
+            "coverage_sec": float(existing.get("coverage_sec", 0.0) or 0.0),
+            "selected_clip_ids": list(existing.get("selected_clip_ids", [])),
         }
         used_ids.append(shot_id)
     rejected_clip_map = {
@@ -193,3 +216,10 @@ def _assembly_plan(payload: dict) -> dict:
         "timing_map": timing_map,
         "rejected_clip_map": rejected_clip_map,
     }
+
+
+def _higher_priority_weight(left: str, right: str) -> str:
+    rank = {"low": 0, "medium": 1, "high": 2}
+    normalized_left = str(left or "medium").strip() or "medium"
+    normalized_right = str(right or "medium").strip() or "medium"
+    return normalized_left if rank.get(normalized_left, 1) >= rank.get(normalized_right, 1) else normalized_right

@@ -80,12 +80,19 @@ def normalized_sections(audio_map: dict, duration_sec: float) -> list[dict]:
             }
         )
     if not normalized:
-        return fallback_sections(duration_sec)
+        return _assign_section_metadata(fallback_sections(duration_sec))
     normalized.sort(key=lambda row: (float(row["start_sec"]), float(row["end_sec"]), int(row["index"])))
     normalized = merge_micro_sections(normalized)
-    for idx, row in enumerate(normalized, start=1):
+    return _assign_section_metadata(compress_sections(normalized, duration_sec))
+
+
+
+def _assign_section_metadata(sections: list[dict]) -> list[dict]:
+    rows = [dict(row) for row in sections]
+    for idx, row in enumerate(rows, start=1):
         row["index"] = idx
-    return compress_sections(normalized, duration_sec)
+        row["section_id"] = f"SEC_{idx:03d}"
+    return rows
 
 
 

@@ -3,11 +3,16 @@ from __future__ import annotations
 from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_file
 from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.core.artifacts.success_policy import latest_success_eligible
+from ai_mv.core.planning.sections import normalized_sections
 from ai_mv.utils.json_utils import write_json
 
 
 def write_manifest(state: dict, payload: dict) -> None:
     scope = str(state.get("scope", "run"))
+    rerender_escalation = payload.get("rerender_escalation") if isinstance(payload.get("rerender_escalation"), dict) else {}
+    escalation_artifacts = rerender_escalation.get("artifacts") if isinstance(rerender_escalation.get("artifacts"), dict) else {}
+    audio_map = dict(payload.get("audio_map", {}))
+    section_plan = _manifest_section_plan(payload, audio_map)
     out = {
         "run_id": state["run_id"],
         "status": state["status"],
@@ -17,26 +22,34 @@ def write_manifest(state: dict, payload: dict) -> None:
             "concept_text": str(payload.get("concept_text", "")),
         },
         "song": {
-            "music_file": str(payload.get("music_file", "")),
+            "master_audio": str(payload.get("music_file", "")),
+            "section_map": audio_map,
             "audio_plan": dict(payload.get("audio_plan", {})),
-            "audio_map": dict(payload.get("audio_map", {})),
         },
-        "style_resolution": dict(payload.get("style_resolution", {})) or {
+        "plan": {
             "style_lane": str(payload.get("style_lane", "")),
-        },
-        "sections": list(payload.get("shot_plan", [])),
-        "materials": {
-            "still_results": list(payload.get("still_results", [])),
-        },
-        "renders": {
+            "style_resolution": dict(payload.get("style_resolution", {})) or {
+                "style_lane": str(payload.get("style_lane", "")),
+            },
+            "section_plan": section_plan,
+            "material_plan": list(payload.get("material_plan", [])),
             "render_plan": list(payload.get("render_plan", [])),
+        },
+        "stills": {
+            "material_results": list(payload.get("material_results", payload.get("still_results", []))),
+        },
+        "clips": {
             "clip_results": list(payload.get("clip_results", [])),
         },
         "assembly": {
             "final_video": str(payload.get("final_video", "")),
+            "assembly_plan": dict(payload.get("assembly_plan", {})),
             "review_inputs": dict(payload.get("review_inputs", {})),
         },
-        "review": dict(payload.get("review_report", {})),
+        "review": {
+            "review_report": dict(payload.get("review_report", {})),
+            "review_packet_manifest": str(escalation_artifacts.get("review_packet_manifest", "")).strip(),
+        },
         "artifacts": {
             "scope": scope,
         },
@@ -45,3 +58,25 @@ def write_manifest(state: dict, payload: dict) -> None:
     write_json(latest_file("manifest.json", scope), out)
     if latest_success_eligible(state, payload):
         write_json(latest_success_file("manifest.json", scope), out)
+
+
+def _manifest_section_plan(payload: dict, audio_map: dict) -> list[dict]:
+    explicit = payload.get("section_plan") if isinstance(payload.get("section_plan"), list) else None
+    if explicit is not None:
+        return list(explicit)
+    raw_sections = audio_map.get("sections") if isinstance(audio_map, dict) else None
+    if isinstance(raw_sections, list) and any(_is_real_section_row(row) for row in raw_sections):
+        duration_sec = float(audio_map.get("duration_sec", 16.0) or 16.0)
+        return normalized_sections(audio_map, duration_sec)
+    return []
+
+
+def _is_real_section_row(row: object) -> bool:
+    if not isinstance(row, dict):
+        return False
+    try:
+        start_sec = float(row.get("start_sec"))
+        end_sec = float(row.get("end_sec"))
+    except Exception:
+        return False
+    return end_sec > start_sec
