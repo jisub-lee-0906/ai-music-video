@@ -96,5 +96,5 @@ def test_apply_wsl_runtime_overrides_enables_smoke_mode(monkeypatch):
 
     assert out["audio"]["target_duration_min_sec"] == 15
     assert out["audio"]["target_duration_max_sec"] == 20
-    assert out["planning"]["enable_ia2v"] is False
+    assert out["planning"]["enable_ia2v"] is True
     assert out["planning"]["enable_flf2v"] is False

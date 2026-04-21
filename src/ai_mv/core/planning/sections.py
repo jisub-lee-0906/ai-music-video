@@ -127,7 +127,7 @@ def compress_shots_to_m1_window(shots: list[dict]) -> list[dict]:
             "duration_sec": round(float(right["end_sec"]) - float(left["start_sec"]), 3),
             "shot_role": f"{left['shot_role']}+{right['shot_role']}",
             "visual_mode": right["visual_mode"] if str(right.get("section_type", "")) == "chorus" else left["visual_mode"],
-            "render_mode": "i2v",
+            "render_mode": _merged_render_mode(left, right),
             "source_section_index": merged_source_section_index(left, right),
         }
         rows = rows[:best_index] + [merged] + rows[best_index + 2 :]
@@ -292,6 +292,16 @@ def merged_source_section_index(left: dict, right: dict) -> int:
     if str(left.get("section_type", "")).strip() == str(right.get("section_type", "")).strip():
         return left_index
     return right_index or left_index
+
+
+
+def _merged_render_mode(left: dict, right: dict) -> str:
+    modes = [str(left.get("render_mode", "")).strip(), str(right.get("render_mode", "")).strip()]
+    if "flf2v" in modes:
+        return "flf2v"
+    if "ia2v" in modes:
+        return "ia2v"
+    return "i2v"
 
 
 

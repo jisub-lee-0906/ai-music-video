@@ -31,7 +31,7 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
                     "shot_role": part["shot_role"],
                     "visual_mode": part["visual_mode"],
                     "energy": part["energy"],
-                    "render_mode": part["render_mode"],
+                    "render_mode": _default_render_mode(config, part),
                     "source_section_index": section["index"],
                     "continuity_mode": continuity_mode,
                     **shot_intent,
@@ -160,6 +160,15 @@ def _continuity_mode(config: dict) -> str:
     if mode in {"strict", "moderate", "expressive"}:
         return mode
     return "strict"
+
+
+
+def _default_render_mode(config: dict, part: dict) -> str:
+    planning = config.get("planning", {}) if isinstance(config, dict) else {}
+    enable_ia2v = planning.get("enable_ia2v")
+    if enable_ia2v is False:
+        return str(part.get("render_mode", "i2v")).strip() or "i2v"
+    return "ia2v"
 
 
 

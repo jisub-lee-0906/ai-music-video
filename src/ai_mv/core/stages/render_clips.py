@@ -17,7 +17,9 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
         render_item = render_map.get(shot_id, {})
-        render_mode = str(render_item.get("render_mode") or shot.get("render_mode", "i2v")).strip() or "i2v"
+        render_mode = str(render_item.get("render_mode") or shot.get("render_mode", "")).strip()
+        if not render_mode:
+            raise RuntimeError(f"missing render_mode for shot: {shot_id}")
         video_path = _run_clip(stage_input, shot_id, shot, render_item, still_map, render_mode)
         clip_results.append(
             {

@@ -73,8 +73,6 @@ def _eligible_for_flf2v(shot: dict, next_shot: dict, min_sec: float, max_sec: fl
     workflow_intent = str(shot.get("workflow_intent", "")).strip()
     if workflow_intent and workflow_intent != "bridge_candidate":
         return False
-    if str(shot.get("render_mode", "")) != "i2v":
-        return False
     duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)
     if not (min_sec <= duration_sec <= max_sec):
         return False

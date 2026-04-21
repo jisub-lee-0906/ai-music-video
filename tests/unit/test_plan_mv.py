@@ -53,7 +53,7 @@ def test_plan_mv_uses_audio_sections_and_stays_within_m1_bounds():
     assert 4 <= len(shot_plan) <= 6
     assert len(render_plan) == len(shot_plan)
     assert any(shot["section_type"] == "chorus" for shot in shot_plan)
-    assert all(shot["render_mode"] == "i2v" for shot in shot_plan)
+    assert all(shot["render_mode"] in {"ia2v", "flf2v"} for shot in shot_plan)
     assert round(sum(float(shot["duration_sec"]) for shot in shot_plan), 3) == 19.0
 
 
@@ -196,7 +196,7 @@ def test_plan_mv_builds_rich_render_prompts():
     assert "scene event:" not in item["prompt_seed"]
     assert item["prompt_draft"]
     assert item["prompt_polish"]
-    assert "audio_segment" not in item
+    assert item["audio_segment"] == {"start_sec": 0.0, "duration_sec": 7.5}
 
 
 def test_plan_mv_threads_expressive_continuity_mode_into_direction_and_prompts():
@@ -284,6 +284,26 @@ def test_plan_mv_keeps_i2v_when_ia2v_is_disabled():
     )
 
     assert all(shot["render_mode"] == "i2v" for shot in out["shot_plan"])
+
+
+def test_plan_mv_defaults_to_ia2v_centered_render_modes():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
 
 
 def test_plan_mv_can_route_flf2v_for_bridge_when_enabled():

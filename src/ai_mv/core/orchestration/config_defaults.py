@@ -49,7 +49,7 @@ DEFAULT_CONFIG: dict = {
         "quality_findings_path": "",
     },
     "planning": {
-        "enable_ia2v": False,
+        "enable_ia2v": True,
         "enable_flf2v": False,
         "max_shot_sec": 8.0,
         "max_ia2v_shots": 2,

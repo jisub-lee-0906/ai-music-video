@@ -51,7 +51,7 @@ def _apply_smoke_mode_overrides(config: dict) -> None:
 
     audio["target_duration_min_sec"] = min_sec
     audio["target_duration_max_sec"] = max_sec
-    planning["enable_ia2v"] = False
+    planning["enable_ia2v"] = True
     planning["enable_flf2v"] = False
 
     config["audio"] = audio

@@ -491,6 +491,24 @@ def test_render_clips_routes_i2v(monkeypatch):
     assert calls[0][1]["positive_prompt"] == "slow windshield drift, stable motion, no abrupt pose change"
 
 
+def test_render_clips_requires_explicit_render_mode_in_canonical_runtime():
+    stage_input = StageInput(
+        run_id="run-2-missing-mode",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload={
+            "music_file": "music/song.mp3",
+            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0}],
+            "render_plan": [{"shot_id": "S001", "prompt_seed": "night drive"}],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png"}],
+        },
+    )
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="missing render_mode for shot: S001"):
+        run_render_clips(stage_input)
+
+
 def test_render_clips_fails_fast_when_i2v_still_is_missing():
     stage_input = StageInput(
         run_id="run-2-missing-still",
