@@ -29,6 +29,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     ]
     summary_fields = derive_summary_fields(payload)
     review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
+    review_scores = review_report.get("scores") if isinstance(review_report.get("scores"), dict) else {}
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -42,6 +43,12 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "final_video": str(payload.get("final_video", "")).strip(),
         "music_file": str(payload.get("music_file", "")).strip(),
         "review_status": str(review_report.get("status", "")).strip(),
+        "overall_status": str(review_report.get("overall_status", "")).strip(),
+        "publishability_tier": str(review_report.get("publishability_tier", "")).strip(),
+        "recommended_next_action": str(review_report.get("recommended_next_action", "")).strip(),
+        "technical_completion_score": float(review_scores.get("technical_completion", 0.0) or 0.0),
+        "material_quality_score": float(review_scores.get("material_quality", 0.0) or 0.0),
+        "final_mv_quality_score": float(review_scores.get("final_mv_quality", 0.0) or 0.0),
         "rerender_target_count": len(review_report.get("rerender_targets", [])),
         "rerender_escalation_status": str(rerender_escalation.get("status", "")).strip(),
         "rerender_escalation_shot_count": int(rerender_escalation.get("shot_count", 0) or 0),

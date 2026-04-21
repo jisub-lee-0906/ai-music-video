@@ -105,6 +105,15 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
             "review_report": {
                 "status": "done",
                 "rerender_targets": [],
+                "overall_status": "pass",
+                "publishability_tier": "publishable",
+                "recommended_next_action": "publish",
+                "scores": {
+                    "overall": 100.0,
+                    "technical_completion": 100.0,
+                    "material_quality": 100.0,
+                    "final_mv_quality": 84.0,
+                },
                 "assembly_revision_summary": {
                     "present": True,
                     "action": "revise_transition_selection",
@@ -127,6 +136,12 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
     assert captured["assembly_revision_target"] == "assembly"
     assert captured["assembly_revision_final_video"] == "final.mp4"
     assert captured["assembly_revision_music_file"] == "music.mp3"
+    assert captured["overall_status"] == "pass"
+    assert captured["publishability_tier"] == "publishable"
+    assert captured["recommended_next_action"] == "publish"
+    assert captured["technical_completion_score"] == 100.0
+    assert captured["material_quality_score"] == 100.0
+    assert captured["final_mv_quality_score"] == 84.0
 
 
 
