@@ -52,6 +52,23 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
     }
     assert manifest["review"] == {"status": "done", "rerender_targets": []}
     assert manifest["artifacts"] == {"scope": "run"}
+    assert "concept_text" not in manifest
+    assert "style_name" not in manifest
+    assert "style_bible" not in manifest
+    assert "planner_prompts" not in manifest
+    assert "workflow_inputs" not in manifest
+    assert "workflow_inputs_preview" not in manifest
+    assert "render_inputs" not in manifest
+    assert "audio_plan" not in manifest
+    assert "audio_map" not in manifest
+    assert "shot_plan" not in manifest
+    assert "render_plan" not in manifest
+    assert "still_results" not in manifest
+    assert "clip_results" not in manifest
+    assert "review_report" not in manifest
+    assert "final_video" not in manifest
+    assert "music_file" not in manifest
+    assert "legacy" not in manifest
 
 
 

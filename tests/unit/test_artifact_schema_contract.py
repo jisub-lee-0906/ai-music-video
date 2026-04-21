@@ -72,3 +72,32 @@ def test_failed_run_updates_latest_but_preserves_latest_success(monkeypatch, tmp
     assert latest_success_summary == success_latest_success_summary
     assert latest_success_manifest["run_id"] == "run-success"
     assert latest_success_summary["run_id"] == "run-success"
+
+
+
+def test_done_run_without_real_media_does_not_update_latest_success(monkeypatch, tmp_path):
+    monkeypatch.setattr(artifact_paths, "PROJECT_ROOT", tmp_path)
+
+    fake_success_state = {
+        "run_id": "test-smoke-stage",
+        "status": "done",
+        "failure_reason": "",
+        "current_stage": "fake_stage",
+        "completed_stages": ["fake_stage"],
+        "scope": "run",
+    }
+    fake_success_payload = {
+        "concept_text": "synthetic success",
+        "style_name": "citypop",
+        "style_resolution": {"style_name": "citypop", "selection_source": "auto", "confidence": 0.5},
+        "final_video": "",
+        "music_file": "",
+        "review_report": {"status": ""},
+    }
+
+    write_pipeline_artifacts(fake_success_state, fake_success_payload, {})
+
+    assert (tmp_path / "artifacts" / "latest" / "manifest.json").exists()
+    assert (tmp_path / "artifacts" / "latest" / "run_summary.json").exists()
+    assert not (tmp_path / "artifacts" / "latest_success" / "manifest.json").exists()
+    assert not (tmp_path / "artifacts" / "latest_success" / "run_summary.json").exists()
