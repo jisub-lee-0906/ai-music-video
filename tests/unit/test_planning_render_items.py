@@ -245,7 +245,7 @@ def test_render_item_emits_render_planning_metadata_from_appendix_formula():
             "section_name": "Chorus",
             "visual_mode": "grid_surge",
             "edit_role": "hook",
-            "framing_intent": "performance_closeup",
+            "framing_intent": "performance_medium",
             "continuity_mode": "strict",
             "energy": "high",
             "start_sec": 8.0,

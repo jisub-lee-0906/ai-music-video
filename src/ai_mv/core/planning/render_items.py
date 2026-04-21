@@ -270,7 +270,7 @@ def _mode_importance_score(shot: dict) -> float:
     render_mode = str(shot.get("render_mode", "")).strip()
     section_type = str(shot.get("section_type", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
-    if render_mode == "ia2v" or framing_intent == "performance_closeup" or section_type == "chorus":
+    if render_mode == "ia2v" or framing_intent == "performance_medium" or section_type == "chorus":
         return 1.00
     if render_mode == "flf2v" or "bridge" in visual_mode or section_type == "bridge":
         return 0.85

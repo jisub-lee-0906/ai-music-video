@@ -54,6 +54,6 @@ def _environment_anchor(shot: dict) -> str:
 def _framing_phrase(shot: dict) -> str:
     return {
         "establishing_wide": "soft wide frame with hazy depth and one anchored subject",
-        "performance_closeup": "front-facing close-up with gentle bloom and clean edge separation",
+        "performance_medium": "performance-led medium shot with gentle bloom and stable edge separation",
         "release_wide": "release wide frame with airy negative space",
     }.get(str(shot.get("framing_intent", "")), "soft cinematic close-up with stable scene depth")

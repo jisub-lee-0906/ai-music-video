@@ -225,7 +225,7 @@ def _still_framing_phrase(shot: dict) -> str:
         "hero_medium": "hero medium shot with clear environment context",
         "connective_medium": "environment-led medium shot with connective framing",
         "performance_medium": "performance-led medium shot with stable environment context",
-        "performance_closeup": "bold front-facing close-up",
+        "performance_medium": "performance-led medium shot with stable environment context",
         "release_wide": "wide release frame with skyline-led negative space",
     }
     if framing_intent in intent_mapping:
