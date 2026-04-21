@@ -1536,6 +1536,51 @@ def test_rerender_review_merges_fresh_assets_and_recomputes_review(monkeypatch):
 
 
 
+def test_rerender_review_preserves_assembly_revision_review_inputs():
+    out = run_rerender_review(
+        StageInput(
+            run_id="run-rerender-review-assembly-action",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "music_file": "D:/renders/song.mp3",
+                "shot_plan": [{"shot_id": "S001"}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"}],
+                "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"}],
+                "review_inputs": {
+                    "music_file": "D:/renders/song.mp3",
+                    "assembly_revision": {
+                        "action": "revise_assembly_weights_before_clip_rerender",
+                        "target": "assembly",
+                        "final_video": "D:/renders/final.mp4",
+                        "music_file": "D:/renders/song.mp3",
+                    },
+                },
+                "review_action": "revise_assembly_weights_before_clip_rerender",
+                "rerender_results": {
+                    "completed_stages": ["review"],
+                    "still_results": [],
+                    "clip_results": [],
+                },
+            },
+        )
+    )
+
+    assert out.payload["review_inputs"] == {
+        "music_file": "D:/renders/song.mp3",
+        "assembly_revision": {
+            "action": "revise_assembly_weights_before_clip_rerender",
+            "target": "assembly",
+            "final_video": "D:/renders/final.mp4",
+            "music_file": "D:/renders/song.mp3",
+        },
+    }
+    assert out.payload["review_action"] == "revise_assembly_weights_before_clip_rerender"
+    assert out.payload["rerender_final_video"] == "D:/renders/final.mp4"
+
+
+
 def test_rerender_review_keeps_existing_assets_for_unmodified_shots():
     out = run_rerender_review(
         StageInput(
