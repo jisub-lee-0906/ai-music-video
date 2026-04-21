@@ -16,7 +16,7 @@ def build_synthwave_prompt_seed(concept_text: str, style_bible: dict, shot: dict
             subject,
             environment,
             palette,
-            "retro-futurist anime frame",
+            "retro-futurist cinematic frame",
             "single coherent night-drive world",
             "stable character identity",
             "clean cinematic composition",

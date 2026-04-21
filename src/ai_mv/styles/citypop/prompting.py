@@ -17,7 +17,7 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
         palette=palette,
     )
     tail_parts = [
-        "clean cel shading",
+        "cinematic illustration lighting",
         _world_continuity_phrase(continuity_mode),
         _identity_continuity_phrase(continuity_mode),
         "film grain",

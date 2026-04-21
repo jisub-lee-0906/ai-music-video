@@ -11,7 +11,7 @@ def build_j_rock_prompt_seed(concept_text: str, style_bible: dict, shot: dict) -
             _subject_anchor(shot),
             _environment_anchor(shot),
             ", ".join(style_bible.get("palette", [])[:2]),
-            "performance-forward anime frame",
+            "performance-forward cinematic frame",
             "stable character identity",
         ]
         if part

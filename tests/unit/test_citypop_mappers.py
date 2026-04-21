@@ -9,7 +9,7 @@ def test_flux2_text_to_image_mapper():
     cfg = {"render": {"flux2_size": "1024x1024"}, "video": {"target": "1920x1080@24"}}
     item = {
         "shot_id": "S001",
-        "positive_prompt": "city pop heroine, sunset coast, clean cel shading, film grain",
+        "positive_prompt": "city pop heroine, sunset coast, cinematic illustration lighting, film grain",
         "negative_prompt": "ugly, blurry",
         "filename_prefix": still_prefix("S001-run", "S001"),
         "seed": 1234,
