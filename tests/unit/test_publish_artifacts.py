@@ -53,6 +53,81 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
 
 
 
+def test_write_manifest_falls_back_to_style_name_and_empty_safe_canonical_sections(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.write_json", lambda path, payload: captured.append((str(path), payload)))
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.run_file", lambda run_id, name, scope: f"/tmp/{run_id}/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_file", lambda name, scope: f"/tmp/latest/{scope}/{name}")
+    monkeypatch.setattr("ai_mv.core.artifacts.manifest.latest_success_file", lambda name, scope: f"/tmp/latest-success/{scope}/{name}")
+
+    write_manifest(
+        {"run_id": "run-201", "status": "done", "failure_reason": "", "scope": "run"},
+        {
+            "concept_text": "dreamy dusk drive",
+            "style_name": "dream_pop",
+        },
+    )
+
+    manifest = captured[0][1]
+    assert manifest["schema_version"] == "ai_mv_schema_v1"
+    assert manifest["style_resolution"] == {"style_name": "dream_pop"}
+    assert manifest["song"] == {"music_file": "", "audio_plan": {}, "audio_map": {}}
+    assert manifest["sections"] == []
+    assert manifest["materials"] == {"still_results": []}
+    assert manifest["renders"] == {"render_plan": [], "clip_results": []}
+    assert manifest["assembly"] == {"final_video": "", "review_inputs": {}}
+    assert manifest["review"] == {}
+    assert manifest["artifacts"] == {"scope": "run"}
+
+
+
+def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_summary(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_manifest", lambda state, payload: None)
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_run_summary", lambda state, summary: captured.update(summary))
+
+    write_pipeline_artifacts(
+        {"run_id": "run-122", "status": "done", "current_stage": "publish", "completed_stages": ["plan", "review", "publish"]},
+        {
+            "concept_text": "citypop night drive",
+            "style_name": "citypop",
+            "style_resolution": {
+                "style_name": "citypop",
+                "selection_source": "auto",
+                "selection_stability": "stable",
+                "confidence": 0.93,
+            },
+            "final_video": "final.mp4",
+            "music_file": "music.mp3",
+            "review_report": {
+                "status": "done",
+                "rerender_targets": [],
+                "assembly_revision_summary": {
+                    "present": True,
+                    "action": "revise_transition_selection",
+                    "target": "assembly",
+                    "final_video": "final.mp4",
+                    "music_file": "music.mp3",
+                },
+            },
+        },
+        {},
+    )
+
+    assert captured["schema_version"] == "ai_mv_schema_v1"
+    assert captured["style_name"] == "citypop"
+    assert captured["style_selection_source"] == "auto"
+    assert captured["style_selection_stability"] == "stable"
+    assert captured["style_selection_confidence"] == 0.93
+    assert captured["assembly_revision_present"] is True
+    assert captured["assembly_revision_action"] == "revise_transition_selection"
+    assert captured["assembly_revision_target"] == "assembly"
+    assert captured["assembly_revision_final_video"] == "final.mp4"
+    assert captured["assembly_revision_music_file"] == "music.mp3"
+
+
+
 def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypatch):
     captured = {}
     monkeypatch.setattr("ai_mv.core.artifacts.publish.write_manifest", lambda state, payload: None)

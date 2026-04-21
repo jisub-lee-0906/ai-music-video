@@ -25,6 +25,9 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         if isinstance(row, dict)
         for reason in row.get("reason_codes", []) if str(reason).strip()
     ]
+    style_resolution = payload.get("style_resolution") if isinstance(payload.get("style_resolution"), dict) else {}
+    review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
+    assembly_revision_summary = review_report.get("assembly_revision_summary") if isinstance(review_report.get("assembly_revision_summary"), dict) else {}
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -32,15 +35,21 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "current_stage": str(state.get("current_stage", "")),
         "failure_reason": str(state.get("failure_reason", "")),
         "completed_stages": list(state.get("completed_stages", [])),
+        "schema_version": "ai_mv_schema_v1",
         "concept_text": str(payload.get("concept_text", "")).strip(),
+        "style_name": str(style_resolution.get("style_name") or payload.get("style_name", "")).strip(),
+        "style_selection_source": str(style_resolution.get("selection_source", "")).strip(),
+        "style_selection_stability": str(style_resolution.get("selection_stability", "")).strip(),
+        "style_selection_confidence": float(style_resolution.get("confidence", 0.0) or 0.0),
         "final_video": str(payload.get("final_video", "")).strip(),
         "music_file": str(payload.get("music_file", "")).strip(),
-        "review_status": str(payload.get("review_report", {}).get("status", "")).strip()
-        if isinstance(payload.get("review_report"), dict)
-        else "",
-        "rerender_target_count": len(payload.get("review_report", {}).get("rerender_targets", []))
-        if isinstance(payload.get("review_report"), dict)
-        else 0,
+        "review_status": str(review_report.get("status", "")).strip(),
+        "rerender_target_count": len(review_report.get("rerender_targets", [])),
+        "assembly_revision_present": bool(assembly_revision_summary.get("present", False)),
+        "assembly_revision_action": str(assembly_revision_summary.get("action", "")).strip(),
+        "assembly_revision_target": str(assembly_revision_summary.get("target", "")).strip(),
+        "assembly_revision_final_video": str(assembly_revision_summary.get("final_video", "")).strip(),
+        "assembly_revision_music_file": str(assembly_revision_summary.get("music_file", "")).strip(),
         "rerender_escalation_status": str(rerender_escalation.get("status", "")).strip(),
         "rerender_escalation_shot_count": int(rerender_escalation.get("shot_count", 0) or 0),
         "rerender_escalation_reviewer_summary": str(rerender_escalation.get("reviewer_summary", "")).strip(),
