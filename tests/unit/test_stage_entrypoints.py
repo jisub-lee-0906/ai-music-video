@@ -1117,9 +1117,11 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
             config={},
             payload={
                 "final_video": "D:/renders/final.mp4",
-                "shot_plan": [{"shot_id": "S006"}],
-                "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "status": "done"}],
-                "clip_results": [{"shot_id": "S006", "video": "D:/renders/S006.mp4", "status": "done"}],
+                "shot_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "i2v"}],
+                "material_plan": [{"material_id": "MAT_006", "section_id": "SEC_006"}],
+                "render_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "i2v"}],
+                "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "material_id": "MAT_006", "section_id": "SEC_006", "status": "done"}],
+                "clip_results": [{"shot_id": "S006", "video": "D:/renders/S006.mp4", "material_id": "MAT_006", "section_id": "SEC_006", "status": "done"}],
                 "review_inputs": {
                     "music_file": "D:/renders/song.mp3",
                     "quality_findings": {
@@ -1153,6 +1155,8 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
         assert out.payload["review_report"]["publishability_summary"]["isolated_asset_quality"]["rerender_bundle"] == {
             "action": "rerender_clips_with_terminal_frame_cleanup",
             "target_shots": ["S006"],
+            "target_material_ids": ["MAT_006"],
+            "target_section_ids": ["SEC_006"],
             "reason_codes": ["terminal_frame_corruption"],
         }
         assert out.payload["review_report"]["publishability_summary"]["final_mv_publishability"]["passed"] is False
@@ -1160,6 +1164,8 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
         assert out.payload["review_report"]["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
             "action": "rerender_continuity_break_shots",
             "target_shots": ["S006"],
+            "target_material_ids": ["MAT_006"],
+            "target_section_ids": ["SEC_006"],
             "reason_codes": ["continuity_break"],
         }
         assert out.payload["review_report"]["rerender_plan"] == [
@@ -1195,9 +1201,9 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
                 "rerender_stage": "clips",
                 "stage_payloads": {
                     "clips": {
-                        "shot_plan": [{"shot_id": "S006"}],
-                        "render_plan": [],
-                        "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "status": "done"}],
+                        "shot_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "i2v"}],
+                        "render_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "i2v"}],
+                        "still_results": [{"shot_id": "S006", "image": "D:/renders/S006.png", "material_id": "MAT_006", "section_id": "SEC_006", "status": "done"}],
                         "music_file": "",
                     }
                 },
@@ -1651,6 +1657,9 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
                         "final_video": "final.mp4",
                         "music_file": "song.mp3",
                         "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                        "target_shots": ["S010", "S011"],
+                        "target_material_ids": ["MAT_010", "MAT_011"],
+                        "target_section_ids": ["SEC_010", "SEC_011"],
                     }
                 },
             },
@@ -1673,6 +1682,9 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
                 "target": "assembly",
                 "final_video": "final.mp4",
                 "music_file": "song.mp3",
+                "target_shots": ["S010", "S011"],
+                "target_material_ids": ["MAT_010", "MAT_011"],
+                "target_section_ids": ["SEC_010", "SEC_011"],
             }
         },
         "assembly_revision_result": {
@@ -1681,6 +1693,9 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
             "target": "assembly",
             "output_final_video": "final.mp4",
             "revision_focus": "weights",
+            "target_shots": ["S010", "S011"],
+            "target_material_ids": ["MAT_010", "MAT_011"],
+            "target_section_ids": ["SEC_010", "SEC_011"],
         },
     }
     assert out.artifacts == []
@@ -1721,6 +1736,9 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
             "target": "assembly",
             "final_video": "final.mp4",
             "music_file": "song.mp3",
+            "target_shots": [],
+            "target_material_ids": [],
+            "target_section_ids": [],
         }
     }
     assert out.payload["assembly_revision_result"] == {
@@ -1729,6 +1747,9 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
         "target": "assembly",
         "output_final_video": "final.mp4",
         "revision_focus": "transitions",
+        "target_shots": [],
+        "target_material_ids": [],
+        "target_section_ids": [],
     }
 
 
@@ -1862,6 +1883,9 @@ def test_rerender_review_preserves_assembly_revision_review_inputs():
                         "target": "assembly",
                         "final_video": "D:/renders/final.mp4",
                         "music_file": "D:/renders/song.mp3",
+                        "target_shots": ["S010", "S011"],
+                        "target_material_ids": ["MAT_010", "MAT_011"],
+                        "target_section_ids": ["SEC_010", "SEC_011"],
                     },
                 },
                 "review_action": "revise_assembly_weights_before_clip_rerender",
@@ -1881,6 +1905,9 @@ def test_rerender_review_preserves_assembly_revision_review_inputs():
             "target": "assembly",
             "final_video": "D:/renders/final.mp4",
             "music_file": "D:/renders/song.mp3",
+            "target_shots": ["S010", "S011"],
+            "target_material_ids": ["MAT_010", "MAT_011"],
+            "target_section_ids": ["SEC_010", "SEC_011"],
         },
     }
     assert out.payload["review_action"] == "revise_assembly_weights_before_clip_rerender"
@@ -1891,6 +1918,9 @@ def test_rerender_review_preserves_assembly_revision_review_inputs():
         "target": "assembly",
         "final_video": "D:/renders/final.mp4",
         "music_file": "D:/renders/song.mp3",
+        "target_shots": ["S010", "S011"],
+        "target_material_ids": ["MAT_010", "MAT_011"],
+        "target_section_ids": ["SEC_010", "SEC_011"],
     }
 
 

@@ -117,11 +117,23 @@ def summarize_publishability(
     non_blocking_checks: dict[str, bool],
     rerender_reasons: dict[str, list[str]] | None = None,
     assembly_quality_summary: dict[str, object] | None = None,
+    shot_plan: list[dict] | None = None,
+    material_plan: list[dict] | None = None,
+    render_plan: list[dict] | None = None,
+    still_results: list[dict] | None = None,
+    clip_results: list[dict] | None = None,
 ) -> dict[str, dict[str, object]]:
     blocking = blocking_checks if isinstance(blocking_checks, dict) else {}
     non_blocking = non_blocking_checks if isinstance(non_blocking_checks, dict) else {}
     reasons_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
     assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else {}
+    rerender_context_by_shot = _build_rerender_context_by_shot(
+        shot_plan=shot_plan or [],
+        material_plan=material_plan or [],
+        render_plan=render_plan or [],
+        still_results=still_results or [],
+        clip_results=clip_results or [],
+    )
     return {
         "technical_completion": _summary(
             "technical_completion",
@@ -131,6 +143,7 @@ def summarize_publishability(
             reasons_map,
             field_name="blocking_failures",
             action_priority=_TECHNICAL_PRIORITY,
+            rerender_context_by_shot=rerender_context_by_shot,
         ),
         "isolated_asset_quality": _summary(
             "isolated_asset_quality",
@@ -139,6 +152,7 @@ def summarize_publishability(
             non_blocking,
             reasons_map,
             action_priority=_ISOLATED_PRIORITY,
+            rerender_context_by_shot=rerender_context_by_shot,
         ),
         "final_mv_publishability": _summary(
             "final_mv_publishability",
@@ -148,6 +162,7 @@ def summarize_publishability(
             reasons_map,
             action_priority=_FINAL_PRIORITY,
             assembly_quality_summary=assembly,
+            rerender_context_by_shot=rerender_context_by_shot,
         ),
     }
 
@@ -266,6 +281,7 @@ def _summary(
     field_name: str = "failed_checks",
     action_priority: tuple[tuple[str, str], ...] = (),
     assembly_quality_summary: dict[str, object] | None = None,
+    rerender_context_by_shot: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, object]:
     failures: list[str] = []
     assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else None
@@ -282,7 +298,7 @@ def _summary(
         field_name: failures,
         "next_action": next_action,
         "rerender_guidance": [_GUIDANCE_BY_CHECK[check_name] for check_name in failures if check_name in _GUIDANCE_BY_CHECK],
-        "rerender_bundle": _rerender_bundle(bucket_name, next_action, rerender_reasons),
+        "rerender_bundle": _rerender_bundle(bucket_name, next_action, rerender_reasons, rerender_context_by_shot=rerender_context_by_shot),
         "rerender_prescription": _rerender_prescription(next_action),
     }
 
@@ -298,7 +314,13 @@ def _next_action(failures: list[str], action_priority: tuple[tuple[str, str], ..
 
 
 
-def _rerender_bundle(bucket_name: str, action_name: str, rerender_reasons: dict[str, list[str]]) -> dict[str, object]:
+def _rerender_bundle(
+    bucket_name: str,
+    action_name: str,
+    rerender_reasons: dict[str, list[str]],
+    *,
+    rerender_context_by_shot: dict[str, dict[str, str]] | None = None,
+) -> dict[str, object]:
     if action_name == "no_action":
         return {
             "action": "no_action",
@@ -307,7 +329,10 @@ def _rerender_bundle(bucket_name: str, action_name: str, rerender_reasons: dict[
         }
     bucket_reason_codes = _BUCKET_REASON_CODES.get(bucket_name, set())
     target_shots: list[str] = []
+    target_material_ids: list[str] = []
+    target_section_ids: list[str] = []
     reason_codes: set[str] = set()
+    context_by_shot = rerender_context_by_shot if isinstance(rerender_context_by_shot, dict) else {}
     for shot_id, reasons in rerender_reasons.items():
         matched_reasons = [reason for reason in reasons if reason in bucket_reason_codes] if isinstance(reasons, list) else []
         if not matched_reasons:
@@ -315,13 +340,88 @@ def _rerender_bundle(bucket_name: str, action_name: str, rerender_reasons: dict[
         normalized_shot_id = str(shot_id or "").strip()
         if normalized_shot_id:
             target_shots.append(normalized_shot_id)
+            context = context_by_shot.get(normalized_shot_id, {})
+            material_id = str(context.get("material_id", "")).strip()
+            section_id = str(context.get("section_id", "")).strip()
+            if material_id and material_id not in target_material_ids:
+                target_material_ids.append(material_id)
+            if section_id and section_id not in target_section_ids:
+                target_section_ids.append(section_id)
         reason_codes.update(str(reason).strip() for reason in matched_reasons if str(reason).strip())
     return {
         "action": action_name,
         "target_shots": target_shots,
+        "target_material_ids": target_material_ids,
+        "target_section_ids": target_section_ids,
         "reason_codes": sorted(reason_codes),
     }
 
+
+
+def _build_rerender_context_by_shot(
+    *,
+    shot_plan: list[dict],
+    material_plan: list[dict],
+    render_plan: list[dict],
+    still_results: list[dict],
+    clip_results: list[dict],
+) -> dict[str, dict[str, str]]:
+    material_section_by_id = {
+        str(row.get("material_id", "")).strip(): str(row.get("section_id", "")).strip()
+        for row in material_plan
+        if isinstance(row, dict) and str(row.get("material_id", "")).strip()
+    }
+    shot_map = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in shot_plan
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    }
+    render_map = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in render_plan
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    }
+    still_map = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in still_results
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    }
+    clip_map = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in clip_results
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    }
+    shot_ids = [
+        shot_id
+        for shot_id in [*shot_map.keys(), *render_map.keys(), *still_map.keys(), *clip_map.keys()]
+        if shot_id
+    ]
+    out: dict[str, dict[str, str]] = {}
+    for shot_id in shot_ids:
+        shot_row = shot_map.get(shot_id, {})
+        render_row = render_map.get(shot_id, {})
+        still_row = still_map.get(shot_id, {})
+        clip_row = clip_map.get(shot_id, {})
+        material_id = str(
+            clip_row.get("material_id")
+            or still_row.get("material_id")
+            or render_row.get("material_id")
+            or shot_row.get("material_id")
+            or ""
+        ).strip()
+        section_id = str(
+            clip_row.get("section_id")
+            or still_row.get("section_id")
+            or render_row.get("section_id")
+            or shot_row.get("section_id")
+            or material_section_by_id.get(material_id, "")
+            or ""
+        ).strip()
+        out[shot_id] = {
+            "material_id": material_id,
+            "section_id": section_id,
+        }
+    return out
 
 
 def _rerender_prescription(action_name: str, reason_codes: list[str] | None = None) -> dict[str, object]:

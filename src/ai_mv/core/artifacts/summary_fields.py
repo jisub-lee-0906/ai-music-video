@@ -26,4 +26,7 @@ def derive_summary_fields(payload: dict) -> dict[str, object]:
         "assembly_revision_target": str(assembly_revision_summary.get("target", "")).strip(),
         "assembly_revision_final_video": str(assembly_revision_summary.get("final_video", "")).strip(),
         "assembly_revision_music_file": str(assembly_revision_summary.get("music_file", "")).strip(),
+        "assembly_revision_target_shots": [str(value).strip() for value in assembly_revision_summary.get("target_shots", []) if str(value).strip()] if isinstance(assembly_revision_summary.get("target_shots"), list) else [],
+        "assembly_revision_target_material_ids": [str(value).strip() for value in assembly_revision_summary.get("target_material_ids", []) if str(value).strip()] if isinstance(assembly_revision_summary.get("target_material_ids"), list) else [],
+        "assembly_revision_target_section_ids": [str(value).strip() for value in assembly_revision_summary.get("target_section_ids", []) if str(value).strip()] if isinstance(assembly_revision_summary.get("target_section_ids"), list) else [],
     }

@@ -20,6 +20,9 @@ def test_artifact_summary_fields_helper_derives_style_and_assembly_revision_meta
                     "target": "assembly",
                     "final_video": "final.mp4",
                     "music_file": "music.mp3",
+                    "target_shots": ["S010"],
+                    "target_material_ids": ["MAT_010"],
+                    "target_section_ids": ["SEC_010"],
                 }
             },
         }
@@ -35,6 +38,9 @@ def test_artifact_summary_fields_helper_derives_style_and_assembly_revision_meta
         "assembly_revision_target": "assembly",
         "assembly_revision_final_video": "final.mp4",
         "assembly_revision_music_file": "music.mp3",
+        "assembly_revision_target_shots": ["S010"],
+        "assembly_revision_target_material_ids": ["MAT_010"],
+        "assembly_revision_target_section_ids": ["SEC_010"],
     }
 
 
@@ -64,4 +70,7 @@ def test_artifact_summary_fields_helper_preserves_fallbacks_and_sanitizes_invali
         "assembly_revision_target": "",
         "assembly_revision_final_video": "",
         "assembly_revision_music_file": "",
+        "assembly_revision_target_shots": [],
+        "assembly_revision_target_material_ids": [],
+        "assembly_revision_target_section_ids": [],
     }

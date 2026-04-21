@@ -308,6 +308,9 @@ def test_review_models_include_assembly_revision_summary():
         "target": "assembly",
         "final_video": "final.mp4",
         "music_file": "song.mp3",
+        "target_shots": [],
+        "target_material_ids": [],
+        "target_section_ids": [],
     }
 
 
@@ -399,6 +402,8 @@ def test_review_models_include_publishability_summary_levels():
     assert summary["isolated_asset_quality"]["rerender_bundle"] == {
         "action": "rerender_clips_with_terminal_frame_cleanup",
         "target_shots": ["S006"],
+        "target_material_ids": [],
+        "target_section_ids": [],
         "reason_codes": ["duplicate_subject", "terminal_frame_corruption"],
     }
     assert summary["isolated_asset_quality"]["rerender_prescription"] == {
@@ -417,6 +422,8 @@ def test_review_models_include_publishability_summary_levels():
     assert summary["final_mv_publishability"]["rerender_bundle"] == {
         "action": "rerender_continuity_break_shots",
         "target_shots": ["S006"],
+        "target_material_ids": [],
+        "target_section_ids": [],
         "reason_codes": ["continuity_break"],
     }
     assert summary["final_mv_publishability"]["rerender_prescription"] == {
@@ -833,6 +840,9 @@ def test_review_models_build_review_stage_execution_payload_for_audio_sync_repai
                     "final_video": "final.mp4",
                     "music_file": "song.mp3",
                     "recommended_action": "repair_audio_video_sync",
+                    "target_shots": ["S001"],
+                    "target_material_ids": [],
+                    "target_section_ids": [],
                 }
             },
         }
@@ -890,6 +900,8 @@ def test_review_models_route_assembly_only_failures_to_publishability_summary_be
     assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
         "action": "revise_assembly_weights_before_clip_rerender",
         "target_shots": ["S001"],
+        "target_material_ids": [],
+        "target_section_ids": [],
         "reason_codes": ["arbitrary_transitions", "chorus_not_stronger_than_verse"],
     }
 
@@ -1054,6 +1066,8 @@ def test_review_models_surface_new_publishability_quality_findings():
     assert report["publishability_summary"]["isolated_asset_quality"]["rerender_bundle"] == {
         "action": "rerender_scene_intrusion_shots",
         "target_shots": ["S006"],
+        "target_material_ids": [],
+        "target_section_ids": [],
         "reason_codes": [
             "unrelated_scene_intrusion",
             "weak_environment_match",
@@ -1073,6 +1087,8 @@ def test_review_models_surface_new_publishability_quality_findings():
     assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
         "action": "rerender_motion_fragile_shots_with_safer_keyframes",
         "target_shots": ["S006"],
+        "target_material_ids": [],
+        "target_section_ids": [],
         "reason_codes": ["motion_fragile_frame"],
     }
     assert report["publishability_summary"]["final_mv_publishability"]["rerender_prescription"] == {
@@ -1139,6 +1155,8 @@ def test_review_models_surface_panelized_keyframe_findings():
     assert report["publishability_summary"]["isolated_asset_quality"]["rerender_bundle"] == {
         "action": "rerender_panelized_keyframes",
         "target_shots": ["S006"],
+        "target_material_ids": [],
+        "target_section_ids": [],
         "reason_codes": [
             "collage_layout",
             "panel_layout",

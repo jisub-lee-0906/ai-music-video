@@ -145,10 +145,21 @@ def build_rerender_execution_payloads(
                 "music_file": normalized_music_file,
             }
         if stage_focus == "review":
+            review_material_id = str((render_row or {}).get("material_id", "") or (shot_row or {}).get("material_id", "")).strip()
+            review_material_row = material_map.get(review_material_id) or {}
+            review_section_id = str(
+                (render_row or {}).get("section_id", "")
+                or (shot_row or {}).get("section_id", "")
+                or review_material_row.get("section_id", "")
+                or ""
+            ).strip()
             stage_payloads["review"] = {
                 "final_video": normalized_final_video,
                 "music_file": normalized_music_file,
                 "recommended_action": str(item.get("recommended_action", "")).strip(),
+                "target_shots": [shot_id],
+                "target_material_ids": [review_material_id] if review_material_id else [],
+                "target_section_ids": [review_section_id] if review_section_id else [],
             }
         execution_payloads.append(
             {
@@ -377,6 +388,11 @@ def build_review_report(
         non_blocking_checks=non_blocking_checks,
         rerender_reasons=rerender_reasons,
         assembly_quality_summary=effective_assembly_quality_summary,
+        shot_plan=shot_plan or [],
+        material_plan=material_plan or [],
+        render_plan=render_plan or [],
+        still_results=still_results,
+        clip_results=clip_results,
     )
     final_review_summary = build_final_review_summary(
         blocking_checks=blocking_checks,
@@ -487,4 +503,7 @@ def summarize_assembly_revision(assembly_revision: dict[str, object] | None) -> 
         "target": str(revision.get("target", "")).strip(),
         "final_video": str(revision.get("final_video", "")).strip(),
         "music_file": str(revision.get("music_file", "")).strip(),
+        "target_shots": [str(value).strip() for value in revision.get("target_shots", []) if str(value).strip()] if isinstance(revision.get("target_shots"), list) else [],
+        "target_material_ids": [str(value).strip() for value in revision.get("target_material_ids", []) if str(value).strip()] if isinstance(revision.get("target_material_ids"), list) else [],
+        "target_section_ids": [str(value).strip() for value in revision.get("target_section_ids", []) if str(value).strip()] if isinstance(revision.get("target_section_ids"), list) else [],
     }

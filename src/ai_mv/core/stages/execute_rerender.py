@@ -106,6 +106,9 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
         if key in stage_payload and stage_payload[key]
     }
     if recommended_action in ASSEMBLY_REVIEW_ACTIONS:
+        target_shots = [str(value).strip() for value in stage_payload.get("target_shots", []) if str(value).strip()] if isinstance(stage_payload.get("target_shots"), list) else []
+        target_material_ids = [str(value).strip() for value in stage_payload.get("target_material_ids", []) if str(value).strip()] if isinstance(stage_payload.get("target_material_ids"), list) else []
+        target_section_ids = [str(value).strip() for value in stage_payload.get("target_section_ids", []) if str(value).strip()] if isinstance(stage_payload.get("target_section_ids"), list) else []
         passthrough_payload["review_inputs"] = {
             **(passthrough_payload.get("review_inputs") if isinstance(passthrough_payload.get("review_inputs"), dict) else {}),
             "assembly_revision": {
@@ -113,6 +116,9 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
                 "target": "assembly",
                 "final_video": str(stage_payload.get("final_video", "")).strip(),
                 "music_file": str(stage_payload.get("music_file", "")).strip(),
+                "target_shots": target_shots,
+                "target_material_ids": target_material_ids,
+                "target_section_ids": target_section_ids,
             },
         }
         passthrough_payload["assembly_revision_result"] = {
@@ -121,6 +127,9 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
             "target": "assembly",
             "output_final_video": str(stage_payload.get("final_video", "")).strip(),
             "revision_focus": "weights" if recommended_action == "revise_assembly_weights_before_clip_rerender" else "transitions",
+            "target_shots": target_shots,
+            "target_material_ids": target_material_ids,
+            "target_section_ids": target_section_ids,
         }
     passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
     return StageOutput("review_action", "done", passthrough_payload, [])
