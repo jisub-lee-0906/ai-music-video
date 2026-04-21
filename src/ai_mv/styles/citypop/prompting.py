@@ -151,7 +151,7 @@ def _still_subject_phrase(shot: dict) -> str:
     if visual_mode == "city_glance":
         return "young woman turning toward the camera through city reflections"
     if visual_mode == "chorus_performance":
-        return "a close-up of a singer facing the camera with neon reflections and vivid expression"
+        return "performance-led singer in a three-quarter medium frame with neon reflections"
     if visual_mode == "neon_release":
         return "young woman framed by neon reflections and moving city light"
     if visual_mode == "night_bridge":
@@ -224,6 +224,7 @@ def _still_framing_phrase(shot: dict) -> str:
         "establishing_wide": "wide establishing frame with a small subject and dominant city perspective",
         "hero_medium": "hero medium shot with clear environment context",
         "connective_medium": "environment-led medium shot with connective framing",
+        "performance_medium": "performance-led medium shot with stable environment context",
         "performance_closeup": "bold front-facing close-up",
         "release_wide": "wide release frame with skyline-led negative space",
     }
@@ -234,7 +235,7 @@ def _still_framing_phrase(shot: dict) -> str:
         "night_drive": "tight close-up with reflected night light",
         "window_reflection": "tight close-up through reflective glass",
         "city_glance": "three-quarter reflective close-up",
-        "chorus_performance": "bold front-facing close-up",
+        "chorus_performance": "performance-led medium shot with stable environment context",
         "neon_release": "medium close-up with neon framing",
         "night_bridge": "close-up with bridge lights in the background",
         "memory_flash": "soft portrait close-up",

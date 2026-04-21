@@ -36,7 +36,7 @@ def test_shot_plan_adds_shot_intent_fields():
     assert chorus_shot["edit_role"] == "hook"
     assert chorus_shot["coverage_role"] == "anchor"
     assert chorus_shot["workflow_intent"] == "audio_reactive_candidate"
-    assert chorus_shot["framing_intent"] == "performance_closeup"
+    assert chorus_shot["framing_intent"] == "performance_medium"
 
 
 def test_shot_plan_gives_long_chorus_a_non_close_support_shot():
@@ -60,7 +60,7 @@ def test_shot_plan_gives_long_chorus_a_non_close_support_shot():
     support = out[1]
     assert anchor["visual_mode"] == "chorus_performance"
     assert anchor["coverage_role"] == "anchor"
-    assert anchor["framing_intent"] == "performance_closeup"
+    assert anchor["framing_intent"] == "performance_medium"
     assert support["visual_mode"] == "neon_release"
     assert support["coverage_role"] == "connective"
     assert support["framing_intent"] == "release_wide"

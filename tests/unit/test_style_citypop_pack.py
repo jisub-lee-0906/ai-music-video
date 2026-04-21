@@ -50,7 +50,8 @@ def test_citypop_prompting_builds_seed_from_style_pack_helpers():
     assert "same summer night-drive world" in seed
     assert "city pop" not in seed.lower() or "japanese 80s city pop music video" in seed.lower()
     assert "scene event:" not in seed
-    assert "a close-up of a singer facing the camera" in seed
+    assert "performance-led singer in a three-quarter medium frame with neon reflections" in seed
+    assert "close-up of a singer facing the camera" not in seed
 
 
 def test_citypop_prompting_supports_expressive_continuity_mode():
@@ -77,6 +78,13 @@ def test_citypop_prompting_builds_draft_from_style_pack_helpers():
     assert "no layered collage" in draft
     assert "tight portrait close-up" in draft
     assert "film grain" in draft
+
+
+def test_citypop_prompt_draft_keeps_chorus_performance_out_of_front_facing_closeup_default():
+    draft = build_citypop_prompt_draft({"visual_mode": "chorus_performance", "framing_intent": "performance_medium"})
+
+    assert "front-facing close-up" not in draft
+    assert "performance-led medium shot" in draft
 
 
 def test_citypop_rules_expose_section_shot_specs():

@@ -11,7 +11,7 @@ def build_shot_intent(*, section_type: str, shot_role: str, visual_mode: str) ->
             "edit_role": "hook",
             "coverage_role": "anchor",
             "workflow_intent": "audio_reactive_candidate",
-            "framing_intent": "performance_closeup",
+            "framing_intent": "performance_medium",
         }
     if section == "chorus" or role.startswith("chorus"):
         return {

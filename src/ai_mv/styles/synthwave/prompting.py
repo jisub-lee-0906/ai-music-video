@@ -32,6 +32,7 @@ def build_synthwave_prompt_draft(shot: dict) -> str:
         "establishing_wide": "wide establishing frame with stable skyline depth and one anchored subject",
         "hero_medium": "hero medium shot with controlled road perspective and visible environment",
         "connective_medium": "environment-led medium shot with one dominant subject and stable depth",
+        "performance_medium": "performance-led medium shot with stable skyline depth and visible world context",
         "performance_closeup": "front-facing hero frame with stable skyline depth",
         "release_wide": "medium-wide release frame with one anchored silhouette and clean road perspective",
     }
