@@ -74,6 +74,43 @@ def test_render_item_adds_audio_segment_for_ia2v():
     assert out["audio_segment"] == {"start_sec": 3.0, "duration_sec": 5.0}
 
 
+def test_render_item_emits_distinct_seed_per_shot():
+    first = build_render_item(
+        {},
+        "Japanese 80s city pop night drive",
+        get_citypop_bible(),
+        {
+            "shot_id": "S001",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_arrive",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_performance",
+            "start_sec": 3.0,
+            "duration_sec": 5.0,
+        },
+    )
+    second = build_render_item(
+        {},
+        "Japanese 80s city pop night drive",
+        get_citypop_bible(),
+        {
+            "shot_id": "S002",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_arrive",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_performance",
+            "start_sec": 8.0,
+            "duration_sec": 5.0,
+        },
+    )
+
+    assert isinstance(first["seed"], int)
+    assert isinstance(second["seed"], int)
+    assert first["seed"] >= 0
+    assert second["seed"] >= 0
+    assert first["seed"] != second["seed"]
+
+
 def test_render_item_separates_still_and_clip_prompt_contracts():
     out = build_render_item(
         {},

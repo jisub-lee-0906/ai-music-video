@@ -155,6 +155,53 @@ def test_render_stills_calls_flux2_runner(monkeypatch):
     assert "single cinematic keyframe" in calls[0]["positive_prompt"]
     assert "one uninterrupted composition" in calls[0]["positive_prompt"]
     assert "negative_prompt" not in calls[0]
+    assert "seed" not in calls[0]
+
+
+def test_render_stills_does_not_reuse_prior_still_as_reference_by_default(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-no-reference-default",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S001"}],
+            "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea"}],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/older-S001.png"}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert "reference_image" not in calls[0]
+
+
+def test_render_stills_can_explicitly_reuse_prior_still_as_reference(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-reference-explicit",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S001"}],
+            "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea", "reference_mode": "reuse_prior_still"}],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/older-S001.png"}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert calls[0]["reference_image"] == "D:/renders/older-S001.png"
 
 
 def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
@@ -418,7 +465,7 @@ def test_render_stills_uses_reference_image_when_rerender_source_exists(monkeypa
         config={"render": {"flux2_size": "1280x720"}},
         payload={
             "shot_plan": [{"shot_id": "S012"}],
-            "render_plan": [{"shot_id": "S012", "still_prompt_text": "same protagonist under station light"}],
+            "render_plan": [{"shot_id": "S012", "still_prompt_text": "same protagonist under station light", "reference_mode": "reuse_prior_still"}],
             "still_results": [{"shot_id": "S012", "image": "D:/renders/prev_S012.png"}],
         },
     )

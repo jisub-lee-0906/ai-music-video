@@ -35,10 +35,12 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
             "shot_id": shot_id,
             "positive_prompt": prompt_text,
             "filename_prefix": still_prefix(stage_input.run_id, shot_id),
-            "seed": int(render_item.get("seed", 0) or 0),
             "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),
         }
-        if previous_image:
+        seed = render_item.get("seed")
+        if isinstance(seed, int) and seed >= 0:
+            item["seed"] = seed
+        if previous_image and str(render_item.get("reference_mode", "")).strip() == "reuse_prior_still":
             item["reference_image"] = previous_image
         image_path = run_flux2_still(
             stage_input.config,

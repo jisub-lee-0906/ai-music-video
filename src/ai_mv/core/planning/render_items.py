@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import zlib
 from decimal import Decimal, ROUND_HALF_UP
 
 from ai_mv.styles.resolver import build_style_prompt_draft, build_style_prompt_seed, resolve_style_name
@@ -33,6 +34,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         "render_count": render_count,
         "render_planning": render_planning,
         "render_priority_score": render_planning["render_priority_score"],
+        "seed": _render_seed_for_shot(shot),
         "prompt_seed": prompt_seed,
         "prompt_draft": prompt_draft,
         "prompt_polish": prompt_polish,
@@ -176,6 +178,20 @@ def calculate_render_count(duration_sec: float) -> int:
     if duration_sec <= 19.5:
         return 3
     return min(4, max(1, int(math.ceil(duration_sec / 6.0))))
+
+
+
+def _render_seed_for_shot(shot: dict) -> int:
+    text = "|".join(
+        [
+            str(shot.get("shot_id", "")).strip(),
+            str(shot.get("start_sec", "")).strip(),
+            str(shot.get("duration_sec", "")).strip(),
+            str(shot.get("visual_mode", "")).strip(),
+            str(shot.get("render_mode", "")).strip(),
+        ]
+    ).encode("utf-8")
+    return 1000 + int(zlib.crc32(text) % 1_000_000)
 
 
 
