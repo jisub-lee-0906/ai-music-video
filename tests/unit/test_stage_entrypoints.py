@@ -566,6 +566,126 @@ def test_render_clips_routes_flf2v_with_bridge_target(monkeypatch):
     assert calls[0]["last_image"] == "D:/renders/S004.png"
 
 
+def test_review_outputs_propagates_assembly_quality_summary_from_review_inputs(monkeypatch):
+    monkeypatch.setattr("ai_mv.core.stages.review_stage.file_exists", lambda _path: True)
+    monkeypatch.setattr("ai_mv.core.stages.review_outputs.ffprobe_duration", lambda _path: 10.0)
+
+    stage_input = StageInput(
+        run_id="run-review-assembly-quality",
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        payload={
+            "final_video": "D:/renders/final.mp4",
+            "music_file": "D:/renders/song.mp3",
+            "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+            "still_results": [
+                {"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"},
+                {"shot_id": "S002", "image": "D:/renders/S002.png", "status": "done"},
+                {"shot_id": "S003", "image": "D:/renders/S003.png", "status": "done"},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"},
+                {"shot_id": "S002", "video": "D:/renders/S002.mp4", "status": "done"},
+                {"shot_id": "S003", "video": "D:/renders/S003.mp4", "status": "done"},
+            ],
+            "review_inputs": {
+                "music_file": "D:/renders/song.mp3",
+                "edit_intent_by_shot": {
+                    "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+                    "S002": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+                    "S003": {"edit_priority": "medium", "section_emphasis": "bridge_contrast", "transition_in": "glide_in", "transition_out": "handoff_out"},
+                },
+                "render_count_by_shot": {"S001": 3, "S002": 1, "S003": 2},
+                "render_priority_by_shot": {"S001": 0.9, "S002": 0.6, "S003": 0.78},
+                "render_planning_by_shot": {
+                    "S001": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+                    "S002": {"mode_importance_score": 0.68, "section_emphasis_score": 0.6},
+                    "S003": {"mode_importance_score": 0.85, "section_emphasis_score": 0.78},
+                },
+            },
+        },
+    )
+
+    out = run_review_outputs(stage_input)
+
+    assert out.payload["review_report"]["assembly_quality_summary"] == {
+        "chorus_emphasis_score": 0.9,
+        "slideshow_risk_score": 0.13,
+        "transition_intentionality_score": 0.67,
+        "chorus_emphasis_within_threshold": True,
+        "slideshow_risk_within_threshold": True,
+    }
+
+
+
+def test_review_outputs_ignores_malformed_render_planning_metadata(monkeypatch):
+    monkeypatch.setattr("ai_mv.core.stages.review_stage.file_exists", lambda _path: True)
+    monkeypatch.setattr("ai_mv.core.stages.review_outputs.ffprobe_duration", lambda _path: 10.0)
+
+    stage_input = StageInput(
+        run_id="run-review-assembly-quality-malformed",
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        payload={
+            "final_video": "D:/renders/final.mp4",
+            "music_file": "D:/renders/song.mp3",
+            "shot_plan": [{"shot_id": "S001"}],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"}],
+            "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"}],
+            "review_inputs": {
+                "music_file": "D:/renders/song.mp3",
+                "edit_intent_by_shot": {
+                    "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+                },
+                "render_count_by_shot": {"S001": 2},
+                "render_priority_by_shot": {"S001": 0.9},
+                "render_planning_by_shot": {"S001": 5},
+            },
+        },
+    )
+
+    out = run_review_outputs(stage_input)
+
+    assert out.payload["review_report"]["assembly_quality_summary"]["chorus_emphasis_score"] == 0.48
+    assert out.payload["review_report"]["assembly_quality_summary"]["slideshow_risk_within_threshold"] is True
+
+
+
+def test_review_outputs_sanitizes_non_finite_numeric_metadata(monkeypatch):
+    monkeypatch.setattr("ai_mv.core.stages.review_stage.file_exists", lambda _path: True)
+    monkeypatch.setattr("ai_mv.core.stages.review_outputs.ffprobe_duration", lambda _path: 10.0)
+
+    stage_input = StageInput(
+        run_id="run-review-assembly-quality-nonfinite",
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        payload={
+            "final_video": "D:/renders/final.mp4",
+            "music_file": "D:/renders/song.mp3",
+            "shot_plan": [{"shot_id": "S001"}],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"}],
+            "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"}],
+            "review_inputs": {
+                "music_file": "D:/renders/song.mp3",
+                "edit_intent_by_shot": {
+                    "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+                },
+                "render_count_by_shot": {"S001": "inf"},
+                "render_priority_by_shot": {"S001": "nan"},
+                "render_planning_by_shot": {"S001": {"mode_importance_score": "nan"}},
+            },
+        },
+    )
+
+    out = run_review_outputs(stage_input)
+
+    assert out.payload["review_report"]["assembly_quality_summary"] == {
+        "chorus_emphasis_score": 0.0,
+        "slideshow_risk_score": 0.33,
+        "transition_intentionality_score": 1.0,
+        "chorus_emphasis_within_threshold": False,
+        "slideshow_risk_within_threshold": True,
+    }
+
+
+
 def test_assemble_mv_runs_ffmpeg(monkeypatch, tmp_path):
     final_file = tmp_path / "ComfyUI" / "output" / "ai_mv" / "runs" / "run-3" / "final" / "mv.mp4"
     calls = {}

@@ -71,6 +71,9 @@ def run_review_stage(stage_input: StageInput, *, duration_fn=ffprobe_duration) -
         music_file=str(stage_input.payload.get("music_file", "")).strip(),
         final_video_path=final_video,
         edit_intent_by_shot=review_inputs.get("edit_intent_by_shot", {}) if isinstance(review_inputs, dict) else {},
+        render_count_by_shot=review_inputs.get("render_count_by_shot", {}) if isinstance(review_inputs, dict) else {},
+        render_priority_by_shot=review_inputs.get("render_priority_by_shot", {}) if isinstance(review_inputs, dict) else {},
+        render_planning_by_shot=review_inputs.get("render_planning_by_shot", {}) if isinstance(review_inputs, dict) else {},
     )
     return StageOutput("review", "done", {"review_report": report}, [])
 

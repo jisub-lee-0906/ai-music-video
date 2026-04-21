@@ -188,6 +188,100 @@ def test_review_models_include_mv_intent_checks():
 
 
 
+def test_review_models_include_assembly_quality_summary_from_render_metadata():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        still_status={"S001": True, "S002": True, "S003": True},
+        clip_status={"S001": True, "S002": True, "S003": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {
+                "edit_priority": "high",
+                "section_emphasis": "chorus_push",
+                "target_clip_sec": 5.0,
+                "transition_in": "accent_in",
+                "transition_out": "accent_out",
+            },
+            "S002": {
+                "edit_priority": "medium",
+                "section_emphasis": "sequence_support",
+                "target_clip_sec": 4.0,
+                "transition_in": "cut_in",
+                "transition_out": "cut_out",
+            },
+            "S003": {
+                "edit_priority": "medium",
+                "section_emphasis": "bridge_contrast",
+                "target_clip_sec": 4.0,
+                "transition_in": "glide_in",
+                "transition_out": "handoff_out",
+            },
+        },
+        render_count_by_shot={"S001": 3, "S002": 1, "S003": 2},
+        render_priority_by_shot={"S001": 0.9, "S002": 0.6, "S003": 0.78},
+        render_planning_by_shot={
+            "S001": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+            "S002": {"mode_importance_score": 0.68, "section_emphasis_score": 0.6},
+            "S003": {"mode_importance_score": 0.85, "section_emphasis_score": 0.78},
+        },
+    )
+
+    assert report["assembly_quality_summary"] == {
+        "chorus_emphasis_score": 0.9,
+        "slideshow_risk_score": 0.13,
+        "transition_intentionality_score": 0.67,
+        "chorus_emphasis_within_threshold": True,
+        "slideshow_risk_within_threshold": True,
+    }
+
+
+
+def test_review_models_ignore_stale_and_blank_shot_metadata_in_assembly_quality_summary():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        still_status={"S001": True, "S002": True, "S003": True},
+        clip_status={"S001": True, "S002": True, "S003": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+            "S002": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+            "S003": {"edit_priority": "medium", "section_emphasis": "bridge_contrast", "transition_in": "glide_in", "transition_out": "handoff_out"},
+            "": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+            "STALE": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+        },
+        render_count_by_shot={"S001": 3, "S002": 1, "S003": 2, "": 4, "STALE": 99},
+        render_priority_by_shot={"S001": 0.9, "S002": 0.6, "S003": 0.78, "": 1.0, "STALE": 0.0},
+        render_planning_by_shot={
+            "S001": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+            "S002": {"mode_importance_score": 0.68, "section_emphasis_score": 0.6},
+            "S003": {"mode_importance_score": 0.85, "section_emphasis_score": 0.78},
+            "": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+            "STALE": {"mode_importance_score": 0.0, "section_emphasis_score": 0.0},
+        },
+    )
+
+    assert report["assembly_quality_summary"] == {
+        "chorus_emphasis_score": 0.9,
+        "slideshow_risk_score": 0.13,
+        "transition_intentionality_score": 0.67,
+        "chorus_emphasis_within_threshold": True,
+        "slideshow_risk_within_threshold": True,
+    }
+
+
+
 def test_review_models_include_benchmark_dimension_summary():
     report = build_review_report(
         planned_shot_ids=["S001", "S006"],
