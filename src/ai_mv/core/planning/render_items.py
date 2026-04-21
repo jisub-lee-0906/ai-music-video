@@ -31,6 +31,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     out = {
         "shot_id": shot["shot_id"],
         "section_id": str(shot.get("section_id", "")).strip(),
+        "material_id": str(shot.get("material_id", "")).strip(),
         "render_mode": render_mode,
         "render_count": render_count,
         "render_planning": render_planning,

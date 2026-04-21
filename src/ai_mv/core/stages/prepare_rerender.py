@@ -4,7 +4,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 
 
 _STAGE_SCHEMA = {
-    "stills": ("shot_plan", "render_plan", "still_results"),
+    "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
     "review": ("final_video", "music_file", "recommended_action"),
 }
@@ -49,7 +49,7 @@ def _empty_stage_payload(stage_name: str) -> dict[str, object]:
         return {"shot_plan": [], "render_plan": [], "still_results": [], "music_file": ""}
     if stage_name == "review":
         return {"final_video": "", "music_file": "", "recommended_action": ""}
-    return {"shot_plan": [], "render_plan": [], "still_results": []}
+    return {"shot_plan": [], "material_plan": [], "render_plan": [], "still_results": [], "style_bible": {}}
 
 
 
@@ -58,6 +58,12 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
         text = str(value or "").strip()
         if text and not str(target.get(key, "")).strip():
             target[key] = text
+        return
+    if key == "style_bible":
+        if isinstance(value, dict) and not isinstance(target.get(key), dict):
+            target[key] = dict(value)
+        elif isinstance(value, dict) and not target.get(key):
+            target[key] = dict(value)
         return
     if not isinstance(value, list):
         return

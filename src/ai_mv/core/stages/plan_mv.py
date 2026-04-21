@@ -79,6 +79,7 @@ def build_material_plan(style_name: str, shot_plan: list[dict]) -> list[dict]:
                 },
             }
         )
+        shot["material_id"] = material_plan[-1]["material_id"]
     return material_plan
 
 

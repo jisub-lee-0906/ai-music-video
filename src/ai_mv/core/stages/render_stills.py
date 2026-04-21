@@ -20,14 +20,18 @@ _WIDE_STILL_PROMPT_MARKERS = (
 
 def run_render_stills(stage_input: StageInput) -> StageOutput:
     shot_plan = [row for row in stage_input.payload.get("shot_plan", []) if isinstance(row, dict)]
+    material_plan = [row for row in stage_input.payload.get("material_plan", []) if isinstance(row, dict)]
     render_plan = [row for row in stage_input.payload.get("render_plan", []) if isinstance(row, dict)]
     prior_stills = [row for row in stage_input.payload.get("still_results", []) if isinstance(row, dict)]
     render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan}
     prior_still_map = {str(row.get("shot_id", "")).strip(): row for row in prior_stills}
+    material_map = {str(row.get("material_id", "")).strip(): row for row in material_plan if str(row.get("material_id", "")).strip()}
     still_results = []
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
         render_item = render_map.get(shot_id, {})
+        material_id = str(render_item.get("material_id", "") or shot.get("material_id", "")).strip()
+        material_row = material_map.get(material_id, {})
         base_prompt_text = _still_prompt_text(render_item)
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
@@ -56,6 +60,8 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         still_results.append(
             {
                 "shot_id": shot_id,
+                "material_id": material_id,
+                "section_id": str(render_item.get("section_id", "") or shot.get("section_id", "") or material_row.get("section_id", "")).strip(),
                 "image": image_path,
                 "candidate_images": candidate_images,
                 "candidate_count": len(candidate_images),

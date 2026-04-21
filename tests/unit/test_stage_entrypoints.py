@@ -1,6 +1,8 @@
 from pathlib import Path
 
+from ai_mv.core.contracts.errors import StageFailure
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.stages.assemble_mv import run_assemble_mv
 from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
@@ -211,14 +213,16 @@ def test_render_stills_calls_flux2_runner(monkeypatch):
         run_id="run-1",
         config={"render": {"flux2_size": "1024x1024"}},
         payload={
-            "shot_plan": [{"shot_id": "S001"}],
-            "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea"}],
+            "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
+            "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
+            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "prompt_seed": "city pop girl by the sea"}],
         },
     )
 
     out = run_render_stills(stage_input)
 
     assert out.payload["still_results"][0]["image"] == "D:/renders/S001.png"
+    assert out.payload["still_results"][0]["material_id"] == "MAT_001"
     assert calls[0]["filename_prefix"] == "ai_mv/runs/run-1/stills/shot-S001"
     assert "city pop girl by the sea" in calls[0]["positive_prompt"]
     assert "single cinematic keyframe" in calls[0]["positive_prompt"]
@@ -239,8 +243,9 @@ def test_render_stills_does_not_reuse_prior_still_as_reference_by_default(monkey
         run_id="run-no-reference-default",
         config={"render": {"flux2_size": "1280x720"}},
         payload={
-            "shot_plan": [{"shot_id": "S001"}],
-            "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea"}],
+            "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
+            "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
+            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "prompt_seed": "city pop girl by the sea"}],
             "still_results": [{"shot_id": "S001", "image": "D:/renders/older-S001.png"}],
         },
     )
@@ -263,8 +268,9 @@ def test_render_stills_uses_render_count_for_candidate_exploration(monkeypatch):
         run_id="run-render-count-candidates",
         config={"render": {"flux2_size": "1280x720"}},
         payload={
-            "shot_plan": [{"shot_id": "S010"}],
-            "render_plan": [{"shot_id": "S010", "prompt_seed": "city pop boulevard", "render_count": 3, "seed": 100}],
+            "shot_plan": [{"shot_id": "S010", "material_id": "MAT_010"}],
+            "material_plan": [{"material_id": "MAT_010", "section_id": "SEC_010"}],
+            "render_plan": [{"shot_id": "S010", "material_id": "MAT_010", "prompt_seed": "city pop boulevard", "render_count": 3, "seed": 100}],
         },
     )
 
@@ -274,12 +280,27 @@ def test_render_stills_uses_render_count_for_candidate_exploration(monkeypatch):
     assert [call.get("retry") for call in calls] == [0, 1, 2]
     assert [call.get("seed") for call in calls] == [100, 101, 102]
     assert out.payload["still_results"][0]["image"] == "D:/renders/S010_candidate_0.png"
+    assert out.payload["still_results"][0]["material_id"] == "MAT_010"
     assert out.payload["still_results"][0]["candidate_images"] == [
         "D:/renders/S010_candidate_0.png",
         "D:/renders/S010_candidate_1.png",
         "D:/renders/S010_candidate_2.png",
     ]
     assert out.payload["still_results"][0]["candidate_count"] == 3
+
+
+def test_gate_requires_material_plan_for_stills_contract():
+    import pytest
+
+    with pytest.raises(StageFailure):
+        validate_stage_input(
+            "stills",
+            {
+                "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
+                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                "style_bible": {"style": "synthwave"},
+            },
+        )
 
 
 def test_render_stills_can_explicitly_reuse_prior_still_as_reference(monkeypatch):
@@ -1264,8 +1285,10 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
                         "rerender_stage": "stills",
                         "stage_payloads": {
                             "stills": {
-                                "shot_plan": [{"shot_id": "S003", "render_mode": "i2v"}],
-                                "render_plan": [{"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                                "shot_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v"}],
+                                "material_plan": [{"material_id": "MAT_003", "section_id": "SEC_003"}],
+                                "render_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                                "style_bible": {"style": "synthwave"},
                             }
                         },
                     },
@@ -1275,8 +1298,10 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
                         "rerender_stage": "stills",
                         "stage_payloads": {
                             "stills": {
-                                "shot_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
-                                "render_plan": [{"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                                "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                                "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
+                                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                                "style_bible": {"style": "synthwave"},
                             }
                         },
                     },
@@ -1286,14 +1311,16 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
                         "rerender_stage": "stills_then_clips",
                         "stage_payloads": {
                             "stills": {
-                                "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
-                                "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                                "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                                "material_plan": [{"material_id": "MAT_002", "section_id": "SEC_002"}],
+                                "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                                "style_bible": {"style": "synthwave"},
                             },
                             "clips": {
                                 "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
-                                "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                                "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
                                 "still_results": [
-                                    {"shot_id": "S002", "image": "still-2.png"},
+                                    {"shot_id": "S002", "material_id": "MAT_002", "image": "still-2.png"},
                                     {"shot_id": "S004", "image": "still-4.png"},
                                 ],
                                 "music_file": "song.mp3",
@@ -1328,14 +1355,20 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
         "rerender_stage_inputs": {
                 "stills": {
                     "shot_plan": [
-                        {"shot_id": "S003", "render_mode": "i2v"},
-                        {"shot_id": "S001", "render_mode": "i2v"},
-                        {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
+                        {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v"},
+                        {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"},
+                        {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
                     ],
+                    "material_plan": [
+                        {"material_id": "MAT_003", "section_id": "SEC_003"},
+                        {"material_id": "MAT_001", "section_id": "SEC_001"},
+                        {"material_id": "MAT_002", "section_id": "SEC_002"},
+                    ],
+                    "style_bible": {"style": "synthwave"},
                     "render_plan": [
-                        {"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"},
-                        {"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"},
-                        {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+                        {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v", "still_prompt_text": "still-3"},
+                        {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "still-1"},
+                        {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
                     ],
                     "still_results": [],
                 },
@@ -1345,11 +1378,11 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
                     {"shot_id": "S006", "render_mode": "i2v"},
                 ],
                 "render_plan": [
-                    {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+                    {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
                     {"shot_id": "S006", "render_mode": "i2v", "clip_prompt_seed": "clip-6"},
                 ],
                 "still_results": [
-                    {"shot_id": "S002", "image": "still-2.png"},
+                    {"shot_id": "S002", "material_id": "MAT_002", "image": "still-2.png"},
                     {"shot_id": "S004", "image": "still-4.png"},
                     {"shot_id": "S006", "image": "still-6.png"},
                 ],
@@ -1357,6 +1390,7 @@ def test_prepare_rerender_aggregates_review_execution_payloads_into_stage_inputs
             },
         },
     }
+    validate_stage_input("stills", out.payload["rerender_stage_inputs"]["stills"])
 
 
 
@@ -1469,8 +1503,10 @@ def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
             "rerender_stage_sequence": ["stills", "clips"],
             "rerender_stage_inputs": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v"}],
-                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_prompt_text": "repair still"}],
+                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v"}],
+                    "material_plan": [{"material_id": "MAT_002", "section_id": "SEC_002"}],
+                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_prompt_text": "repair still"}],
+                    "style_bible": {"style": "synthwave"},
                 },
                 "clips": {
                     "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
@@ -1497,10 +1533,44 @@ def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
     assert out.payload == {
         "rerender_results": {
             "completed_stages": ["stills", "clips"],
-            "still_results": [{"shot_id": "S002", "image": "rerendered-2.png"}],
+            "still_results": [{"shot_id": "S002", "material_id": "MAT_002", "image": "rerendered-2.png"}],
             "clip_results": [{"shot_id": "S002", "video": "rerendered-2.mp4"}],
         }
     }
+
+
+
+def test_execute_rerender_validates_stills_inputs_before_running(monkeypatch):
+    called = []
+
+    def _fake_run_render_stills(stage_input):
+        called.append(stage_input.payload)
+        return StageOutput("render_stills", "done", {"still_results": []}, [])
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_render_stills", _fake_run_render_stills)
+
+    import pytest
+
+    with pytest.raises(StageFailure):
+        run_execute_rerender(
+            StageInput(
+                run_id="run-rerender-exec-invalid-stills",
+                config={},
+                payload={
+                    "rerender_stage_sequence": ["stills"],
+                    "rerender_stage_inputs": {
+                        "stills": {
+                            "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v"}],
+                            "material_plan": [{"material_id": "MAT_002", "section_id": "SEC_002"}],
+                            "render_plan": [{"shot_id": "S002", "material_id": "MAT_999", "render_mode": "flf2v", "still_prompt_text": "repair still"}],
+                            "style_bible": {"style": "synthwave"},
+                        }
+                    },
+                },
+            )
+        )
+
+    assert called == []
 
 
 

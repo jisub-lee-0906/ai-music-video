@@ -10,8 +10,9 @@ def test_gate_accepts_generic_style_bible_for_stills():
     validate_stage_input(
         "stills",
         {
-            "shot_plan": [{"shot_id": "S001"}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
+            "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
+            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
             "style_bible": {"style": "synthwave"},
         },
     )

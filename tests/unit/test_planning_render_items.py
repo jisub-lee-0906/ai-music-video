@@ -33,6 +33,31 @@ def test_render_item_adds_edit_intent_metadata():
     assert out["edit_intent"]["transition_out"] == "accent_out"
 
 
+
+def test_render_item_preserves_material_id_for_material_layer_join():
+    out = build_render_item(
+        {},
+        "dreamy synthwave neon highway night drive",
+        "synthwave",
+        get_synthwave_bible(),
+        {
+            "shot_id": "S006",
+            "section_id": "SEC_003",
+            "material_id": "MAT_003",
+            "render_mode": "i2v",
+            "shot_role": "chorus_breakout",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "grid_surge",
+            "start_sec": 8.0,
+            "duration_sec": 5.0,
+        },
+    )
+
+    assert out["material_id"] == "MAT_003"
+
+
+
 def test_render_item_builds_prompt_fields_and_still_bridge():
     out = build_render_item(
         {},

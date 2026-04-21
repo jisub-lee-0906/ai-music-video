@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
 from ai_mv.core.stages.render_clips import run_render_clips
@@ -50,6 +51,7 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
                 base_results=stage_payload.get("still_results"),
                 fresh_results=rerendered_stills,
             )
+        validate_stage_input(stage_name, stage_payload)
         result = runner(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=stage_payload))
         if stage_name == "stills":
             rerendered_stills = [row for row in result.payload.get("still_results", []) if isinstance(row, dict)]

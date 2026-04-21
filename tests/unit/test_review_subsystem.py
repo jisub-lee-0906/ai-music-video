@@ -1,4 +1,4 @@
-from ai_mv.core.review.models import build_review_report
+from ai_mv.core.review.models import build_rerender_execution_payloads, build_review_report
 from ai_mv.core.review.policy import rerender_targets
 from ai_mv.core.review.publishability import classify_rerender_target
 from ai_mv.core.review.quality_signals import build_quality_signals
@@ -516,15 +516,21 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
         audio_video_drift_sec=0.0,
         config={"review": {"max_audio_video_drift_sec": 0.5}},
         shot_plan=[
-            {"shot_id": "S001", "render_mode": "i2v"},
-            {"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
-            {"shot_id": "S003", "render_mode": "i2v"},
+            {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"},
+            {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
+            {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v"},
+        ],
+        material_plan=[
+            {"material_id": "MAT_001", "section_id": "SEC_001"},
+            {"material_id": "MAT_002", "section_id": "SEC_002"},
+            {"material_id": "MAT_003", "section_id": "SEC_003"},
         ],
         render_plan=[
-            {"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"},
-            {"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
-            {"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"},
+            {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "still-1"},
+            {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
+            {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v", "still_prompt_text": "still-3"},
         ],
+        style_bible={"style": "synthwave"},
         music_file="song.mp3",
     )
 
@@ -582,8 +588,10 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "rerender_stage": "stills",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S003", "render_mode": "i2v"}],
-                    "render_plan": [{"shot_id": "S003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                    "shot_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v"}],
+                    "material_plan": [{"material_id": "MAT_003", "section_id": "SEC_003"}],
+                    "render_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                    "style_bible": {"style": "synthwave"},
                 }
             },
         },
@@ -593,8 +601,10 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "rerender_stage": "stills",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
-                    "render_plan": [{"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                    "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
+                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                    "style_bible": {"style": "synthwave"},
                 }
             },
         },
@@ -604,14 +614,16 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "rerender_stage": "stills_then_clips",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
-                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                    "material_plan": [{"material_id": "MAT_002", "section_id": "SEC_002"}],
+                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                    "style_bible": {"style": "synthwave"},
                 },
                 "clips": {
-                    "shot_plan": [{"shot_id": "S002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
-                    "render_plan": [{"shot_id": "S002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
                     "still_results": [
-                        {"shot_id": "S002", "image": "still-2.png"},
+                        {"shot_id": "S002", "image": "still-2.png", "material_id": "MAT_002"},
                         {"shot_id": "S004", "image": "still-4.png"},
                     ],
                     "music_file": "song.mp3",
@@ -619,6 +631,52 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             },
         },
     ]
+
+
+
+def test_review_models_build_rerender_execution_payloads_falls_back_to_shot_material_id_when_render_row_omits_it():
+    payloads = build_rerender_execution_payloads(
+        rerender_payload=[{"shot_id": "S001", "rerender_stage": "stills", "recommended_action": "rerender_panelized_keyframes"}],
+        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+        material_plan=[{"material_id": "MAT_001", "section_id": "SEC_001"}],
+        render_plan=[{"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+        still_results=[],
+        style_bible={"style": "synthwave"},
+        music_file="song.mp3",
+    )
+
+    assert payloads[0]["stage_payloads"]["stills"]["render_plan"][0]["material_id"] == "MAT_001"
+    assert payloads[0]["stage_payloads"]["stills"]["material_plan"] == [{"material_id": "MAT_001", "section_id": "SEC_001"}]
+
+
+
+def test_review_models_build_rerender_execution_payloads_normalizes_blank_render_material_id():
+    payloads = build_rerender_execution_payloads(
+        rerender_payload=[{"shot_id": "S001", "rerender_stage": "stills", "recommended_action": "rerender_panelized_keyframes"}],
+        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+        material_plan=[{"material_id": "MAT_001", "section_id": "SEC_001"}],
+        render_plan=[{"shot_id": "S001", "material_id": "", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+        still_results=[],
+        style_bible={"style": "synthwave"},
+        music_file="song.mp3",
+    )
+
+    assert payloads[0]["stage_payloads"]["stills"]["render_plan"][0]["material_id"] == "MAT_001"
+
+
+
+def test_review_models_build_rerender_execution_payloads_normalizes_blank_clips_render_material_id():
+    payloads = build_rerender_execution_payloads(
+        rerender_payload=[{"shot_id": "S001", "rerender_stage": "clips", "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes"}],
+        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+        material_plan=[{"material_id": "MAT_001", "section_id": "SEC_001"}],
+        render_plan=[{"shot_id": "S001", "material_id": "", "render_mode": "i2v", "clip_prompt_seed": "clip-1"}],
+        still_results=[{"shot_id": "S001", "material_id": "MAT_001", "image": "still-1.png"}],
+        style_bible={"style": "synthwave"},
+        music_file="song.mp3",
+    )
+
+    assert payloads[0]["stage_payloads"]["clips"]["render_plan"][0]["material_id"] == "MAT_001"
 
 
 

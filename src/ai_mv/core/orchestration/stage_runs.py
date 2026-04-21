@@ -14,6 +14,8 @@ PROTECTED_PAYLOAD_KEYS = {
     "music_file",
     "style_lane",
     "style_bible",
+    "section_plan",
+    "material_plan",
     "shot_plan",
     "render_plan",
     "still_results",

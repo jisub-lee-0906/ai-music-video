@@ -85,12 +85,15 @@ def build_rerender_execution_payloads(
     *,
     rerender_payload: list[dict[str, object]],
     shot_plan: list[dict],
+    material_plan: list[dict],
     render_plan: list[dict],
     still_results: list[dict],
+    style_bible: dict | None,
     music_file: str,
     final_video_path: str = "",
 ) -> list[dict[str, object]]:
     shot_map = {str(row.get("shot_id", "")).strip(): row for row in shot_plan if isinstance(row, dict)}
+    material_map = {str(row.get("material_id", "")).strip(): row for row in material_plan if isinstance(row, dict)}
     render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan if isinstance(row, dict)}
     still_map = {str(row.get("shot_id", "")).strip(): row for row in still_results if isinstance(row, dict)}
     execution_payloads: list[dict[str, object]] = []
@@ -107,19 +110,37 @@ def build_rerender_execution_payloads(
         render_row = render_map.get(shot_id)
         stage_payloads: dict[str, dict[str, object]] = {}
         if stage_focus in {"stills", "stills_then_clips"}:
+            material_id = str((render_row or {}).get("material_id", "") or (shot_row or {}).get("material_id", "")).strip()
+            material_row = material_map.get(material_id)
+            still_render_row = dict(render_row) if isinstance(render_row, dict) else {}
+            if material_id and not str(still_render_row.get("material_id", "")).strip():
+                still_render_row["material_id"] = material_id
             stage_payloads["stills"] = {
                 "shot_plan": [shot_row] if isinstance(shot_row, dict) else [],
-                "render_plan": [render_row] if isinstance(render_row, dict) else [],
+                "material_plan": [material_row] if isinstance(material_row, dict) else [],
+                "render_plan": [still_render_row] if still_render_row else [],
+                "style_bible": dict(style_bible or {}),
             }
         if stage_focus in {"clips", "stills_then_clips"}:
             still_rows: list[dict] = []
             for dep_shot_id in _clip_dependency_shot_ids(shot_row, render_row):
                 row = still_map.get(dep_shot_id)
                 if isinstance(row, dict):
-                    still_rows.append(row)
+                    normalized_row = dict(row)
+                    if not str(normalized_row.get("material_id", "")).strip():
+                        dep_render_row = render_map.get(dep_shot_id) or {}
+                        dep_shot_row = shot_map.get(dep_shot_id) or {}
+                        dep_material_id = str((dep_render_row or {}).get("material_id", "") or (dep_shot_row or {}).get("material_id", "")).strip()
+                        if dep_material_id:
+                            normalized_row["material_id"] = dep_material_id
+                    still_rows.append(normalized_row)
+            clip_render_row = dict(render_row) if isinstance(render_row, dict) else {}
+            clip_material_id = str(clip_render_row.get("material_id", "") or (shot_row or {}).get("material_id", "")).strip()
+            if clip_material_id and not str(clip_render_row.get("material_id", "")).strip():
+                clip_render_row["material_id"] = clip_material_id
             stage_payloads["clips"] = {
                 "shot_plan": [shot_row] if isinstance(shot_row, dict) else [],
-                "render_plan": [render_row] if isinstance(render_row, dict) else [],
+                "render_plan": [clip_render_row] if clip_render_row else [],
                 "still_results": still_rows,
                 "music_file": normalized_music_file,
             }
@@ -292,7 +313,9 @@ def build_review_report(
     audio_video_drift_sec: float,
     config: dict,
     shot_plan: list[dict] | None = None,
+    material_plan: list[dict] | None = None,
     render_plan: list[dict] | None = None,
+    style_bible: dict | None = None,
     music_file: str = "",
     final_video_path: str = "",
     edit_intent_by_shot: dict[str, dict] | None = None,
@@ -370,8 +393,10 @@ def build_review_report(
     rerender_execution_payloads = build_rerender_execution_payloads(
         rerender_payload=rerender_payload,
         shot_plan=shot_plan or [],
+        material_plan=material_plan or [],
         render_plan=render_plan or [],
         still_results=still_results,
+        style_bible=style_bible,
         music_file=music_file,
         final_video_path=final_video_path,
     )
