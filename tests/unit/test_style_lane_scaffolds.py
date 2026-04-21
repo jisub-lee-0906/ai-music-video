@@ -3,7 +3,32 @@ from ai_mv.styles.alt_pop.bible import get_alt_pop_bible
 from ai_mv.styles.dream_pop.bible import get_dream_pop_bible
 from ai_mv.styles.j_rock.bible import get_j_rock_bible
 from ai_mv.styles.k_indie.bible import get_k_indie_bible
-from ai_mv.styles.resolver import resolve_style_name
+from ai_mv.styles.resolver import STYLE_PACKS, resolve_style_name
+
+
+
+def test_style_registry_includes_all_six_canonical_v1_lanes_with_complete_pack_contracts():
+    assert tuple(STYLE_PACKS.keys()) == (
+        "citypop",
+        "synthwave",
+        "dream_pop",
+        "alt_pop",
+        "k_indie",
+        "j_rock",
+    )
+    for lane_name, pack in STYLE_PACKS.items():
+        assert sorted(pack.keys()) == [
+            "bible",
+            "prompt_draft",
+            "prompt_seed",
+            "section_specs",
+            "section_variants",
+        ]
+        assert callable(pack["bible"])
+        assert callable(pack["prompt_seed"])
+        assert callable(pack["prompt_draft"])
+        assert callable(pack["section_specs"])
+        assert callable(pack["section_variants"])
 
 
 
