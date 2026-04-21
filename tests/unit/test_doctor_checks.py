@@ -3,8 +3,19 @@ from pathlib import Path
 import pytest
 
 from ai_mv.core.contracts.errors import PipelineError
-from ai_mv.core.workflow_names import WORKFLOW_FILES
+from ai_mv.core.workflow_names import AUDIO_WORKFLOW, FLUX2_KEYFRAME_WORKFLOW, FLUX2_STILL_WORKFLOW, LTX_IA2V_WORKFLOW, WORKFLOW_FILES
 from ai_mv.infra.doctor_checks import assert_runtime_ready
+
+
+def test_workflow_files_match_canonical_four_workflow_blueprint_stack():
+    assert WORKFLOW_FILES == (
+        AUDIO_WORKFLOW,
+        FLUX2_STILL_WORKFLOW,
+        FLUX2_KEYFRAME_WORKFLOW,
+        LTX_IA2V_WORKFLOW,
+    )
+    assert AUDIO_WORKFLOW == "audio_ace_step1_5_xl_sft.json"
+    assert LTX_IA2V_WORKFLOW == "video_ltx2_3_ia2v.json"
 
 
 def test_assert_runtime_ready_accepts_valid_setup(tmp_path, monkeypatch):
