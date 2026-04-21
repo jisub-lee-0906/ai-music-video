@@ -428,6 +428,68 @@ def test_review_models_include_publishability_summary_levels():
 
 
 
+def test_review_models_emit_blueprint_aligned_final_review_summary_scores_and_tier():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.82,
+            "transition_intentionality_score": 0.8,
+            "slideshow_risk_score": 0.12,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["overall_status"] == "pass"
+    assert report["publishability_tier"] == "publishable"
+    assert report["recommended_next_action"] == "publish"
+    assert report["scores"]["overall"] == 100.0
+    assert report["scores"]["technical_completion"] == 100.0
+    assert report["scores"]["material_quality"] == 100.0
+    assert report["scores"]["final_mv_quality"] == 91.6
+    assert report["scores"]["shots"] == {"S001": 100.0, "S002": 100.0}
+
+
+
+def test_review_models_downgrade_final_review_summary_when_blocking_failures_exist():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": False},
+        final_video_exists=True,
+        rerender_targets=["S002"],
+        rerender_reasons={"S002": ["missing_clip"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.82,
+            "transition_intentionality_score": 0.8,
+            "slideshow_risk_score": 0.12,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["overall_status"] == "review_required"
+    assert report["publishability_tier"] == "draft_only"
+    assert report["recommended_next_action"] == "rerender_missing_clips"
+    assert report["scores"]["technical_completion"] == 66.67
+    assert report["scores"]["material_quality"] == 100.0
+    assert report["scores"]["final_mv_quality"] == 84.27
+
+
+
 def test_review_models_build_rerender_plan_payload_and_execution_payloads():
     report = build_review_report(
         planned_shot_ids=["S001", "S002", "S003"],

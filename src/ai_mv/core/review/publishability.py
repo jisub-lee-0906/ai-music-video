@@ -153,6 +153,39 @@ def summarize_publishability(
 
 
 
+def build_final_review_summary(
+    *,
+    blocking_checks: dict[str, bool],
+    non_blocking_checks: dict[str, bool],
+    publishability_summary: dict[str, dict[str, object]],
+    overall_score: float,
+    assembly_quality_summary: dict[str, object] | None = None,
+) -> dict[str, object]:
+    blocking = blocking_checks if isinstance(blocking_checks, dict) else {}
+    non_blocking = non_blocking_checks if isinstance(non_blocking_checks, dict) else {}
+    summary = publishability_summary if isinstance(publishability_summary, dict) else {}
+    assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else {}
+
+    technical_completion_score = _check_group_score(_TECHNICAL_COMPLETION_CHECKS, blocking, non_blocking, None)
+    material_quality_score = _check_group_score(_ISOLATED_ASSET_QUALITY_CHECKS, blocking, non_blocking, None)
+    final_mv_quality_score = _final_mv_quality_score(blocking, non_blocking, assembly, technical_completion_score)
+    publishability_tier = _publishability_tier(blocking, non_blocking, final_mv_quality_score)
+    recommended_next_action = _recommended_next_action(summary, publishability_tier)
+
+    return {
+        "overall_status": "pass" if publishability_tier == "publishable" else "review_required",
+        "publishability_tier": publishability_tier,
+        "recommended_next_action": recommended_next_action,
+        "scores": {
+            "overall": round(float(overall_score), 2),
+            "technical_completion": technical_completion_score,
+            "material_quality": material_quality_score,
+            "final_mv_quality": final_mv_quality_score,
+        },
+    }
+
+
+
 def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
     normalized_reasons = [str(reason).strip() for reason in reason_codes if str(reason).strip()]
     normalized_reason_set = {reason for reason in normalized_reasons if reason}
@@ -375,3 +408,107 @@ def _lookup_check(check_name: str, blocking_checks: dict[str, bool], non_blockin
     if check_name in non_blocking_checks:
         return bool(non_blocking_checks[check_name])
     return None
+
+
+
+def _check_group_score(
+    check_names: tuple[str, ...],
+    blocking_checks: dict[str, bool],
+    non_blocking_checks: dict[str, bool],
+    assembly_quality_summary: dict[str, object] | None,
+) -> float:
+    assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else None
+    values: list[float] = []
+    for check_name in check_names:
+        if assembly is not None and check_name in assembly:
+            values.append(1.0 if bool(assembly.get(check_name)) else 0.0)
+            continue
+        value = _lookup_check(check_name, blocking_checks, non_blocking_checks)
+        if value is None:
+            continue
+        values.append(1.0 if value else 0.0)
+    return round((sum(values) / len(values)) * 100.0, 2) if values else 0.0
+
+
+
+def _final_mv_quality_score(
+    blocking_checks: dict[str, bool],
+    non_blocking_checks: dict[str, bool],
+    assembly_quality_summary: dict[str, object],
+    technical_completion_score: float,
+) -> float:
+    section_readability_score = max(0.0, min(1.0, technical_completion_score / 100.0))
+    chorus_emphasis_score = _assembly_float(assembly_quality_summary, "chorus_emphasis_score", 0.0)
+    transition_intentionality_score = _assembly_float(assembly_quality_summary, "transition_intentionality_score", 0.0)
+    continuity_score = _average_check_score(
+        ("visual_continuity_preserved", "subject_match_preserved", "environment_match_preserved"),
+        blocking_checks,
+        non_blocking_checks,
+    )
+    lane_identity_score = _average_check_score(
+        ("style_constraints_respected", "style_identity"),
+        blocking_checks,
+        non_blocking_checks,
+    )
+    slideshow_risk_score = _assembly_float(assembly_quality_summary, "slideshow_risk_score", 1.0)
+    score = (
+        0.22 * section_readability_score
+        + 0.20 * chorus_emphasis_score
+        + 0.18 * transition_intentionality_score
+        + 0.15 * continuity_score
+        + 0.15 * lane_identity_score
+        + 0.10 * (1.0 - slideshow_risk_score)
+    )
+    return round(max(0.0, min(1.0, score)) * 100.0, 2)
+
+
+
+def _average_check_score(
+    check_names: tuple[str, ...],
+    blocking_checks: dict[str, bool],
+    non_blocking_checks: dict[str, bool],
+) -> float:
+    values = [
+        1.0 if _lookup_check(check_name, blocking_checks, non_blocking_checks) else 0.0
+        for check_name in check_names
+    ]
+    return round(sum(values) / len(values), 3) if values else 0.0
+
+
+
+def _assembly_float(assembly_quality_summary: dict[str, object], key: str, default: float) -> float:
+    try:
+        value = float(assembly_quality_summary.get(key, default))
+    except Exception:
+        return default
+    return max(0.0, min(1.0, value))
+
+
+
+def _publishability_tier(
+    blocking_checks: dict[str, bool],
+    non_blocking_checks: dict[str, bool],
+    final_mv_quality_score: float,
+) -> str:
+    if any(value is False for value in blocking_checks.values()):
+        return "draft_only"
+    non_fatal_weaknesses = sum(1 for value in non_blocking_checks.values() if value is False)
+    if final_mv_quality_score >= 78.0 and non_fatal_weaknesses == 0:
+        return "publishable"
+    if final_mv_quality_score >= 66.0 and non_fatal_weaknesses <= 1:
+        return "near_publishable"
+    return "draft_only"
+
+
+
+def _recommended_next_action(publishability_summary: dict[str, dict[str, object]], publishability_tier: str) -> str:
+    if publishability_tier == "publishable":
+        return "publish"
+    for bucket_name in ("technical_completion", "isolated_asset_quality", "final_mv_publishability"):
+        bucket = publishability_summary.get(bucket_name)
+        if not isinstance(bucket, dict):
+            continue
+        action = str(bucket.get("next_action", "")).strip()
+        if action and action != "no_action":
+            return action
+    return "review_failed_checks"

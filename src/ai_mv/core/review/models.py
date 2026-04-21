@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 
 from ai_mv.core.review.benchmark_dimensions import summarize_benchmark_dimensions
-from ai_mv.core.review.publishability import classify_rerender_target, summarize_publishability
+from ai_mv.core.review.publishability import build_final_review_summary, classify_rerender_target, summarize_publishability
 from ai_mv.core.review.quality_signals import build_quality_signals
 from ai_mv.core.review.rerender_policy import rerender_priority_score
 from ai_mv.core.review.signal_buckets import summarize_review_signal_buckets
@@ -355,6 +355,13 @@ def build_review_report(
         rerender_reasons=rerender_reasons,
         assembly_quality_summary=effective_assembly_quality_summary,
     )
+    final_review_summary = build_final_review_summary(
+        blocking_checks=blocking_checks,
+        non_blocking_checks=non_blocking_checks,
+        publishability_summary=publishability_summary,
+        overall_score=signals["scores"]["overall"],
+        assembly_quality_summary=effective_assembly_quality_summary,
+    )
     rerender_plan = build_rerender_plan(
         rerender_targets=rerender_targets,
         rerender_reasons=rerender_reasons,
@@ -388,6 +395,9 @@ def build_review_report(
         "severity": signals["severity"],
         "scores": {
             "overall": signals["scores"]["overall"],
+            "technical_completion": final_review_summary["scores"]["technical_completion"],
+            "material_quality": final_review_summary["scores"]["material_quality"],
+            "final_mv_quality": final_review_summary["scores"]["final_mv_quality"],
             "shots": shot_scores,
         },
         "blocking_checks": blocking_checks,
@@ -401,6 +411,9 @@ def build_review_report(
         "benchmark_dimensions": benchmark_dimensions,
         "review_signal_buckets": review_signal_buckets,
         "publishability_summary": publishability_summary,
+        "overall_status": final_review_summary["overall_status"],
+        "publishability_tier": final_review_summary["publishability_tier"],
+        "recommended_next_action": final_review_summary["recommended_next_action"],
         "edit_intent_summary": edit_intent_summary,
         "mv_intent_checks": mv_intent_checks,
         "assembly_quality_summary": assembly_quality_summary,
