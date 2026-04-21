@@ -1,5 +1,7 @@
+from ai_mv.core.artifacts import paths as artifact_paths
 from ai_mv.core.artifacts.publish import write_pipeline_artifacts
 from ai_mv.core.artifacts.manifest import write_manifest
+from ai_mv.utils.json_utils import read_json
 
 
 def test_write_manifest_includes_schema_version_and_required_root_sections(monkeypatch):
@@ -125,6 +127,101 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
     assert captured["assembly_revision_target"] == "assembly"
     assert captured["assembly_revision_final_video"] == "final.mp4"
     assert captured["assembly_revision_music_file"] == "music.mp3"
+
+
+
+def test_write_pipeline_artifacts_sanitizes_invalid_style_selection_confidence(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_manifest", lambda state, payload: None)
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_run_summary", lambda state, summary: captured.update(summary))
+
+    write_pipeline_artifacts(
+        {"run_id": "run-122b", "status": "done", "current_stage": "publish", "completed_stages": ["plan", "publish"]},
+        {
+            "concept_text": "citypop night drive",
+            "style_name": "citypop",
+            "style_resolution": {
+                "style_name": "citypop",
+                "selection_source": "auto",
+                "selection_stability": "stable",
+                "confidence": "nan",
+            },
+            "review_report": {"status": "done", "rerender_targets": []},
+        },
+        {},
+    )
+
+    assert captured["style_selection_confidence"] == 0.0
+
+
+
+def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(monkeypatch, tmp_path):
+    monkeypatch.setattr(artifact_paths, "PROJECT_ROOT", tmp_path)
+
+    state = {
+        "run_id": "run-roundtrip",
+        "status": "done",
+        "failure_reason": "",
+        "current_stage": "publish",
+        "completed_stages": ["plan", "review", "publish"],
+        "scope": "run",
+    }
+    payload = {
+        "concept_text": "citypop night drive",
+        "style_name": "citypop",
+        "style_resolution": {
+            "style_name": "citypop",
+            "selection_source": "auto",
+            "selection_stability": "stable",
+            "confidence": 0.93,
+        },
+        "music_file": "music.mp3",
+        "audio_plan": {"genre_description": "citypop"},
+        "audio_map": {"sections": [{"name": "verse"}]},
+        "shot_plan": [{"shot_id": "S001"}],
+        "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+        "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
+        "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
+        "final_video": "final.mp4",
+        "review_inputs": {"music_file": "music.mp3"},
+        "review_report": {
+            "status": "done",
+            "rerender_targets": [],
+            "assembly_revision_summary": {
+                "present": True,
+                "action": "revise_transition_selection",
+                "target": "assembly",
+                "final_video": "final.mp4",
+                "music_file": "music.mp3",
+            },
+        },
+    }
+
+    write_pipeline_artifacts(state, payload, {})
+
+    run_manifest = read_json(tmp_path / "artifacts" / "runs" / "run-roundtrip" / "manifest.json")
+    latest_manifest = read_json(tmp_path / "artifacts" / "latest" / "manifest.json")
+    latest_success_manifest = read_json(tmp_path / "artifacts" / "latest_success" / "manifest.json")
+    run_summary = read_json(tmp_path / "artifacts" / "runs" / "run-roundtrip" / "run_summary.json")
+    latest_summary = read_json(tmp_path / "artifacts" / "latest" / "run_summary.json")
+    latest_success_summary = read_json(tmp_path / "artifacts" / "latest_success" / "run_summary.json")
+
+    assert run_manifest == latest_manifest == latest_success_manifest
+    assert run_summary == latest_summary == latest_success_summary
+    assert run_manifest["schema_version"] == "ai_mv_schema_v1"
+    assert run_manifest["style_resolution"] == {
+        "style_name": "citypop",
+        "selection_source": "auto",
+        "selection_stability": "stable",
+        "confidence": 0.93,
+    }
+    assert run_summary["schema_version"] == "ai_mv_schema_v1"
+    assert run_summary["style_name"] == "citypop"
+    assert run_summary["style_selection_source"] == "auto"
+    assert run_summary["style_selection_stability"] == "stable"
+    assert run_summary["style_selection_confidence"] == 0.93
+    assert run_summary["assembly_revision_present"] is True
+    assert run_summary["assembly_revision_action"] == "revise_transition_selection"
 
 
 

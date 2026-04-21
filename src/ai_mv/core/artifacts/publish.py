@@ -1,7 +1,17 @@
 from __future__ import annotations
 
+import math
+
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.run_summary import write_run_summary
+
+
+def _safe_float(value: object, default: float = 0.0) -> float:
+    try:
+        parsed = float(value)
+    except Exception:
+        return default
+    return parsed if math.isfinite(parsed) else default
 
 
 def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
@@ -40,7 +50,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "style_name": str(style_resolution.get("style_name") or payload.get("style_name", "")).strip(),
         "style_selection_source": str(style_resolution.get("selection_source", "")).strip(),
         "style_selection_stability": str(style_resolution.get("selection_stability", "")).strip(),
-        "style_selection_confidence": float(style_resolution.get("confidence", 0.0) or 0.0),
+        "style_selection_confidence": _safe_float(style_resolution.get("confidence", 0.0), 0.0),
         "final_video": str(payload.get("final_video", "")).strip(),
         "music_file": str(payload.get("music_file", "")).strip(),
         "review_status": str(review_report.get("status", "")).strip(),
