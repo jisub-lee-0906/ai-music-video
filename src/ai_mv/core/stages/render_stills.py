@@ -31,25 +31,34 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         base_prompt_text = _still_prompt_text(render_item)
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
-        item = {
-            "shot_id": shot_id,
-            "positive_prompt": prompt_text,
-            "filename_prefix": still_prefix(stage_input.run_id, shot_id),
-            "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),
-        }
-        seed = render_item.get("seed")
-        if isinstance(seed, int) and seed >= 0:
-            item["seed"] = seed
-        if previous_image and str(render_item.get("reference_mode", "")).strip() == "reuse_prior_still":
-            item["reference_image"] = previous_image
-        image_path = run_flux2_still(
-            stage_input.config,
-            item,
-        )
+        render_count = _render_count(render_item)
+        candidate_images: list[str] = []
+        for retry in range(render_count):
+            item = {
+                "shot_id": shot_id,
+                "positive_prompt": prompt_text,
+                "filename_prefix": still_prefix(stage_input.run_id, shot_id),
+                "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),
+                "retry": retry,
+            }
+            seed = render_item.get("seed")
+            if isinstance(seed, int) and seed >= 0:
+                item["seed"] = seed + retry
+            if previous_image and str(render_item.get("reference_mode", "")).strip() == "reuse_prior_still":
+                item["reference_image"] = previous_image
+            candidate_images.append(
+                run_flux2_still(
+                    stage_input.config,
+                    item,
+                )
+            )
+        image_path = candidate_images[0]
         still_results.append(
             {
                 "shot_id": shot_id,
                 "image": image_path,
+                "candidate_images": candidate_images,
+                "candidate_count": len(candidate_images),
                 "prompt_seed": str(render_item.get("prompt_seed", "")).strip(),
                 "prompt_text": prompt_text,
                 "status": "done",
@@ -141,9 +150,18 @@ def _resolve_still_constraint_mode(prompt_text: str, *, shot: dict, render_item:
     return "constrained"
 
 
+
+def _render_count(render_item: dict) -> int:
+    try:
+        render_count = int(render_item.get("render_count", 1))
+    except Exception:
+        return 1
+    return max(1, render_count)
+
+
+
 def _should_keep_raw_still_prompt(prompt_text: str, *, shot: dict, render_item: dict) -> bool:
     return _resolve_still_constraint_mode(prompt_text, shot=shot, render_item=render_item) == "raw"
-
 
 def _sanitize_still_prompt_text(prompt_text: str) -> str:
     blocked_exact_tokens = {

@@ -181,6 +181,38 @@ def test_render_stills_does_not_reuse_prior_still_as_reference_by_default(monkey
     assert "reference_image" not in calls[0]
 
 
+def test_render_stills_uses_render_count_for_candidate_exploration(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        retry = int(item.get("retry", 0) or 0)
+        return f"D:/renders/{item['shot_id']}_candidate_{retry}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-render-count-candidates",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S010"}],
+            "render_plan": [{"shot_id": "S010", "prompt_seed": "city pop boulevard", "render_count": 3, "seed": 100}],
+        },
+    )
+
+    out = run_render_stills(stage_input)
+
+    assert len(calls) == 3
+    assert [call.get("retry") for call in calls] == [0, 1, 2]
+    assert [call.get("seed") for call in calls] == [100, 101, 102]
+    assert out.payload["still_results"][0]["image"] == "D:/renders/S010_candidate_0.png"
+    assert out.payload["still_results"][0]["candidate_images"] == [
+        "D:/renders/S010_candidate_0.png",
+        "D:/renders/S010_candidate_1.png",
+        "D:/renders/S010_candidate_2.png",
+    ]
+    assert out.payload["still_results"][0]["candidate_count"] == 3
+
+
 def test_render_stills_can_explicitly_reuse_prior_still_as_reference(monkeypatch):
     calls = []
 
