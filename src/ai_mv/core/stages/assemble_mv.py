@@ -31,6 +31,7 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         "render_priority_by_shot": _render_priority_by_shot(stage_input.payload),
         "render_planning_by_shot": _render_planning_by_shot(stage_input.payload),
     }
+    assembly_plan = _assembly_plan(stage_input.payload)
     quality_findings_path = _review_quality_findings_path(stage_input.config)
     if quality_findings_path:
         review_inputs["quality_findings_path"] = quality_findings_path
@@ -39,6 +40,7 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "final_video": str(final_video),
+            "assembly_plan": assembly_plan,
             "review_inputs": review_inputs,
         },
         [str(final_video)],
@@ -137,3 +139,57 @@ def _render_planning_by_shot(payload: dict) -> dict[str, dict]:
         if shot_id and isinstance(render_planning, dict):
             out[shot_id] = dict(render_planning)
     return out
+
+
+
+def _assembly_plan(payload: dict) -> dict:
+    clip_results = payload.get("clip_results") if isinstance(payload, dict) else None
+    render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
+    clip_rows = [row for row in clip_results if isinstance(row, dict)] if isinstance(clip_results, list) else []
+    render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
+    edit_intent_by_shot = {
+        str(row.get("shot_id", "")).strip(): dict(row.get("edit_intent", {}))
+        for row in render_rows
+        if str(row.get("shot_id", "")).strip() and isinstance(row.get("edit_intent"), dict)
+    }
+    section_edits = []
+    section_edit_map = {}
+    transition_map = {}
+    timing_map = {}
+    used_ids: list[str] = []
+    for idx, row in enumerate(clip_rows):
+        shot_id = str(row.get("shot_id", "")).strip()
+        if not shot_id:
+            continue
+        edit_intent = edit_intent_by_shot.get(shot_id, {})
+        section_edit = {
+            "section_id": shot_id,
+            "selected_clip_ids": [shot_id],
+            "coverage_sec": float(edit_intent.get("target_clip_sec", 0.0) or 0.0),
+            "editorial_weight": str(edit_intent.get("edit_priority", "medium")).strip() or "medium",
+            "transition_in": str(edit_intent.get("transition_in", "hard_cut")).strip() or "hard_cut",
+            "transition_out": str(edit_intent.get("transition_out", "hard_cut")).strip() or "hard_cut",
+        }
+        section_edits.append(section_edit)
+        section_edit_map[shot_id] = dict(section_edit)
+        transition_map[shot_id] = {
+            "transition_in": section_edit["transition_in"],
+            "transition_out": section_edit["transition_out"],
+        }
+        timing_map[shot_id] = {
+            "sequence_index": idx,
+            "coverage_sec": section_edit["coverage_sec"],
+        }
+        used_ids.append(shot_id)
+    rejected_clip_map = {
+        str(row.get("shot_id", "")).strip(): str(row.get("video", "")).strip()
+        for row in clip_rows
+        if str(row.get("shot_id", "")).strip() and str(row.get("shot_id", "")).strip() not in used_ids
+    }
+    return {
+        "section_edits": section_edits,
+        "section_edit_map": section_edit_map,
+        "transition_map": transition_map,
+        "timing_map": timing_map,
+        "rejected_clip_map": rejected_clip_map,
+    }

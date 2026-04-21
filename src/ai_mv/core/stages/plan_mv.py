@@ -33,6 +33,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
         continuity_mode=continuity_mode,
     )
     shot_plan = build_shot_plan(config, sections, style_name=style_name)
+    material_plan = build_material_plan(style_name, shot_plan)
     render_plan = [build_render_item(config, concept_text, style_name, style_bible, shot) for shot in shot_plan]
     return {
         "style_name": style_name,
@@ -40,11 +41,13 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
         "style_bible": style_bible,
         "creative_direction": creative_direction,
         "shot_plan": shot_plan,
+        "material_plan": material_plan,
         "render_plan": render_plan,
         "workflow_inputs": {
             **dict(payload.get("workflow_inputs", {})),
             "plan": {
                 "shot_count": len(shot_plan),
+                "material_count": len(material_plan),
                 "concept_text": concept_text,
                 "style_name": style_name,
                 "section_count": len(sections),
@@ -52,3 +55,51 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
             },
         },
     }
+
+
+def build_material_plan(style_name: str, shot_plan: list[dict]) -> list[dict]:
+    material_plan: list[dict] = []
+    for idx, shot in enumerate(shot_plan, start=1):
+        role = _material_role_for_shot(shot)
+        material_plan.append(
+            {
+                "material_id": f"MAT_{idx:03d}",
+                "section_id": str(shot.get("shot_id", "")).strip(),
+                "role": role,
+                "style_lane": style_name,
+                "mode_hint": _mode_hint_for_shot(shot),
+                "shot_intent": str(shot.get("shot_role", "")).strip(),
+                "target_aspect": "1280x720",
+                "needs_front_readability": role == "performance_source",
+                "continuity_constraints": {
+                    "same_subject": True,
+                    "same_world": True,
+                    "same_time_band": True,
+                },
+            }
+        )
+    return material_plan
+
+
+def _material_role_for_shot(shot: dict) -> str:
+    workflow_intent = str(shot.get("workflow_intent", "")).strip()
+    section_type = str(shot.get("section_type", "")).strip()
+    if workflow_intent == "audio_reactive_candidate" or section_type == "chorus":
+        return "performance_source"
+    if workflow_intent == "bridge_candidate" or section_type == "bridge":
+        return "bridge_target"
+    if section_type == "intro":
+        return "anchor_source"
+    return "general_source"
+
+
+def _mode_hint_for_shot(shot: dict) -> str:
+    workflow_intent = str(shot.get("workflow_intent", "")).strip()
+    section_type = str(shot.get("section_type", "")).strip()
+    if workflow_intent == "audio_reactive_candidate" or section_type == "chorus":
+        return "performance"
+    if workflow_intent == "bridge_candidate" or section_type == "bridge":
+        return "bridge_transition"
+    if section_type == "intro":
+        return "anchor"
+    return "general_narrative"

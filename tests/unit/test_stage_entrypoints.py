@@ -53,6 +53,13 @@ def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_
             "transition_out": "accent_out",
         }
     }
+    assert out.payload["assembly_plan"]["section_edits"][0]["selected_clip_ids"] == ["S001"]
+    assert out.payload["assembly_plan"]["section_edits"][0]["transition_in"]
+    assert out.payload["assembly_plan"]["section_edits"][0]["transition_out"]
+    assert out.payload["assembly_plan"]["section_edit_map"]["S001"]["selected_clip_ids"] == ["S001"]
+    assert out.payload["assembly_plan"]["transition_map"]
+    assert out.payload["assembly_plan"]["timing_map"]
+    assert out.payload["assembly_plan"]["rejected_clip_map"] == {}
 
 
 

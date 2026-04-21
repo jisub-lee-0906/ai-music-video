@@ -30,6 +30,12 @@ def test_plan_mv_builds_creative_direction_payload():
     assert creative_direction["continuity_mode"] == "strict"
     assert creative_direction["style_name"] == out["style_name"]
     assert creative_direction["section_count"] == 4
+    assert out["material_plan"]
+    first_material = out["material_plan"][0]
+    assert first_material["material_id"].startswith("MAT_")
+    assert first_material["role"]
+    assert first_material["style_lane"] == out["style_name"]
+    assert first_material["mode_hint"]
 
 
 def test_plan_mv_uses_audio_sections_and_stays_within_m1_bounds():
