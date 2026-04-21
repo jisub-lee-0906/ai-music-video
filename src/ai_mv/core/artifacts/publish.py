@@ -46,6 +46,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "overall_status": str(review_report.get("overall_status", "")).strip(),
         "publishability_tier": str(review_report.get("publishability_tier", "")).strip(),
         "recommended_next_action": str(review_report.get("recommended_next_action", "")).strip(),
+        "overall_score": float(review_scores.get("overall", 0.0) or 0.0),
         "technical_completion_score": float(review_scores.get("technical_completion", 0.0) or 0.0),
         "material_quality_score": float(review_scores.get("material_quality", 0.0) or 0.0),
         "final_mv_quality_score": float(review_scores.get("final_mv_quality", 0.0) or 0.0),
