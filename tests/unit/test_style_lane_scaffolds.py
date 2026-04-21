@@ -48,6 +48,34 @@ def test_style_resolver_detects_new_canonical_lanes_from_concept_text():
 
 
 
+def test_plan_preview_accepts_all_six_canonical_style_overrides_for_ambiguous_concept():
+    expected_styles = {
+        "citypop": "japanese_citypop_80s_90s",
+        "synthwave": "retro_synthwave_nightdrive_80s",
+        "dream_pop": "dream_pop_cinematic_haze",
+        "alt_pop": "alt_pop_modern_cinematic_edge",
+        "k_indie": "k_indie_intimate_realism",
+        "j_rock": "j_rock_performance_drive",
+    }
+    for lane_name, bible_style in expected_styles.items():
+        out = build_plan_preview_payload(
+            {"planning": {"default_style_name": lane_name}},
+            {
+                "concept_text": "lonely cinematic road at dusk",
+                "audio_map": {
+                    "duration_sec": 16.0,
+                    "sections": [{"name": "chorus", "start_sec": 0.0, "end_sec": 16.0}],
+                },
+            },
+        )
+
+        assert out["style_name"] == lane_name
+        assert out["style_bible"]["style"] == bible_style
+        assert out["style_resolution"]["style_name"] == lane_name
+        assert out["style_resolution"]["selection_source"] == "override"
+
+
+
 def test_plan_preview_accepts_new_style_override_for_ambiguous_concept():
     out = build_plan_preview_payload(
         {"planning": {"default_style_name": "dream_pop"}},
