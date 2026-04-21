@@ -1430,6 +1430,13 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
                 "music_file": "song.mp3",
             }
         },
+        "assembly_revision_result": {
+            "action": "revise_assembly_weights_before_clip_rerender",
+            "status": "ready",
+            "target": "assembly",
+            "output_final_video": "final.mp4",
+            "revision_focus": "weights",
+        },
     }
     assert out.artifacts == []
 
@@ -1470,6 +1477,61 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
             "final_video": "final.mp4",
             "music_file": "song.mp3",
         }
+    }
+    assert out.payload["assembly_revision_result"] == {
+        "action": "revise_transition_selection",
+        "status": "ready",
+        "target": "assembly",
+        "output_final_video": "final.mp4",
+        "revision_focus": "transitions",
+    }
+
+
+
+def test_rerender_review_preserves_real_assembly_revision_result():
+    out = run_rerender_review(
+        StageInput(
+            run_id="run-rerender-review-assembly-result",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "music_file": "D:/renders/song.mp3",
+                "shot_plan": [{"shot_id": "S001"}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"}],
+                "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"}],
+                "review_inputs": {
+                    "music_file": "D:/renders/song.mp3",
+                    "assembly_revision": {
+                        "action": "revise_transition_selection",
+                        "target": "assembly",
+                        "final_video": "D:/renders/final.mp4",
+                        "music_file": "D:/renders/song.mp3",
+                    },
+                },
+                "review_action": "revise_transition_selection",
+                "assembly_revision_result": {
+                    "action": "revise_transition_selection",
+                    "status": "ready",
+                    "target": "assembly",
+                    "output_final_video": "D:/renders/final.mp4",
+                    "revision_focus": "transitions",
+                },
+                "rerender_results": {
+                    "completed_stages": ["review"],
+                    "still_results": [],
+                    "clip_results": [],
+                },
+            },
+        )
+    )
+
+    assert out.payload["assembly_revision_result"] == {
+        "action": "revise_transition_selection",
+        "status": "ready",
+        "target": "assembly",
+        "output_final_video": "D:/renders/final.mp4",
+        "revision_focus": "transitions",
     }
 
 

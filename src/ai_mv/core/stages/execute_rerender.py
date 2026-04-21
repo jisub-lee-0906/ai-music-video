@@ -35,7 +35,7 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
         payload = stage_inputs.get(stage_name)
         if stage_name == "review" and isinstance(payload, dict):
             result = _run_review_action(stage_input, payload)
-            for key in ("final_video", "music_file", "review_inputs", "review_action"):
+            for key in ("final_video", "music_file", "review_inputs", "review_action", "assembly_revision_result"):
                 value = result.payload.get(key)
                 if value:
                     passthrough_payload[key] = value
@@ -112,6 +112,13 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
                 "final_video": str(stage_payload.get("final_video", "")).strip(),
                 "music_file": str(stage_payload.get("music_file", "")).strip(),
             },
+        }
+        passthrough_payload["assembly_revision_result"] = {
+            "action": recommended_action,
+            "status": "ready",
+            "target": "assembly",
+            "output_final_video": str(stage_payload.get("final_video", "")).strip(),
+            "revision_focus": "weights" if recommended_action == "revise_assembly_weights_before_clip_rerender" else "transitions",
         }
     passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
     return StageOutput("review_action", "done", passthrough_payload, [])

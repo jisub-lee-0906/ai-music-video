@@ -40,6 +40,9 @@ def run_rerender_review(stage_input: StageInput) -> StageOutput:
     review_action = str(stage_input.payload.get("review_action", "")).strip() or str(rerender_results.get("review_action", "")).strip()
     if review_action:
         out_payload["review_action"] = review_action
+    assembly_revision_result = stage_input.payload.get("assembly_revision_result")
+    if isinstance(assembly_revision_result, dict) and assembly_revision_result:
+        out_payload["assembly_revision_result"] = dict(assembly_revision_result)
     if rerender_final_video:
         out_payload["rerender_final_video"] = rerender_final_video
     return StageOutput(
