@@ -22,7 +22,7 @@ def write_manifest(state: dict, payload: dict) -> None:
             "audio_map": dict(payload.get("audio_map", {})),
         },
         "style_resolution": dict(payload.get("style_resolution", {})) or {
-            "style_name": str(payload.get("style_name", "")),
+            "style_lane": str(payload.get("style_lane", "")),
         },
         "sections": list(payload.get("shot_plan", [])),
         "materials": {

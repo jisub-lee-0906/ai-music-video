@@ -17,9 +17,9 @@ def test_preflight_artifacts_write_to_preflight_scope_and_do_not_touch_run_scope
         },
         {
             "concept_text": "dreamy synthwave night drive",
-            "style_name": "synthwave",
+            "style_lane": "synthwave",
             "style_resolution": {
-                "style_name": "synthwave",
+                "style_lane": "synthwave",
                 "selection_source": "auto",
                 "selection_stability": "stable",
                 "confidence": 0.88,
@@ -82,8 +82,8 @@ def test_failed_preflight_updates_preflight_latest_but_preserves_preflight_lates
         success_state,
         {
             "concept_text": "successful preflight",
-            "style_name": "citypop",
-            "style_resolution": {"style_name": "citypop", "selection_source": "auto", "confidence": 0.9},
+            "style_lane": "citypop",
+            "style_resolution": {"style_lane": "citypop", "selection_source": "auto", "confidence": 0.9},
             "review_report": {
                 "status": "done",
                 "overall_status": "pass",
@@ -107,8 +107,8 @@ def test_failed_preflight_updates_preflight_latest_but_preserves_preflight_lates
         failed_state,
         {
             "concept_text": "failed preflight",
-            "style_name": "dream_pop",
-            "style_resolution": {"style_name": "dream_pop", "selection_source": "auto", "confidence": 0.4},
+            "style_lane": "dream_pop",
+            "style_resolution": {"style_lane": "dream_pop", "selection_source": "auto", "confidence": 0.4},
             "review_report": {
                 "status": "needs_rerender",
                 "overall_status": "review_required",

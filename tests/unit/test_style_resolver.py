@@ -11,7 +11,7 @@ def test_style_resolver_detects_citypop_and_synthwave_from_concept_text():
 def test_style_resolver_returns_selection_metadata_for_auto_matches():
     out = resolve_style_selection("dreamy synthwave neon highway night drive")
 
-    assert out["style_name"] == "synthwave"
+    assert out["style_lane"] == "synthwave"
     assert out["selection_source"] == "auto"
     assert 0.58 <= out["confidence"] <= 1.0
     assert out["selection_stability"] in {"stable", "contested"}
@@ -23,7 +23,7 @@ def test_style_resolver_returns_selection_metadata_for_auto_matches():
 def test_style_resolver_returns_override_metadata_for_explicit_default_style():
     out = resolve_style_selection("lonely cinematic road at dusk", default_style_name="synthwave")
 
-    assert out["style_name"] == "synthwave"
+    assert out["style_lane"] == "synthwave"
     assert out["selection_source"] == "override"
     assert out["confidence"] == 1.0
     assert out["selection_stability"] == "override"
@@ -64,8 +64,8 @@ def test_plan_preview_uses_explicit_default_style_when_concept_text_is_ambiguous
         },
     )
 
-    assert out["style_name"] == "synthwave"
-    assert out["style_resolution"]["style_name"] == "synthwave"
+    assert out["style_lane"] == "synthwave"
+    assert out["style_resolution"]["style_lane"] == "synthwave"
     assert out["style_resolution"]["selection_source"] == "override"
     assert out["style_resolution"]["confidence"] == 1.0
     assert out["style_bible"]["style"] == "retro_synthwave_nightdrive_80s"
@@ -86,7 +86,7 @@ def test_plan_preview_uses_synthwave_style_bible_and_prompting():
 
     item = out["render_plan"][0]
     assert out["style_bible"]["style"] == "retro_synthwave_nightdrive_80s"
-    assert out["workflow_inputs"]["plan"]["style_name"] == "synthwave"
+    assert out["workflow_inputs"]["plan"]["style_lane"] == "synthwave"
     assert "retro synthwave music video" in item["prompt_seed"]
     assert "city pop" not in item["prompt_seed"].lower()
     assert "city pop" not in item["prompt_draft"].lower()

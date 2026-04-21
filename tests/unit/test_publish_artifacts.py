@@ -19,8 +19,8 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
             "music_file": "music.mp3",
             "audio_plan": {"genre_description": "citypop"},
             "audio_map": {"sections": [{"name": "verse"}]},
-            "style_name": "citypop",
-            "style_resolution": {"style_name": "citypop", "selection_source": "auto"},
+            "style_lane": "citypop",
+            "style_resolution": {"style_lane": "citypop", "selection_source": "auto"},
             "shot_plan": [{"shot_id": "S001"}],
             "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
             "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
@@ -39,7 +39,7 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
         "audio_plan": {"genre_description": "citypop"},
         "audio_map": {"sections": [{"name": "verse"}]},
     }
-    assert manifest["style_resolution"] == {"style_name": "citypop", "selection_source": "auto"}
+    assert manifest["style_resolution"] == {"style_lane": "citypop", "selection_source": "auto"}
     assert manifest["sections"] == [{"shot_id": "S001"}]
     assert manifest["materials"] == {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]}
     assert manifest["renders"] == {
@@ -53,7 +53,7 @@ def test_write_manifest_includes_schema_version_and_required_root_sections(monke
     assert manifest["review"] == {"status": "done", "rerender_targets": []}
     assert manifest["artifacts"] == {"scope": "run"}
     assert "concept_text" not in manifest
-    assert "style_name" not in manifest
+    assert "style_lane" not in manifest
     assert "style_bible" not in manifest
     assert "planner_prompts" not in manifest
     assert "workflow_inputs" not in manifest
@@ -84,13 +84,13 @@ def test_write_manifest_falls_back_to_style_name_and_empty_safe_canonical_sectio
         {"run_id": "run-201", "status": "done", "failure_reason": "", "scope": "run"},
         {
             "concept_text": "dreamy dusk drive",
-            "style_name": "dream_pop",
+            "style_lane": "dream_pop",
         },
     )
 
     manifest = captured[0][1]
     assert manifest["schema_version"] == "ai_mv_schema_v1"
-    assert manifest["style_resolution"] == {"style_name": "dream_pop"}
+    assert manifest["style_resolution"] == {"style_lane": "dream_pop"}
     assert manifest["song"] == {"music_file": "", "audio_plan": {}, "audio_map": {}}
     assert manifest["sections"] == []
     assert manifest["materials"] == {"still_results": []}
@@ -110,9 +110,9 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
         {"run_id": "run-122", "status": "done", "current_stage": "publish", "completed_stages": ["plan", "review", "publish"]},
         {
             "concept_text": "citypop night drive",
-            "style_name": "citypop",
+            "style_lane": "citypop",
             "style_resolution": {
-                "style_name": "citypop",
+                "style_lane": "citypop",
                 "selection_source": "auto",
                 "selection_stability": "stable",
                 "confidence": 0.93,
@@ -144,7 +144,7 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
     )
 
     assert captured["schema_version"] == "ai_mv_schema_v1"
-    assert captured["style_name"] == "citypop"
+    assert captured["style_lane"] == "citypop"
     assert captured["style_selection_source"] == "auto"
     assert captured["style_selection_stability"] == "stable"
     assert captured["style_selection_confidence"] == 0.93
@@ -172,9 +172,9 @@ def test_write_pipeline_artifacts_sanitizes_invalid_style_selection_confidence(m
         {"run_id": "run-122b", "status": "done", "current_stage": "publish", "completed_stages": ["plan", "publish"]},
         {
             "concept_text": "citypop night drive",
-            "style_name": "citypop",
+            "style_lane": "citypop",
             "style_resolution": {
-                "style_name": "citypop",
+                "style_lane": "citypop",
                 "selection_source": "auto",
                 "selection_stability": "stable",
                 "confidence": "nan",
@@ -201,9 +201,9 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
     }
     payload = {
         "concept_text": "citypop night drive",
-        "style_name": "citypop",
+        "style_lane": "citypop",
         "style_resolution": {
-            "style_name": "citypop",
+            "style_lane": "citypop",
             "selection_source": "auto",
             "selection_stability": "stable",
             "confidence": 0.93,
@@ -252,13 +252,13 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
     assert run_summary == latest_summary == latest_success_summary
     assert run_manifest["schema_version"] == "ai_mv_schema_v1"
     assert run_manifest["style_resolution"] == {
-        "style_name": "citypop",
+        "style_lane": "citypop",
         "selection_source": "auto",
         "selection_stability": "stable",
         "confidence": 0.93,
     }
     assert run_summary["schema_version"] == "ai_mv_schema_v1"
-    assert run_summary["style_name"] == "citypop"
+    assert run_summary["style_lane"] == "citypop"
     assert run_summary["style_selection_source"] == "auto"
     assert run_summary["style_selection_stability"] == "stable"
     assert run_summary["style_selection_confidence"] == 0.93

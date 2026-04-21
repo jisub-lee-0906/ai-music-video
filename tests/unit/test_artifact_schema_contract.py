@@ -35,16 +35,16 @@ def test_failed_run_updates_latest_but_preserves_latest_success(monkeypatch, tmp
     }
     success_payload = {
         "concept_text": "successful run",
-        "style_name": "citypop",
-        "style_resolution": {"style_name": "citypop", "selection_source": "auto", "confidence": 0.9},
+        "style_lane": "citypop",
+        "style_resolution": {"style_lane": "citypop", "selection_source": "auto", "confidence": 0.9},
         "final_video": "success.mp4",
         "music_file": "success.mp3",
         "review_report": {"status": "done", "rerender_targets": []},
     }
     failed_payload = {
         "concept_text": "failed run",
-        "style_name": "dream_pop",
-        "style_resolution": {"style_name": "dream_pop", "selection_source": "auto", "confidence": 0.4},
+        "style_lane": "dream_pop",
+        "style_resolution": {"style_lane": "dream_pop", "selection_source": "auto", "confidence": 0.4},
         "final_video": "",
         "music_file": "failed.mp3",
         "review_report": {"status": "needs_rerender", "rerender_targets": ["S001"]},
@@ -88,8 +88,8 @@ def test_done_run_without_real_media_does_not_update_latest_success(monkeypatch,
     }
     fake_success_payload = {
         "concept_text": "synthetic success",
-        "style_name": "citypop",
-        "style_resolution": {"style_name": "citypop", "selection_source": "auto", "confidence": 0.5},
+        "style_lane": "citypop",
+        "style_resolution": {"style_lane": "citypop", "selection_source": "auto", "confidence": 0.5},
         "final_video": "",
         "music_file": "",
         "review_report": {"status": ""},

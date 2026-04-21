@@ -17,7 +17,7 @@ def derive_summary_fields(payload: dict) -> dict[str, object]:
     review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
     assembly_revision_summary = review_report.get("assembly_revision_summary") if isinstance(review_report.get("assembly_revision_summary"), dict) else {}
     return {
-        "style_name": str(style_resolution.get("style_name") or payload.get("style_name", "")).strip(),
+        "style_lane": str(style_resolution.get("style_lane") or payload.get("style_lane", "")).strip(),
         "style_selection_source": str(style_resolution.get("selection_source", "")).strip(),
         "style_selection_stability": str(style_resolution.get("selection_stability", "")).strip(),
         "style_selection_confidence": _safe_float(style_resolution.get("confidence", 0.0), 0.0),

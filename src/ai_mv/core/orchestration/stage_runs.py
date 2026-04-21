@@ -12,7 +12,7 @@ PROTECTED_PAYLOAD_KEYS = {
     "audio_plan",
     "audio_map",
     "music_file",
-    "style_name",
+    "style_lane",
     "style_bible",
     "shot_plan",
     "render_plan",

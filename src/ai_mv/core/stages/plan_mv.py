@@ -23,20 +23,20 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     default_style_name = str(planning.get("default_style_name", "")).strip() or None
     continuity_mode = str(planning.get("continuity_mode", "strict")).strip() or "strict"
     style_resolution = resolve_style_selection(concept_text, default_style_name=default_style_name)
-    style_name = style_resolution["style_name"]
-    style_bible = get_style_bible(style_name)
+    style_lane = style_resolution["style_lane"]
+    style_bible = get_style_bible(style_lane)
     sections = normalized_sections(audio_map, duration)
     creative_direction = build_creative_direction(
         concept_text=concept_text,
-        style_name=style_name,
+        style_name=style_lane,
         sections=sections,
         continuity_mode=continuity_mode,
     )
-    shot_plan = build_shot_plan(config, sections, style_name=style_name)
-    material_plan = build_material_plan(style_name, shot_plan)
-    render_plan = [build_render_item(config, concept_text, style_name, style_bible, shot) for shot in shot_plan]
+    shot_plan = build_shot_plan(config, sections, style_name=style_lane)
+    material_plan = build_material_plan(style_lane, shot_plan)
+    render_plan = [build_render_item(config, concept_text, style_lane, style_bible, shot) for shot in shot_plan]
     return {
-        "style_name": style_name,
+        "style_lane": style_lane,
         "style_resolution": style_resolution,
         "style_bible": style_bible,
         "creative_direction": creative_direction,
@@ -49,7 +49,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
                 "shot_count": len(shot_plan),
                 "material_count": len(material_plan),
                 "concept_text": concept_text,
-                "style_name": style_name,
+                "style_lane": style_lane,
                 "section_count": len(sections),
                 "music_section_count": len(sections),
             },

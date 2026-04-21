@@ -6,9 +6,9 @@ def test_artifact_summary_fields_helper_derives_style_and_assembly_revision_meta
 
     out = helper_module.derive_summary_fields(
         {
-            "style_name": "fallback_style",
+            "style_lane": "fallback_lane",
             "style_resolution": {
-                "style_name": "citypop",
+                "style_lane": "citypop",
                 "selection_source": "auto",
                 "selection_stability": "stable",
                 "confidence": 0.93,
@@ -26,7 +26,7 @@ def test_artifact_summary_fields_helper_derives_style_and_assembly_revision_meta
     )
 
     assert out == {
-        "style_name": "citypop",
+        "style_lane": "citypop",
         "style_selection_source": "auto",
         "style_selection_stability": "stable",
         "style_selection_confidence": 0.93,
@@ -44,7 +44,7 @@ def test_artifact_summary_fields_helper_preserves_fallbacks_and_sanitizes_invali
 
     out = helper_module.derive_summary_fields(
         {
-            "style_name": "dream_pop",
+            "style_lane": "dream_pop",
             "style_resolution": {
                 "selection_source": "override",
                 "selection_stability": "volatile",
@@ -55,7 +55,7 @@ def test_artifact_summary_fields_helper_preserves_fallbacks_and_sanitizes_invali
     )
 
     assert out == {
-        "style_name": "dream_pop",
+        "style_lane": "dream_pop",
         "style_selection_source": "override",
         "style_selection_stability": "volatile",
         "style_selection_confidence": 0.0,

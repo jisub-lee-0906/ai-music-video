@@ -79,7 +79,7 @@ def _style_pack(style_name: str) -> dict:
 
 
 def resolve_style_name(concept_text: str, *, default_style_name: str | None = None) -> str:
-    return resolve_style_selection(concept_text, default_style_name=default_style_name)["style_name"]
+    return resolve_style_selection(concept_text, default_style_name=default_style_name)["style_lane"]
 
 
 
@@ -94,7 +94,7 @@ def resolve_style_selection(concept_text: str, *, default_style_name: str | None
     if best_score <= 0:
         if normalized_default:
             return {
-                "style_name": normalized_default,
+                "style_lane": normalized_default,
                 "selection_source": "override",
                 "selection_stability": "override",
                 "confidence": 1.0,
@@ -104,7 +104,7 @@ def resolve_style_selection(concept_text: str, *, default_style_name: str | None
     confidence = _selection_confidence(raw_scores, best_style)
     margin = _selection_margin(raw_scores, best_style)
     return {
-        "style_name": best_style,
+        "style_lane": best_style,
         "selection_source": "auto",
         "selection_stability": _selection_stability(confidence, margin),
         "confidence": confidence,

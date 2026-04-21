@@ -69,9 +69,9 @@ def test_plan_preview_accepts_all_six_canonical_style_overrides_for_ambiguous_co
             },
         )
 
-        assert out["style_name"] == lane_name
+        assert out["style_lane"] == lane_name
         assert out["style_bible"]["style"] == bible_style
-        assert out["style_resolution"]["style_name"] == lane_name
+        assert out["style_resolution"]["style_lane"] == lane_name
         assert out["style_resolution"]["selection_source"] == "override"
 
 
@@ -88,6 +88,6 @@ def test_plan_preview_accepts_new_style_override_for_ambiguous_concept():
         },
     )
 
-    assert out["style_name"] == "dream_pop"
+    assert out["style_lane"] == "dream_pop"
     assert out["style_bible"]["style"] == "dream_pop_cinematic_haze"
     assert out["style_resolution"]["selection_source"] == "override"

@@ -72,7 +72,7 @@ def test_write_manifest_emits_generic_style_fields(monkeypatch, tmp_path):
         {"run_id": "run-123", "status": "done", "failure_reason": "", "scope": "run"},
         {
             "concept_text": "dreamy synthwave neon highway night drive",
-            "style_name": "synthwave",
+            "style_lane": "synthwave",
             "style_bible": {"style": "retro_synthwave_nightdrive_80s"},
             "workflow_inputs": {},
             "workflow_inputs_preview": {},
@@ -92,7 +92,7 @@ def test_write_manifest_emits_generic_style_fields(monkeypatch, tmp_path):
 
     assert writes
     manifest = writes[0][1]
-    assert manifest["style_resolution"] == {"style_name": "synthwave"}
+    assert manifest["style_resolution"] == {"style_lane": "synthwave"}
     assert manifest["input"] == {"concept_text": "dreamy synthwave neon highway night drive"}
     assert manifest["song"]["music_file"] == "music.mp3"
     assert "style_bible" not in manifest
@@ -111,7 +111,7 @@ def test_write_manifest_does_not_backfill_style_bible_from_legacy_citypop_bible(
         {"run_id": "run-legacy", "status": "done", "failure_reason": "", "scope": "run"},
         {
             "concept_text": "legacy citypop payload",
-            "style_name": "citypop",
+            "style_lane": "citypop",
             "citypop_bible": {"style": "japanese_citypop_80s_90s"},
             "workflow_inputs": {},
             "workflow_inputs_preview": {},
@@ -130,6 +130,6 @@ def test_write_manifest_does_not_backfill_style_bible_from_legacy_citypop_bible(
     )
 
     manifest = writes[0][1]
-    assert manifest["style_resolution"] == {"style_name": "citypop"}
+    assert manifest["style_resolution"] == {"style_lane": "citypop"}
     assert "style_bible" not in manifest
     assert "citypop_bible" not in manifest

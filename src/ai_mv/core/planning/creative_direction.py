@@ -20,7 +20,7 @@ def build_creative_direction(*, concept_text: str, style_name: str, sections: li
         "bridge_intent": _bridge_intent(text=text),
         "continuity_mode": normalized_continuity_mode,
         "continuity_rules": _continuity_rules(style_name=style_name, continuity_mode=normalized_continuity_mode),
-        "style_name": str(style_name).strip(),
+        "style_lane": str(style_name).strip(),
         "section_count": len(sections),
     }
 
