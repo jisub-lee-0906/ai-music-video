@@ -74,6 +74,7 @@ def run_review_stage(stage_input: StageInput, *, duration_fn=ffprobe_duration) -
         render_count_by_shot=review_inputs.get("render_count_by_shot", {}) if isinstance(review_inputs, dict) else {},
         render_priority_by_shot=review_inputs.get("render_priority_by_shot", {}) if isinstance(review_inputs, dict) else {},
         render_planning_by_shot=review_inputs.get("render_planning_by_shot", {}) if isinstance(review_inputs, dict) else {},
+        assembly_revision=review_inputs.get("assembly_revision", {}) if isinstance(review_inputs, dict) else {},
     )
     return StageOutput("review", "done", {"review_report": report}, [])
 

@@ -282,6 +282,36 @@ def test_review_models_ignore_stale_and_blank_shot_metadata_in_assembly_quality_
 
 
 
+def test_review_models_include_assembly_revision_summary():
+    report = build_review_report(
+        planned_shot_ids=["S001"],
+        still_results=[{"shot_id": "S001"}],
+        clip_results=[{"shot_id": "S001"}],
+        still_status={"S001": True},
+        clip_status={"S001": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_revision={
+            "action": "revise_assembly_weights_before_clip_rerender",
+            "target": "assembly",
+            "final_video": "final.mp4",
+            "music_file": "song.mp3",
+        },
+    )
+
+    assert report["assembly_revision_summary"] == {
+        "present": True,
+        "action": "revise_assembly_weights_before_clip_rerender",
+        "target": "assembly",
+        "final_video": "final.mp4",
+        "music_file": "song.mp3",
+    }
+
+
+
 def test_review_models_include_benchmark_dimension_summary():
     report = build_review_report(
         planned_shot_ids=["S001", "S006"],

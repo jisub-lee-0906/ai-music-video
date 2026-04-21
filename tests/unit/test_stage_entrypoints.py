@@ -1578,6 +1578,13 @@ def test_rerender_review_preserves_assembly_revision_review_inputs():
     }
     assert out.payload["review_action"] == "revise_assembly_weights_before_clip_rerender"
     assert out.payload["rerender_final_video"] == "D:/renders/final.mp4"
+    assert out.payload["rerender_review_report"]["assembly_revision_summary"] == {
+        "present": True,
+        "action": "revise_assembly_weights_before_clip_rerender",
+        "target": "assembly",
+        "final_video": "D:/renders/final.mp4",
+        "music_file": "D:/renders/song.mp3",
+    }
 
 
 

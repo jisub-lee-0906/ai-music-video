@@ -300,6 +300,7 @@ def build_review_report(
     render_priority_by_shot: dict[str, float] | None = None,
     render_planning_by_shot: dict[str, dict] | None = None,
     assembly_quality_summary: dict[str, object] | None = None,
+    assembly_revision: dict[str, object] | None = None,
 ) -> dict:
     signals = build_quality_signals(
         planned_shot_ids=planned_shot_ids,
@@ -370,6 +371,7 @@ def build_review_report(
     edit_intent_summary = summarize_edit_intent(edit_intent_by_shot)
     mv_intent_checks = build_mv_intent_checks(edit_intent_summary)
     assembly_quality_summary = effective_assembly_quality_summary
+    assembly_revision_summary = summarize_assembly_revision(assembly_revision)
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -402,6 +404,7 @@ def build_review_report(
         "edit_intent_summary": edit_intent_summary,
         "mv_intent_checks": mv_intent_checks,
         "assembly_quality_summary": assembly_quality_summary,
+        "assembly_revision_summary": assembly_revision_summary,
     }
 
 
@@ -435,3 +438,15 @@ def _float(value: object, default: float) -> float:
 def _render_planning_row(render_planning: dict[str, dict], shot_id: str) -> dict:
     row = render_planning.get(shot_id)
     return dict(row) if isinstance(row, dict) else {}
+
+
+
+def summarize_assembly_revision(assembly_revision: dict[str, object] | None) -> dict[str, object]:
+    revision = assembly_revision if isinstance(assembly_revision, dict) else {}
+    return {
+        "present": bool(revision),
+        "action": str(revision.get("action", "")).strip(),
+        "target": str(revision.get("target", "")).strip(),
+        "final_video": str(revision.get("final_video", "")).strip(),
+        "music_file": str(revision.get("music_file", "")).strip(),
+    }
