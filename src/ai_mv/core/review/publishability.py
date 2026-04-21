@@ -26,6 +26,8 @@ _FINAL_MV_PUBLISHABILITY_CHECKS = (
     "visual_continuity_preserved",
     "mood_consistency",
     "motion_source_safe",
+    "chorus_emphasis_within_threshold",
+    "slideshow_risk_within_threshold",
 )
 
 _GUIDANCE_BY_CHECK = {
@@ -47,6 +49,8 @@ _GUIDANCE_BY_CHECK = {
     "visual_continuity_preserved": "rerender continuity-break shots and preserve identity across adjacent shots",
     "mood_consistency": "rerender mood-drift shots to match the song section and neighboring shots",
     "motion_source_safe": "rerender motion-fragile shots with safer keyframes and simpler motion sources",
+    "chorus_emphasis_within_threshold": "revise assembly weights so chorus reads stronger than verse before clip rerender",
+    "slideshow_risk_within_threshold": "revise transition selection and clip ordering before rerendering clips",
 }
 
 _TECHNICAL_PRIORITY = (
@@ -71,6 +75,8 @@ _ISOLATED_PRIORITY = (
 )
 
 _FINAL_PRIORITY = (
+    ("chorus_emphasis_within_threshold", "revise_assembly_weights_before_clip_rerender"),
+    ("slideshow_risk_within_threshold", "revise_transition_selection"),
     ("visual_continuity_preserved", "rerender_continuity_break_shots"),
     ("motion_source_safe", "rerender_motion_fragile_shots_with_safer_keyframes"),
     ("mood_consistency", "rerender_mood_drift_shots"),
@@ -99,6 +105,8 @@ _BUCKET_REASON_CODES = {
         "continuity_break",
         "identity_drift",
         "motion_fragile_frame",
+        "chorus_not_stronger_than_verse",
+        "arbitrary_transitions",
     },
 }
 
@@ -108,10 +116,12 @@ def summarize_publishability(
     blocking_checks: dict[str, bool],
     non_blocking_checks: dict[str, bool],
     rerender_reasons: dict[str, list[str]] | None = None,
+    assembly_quality_summary: dict[str, object] | None = None,
 ) -> dict[str, dict[str, object]]:
     blocking = blocking_checks if isinstance(blocking_checks, dict) else {}
     non_blocking = non_blocking_checks if isinstance(non_blocking_checks, dict) else {}
     reasons_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
+    assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else {}
     return {
         "technical_completion": _summary(
             "technical_completion",
@@ -137,6 +147,7 @@ def summarize_publishability(
             non_blocking,
             reasons_map,
             action_priority=_FINAL_PRIORITY,
+            assembly_quality_summary=assembly,
         ),
     }
 
@@ -150,6 +161,18 @@ def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
             "bucket": "final_mv_publishability",
             "recommended_action": "rerender_continuity_break_shots",
             "rerender_prescription": _rerender_prescription("rerender_continuity_break_shots", normalized_reasons),
+        }
+    if "chorus_not_stronger_than_verse" in normalized_reason_set:
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "revise_assembly_weights_before_clip_rerender",
+            "rerender_prescription": _rerender_prescription("revise_assembly_weights_before_clip_rerender", normalized_reasons),
+        }
+    if "arbitrary_transitions" in normalized_reason_set:
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "revise_transition_selection",
+            "rerender_prescription": _rerender_prescription("revise_transition_selection", normalized_reasons),
         }
     for bucket_name, reason_to_action in (
         (
@@ -209,10 +232,15 @@ def _summary(
     *,
     field_name: str = "failed_checks",
     action_priority: tuple[tuple[str, str], ...] = (),
+    assembly_quality_summary: dict[str, object] | None = None,
 ) -> dict[str, object]:
     failures: list[str] = []
+    assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else None
     for check_name in check_names:
-        value = _lookup_check(check_name, blocking_checks, non_blocking_checks)
+        if assembly is not None and check_name in assembly:
+            value = bool(assembly.get(check_name))
+        else:
+            value = _lookup_check(check_name, blocking_checks, non_blocking_checks)
         if value is False:
             failures.append(check_name)
     next_action = _next_action(failures, action_priority)
@@ -300,6 +328,18 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
             "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "enforce_single_frame_keyframe_composition",
+        },
+        "revise_assembly_weights_before_clip_rerender": {
+            "stage_focus": "review",
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "revise_assembly_weights_before_clip_rerender",
+        },
+        "revise_transition_selection": {
+            "stage_focus": "review",
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "revise_transition_selection",
         },
     }
     prescription = dict(prescriptions.get(action_name, {

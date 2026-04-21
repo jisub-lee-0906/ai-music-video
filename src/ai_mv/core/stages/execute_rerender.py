@@ -6,13 +6,14 @@ from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
 
 
+REVIEW_ACTIONS_REQUIRING_SYNC_REPAIR = {"repair_audio_video_sync"}
+
+
 def _stage_runner(stage_name: str):
     if stage_name == "stills":
         return run_render_stills
     if stage_name == "clips":
         return run_render_clips
-    if stage_name == "review":
-        return run_repair_audio_video_sync
     return None
 
 
@@ -28,6 +29,15 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
     for stage_name in stage_sequence:
         runner = _stage_runner(stage_name)
         payload = stage_inputs.get(stage_name)
+        if stage_name == "review" and isinstance(payload, dict):
+            result = _run_review_action(stage_input, payload)
+            for key in ("final_video", "music_file", "review_inputs", "review_action"):
+                value = result.payload.get(key)
+                if value:
+                    passthrough_payload[key] = value
+            completed_stages.append(stage_name)
+            artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
+            continue
         if runner is None or not isinstance(payload, dict):
             continue
         stage_payload = dict(payload)
@@ -41,11 +51,6 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
             rerendered_stills = [row for row in result.payload.get("still_results", []) if isinstance(row, dict)]
         if stage_name == "clips":
             rerendered_clips = [row for row in result.payload.get("clip_results", []) if isinstance(row, dict)]
-        if stage_name == "review":
-            for key in ("final_video", "music_file", "review_inputs"):
-                value = result.payload.get(key)
-                if value:
-                    passthrough_payload[key] = value
         completed_stages.append(stage_name)
         artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
 
@@ -81,3 +86,18 @@ def _merge_still_results(*, base_results: object, fresh_results: list[dict]) -> 
         merged.append(row)
     merged.extend(fresh_map.values())
     return merged
+
+
+
+def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
+    recommended_action = str(payload.get("recommended_action", "")).strip()
+    stage_payload = {key: value for key, value in payload.items() if key != "recommended_action"}
+    if recommended_action in REVIEW_ACTIONS_REQUIRING_SYNC_REPAIR:
+        return run_repair_audio_video_sync(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=stage_payload))
+    passthrough_payload = {
+        key: stage_payload[key]
+        for key in ("final_video", "music_file", "review_inputs")
+        if key in stage_payload and stage_payload[key]
+    }
+    passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
+    return StageOutput("review_action", "done", passthrough_payload, [])

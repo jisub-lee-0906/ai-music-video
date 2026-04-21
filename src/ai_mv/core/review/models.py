@@ -127,6 +127,7 @@ def build_rerender_execution_payloads(
             stage_payloads["review"] = {
                 "final_video": normalized_final_video,
                 "music_file": normalized_music_file,
+                "recommended_action": str(item.get("recommended_action", "")).strip(),
             }
         execution_payloads.append(
             {
@@ -298,6 +299,7 @@ def build_review_report(
     render_count_by_shot: dict[str, int] | None = None,
     render_priority_by_shot: dict[str, float] | None = None,
     render_planning_by_shot: dict[str, dict] | None = None,
+    assembly_quality_summary: dict[str, object] | None = None,
 ) -> dict:
     signals = build_quality_signals(
         planned_shot_ids=planned_shot_ids,
@@ -324,10 +326,33 @@ def build_review_report(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
     )
+    computed_assembly_quality_summary = summarize_assembly_quality(
+        planned_shot_ids=planned_shot_ids,
+        edit_intent_by_shot=edit_intent_by_shot,
+        render_count_by_shot=render_count_by_shot,
+        render_priority_by_shot=render_priority_by_shot,
+        render_planning_by_shot=render_planning_by_shot,
+    )
+    has_assembly_metadata = (
+        isinstance(edit_intent_by_shot, dict)
+        and bool(edit_intent_by_shot)
+        and isinstance(render_count_by_shot, dict)
+        and bool(render_count_by_shot)
+        and isinstance(render_priority_by_shot, dict)
+        and bool(render_priority_by_shot)
+        and isinstance(render_planning_by_shot, dict)
+        and bool(render_planning_by_shot)
+    )
+    effective_assembly_quality_summary = (
+        assembly_quality_summary
+        if isinstance(assembly_quality_summary, dict)
+        else (computed_assembly_quality_summary if has_assembly_metadata else None)
+    )
     publishability_summary = summarize_publishability(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
         rerender_reasons=rerender_reasons,
+        assembly_quality_summary=effective_assembly_quality_summary,
     )
     rerender_plan = build_rerender_plan(
         rerender_targets=rerender_targets,
@@ -344,13 +369,7 @@ def build_review_report(
     )
     edit_intent_summary = summarize_edit_intent(edit_intent_by_shot)
     mv_intent_checks = build_mv_intent_checks(edit_intent_summary)
-    assembly_quality_summary = summarize_assembly_quality(
-        planned_shot_ids=planned_shot_ids,
-        edit_intent_by_shot=edit_intent_by_shot,
-        render_count_by_shot=render_count_by_shot,
-        render_priority_by_shot=render_priority_by_shot,
-        render_planning_by_shot=render_planning_by_shot,
-    )
+    assembly_quality_summary = effective_assembly_quality_summary
     return {
         "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,

@@ -1225,6 +1225,7 @@ def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
                             "review": {
                                 "final_video": "final.mp4",
                                 "music_file": "song.mp3",
+                                "recommended_action": "repair_audio_video_sync",
                             }
                         },
                     }
@@ -1242,12 +1243,45 @@ def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
             "review": {
                 "final_video": "final.mp4",
                 "music_file": "song.mp3",
+                "recommended_action": "repair_audio_video_sync",
             }
         },
     }
 
 
-def test_execute_rerender_runs_stills_then_clips_with_fresh_still_results(monkeypatch):
+
+def test_prepare_rerender_preserves_review_recommended_action_from_report_payloads():
+    stage_input = StageInput(
+        run_id="run-rerender-review-stage-assembly",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S001",
+                        "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                        "rerender_stage": "review",
+                        "stage_payloads": {
+                            "review": {
+                                "final_video": "final.mp4",
+                                "music_file": "song.mp3",
+                                "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                            }
+                        },
+                    }
+                ]
+            }
+        },
+    )
+
+    out = run_prepare_rerender(stage_input)
+
+    assert out.payload["rerender_stage_inputs"]["review"]["recommended_action"] == "revise_assembly_weights_before_clip_rerender"
+
+
+
+def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
+
 
     calls = []
 
@@ -1331,6 +1365,7 @@ def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
                     "review": {
                         "final_video": "final.mp4",
                         "music_file": "song.mp3",
+                        "recommended_action": "repair_audio_video_sync",
                     }
                 },
             },
@@ -1348,6 +1383,48 @@ def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
         "music_file": "song.mp3",
     }
     assert out.artifacts == ["synced-final.mp4"]
+
+
+
+def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repair(monkeypatch):
+    calls = []
+
+    def _fake_repair_audio_video_sync(stage_input):
+        calls.append(stage_input.payload)
+        return StageOutput("repair_audio_video_sync", "done", {"final_video": "should-not-run.mp4"}, [])
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_repair_audio_video_sync", _fake_repair_audio_video_sync)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-exec-assembly-review",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["review"],
+                "rerender_stage_inputs": {
+                    "review": {
+                        "final_video": "final.mp4",
+                        "music_file": "song.mp3",
+                        "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                    }
+                },
+            },
+        )
+    )
+
+    assert calls == []
+    assert out.payload == {
+        "rerender_results": {
+            "completed_stages": ["review"],
+            "still_results": [],
+            "clip_results": [],
+        },
+        "final_video": "final.mp4",
+        "music_file": "song.mp3",
+        "review_action": "revise_assembly_weights_before_clip_rerender",
+    }
+    assert out.artifacts == []
+
 
 
 def test_execute_rerender_returns_empty_results_when_no_rerender_stage_inputs_exist():

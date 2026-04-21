@@ -682,6 +682,7 @@ def test_review_models_build_review_stage_execution_payload_for_audio_sync_repai
                 "review": {
                     "final_video": "final.mp4",
                     "music_file": "song.mp3",
+                    "recommended_action": "repair_audio_video_sync",
                 }
             },
         }
@@ -693,6 +694,76 @@ def test_classify_rerender_target_prioritizes_missing_assets_before_audio_sync_r
 
     assert classification["bucket"] == "technical_completion"
     assert classification["recommended_action"] == "rerender_missing_stills"
+
+
+
+def test_classify_rerender_target_routes_assembly_failures_before_clip_rerender():
+    classification = classify_rerender_target(["chorus_not_stronger_than_verse", "arbitrary_transitions"])
+
+    assert classification["bucket"] == "final_mv_publishability"
+    assert classification["recommended_action"] == "revise_assembly_weights_before_clip_rerender"
+    assert classification["rerender_prescription"] == {
+        "stage_focus": "review",
+        "workflow_focus": None,
+        "prompt_contract_focus": [],
+        "fix_strategy": "revise_assembly_weights_before_clip_rerender",
+    }
+
+
+
+def test_review_models_route_assembly_only_failures_to_publishability_summary_before_clip_rerender():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=["S001"],
+        rerender_reasons={"S001": ["chorus_not_stronger_than_verse", "arbitrary_transitions"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.5,
+            "slideshow_risk_score": 0.41,
+            "transition_intentionality_score": 0.3,
+            "chorus_emphasis_within_threshold": False,
+            "slideshow_risk_within_threshold": False,
+        },
+    )
+
+    assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == [
+        "chorus_emphasis_within_threshold",
+        "slideshow_risk_within_threshold",
+    ]
+    assert report["publishability_summary"]["final_mv_publishability"]["next_action"] == "revise_assembly_weights_before_clip_rerender"
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "revise_assembly_weights_before_clip_rerender",
+        "target_shots": ["S001"],
+        "reason_codes": ["arbitrary_transitions", "chorus_not_stronger_than_verse"],
+    }
+
+
+
+def test_review_models_do_not_enable_assembly_publishability_checks_from_partial_metadata_only():
+    report = build_review_report(
+        planned_shot_ids=["S001"],
+        still_results=[{"shot_id": "S001"}],
+        clip_results=[{"shot_id": "S001"}],
+        still_status={"S001": True},
+        clip_status={"S001": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={"S001": {"section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"}},
+        render_count_by_shot={"S001": 1},
+    )
+
+    assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == []
+    assert report["publishability_summary"]["final_mv_publishability"]["next_action"] == "no_action"
+
 
 
 def test_review_models_include_severity_and_priority():
