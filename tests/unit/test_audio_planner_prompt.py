@@ -346,6 +346,30 @@ def test_generate_lyrics_block_skips_llm_for_zero_line_intro():
     assert out["lines"] == []
 
 
+def test_parse_audio_lyrics_draft_allows_omitted_zero_line_outro_header():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "outro", "label": "Outro", "style": "tail", "line_count": 0},
+        ]
+    }
+    drafted = "\n".join(
+        [
+            "[Verse 1]",
+            "젖은 유리 위로 밤이 번져",
+            "늦은 숨결만 손끝에 남아",
+        ]
+    )
+
+    out = audio_planner._parse_audio_lyrics_draft(outline, drafted)
+
+    assert out == [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 유리 위로 밤이 번져", "늦은 숨결만 손끝에 남아"]},
+        {"section": "outro", "label": "Outro", "style": "tail", "lines": []},
+    ]
+
+
+
 def test_generate_lyrics_draft_parses_full_song_and_only_rewrites_invalid_block(monkeypatch):
     outline = {
         "lyrics_blocks": [

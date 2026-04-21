@@ -176,6 +176,16 @@ def _parse_audio_lyrics_draft(outline: dict, text: str) -> list[dict]:
             cursor += 1
         expected_header = f"[{label}]"
         if cursor >= len(lines) or str(lines[cursor]).strip() != expected_header:
+            if line_count == 0 and cursor >= len(lines):
+                parsed.append(
+                    {
+                        "section": str(spec.get("section", "")).strip(),
+                        "label": label,
+                        "style": str(spec.get("style", "")).strip(),
+                        "lines": [],
+                    }
+                )
+                continue
             raise RuntimeError(f"audio lyrics draft missing expected header {expected_header}")
         cursor += 1
         body: list[str] = []
