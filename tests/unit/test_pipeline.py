@@ -104,7 +104,9 @@ def test_pipeline_runs_rerender_loop_when_review_needs_rerender(monkeypatch):
             "shot_plan": [{"shot_id": "S001", "start_sec": 0.0, "end_sec": 4.0}],
             "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
         })),
-        ("stills", _stage("stills", {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]})),
+        ("stills", _stage("stills", {
+            "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
+        })),
         ("clips", _stage("clips", {"clip_results": [{"shot_id": "S001", "video": "clips/S001_i2v.mp4"}]})),
         ("assemble", _stage("assemble", {"final_video": "final.mp4", "review_inputs": {"music_file": "music.mp3"}})),
         ("review", _stage("review", {"review_report": {"status": "needs_rerender", "rerender_execution_payloads": [{"shot_id": "S001"}]}})),
@@ -116,8 +118,7 @@ def test_pipeline_runs_rerender_loop_when_review_needs_rerender(monkeypatch):
             "rerender_loop",
             "done",
             {
-                "rerender_review_report": {"status": "done", "rerender_targets": []},
-                "rerender_results": {"completed_stages": ["stills"]},
+                "rerender_review_report": {"status": "done", "rerender_targets": [], "assembly_revision_summary": {"present": True, "action": "revise_transition_selection", "target": "assembly", "final_video": "final-synced.mp4", "music_file": "music.mp3"}},
                 "rerender_final_video": "final-synced.mp4",
             },
         ),
@@ -127,9 +128,8 @@ def test_pipeline_runs_rerender_loop_when_review_needs_rerender(monkeypatch):
 
     assert run_id == "rerender-test"
     assert order == ["audio", "plan", "stills", "clips", "assemble", "review", "rerender"]
-    assert final_payload["review_report"] == {"status": "done", "rerender_targets": []}
+    assert final_payload["review_report"] == {"status": "done", "rerender_targets": [], "assembly_revision_summary": {"present": True, "action": "revise_transition_selection", "target": "assembly", "final_video": "final-synced.mp4", "music_file": "music.mp3"}}
     assert final_payload["final_video"] == "final-synced.mp4"
-    assert final_payload["rerender_results"] == {"completed_stages": ["stills"]}
     assert final_payload["rerender_outcome"] == {"attempted": True, "resolved": True, "exhausted": False}
 
 
