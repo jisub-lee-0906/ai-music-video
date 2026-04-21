@@ -17,7 +17,7 @@ def build_shot_intent(*, section_type: str, shot_role: str, visual_mode: str) ->
         return {
             "edit_role": "hook",
             "coverage_role": "connective",
-            "workflow_intent": "stable_i2v",
+            "workflow_intent": "section_default",
             "framing_intent": "release_wide",
         }
     if section == "pre_chorus":
@@ -38,19 +38,19 @@ def build_shot_intent(*, section_type: str, shot_role: str, visual_mode: str) ->
         return {
             "edit_role": "hook",
             "coverage_role": "anchor",
-            "workflow_intent": "stable_i2v",
+            "workflow_intent": "section_default",
             "framing_intent": "establishing_wide",
         }
     if section == "outro":
         return {
             "edit_role": "release",
             "coverage_role": "anchor",
-            "workflow_intent": "stable_i2v",
+            "workflow_intent": "section_default",
             "framing_intent": "release_wide",
         }
     return {
         "edit_role": "support",
         "coverage_role": "connective",
-        "workflow_intent": "stable_i2v",
+        "workflow_intent": "section_default",
         "framing_intent": "hero_medium",
     }

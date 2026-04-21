@@ -31,7 +31,7 @@ def test_shot_plan_adds_shot_intent_fields():
 
     assert verse_shot["edit_role"] == "support"
     assert verse_shot["coverage_role"] == "connective"
-    assert verse_shot["workflow_intent"] == "stable_i2v"
+    assert verse_shot["workflow_intent"] == "section_default"
     assert verse_shot["framing_intent"] == "hero_medium"
     assert chorus_shot["edit_role"] == "hook"
     assert chorus_shot["coverage_role"] == "anchor"

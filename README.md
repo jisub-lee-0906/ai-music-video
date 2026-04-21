@@ -105,10 +105,10 @@ If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrap
 Use this as the initial success envelope:
 - concept-text driven run only
 - target music duration: 15–20 seconds
-- `planning.enable_ia2v=false`
-- `planning.enable_flf2v=false`
-- still generation + basic i2v clips only
-- `./scripts/preflight-wsl.sh` and `./scripts/start-wsl.sh` default to this smoke mode
+- ia2v-centered canonical path enabled
+- `planning.enable_flf2v=false` unless explicitly testing bridge transitions
+- still generation + ia2v clip generation on the canonical four-workflow stack
+- `./scripts/preflight-wsl.sh` and `./scripts/start-wsl.sh` should be treated as wrappers around the same canonical ia2v-centered runtime
 - add `--full-run` only when you intentionally want the longer path
 
 ```bash

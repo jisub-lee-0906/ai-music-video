@@ -29,7 +29,7 @@ render:
   ltx_negative: "pc game, console game, video game, cartoon, childish, ugly"
 
 planning:
-  enable_ia2v: false
+  enable_ia2v: true
   enable_flf2v: false
   max_ia2v_shots: 2
   ia2v_min_sec: 4.0

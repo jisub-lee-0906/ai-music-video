@@ -152,7 +152,7 @@ def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_rele
             "edit_role": "hook",
             "coverage_role": "connective",
             "framing_intent": "release_wide",
-            "workflow_intent": "stable_i2v",
+            "workflow_intent": "section_default",
             "start_sec": 8.0,
             "duration_sec": 4.0,
         },

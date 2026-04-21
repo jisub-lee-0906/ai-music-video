@@ -19,7 +19,7 @@ def test_routing_requires_audio_reactive_intent_for_ia2v_promotion():
                 "duration_sec": 5.0,
                 "render_mode": "i2v",
                 "source_section_index": 1,
-                "workflow_intent": "stable_i2v",
+                "workflow_intent": "section_default",
             }
         ],
     )
@@ -105,7 +105,7 @@ def test_routing_requires_bridge_intent_for_flf2v_promotion():
                 "visual_mode": "city_glance",
                 "duration_sec": 4.0,
                 "render_mode": "i2v",
-                "workflow_intent": "stable_i2v",
+                "workflow_intent": "section_default",
             },
             {
                 "shot_id": "S002",
