@@ -1441,6 +1441,9 @@ def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
                                 "final_video": "final.mp4",
                                 "music_file": "song.mp3",
                                 "recommended_action": "repair_audio_video_sync",
+                                "target_shots": ["S001"],
+                                "target_material_ids": ["MAT_001"],
+                                "target_section_ids": ["SEC_001"],
                             }
                         },
                     }
@@ -1459,6 +1462,9 @@ def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
                 "final_video": "final.mp4",
                 "music_file": "song.mp3",
                 "recommended_action": "repair_audio_video_sync",
+                "target_shots": ["S001"],
+                "target_material_ids": ["MAT_001"],
+                "target_section_ids": ["SEC_001"],
             }
         },
     }
@@ -1481,6 +1487,9 @@ def test_prepare_rerender_preserves_review_recommended_action_from_report_payloa
                                 "final_video": "final.mp4",
                                 "music_file": "song.mp3",
                                 "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                                "target_shots": ["S001"],
+                                "target_material_ids": ["MAT_001"],
+                                "target_section_ids": ["SEC_001"],
                             }
                         },
                     }
@@ -1492,6 +1501,64 @@ def test_prepare_rerender_preserves_review_recommended_action_from_report_payloa
     out = run_prepare_rerender(stage_input)
 
     assert out.payload["rerender_stage_inputs"]["review"]["recommended_action"] == "revise_assembly_weights_before_clip_rerender"
+    assert out.payload["rerender_stage_inputs"]["review"]["target_shots"] == ["S001"]
+    assert out.payload["rerender_stage_inputs"]["review"]["target_material_ids"] == ["MAT_001"]
+    assert out.payload["rerender_stage_inputs"]["review"]["target_section_ids"] == ["SEC_001"]
+
+
+
+def test_prepare_rerender_merges_review_target_provenance_across_multiple_payloads():
+    stage_input = StageInput(
+        run_id="run-rerender-review-stage-merge-targets",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S001",
+                        "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                        "rerender_stage": "review",
+                        "stage_payloads": {
+                            "review": {
+                                "final_video": "final.mp4",
+                                "music_file": "song.mp3",
+                                "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                                "target_shots": ["S001"],
+                                "target_material_ids": ["MAT_001"],
+                                "target_section_ids": ["SEC_001"],
+                            }
+                        },
+                    },
+                    {
+                        "shot_id": "S002",
+                        "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                        "rerender_stage": "review",
+                        "stage_payloads": {
+                            "review": {
+                                "final_video": "final.mp4",
+                                "music_file": "song.mp3",
+                                "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                                "target_shots": ["S002"],
+                                "target_material_ids": ["MAT_002"],
+                                "target_section_ids": ["SEC_002"],
+                            }
+                        },
+                    },
+                ]
+            }
+        },
+    )
+
+    out = run_prepare_rerender(stage_input)
+
+    assert out.payload["rerender_stage_inputs"]["review"] == {
+        "final_video": "final.mp4",
+        "music_file": "song.mp3",
+        "recommended_action": "revise_assembly_weights_before_clip_rerender",
+        "target_shots": ["S001", "S002"],
+        "target_material_ids": ["MAT_001", "MAT_002"],
+        "target_section_ids": ["SEC_001", "SEC_002"],
+    }
 
 
 

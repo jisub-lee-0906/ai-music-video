@@ -6,7 +6,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 _STAGE_SCHEMA = {
     "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
-    "review": ("final_video", "music_file", "recommended_action"),
+    "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids"),
 }
 
 
@@ -48,7 +48,14 @@ def _empty_stage_payload(stage_name: str) -> dict[str, object]:
     if stage_name == "clips":
         return {"shot_plan": [], "render_plan": [], "still_results": [], "music_file": ""}
     if stage_name == "review":
-        return {"final_video": "", "music_file": "", "recommended_action": ""}
+        return {
+            "final_video": "",
+            "music_file": "",
+            "recommended_action": "",
+            "target_shots": [],
+            "target_material_ids": [],
+            "target_section_ids": [],
+        }
     return {"shot_plan": [], "material_plan": [], "render_plan": [], "still_results": [], "style_bible": {}}
 
 
@@ -64,6 +71,21 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
             target[key] = dict(value)
         elif isinstance(value, dict) and not target.get(key):
             target[key] = dict(value)
+        return
+    if key in {"target_shots", "target_material_ids", "target_section_ids"}:
+        if not isinstance(value, list):
+            return
+        rows = target.setdefault(key, [])
+        if not isinstance(rows, list):
+            rows = []
+            target[key] = rows
+        seen = {str(item).strip() for item in rows if str(item).strip()}
+        for item in value:
+            text = str(item).strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            rows.append(text)
         return
     if not isinstance(value, list):
         return
