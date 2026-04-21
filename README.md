@@ -57,11 +57,44 @@ ai-mv doctor
 ai-mv preflight --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv start --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv status --run-id 20260406-215500
-ai-mv extract-frames --video artifacts/latest_success/final_video.mp4 --output-dir .analysis/final-review --kind final --sample-count 8
+# read final_video from artifacts/latest_success/manifest.json, then pass that path here
+ai-mv extract-frames --video <final_video_path_from_manifest> --output-dir .analysis/final-review --kind final --sample-count 8
 ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json
-ai-mv review-packet --video artifacts/latest_success/final_video.mp4 --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002
+ai-mv review-packet --video <final_video_path_from_manifest> --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002
 # packet now includes review-packet.json, review-findings.json, review-notes.md, and contact-sheet.json
 ```
+
+## Artifact contract
+
+The pipeline writes two canonical JSON artifacts:
+- `manifest.json`
+- `run_summary.json`
+
+For normal runs (`scope=run`) they are written to:
+- `artifacts/runs/<run_id>/...`
+- `artifacts/latest/...`
+- `artifacts/latest_success/...` only when `status == done`
+
+For preflight runs (`scope=preflight`) they are written to:
+- `artifacts/preflight/<run_id>/...`
+- `artifacts/preflight/latest/...`
+- `artifacts/preflight/latest_success/...` only when `status == done`
+
+Operational meaning:
+- `latest` = most recent artifact for that scope, including failed runs
+- `latest_success` = last known successful artifact for that scope
+- a failed run updates `latest` but must not overwrite `latest_success`
+
+Artifact schema notes:
+- both `manifest.json` and `run_summary.json` carry `schema_version`
+- the current canonical schema version is `ai_mv_schema_v1`
+- `manifest.json` is the canonical source for structured pipeline outputs
+- `run_summary.json` is the compact operational summary for quick inspection and downstream automation
+
+Important:
+- the final video file itself is not mirrored into `artifacts/latest/` or `artifacts/latest_success/`
+- instead, read `final_video` from `artifacts/latest/manifest.json` or `artifacts/latest_success/manifest.json`
+- `manifest.json` also records canonical sections such as `input`, `song`, `style_resolution`, `sections`, `materials`, `renders`, `assembly`, `review`, and `artifacts`
 
 ## WSL Usage
 
