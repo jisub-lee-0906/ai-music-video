@@ -4,6 +4,7 @@ import math
 
 from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.run_summary import write_run_summary
+from ai_mv.core.artifacts.schema import artifact_schema_version
 
 
 def _safe_float(value: object, default: float = 0.0) -> float:
@@ -45,7 +46,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "current_stage": str(state.get("current_stage", "")),
         "failure_reason": str(state.get("failure_reason", "")),
         "completed_stages": list(state.get("completed_stages", [])),
-        "schema_version": "ai_mv_schema_v1",
+        "schema_version": artifact_schema_version(),
         "concept_text": str(payload.get("concept_text", "")).strip(),
         "style_name": str(style_resolution.get("style_name") or payload.get("style_name", "")).strip(),
         "style_selection_source": str(style_resolution.get("selection_source", "")).strip(),

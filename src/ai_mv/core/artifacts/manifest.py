@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_file
+from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.utils.json_utils import write_json
 
 
@@ -10,7 +11,7 @@ def write_manifest(state: dict, payload: dict) -> None:
         "run_id": state["run_id"],
         "status": state["status"],
         "failure_reason": state["failure_reason"],
-        "schema_version": "ai_mv_schema_v1",
+        "schema_version": artifact_schema_version(),
         "input": {
             "concept_text": str(payload.get("concept_text", "")),
         },

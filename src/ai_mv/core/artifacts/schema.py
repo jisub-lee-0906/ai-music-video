@@ -1,0 +1,7 @@
+from __future__ import annotations
+
+ARTIFACT_SCHEMA_VERSION = "ai_mv_schema_v1"
+
+
+def artifact_schema_version() -> str:
+    return ARTIFACT_SCHEMA_VERSION
