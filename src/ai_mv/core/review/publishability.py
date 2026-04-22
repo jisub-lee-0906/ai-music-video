@@ -29,6 +29,8 @@ _FINAL_MV_PUBLISHABILITY_CHECKS = (
     "chorus_emphasis_within_threshold",
     "slideshow_risk_within_threshold",
     "safe_editing_within_threshold",
+    "character_payoff_present",
+    "background_dominance_within_threshold",
 )
 
 _GUIDANCE_BY_CHECK = {
@@ -53,6 +55,8 @@ _GUIDANCE_BY_CHECK = {
     "chorus_emphasis_within_threshold": "revise assembly weights so chorus reads stronger than verse before clip rerender",
     "slideshow_risk_within_threshold": "revise transition selection and clip ordering before rerendering clips",
     "safe_editing_within_threshold": "revise assembly pattern selection and cut density to avoid repetitive safe edits before rerendering clips",
+    "character_payoff_present": "rerender weak-payoff shots so the character reads as the emotional center instead of background mood",
+    "background_dominance_within_threshold": "rerender background-dominant shots with stronger subject scale and foreground payoff",
 }
 
 _TECHNICAL_PRIORITY = (
@@ -80,6 +84,8 @@ _FINAL_PRIORITY = (
     ("chorus_emphasis_within_threshold", "revise_assembly_weights_before_clip_rerender"),
     ("slideshow_risk_within_threshold", "revise_transition_selection"),
     ("safe_editing_within_threshold", "revise_transition_selection"),
+    ("character_payoff_present", "rerender_character_payoff_shots"),
+    ("background_dominance_within_threshold", "rerender_character_payoff_shots"),
     ("visual_continuity_preserved", "rerender_continuity_break_shots"),
     ("motion_source_safe", "rerender_motion_fragile_shots_with_safer_keyframes"),
     ("mood_consistency", "rerender_mood_drift_shots"),
@@ -110,6 +116,8 @@ _BUCKET_REASON_CODES = {
         "motion_fragile_frame",
         "chorus_not_stronger_than_verse",
         "arbitrary_transitions",
+        "weak_character_payoff",
+        "background_dominant_composition",
     },
 }
 
@@ -212,6 +220,12 @@ def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
             "bucket": "final_mv_publishability",
             "recommended_action": "rerender_continuity_break_shots",
             "rerender_prescription": _rerender_prescription("rerender_continuity_break_shots", normalized_reasons),
+        }
+    if "weak_character_payoff" in normalized_reason_set or "background_dominant_composition" in normalized_reason_set:
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "rerender_character_payoff_shots",
+            "rerender_prescription": _rerender_prescription("rerender_character_payoff_shots", normalized_reasons),
         }
     if "chorus_not_stronger_than_verse" in normalized_reason_set:
         return {
@@ -464,6 +478,12 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
             "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "enforce_single_frame_keyframe_composition",
+        },
+        "rerender_character_payoff_shots": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "strengthen_character_payoff_and_subject_scale",
         },
         "revise_assembly_weights_before_clip_rerender": {
             "stage_focus": "review",

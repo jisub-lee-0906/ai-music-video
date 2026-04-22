@@ -98,11 +98,23 @@ def test_rerender_reasons_include_explicit_visual_quality_findings():
         {"S001": True, "S002": True},
         {"S001": True, "S002": True},
         quality_findings={
-            "S002": ["terminal_frame_corruption", "continuity_break", "duplicate_subject"],
+            "S002": [
+                "terminal_frame_corruption",
+                "continuity_break",
+                "duplicate_subject",
+                "weak_character_payoff",
+                "background_dominant_composition",
+            ],
         },
     )
 
-    assert reasons["S002"] == ["terminal_frame_corruption", "continuity_break", "duplicate_subject"]
+    assert reasons["S002"] == [
+        "terminal_frame_corruption",
+        "continuity_break",
+        "duplicate_subject",
+        "weak_character_payoff",
+        "background_dominant_composition",
+    ]
     assert "S001" not in reasons
 
 
@@ -895,6 +907,83 @@ def test_classify_rerender_target_uses_composite_continuity_policy_for_identity_
             "fix_strategy": "tighten_identity_continuity_anchors",
         },
     }
+
+
+
+def test_classify_rerender_target_uses_character_payoff_fix_strategy_for_background_dominant_safe_frames():
+    classification = classify_rerender_target(["weak_character_payoff", "background_dominant_composition"])
+
+    assert classification == {
+        "bucket": "final_mv_publishability",
+        "recommended_action": "rerender_character_payoff_shots",
+        "rerender_prescription": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "strengthen_character_payoff_and_subject_scale",
+        },
+    }
+
+
+
+def test_review_models_route_manual_payoff_findings_to_final_mv_publishability_summary():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=["S001"],
+        rerender_reasons={"S001": ["weak_character_payoff", "background_dominant_composition"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["blocking_checks"]["character_payoff_present"] is False
+    assert report["blocking_checks"]["background_dominance_within_threshold"] is False
+    assert report["review_signal_buckets"]["heuristic_proxy"]["failed_checks"] == [
+        "character_payoff_present",
+        "background_dominance_within_threshold",
+    ]
+    assert report["publishability_summary"]["isolated_asset_quality"]["passed"] is True
+    assert report["publishability_summary"]["isolated_asset_quality"]["next_action"] == "no_action"
+    assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == [
+        "mood_consistency",
+        "character_payoff_present",
+        "background_dominance_within_threshold",
+    ]
+    assert report["publishability_summary"]["final_mv_publishability"]["next_action"] == "rerender_character_payoff_shots"
+    assert report["recommended_next_action"] == "rerender_character_payoff_shots"
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "rerender_character_payoff_shots",
+        "target_shots": ["S001"],
+        "target_material_ids": [],
+        "target_section_ids": [],
+        "reason_codes": ["background_dominant_composition", "weak_character_payoff"],
+    }
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_prescription"] == {
+        "stage_focus": "stills_then_clips",
+        "workflow_focus": ["flux2_image", "ia2v"],
+        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+        "fix_strategy": "strengthen_character_payoff_and_subject_scale",
+    }
+
+
+
+def test_review_models_route_single_manual_payoff_findings_to_character_payoff_rerender():
+    weak_payoff = classify_rerender_target(["weak_character_payoff"])
+    background_dominant = classify_rerender_target(["background_dominant_composition"])
+
+    assert weak_payoff["recommended_action"] == "rerender_character_payoff_shots"
+    assert background_dominant["recommended_action"] == "rerender_character_payoff_shots"
 
 
 

@@ -13,6 +13,8 @@ KNOWN_QUALITY_FINDING_CODES = (
     "weak_environment_match",
     "motion_fragile_frame",
     "unrelated_scene_intrusion",
+    "weak_character_payoff",
+    "background_dominant_composition",
 )
 
 

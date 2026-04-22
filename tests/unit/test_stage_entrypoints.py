@@ -3269,20 +3269,29 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
                         "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
                         "stage_payloads": {},
                     },
+                    {
+                        "shot_id": "S006",
+                        "recommended_action": "rerender_character_payoff_shots",
+                        "rerender_stage": "stills_then_clips",
+                        "fix_strategy": "strengthen_character_payoff_and_subject_scale",
+                        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+                        "stage_payloads": {},
+                    },
                 ]
             },
             "rerender_stage_inputs": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S004"}, {"shot_id": "S005"}],
+                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S004"}, {"shot_id": "S005"}, {"shot_id": "S006"}],
                     "render_plan": [
                         {"shot_id": "S001", "still_prompt_text": "neon portrait"},
                         {"shot_id": "S002", "still_prompt_text": "night street singer"},
                         {"shot_id": "S004", "still_prompt_text": "rooftop heroine close-up"},
                         {"shot_id": "S005", "still_prompt_text": "subway reflection heroine"},
+                        {"shot_id": "S006", "still_prompt_text": "wide neon bridge at dusk"},
                     ],
                 },
                 "clips": {
-                    "shot_plan": [{"shot_id": "S003"}, {"shot_id": "S005"}],
+                    "shot_plan": [{"shot_id": "S003"}, {"shot_id": "S005"}, {"shot_id": "S006"}],
                     "render_plan": [
                         {
                             "shot_id": "S003",
@@ -3293,6 +3302,11 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
                             "shot_id": "S005",
                             "clip_prompt_seed": "subway sidestep motion, keep protagonist recognizable",
                             "clip_positive_prompt": "subway sidestep motion, keep protagonist recognizable, stable body silhouette, no abrupt pose change",
+                        },
+                        {
+                            "shot_id": "S006",
+                            "clip_prompt_seed": "slow bridge walk, dreamy city lights",
+                            "clip_positive_prompt": "slow bridge walk, dreamy city lights, cinematic atmosphere",
                         }
                     ],
                     "still_results": [],
@@ -3310,10 +3324,13 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
     assert still_rows[1]["still_prompt_text"] == "night street singer, same protagonist, same environment, locked world details, no unrelated scene intrusion"
     assert still_rows[2]["still_prompt_text"] == "rooftop heroine close-up, same protagonist, locked identity details, no identity drift, no duplicate subject"
     assert still_rows[3]["still_prompt_text"] == "subway reflection heroine, same protagonist, continuity-locked identity details, match adjacent shots, no identity drift, preserve neighboring-shot continuity"
+    assert still_rows[4]["still_prompt_text"] == "wide neon bridge at dusk, same protagonist, stronger character payoff, subject-led composition, larger foreground subject, no background-dominant framing"
     assert clip_rows[0]["clip_prompt_seed"] == "camera drift forward, clean terminal frame, restrained motion range"
     assert clip_rows[0]["clip_positive_prompt"] == "camera drift forward, clean terminal frame, restrained motion range, shorter motion beat, clean exit frame, no abrupt pose change"
     assert clip_rows[1]["clip_prompt_seed"] == "subway sidestep motion, same protagonist, preserve neighboring-shot continuity"
     assert clip_rows[1]["clip_positive_prompt"] == "subway sidestep motion, same protagonist, preserve neighboring-shot continuity, match adjacent shots, no identity drift, no abrupt pose change"
+    assert clip_rows[2]["clip_prompt_seed"] == "slow bridge walk, same protagonist, stronger character payoff, larger foreground subject"
+    assert clip_rows[2]["clip_positive_prompt"] == "slow bridge walk, dreamy city lights, cinematic atmosphere, same protagonist, stronger character payoff, subject-led composition, larger foreground subject, no background-dominant framing"
 
 
 

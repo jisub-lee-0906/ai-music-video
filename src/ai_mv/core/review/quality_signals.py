@@ -65,6 +65,8 @@ def build_quality_signals(
     panel_layout_absent = "panel_layout" not in all_reasons
     collage_layout_absent = "collage_layout" not in all_reasons
     split_screen_absent = "split_screen" not in all_reasons
+    character_payoff_present = "weak_character_payoff" not in all_reasons
+    background_dominance_within_threshold = "background_dominant_composition" not in all_reasons
 
     visual_issue_count = sum(
         1
@@ -82,6 +84,8 @@ def build_quality_signals(
             "panel_layout",
             "collage_layout",
             "split_screen",
+            "weak_character_payoff",
+            "background_dominant_composition",
         }
     )
     visual_quality_severity = "low"
@@ -114,6 +118,8 @@ def build_quality_signals(
             and scene_intrusion_absent
             and chorus_emphasis_within_threshold
             and slideshow_risk_within_threshold
+            and character_payoff_present
+            and background_dominance_within_threshold
         ),
     }
 
@@ -158,6 +164,8 @@ def build_quality_signals(
         "panel_layout_absent": panel_layout_absent,
         "collage_layout_absent": collage_layout_absent,
         "split_screen_absent": split_screen_absent,
+        "character_payoff_present": character_payoff_present,
+        "background_dominance_within_threshold": background_dominance_within_threshold,
     }
     return {
         "still_done": still_done,

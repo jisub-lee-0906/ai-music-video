@@ -88,6 +88,8 @@ def _repair_prompt_text(*, field_name: str, fix_strategy: str, current_value: st
         )
     if fix_strategy == "tighten_identity_continuity_anchors":
         return _repair_identity_continuity_prompt(field_name=field_name, current_value=current_value)
+    if fix_strategy == "strengthen_character_payoff_and_subject_scale":
+        return _repair_character_payoff_prompt(field_name=field_name, current_value=current_value)
     if fix_strategy == "shorter_motion_and_clean_terminal_frames":
         return _repair_terminal_frame_prompt(field_name=field_name, current_value=current_value)
     return current_value
@@ -128,6 +130,37 @@ def _repair_identity_continuity_prompt(*, field_name: str, current_value: str) -
                 "match adjacent shots",
                 "no identity drift",
                 "no abrupt pose change",
+            ]
+        )
+    return current_value
+
+
+
+def _repair_character_payoff_prompt(*, field_name: str, current_value: str) -> str:
+    tokens = [part.strip() for part in str(current_value).split(",") if part.strip()]
+    seed_prefix = tokens[0] if tokens else str(current_value).strip()
+    if field_name == "still_prompt_text":
+        return _join_prompt_tokens(
+            [
+                current_value,
+                "same protagonist",
+                "stronger character payoff",
+                "subject-led composition",
+                "larger foreground subject",
+                "no background-dominant framing",
+            ]
+        )
+    if field_name == "clip_prompt_seed":
+        return _join_prompt_tokens([seed_prefix, "same protagonist", "stronger character payoff", "larger foreground subject"])
+    if field_name == "clip_positive_prompt":
+        return _join_prompt_tokens(
+            [
+                current_value,
+                "same protagonist",
+                "stronger character payoff",
+                "subject-led composition",
+                "larger foreground subject",
+                "no background-dominant framing",
             ]
         )
     return current_value

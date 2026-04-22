@@ -22,6 +22,8 @@ _HEURISTIC_PROXY_CHECKS = (
     "panel_layout_absent",
     "collage_layout_absent",
     "split_screen_absent",
+    "character_payoff_present",
+    "background_dominance_within_threshold",
     "camera_restraint",
     "memorable_shot",
 )

@@ -29,3 +29,11 @@ def test_quality_findings_review_input_template_is_json_serializable():
     payload = quality_findings_review_input_template(["S010"])
 
     assert json.loads(json.dumps(payload))["review_inputs"]["quality_findings"] == {"S010": []}
+
+
+
+def test_quality_findings_review_input_template_exposes_manual_mv_payoff_codes():
+    template = quality_findings_review_input_template(["S001"])
+
+    assert "weak_character_payoff" in template["known_quality_finding_codes"]
+    assert "background_dominant_composition" in template["known_quality_finding_codes"]
