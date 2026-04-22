@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_file
+from ai_mv.core.artifacts.provenance import dedupe_preserve_order, normalized_text_list
 from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.core.artifacts.success_policy import latest_success_eligible
 from ai_mv.core.planning.sections import normalized_sections
@@ -62,32 +63,18 @@ def write_manifest(state: dict, payload: dict) -> None:
 
 
 def _manifest_rerender_escalation(rerender_escalation: dict) -> dict:
-    shot_ids = _normalized_text_list(rerender_escalation.get("shot_ids"))
-    material_ids = _normalized_text_list(rerender_escalation.get("material_ids"))
-    section_ids = _normalized_text_list(rerender_escalation.get("section_ids"))
+    shot_ids = normalized_text_list(rerender_escalation.get("shot_ids"))
+    material_ids = normalized_text_list(rerender_escalation.get("material_ids"))
+    section_ids = normalized_text_list(rerender_escalation.get("section_ids"))
     out = {
         "status": str(rerender_escalation.get("status", "")).strip(),
         "shot_ids": shot_ids,
         "material_ids": material_ids,
         "section_ids": section_ids,
-        "unique_material_ids": _dedupe_preserve_order(material_ids),
-        "unique_section_ids": _dedupe_preserve_order(section_ids),
+        "unique_material_ids": dedupe_preserve_order(material_ids),
+        "unique_section_ids": dedupe_preserve_order(section_ids),
     }
     return out if any(out.values()) else {}
-
-
-def _normalized_text_list(value: object) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [text for item in value if (text := str(item).strip())]
-
-
-def _dedupe_preserve_order(values: list[str]) -> list[str]:
-    out: list[str] = []
-    for value in values:
-        if value not in out:
-            out.append(value)
-    return out
 
 
 def _manifest_section_plan(payload: dict, audio_map: dict) -> list[dict]:

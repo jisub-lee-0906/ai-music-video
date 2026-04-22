@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ai_mv.core.artifacts.manifest import _dedupe_preserve_order, write_manifest
+from ai_mv.core.artifacts.manifest import write_manifest
+from ai_mv.core.artifacts.provenance import dedupe_preserve_order
 from ai_mv.core.artifacts.run_summary import write_run_summary
 from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.core.artifacts.summary_fields import derive_summary_fields
@@ -72,8 +73,8 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "rerender_escalation_shot_ids": escalation_shot_ids,
         "rerender_escalation_material_ids": escalation_material_ids,
         "rerender_escalation_section_ids": escalation_section_ids,
-        "rerender_escalation_unique_material_ids": _dedupe_preserve_order(escalation_material_ids),
-        "rerender_escalation_unique_section_ids": _dedupe_preserve_order(escalation_section_ids),
+        "rerender_escalation_unique_material_ids": dedupe_preserve_order(escalation_material_ids),
+        "rerender_escalation_unique_section_ids": dedupe_preserve_order(escalation_section_ids),
         "rerender_escalation_actions": escalation_actions,
         "rerender_escalation_max_priority": max(escalation_priorities) if escalation_priorities else 0,
         "rerender_escalation_unique_actions": sorted(set(escalation_actions)),
