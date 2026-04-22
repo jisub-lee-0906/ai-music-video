@@ -99,7 +99,7 @@ def test_render_item_adds_audio_segment_for_ia2v():
     assert out["audio_segment"] == {"start_sec": 3.0, "duration_sec": 5.0}
 
 
-def test_render_item_emits_distinct_seed_per_shot():
+def test_render_item_emits_distinct_seed_and_variation_metadata_per_shot():
     first = build_render_item(
         {},
         "Japanese 80s city pop night drive",
@@ -134,31 +134,63 @@ def test_render_item_emits_distinct_seed_per_shot():
     assert first["seed"] >= 0
     assert second["seed"] >= 0
     assert first["seed"] != second["seed"]
+    assert isinstance(first["variation_seed"], int)
+    assert isinstance(second["variation_seed"], int)
+    assert first["variation_seed"] != second["variation_seed"]
+    assert first["variation_profile"]["variation_family"]
+    assert second["variation_profile"]["variation_family"]
+    assert set(first["variation_profile"]) == {
+        "variation_family",
+        "framing_variant",
+        "environment_variant",
+        "motion_variant",
+        "continuity_variant",
+        "section_emphasis_variant",
+    }
 
 
-def test_render_item_separates_still_and_clip_prompt_contracts():
-    out = build_render_item(
+def test_render_item_variation_profile_changes_still_and_clip_prompt_translation():
+    first = build_render_item(
         {},
         "dreamy synthwave neon highway night drive",
         "synthwave",
         get_synthwave_bible(),
         {
-            "shot_id": "S007",
+            "shot_id": "S020",
             "render_mode": "ia2v",
             "shot_role": "chorus_breakout",
+            "section_type": "chorus",
             "section_name": "Chorus",
             "visual_mode": "grid_surge",
             "start_sec": 8.0,
             "duration_sec": 5.0,
         },
     )
+    second = build_render_item(
+        {},
+        "dreamy synthwave neon highway night drive",
+        "synthwave",
+        get_synthwave_bible(),
+        {
+            "shot_id": "S021",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_breakout",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "grid_surge",
+            "start_sec": 13.0,
+            "duration_sec": 5.0,
+        },
+    )
 
-    assert out["still_prompt_text"]
-    assert out["clip_prompt_seed"]
-    assert out["clip_positive_prompt"]
-    assert "motion-safe keyframe" in out["still_prompt_text"]
-    assert "single cinematic keyframe" not in out["clip_prompt_seed"]
-    assert "single cinematic keyframe" not in out["clip_positive_prompt"]
+    assert first["variation_profile"] != second["variation_profile"]
+    assert first["still_prompt_text"] != second["still_prompt_text"]
+    assert first["clip_prompt_seed"] != second["clip_prompt_seed"]
+    assert first["clip_positive_prompt"] != second["clip_positive_prompt"]
+    for out in (first, second):
+        assert out["variation_profile"]["framing_variant"] in {"balanced", "subject_forward"}
+        assert out["variation_profile"]["continuity_variant"] in {"strict", "anchored"}
+        assert "environment-led camera framing" not in out["clip_positive_prompt"]
 
 
 def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_release_shot():

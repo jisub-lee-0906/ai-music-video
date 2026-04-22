@@ -340,7 +340,7 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
     )
 
     assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
-    assert all(set(item) == {"shot_id", "section_id", "material_id", "render_mode", "render_count", "render_planning", "render_priority_score", "seed", "prompt_seed", "prompt_draft", "prompt_polish", "still_prompt_text", "clip_prompt_seed", "clip_positive_prompt", "edit_intent", "still_a", "audio_segment"} for item in out["render_plan"])
+    assert all(set(item) == {"shot_id", "section_id", "material_id", "render_mode", "render_count", "render_planning", "render_priority_score", "seed", "variation_seed", "variation_profile", "prompt_seed", "prompt_draft", "prompt_polish", "still_prompt_text", "clip_prompt_seed", "clip_positive_prompt", "edit_intent", "still_a", "audio_segment"} for item in out["render_plan"])
 
 
 def test_plan_mv_does_not_drop_tail_when_shot_count_exceeds_m1_max():
