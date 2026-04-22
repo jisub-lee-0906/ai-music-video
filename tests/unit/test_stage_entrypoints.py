@@ -273,6 +273,243 @@ def test_assemble_mv_uses_edit_intent_to_build_trimmed_clip_segments(monkeypatch
     assert segments[1]["trim_end_sec"] == 5.0
 
 
+
+def test_assemble_mv_snaps_chorus_trim_to_bar_grid_when_audio_timing_exists(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "audio_map": {
+                "timing": {
+                    "bar_times_sec": [0.0, 2.0, 4.0, 6.0, 8.0],
+                    "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0],
+                }
+            },
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 5.0},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "target_clip_sec": 2.1,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 5.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 2.0
+    assert segments[0]["trim_end_sec"] == 4.0
+
+
+
+def test_assemble_mv_snaps_support_trim_to_beat_grid_when_audio_timing_exists(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "audio_map": {
+                "timing": {
+                    "bar_times_sec": [0.0, 2.0, 4.0, 6.0, 8.0],
+                    "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0],
+                }
+            },
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 5.0},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "sequence_support",
+                        "target_clip_sec": 2.1,
+                        "transition_in": "cut_in",
+                        "transition_out": "cut_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 5.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 0.0
+    assert segments[0]["trim_end_sec"] == 2.0
+
+
+
+def test_assemble_mv_leaves_trim_unchanged_when_no_timing_markers_fall_inside_shot(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "audio_map": {
+                "timing": {
+                    "bar_times_sec": [0.0, 2.0, 4.0, 6.0, 8.0],
+                    "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0],
+                }
+            },
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 10.0, "duration_sec": 5.0},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "target_clip_sec": 2.1,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 5.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 1.45
+    assert segments[0]["trim_end_sec"] == 3.55
+
+
+
+def test_assemble_mv_leaves_trim_unchanged_when_shot_plan_row_is_missing(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "audio_map": {
+                "timing": {
+                    "bar_times_sec": [0.0, 2.0, 4.0, 6.0, 8.0],
+                    "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],
+                }
+            },
+            "shot_plan": [],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "target_clip_sec": 2.1,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 5.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 1.45
+    assert segments[0]["trim_end_sec"] == 3.55
+
+
+
+def test_assemble_mv_caps_snapped_trim_to_actual_clip_duration(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "audio_map": {
+                "timing": {
+                    "bar_times_sec": [0.0, 2.0, 4.0, 6.0, 8.0],
+                    "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],
+                }
+            },
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 8.0},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "release_fade",
+                        "target_clip_sec": 2.1,
+                        "transition_in": "hold_in",
+                        "transition_out": "fade_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 5.0},
+    )
+
+    assert segments[0]["trim_end_sec"] <= 5.0
+
+
+
+def test_assemble_mv_falls_back_to_beat_grid_when_bar_grid_has_too_few_markers(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "audio_map": {
+                "timing": {
+                    "bar_times_sec": [2.0],
+                    "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+                }
+            },
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 3.3},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "target_clip_sec": 1.1,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 3.3},
+    )
+
+    assert segments[0]["trim_start_sec"] == 1.0
+    assert segments[0]["trim_end_sec"] == 2.0
+
+
 def test_render_stills_uses_generic_fallback_prompt_text_when_empty():
     prompt = _still_prompt_text({})
 

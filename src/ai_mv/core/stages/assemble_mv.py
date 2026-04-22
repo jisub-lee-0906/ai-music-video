@@ -84,7 +84,14 @@ def _review_quality_findings_path(config: object) -> str:
 def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[str, float] | None = None) -> list[dict]:
     clip_rows = _resolve_clip_results(config, _ordered_clip_rows(payload))
     render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
+    shot_plan = payload.get("shot_plan") if isinstance(payload, dict) else None
+    audio_map = payload.get("audio_map") if isinstance(payload, dict) else None
     render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
+    shot_plan_by_shot = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in shot_plan
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    } if isinstance(shot_plan, list) else {}
     edit_intent_by_shot = {
         str(row.get("shot_id", "")).strip(): dict(row.get("edit_intent", {}))
         for row in render_rows
@@ -98,6 +105,14 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
         clip_duration = float(durations.get(shot_id) or ffprobe_duration(row["path"]))
         target_clip_sec = _safe_float(edit_intent.get("target_clip_sec"), 0.0)
         trim_start_sec, trim_end_sec = _trim_window_for_clip(clip_duration, target_clip_sec, edit_intent)
+        trim_start_sec, trim_end_sec = _snap_trim_window_to_audio_timing(
+            trim_start_sec,
+            trim_end_sec,
+            clip_duration,
+            shot_plan_by_shot.get(shot_id, {}),
+            audio_map if isinstance(audio_map, dict) else {},
+            edit_intent,
+        )
         out.append({**row, "trim_start_sec": trim_start_sec, "trim_end_sec": trim_end_sec})
     return out
 
@@ -122,6 +137,100 @@ def _trim_window_for_clip(clip_duration: float, target_clip_sec: float, edit_int
         start = available / 2.0
     end = min(duration, start + target)
     return round(start, 3), round(end, 3)
+
+
+
+def _snap_trim_window_to_audio_timing(
+    trim_start_sec: float | None,
+    trim_end_sec: float | None,
+    clip_duration: float,
+    shot: dict,
+    audio_map: dict,
+    edit_intent: dict,
+) -> tuple[float | None, float | None]:
+    if trim_start_sec is None or trim_end_sec is None or not isinstance(shot, dict) or not shot:
+        return trim_start_sec, trim_end_sec
+    shot_start_sec = _safe_float(shot.get("start_sec"), 0.0)
+    shot_duration_sec = _safe_float(shot.get("duration_sec"), 0.0)
+    clip_duration_sec = max(0.0, float(clip_duration or 0.0))
+    effective_duration_sec = min(clip_duration_sec, shot_duration_sec) if shot_duration_sec > 0.0 else clip_duration_sec
+    shot_end_sec = shot_start_sec + effective_duration_sec
+    if shot_end_sec <= shot_start_sec:
+        return trim_start_sec, trim_end_sec
+    desired_start_sec = shot_start_sec + float(trim_start_sec)
+    desired_end_sec = min(shot_end_sec, shot_start_sec + float(trim_end_sec))
+    target_duration_sec = max(0.0, desired_end_sec - desired_start_sec)
+    timing_points = _timing_points_for_shot(audio_map, edit_intent, shot_start_sec, shot_end_sec)
+    if len(timing_points) < 2:
+        return trim_start_sec, trim_end_sec
+    best_pair: tuple[float, float] | None = None
+    best_score: float | None = None
+    for left_idx, start_sec in enumerate(timing_points[:-1]):
+        for end_sec in timing_points[left_idx + 1 :]:
+            duration_sec = end_sec - start_sec
+            if duration_sec <= 0.05:
+                continue
+            score = (
+                abs(start_sec - desired_start_sec)
+                + abs(end_sec - desired_end_sec)
+                + (0.25 * abs(duration_sec - target_duration_sec))
+            )
+            if best_score is None or score < best_score:
+                best_pair = (start_sec, end_sec)
+                best_score = score
+    if not best_pair:
+        return trim_start_sec, trim_end_sec
+    snapped_start_sec = round(max(0.0, best_pair[0] - shot_start_sec), 3)
+    snapped_end_sec = round(min(clip_duration_sec, best_pair[1] - shot_start_sec), 3)
+    if snapped_end_sec <= snapped_start_sec + 0.05:
+        return trim_start_sec, trim_end_sec
+    return snapped_start_sec, snapped_end_sec
+
+
+
+def _timing_points_for_shot(audio_map: dict, edit_intent: dict, shot_start_sec: float, shot_end_sec: float) -> list[float]:
+    timing = audio_map.get("timing") if isinstance(audio_map, dict) else None
+    if not isinstance(timing, dict):
+        return []
+    use_bar_grid = _prefer_bar_snap(edit_intent)
+    primary_key = "bar_times_sec" if use_bar_grid else "grid_beat_times_sec"
+    fallback_key = "grid_beat_times_sec" if use_bar_grid else "bar_times_sec"
+    primary_real_points = _real_timing_points(timing.get(primary_key), shot_start_sec, shot_end_sec)
+    if len(primary_real_points) >= 2:
+        return _bounded_timing_points(primary_real_points, shot_start_sec, shot_end_sec)
+    fallback_real_points = _real_timing_points(timing.get(fallback_key), shot_start_sec, shot_end_sec)
+    if len(fallback_real_points) >= 2:
+        return _bounded_timing_points(fallback_real_points, shot_start_sec, shot_end_sec)
+    return []
+
+
+
+def _real_timing_points(values: object, shot_start_sec: float, shot_end_sec: float) -> list[float]:
+    real_points: set[float] = set()
+    if isinstance(values, list):
+        for raw in values:
+            value = _safe_float(raw, -1.0)
+            if shot_start_sec <= value <= shot_end_sec:
+                real_points.add(round(value, 6))
+    return sorted(real_points)
+
+
+
+def _bounded_timing_points(real_points: list[float], shot_start_sec: float, shot_end_sec: float) -> list[float]:
+    if not real_points:
+        return []
+    return sorted({round(shot_start_sec, 6), round(shot_end_sec, 6), *real_points})
+
+
+
+def _prefer_bar_snap(edit_intent: dict) -> bool:
+    section_emphasis = str(edit_intent.get("section_emphasis", "")).strip()
+    transition_out = str(edit_intent.get("transition_out", "")).strip()
+    return section_emphasis in {"chorus_push", "bridge_contrast", "release_fade"} or transition_out in {
+        "fade_out",
+        "handoff_out",
+        "accent_out",
+    }
 
 
 
