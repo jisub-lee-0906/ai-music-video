@@ -278,6 +278,112 @@ def test_assemble_mv_uses_edit_intent_to_build_trimmed_clip_segments(monkeypatch
 
 
 
+def test_assemble_mv_uses_pattern_family_to_split_chorus_trim_behavior(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    clip2 = tmp_path / "clip2.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001"},
+                {"shot_id": "S002", "section_id": "SEC_002"},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+                {"shot_id": "S002", "video": str(clip2), "section_id": "SEC_002"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "pattern_family": "hook_punch_in",
+                        "target_clip_sec": 2.4,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_002",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "pattern_family": "hook_sustain",
+                        "target_clip_sec": 2.4,
+                        "transition_in": "glide_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 6.0, "S002": 6.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 1.8
+    assert segments[0]["trim_end_sec"] == 4.2
+    assert segments[1]["trim_start_sec"] == 0.9
+    assert segments[1]["trim_end_sec"] == 3.3
+    assert segments[0]["cadence_profile"] == "hook_dense"
+    assert segments[1]["cadence_profile"] == "hook_dense"
+
+
+
+def test_assemble_mv_uses_pattern_family_to_split_support_trim_behavior(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    clip2 = tmp_path / "clip2.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001"},
+                {"shot_id": "S002", "section_id": "SEC_002"},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+                {"shot_id": "S002", "video": str(clip2), "section_id": "SEC_002"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "sequence_support",
+                        "pattern_family": "support_drive",
+                        "target_clip_sec": 2.7,
+                        "transition_in": "cut_in",
+                        "transition_out": "cut_out",
+                    },
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_002",
+                    "edit_intent": {
+                        "section_emphasis": "sequence_support",
+                        "pattern_family": "support_hold",
+                        "target_clip_sec": 4.2,
+                        "transition_in": "hold_in",
+                        "transition_out": "cut_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 6.0, "S002": 6.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 0.495
+    assert segments[0]["trim_end_sec"] == 3.195
+    assert segments[1]["trim_start_sec"] == 0.0
+    assert segments[1]["trim_end_sec"] == 4.2
+    assert segments[0]["cadence_profile"] == "support_release"
+    assert segments[1]["cadence_profile"] == "support_hold"
+
+
+
 def test_assemble_mv_exposes_cadence_profile_and_snap_summary_in_assembly_plan(monkeypatch, tmp_path):
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-cadence.mp4")

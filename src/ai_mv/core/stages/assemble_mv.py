@@ -136,8 +136,27 @@ def _trim_window_for_clip(clip_duration: float, target_clip_sec: float, edit_int
     section_emphasis = str(edit_intent.get("section_emphasis", "")).strip()
     transition_in = str(edit_intent.get("transition_in", "")).strip()
     transition_out = str(edit_intent.get("transition_out", "")).strip()
+    pattern_family = str(edit_intent.get("pattern_family", "")).strip()
     available = max(0.0, duration - target)
-    if section_emphasis == "chorus_push":
+    if pattern_family == "hook_punch_in":
+        start = available / 2.0
+    elif pattern_family == "hook_sustain":
+        start = available * 0.25
+    elif pattern_family == "hook_surge":
+        start = available * 0.4
+    elif pattern_family == "support_drive":
+        start = available * 0.15
+    elif pattern_family == "support_hold":
+        start = 0.0
+    elif pattern_family == "bridge_glide":
+        start = available * 0.35
+    elif pattern_family == "bridge_pivot":
+        start = available * 0.55
+    elif pattern_family == "release_drift":
+        start = available * 0.6
+    elif pattern_family == "release_tail":
+        start = available
+    elif section_emphasis == "chorus_push":
         start = available / 2.0
     elif section_emphasis in {"release_fade", "bridge_contrast"} or transition_out in {"fade_out", "handoff_out", "accent_out"}:
         start = available
@@ -255,13 +274,14 @@ def _cadence_profile(edit_intent: dict) -> str:
     section_emphasis = str(edit_intent.get("section_emphasis", "")).strip()
     transition_in = str(edit_intent.get("transition_in", "")).strip()
     transition_out = str(edit_intent.get("transition_out", "")).strip()
-    if section_emphasis == "chorus_push":
+    pattern_family = str(edit_intent.get("pattern_family", "")).strip()
+    if pattern_family in {"hook_punch_in", "hook_sustain", "hook_surge"} or section_emphasis == "chorus_push":
         return "hook_dense"
-    if section_emphasis == "bridge_contrast":
+    if pattern_family in {"bridge_glide", "bridge_pivot"} or section_emphasis == "bridge_contrast":
         return "bridge_pivot"
-    if section_emphasis == "release_fade":
+    if pattern_family in {"release_drift", "release_tail"} or section_emphasis == "release_fade":
         return "release_tail"
-    if transition_in in {"hold_in", "glide_in"} or transition_out in {"fade_out", "handoff_out"}:
+    if pattern_family == "support_drive" or transition_in in {"glide_in"} or transition_out in {"fade_out", "handoff_out"}:
         return "support_release"
     return "support_hold"
 

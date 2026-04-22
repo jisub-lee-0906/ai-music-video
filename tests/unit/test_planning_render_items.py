@@ -1,6 +1,83 @@
-from ai_mv.core.planning.render_items import build_render_item
+from ai_mv.core.planning.render_items import build_edit_intent, build_render_item
 from ai_mv.styles.citypop.bible import get_citypop_bible
 from ai_mv.styles.synthwave.bible import get_synthwave_bible
+
+
+
+def test_build_edit_intent_branches_hook_patterns_from_variation_profile():
+    punch = build_edit_intent(
+        {"edit_role": "hook", "duration_sec": 6.0},
+        {"motion_variant": "pulsed", "framing_variant": "subject_forward"},
+    )
+    sustain = build_edit_intent(
+        {"edit_role": "hook", "duration_sec": 6.0},
+        {"motion_variant": "gliding", "framing_variant": "balanced"},
+    )
+
+    assert punch["pattern_family"] == "hook_punch_in"
+    assert punch["target_clip_sec"] == 2.4
+    assert punch["transition_in"] == "accent_in"
+    assert punch["transition_out"] == "accent_out"
+
+    assert sustain["pattern_family"] == "hook_sustain"
+    assert sustain["target_clip_sec"] == 3.6
+    assert sustain["transition_in"] == "glide_in"
+    assert sustain["transition_out"] == "accent_out"
+
+
+
+def test_build_edit_intent_branches_support_patterns_from_variation_profile():
+    drive = build_edit_intent(
+        {"edit_role": "support", "duration_sec": 6.0},
+        {"motion_variant": "pulsed", "framing_variant": "balanced"},
+    )
+    hold = build_edit_intent(
+        {"edit_role": "support", "duration_sec": 6.0},
+        {"motion_variant": "restrained", "framing_variant": "environment_forward"},
+    )
+
+    assert drive["pattern_family"] == "support_drive"
+    assert drive["target_clip_sec"] == 2.7
+    assert drive["transition_in"] == "cut_in"
+    assert drive["transition_out"] == "cut_out"
+
+    assert hold["pattern_family"] == "support_hold"
+    assert hold["target_clip_sec"] == 4.2
+    assert hold["transition_in"] == "hold_in"
+    assert hold["transition_out"] == "cut_out"
+
+
+
+def test_build_edit_intent_branches_bridge_and_release_patterns_from_variation_profile():
+    bridge = build_edit_intent(
+        {"edit_role": "bridge", "duration_sec": 6.0},
+        {"motion_variant": "gliding", "framing_variant": "balanced"},
+    )
+    release = build_edit_intent(
+        {"edit_role": "release", "duration_sec": 6.0},
+        {"motion_variant": "restrained", "framing_variant": "environment_forward"},
+    )
+
+    assert bridge["pattern_family"] == "bridge_glide"
+    assert bridge["target_clip_sec"] == 3.6
+    assert bridge["transition_in"] == "glide_in"
+    assert bridge["transition_out"] == "handoff_out"
+
+    assert release["pattern_family"] == "release_drift"
+    assert release["target_clip_sec"] == 4.2
+    assert release["transition_in"] == "hold_in"
+    assert release["transition_out"] == "fade_out"
+
+
+
+def test_build_edit_intent_clamps_short_shot_target_to_actual_duration():
+    out = build_edit_intent(
+        {"edit_role": "hook", "duration_sec": 0.5},
+        {"motion_variant": "pulsed", "framing_variant": "subject_forward"},
+    )
+
+    assert out["target_clip_sec"] == 0.5
+
 
 
 def test_render_item_adds_edit_intent_metadata():
@@ -28,8 +105,8 @@ def test_render_item_adds_edit_intent_metadata():
     assert out["section_id"] == "SEC_003"
     assert out["edit_intent"]["edit_priority"] == "high"
     assert out["edit_intent"]["section_emphasis"] == "chorus_push"
-    assert out["edit_intent"]["target_clip_sec"] == 5.0
-    assert out["edit_intent"]["transition_in"] == "accent_in"
+    assert out["edit_intent"]["pattern_family"] in {"hook_punch_in", "hook_sustain", "hook_surge"}
+    assert 0.0 < out["edit_intent"]["target_clip_sec"] <= 5.0
     assert out["edit_intent"]["transition_out"] == "accent_out"
 
 

@@ -27,7 +27,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     still_prompt_text = build_still_prompt_text(prompt_seed, prompt_draft, prompt_polish, variation_profile)
     clip_prompt_seed = build_clip_prompt_seed(render_mode, shot, prompt_seed, variation_profile)
     clip_positive_prompt = build_clip_positive_prompt(render_mode, shot, clip_prompt_seed, variation_profile)
-    edit_intent = build_edit_intent(shot)
+    edit_intent = build_edit_intent(shot, variation_profile)
     render_count = calculate_render_count(float(shot.get("duration_sec", 0.0) or 0.0))
     render_planning = build_render_planning(style_name, shot)
     out = {
@@ -114,40 +114,101 @@ def build_clip_positive_prompt(render_mode: str, shot: dict, clip_prompt_seed: s
 
 
 
-def build_edit_intent(shot: dict) -> dict:
+def build_edit_intent(shot: dict, variation_profile: dict | None = None) -> dict:
     edit_role = str(shot.get("edit_role", "support")).strip()
     duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)
+    variation = variation_profile if isinstance(variation_profile, dict) else {}
+    motion_variant = str(variation.get("motion_variant", "")).strip()
+    framing_variant = str(variation.get("framing_variant", "")).strip()
     if edit_role == "hook":
+        if motion_variant == "pulsed":
+            return {
+                "edit_priority": "high",
+                "section_emphasis": "chorus_push",
+                "pattern_family": "hook_punch_in",
+                "target_clip_sec": _scaled_target_clip(duration_sec, 0.4),
+                "transition_in": "accent_in",
+                "transition_out": "accent_out",
+            }
+        if motion_variant == "gliding":
+            return {
+                "edit_priority": "high",
+                "section_emphasis": "chorus_push",
+                "pattern_family": "hook_sustain",
+                "target_clip_sec": _scaled_target_clip(duration_sec, 0.6),
+                "transition_in": "glide_in",
+                "transition_out": "accent_out",
+            }
         return {
             "edit_priority": "high",
             "section_emphasis": "chorus_push",
-            "target_clip_sec": duration_sec,
-            "transition_in": "accent_in",
+            "pattern_family": "hook_surge",
+            "target_clip_sec": _scaled_target_clip(duration_sec, 0.5),
+            "transition_in": "cut_in",
             "transition_out": "accent_out",
         }
     if edit_role == "bridge":
+        if motion_variant == "gliding":
+            return {
+                "edit_priority": "medium",
+                "section_emphasis": "bridge_contrast",
+                "pattern_family": "bridge_glide",
+                "target_clip_sec": _scaled_target_clip(duration_sec, 0.6),
+                "transition_in": "glide_in",
+                "transition_out": "handoff_out",
+            }
         return {
             "edit_priority": "medium",
             "section_emphasis": "bridge_contrast",
-            "target_clip_sec": duration_sec,
-            "transition_in": "glide_in",
+            "pattern_family": "bridge_pivot",
+            "target_clip_sec": _scaled_target_clip(duration_sec, 0.45),
+            "transition_in": "cut_in",
             "transition_out": "handoff_out",
         }
     if edit_role == "release":
+        if motion_variant == "gliding" or framing_variant == "environment_forward":
+            return {
+                "edit_priority": "medium",
+                "section_emphasis": "release_fade",
+                "pattern_family": "release_drift",
+                "target_clip_sec": _scaled_target_clip(duration_sec, 0.7),
+                "transition_in": "hold_in",
+                "transition_out": "fade_out",
+            }
         return {
             "edit_priority": "medium",
             "section_emphasis": "release_fade",
-            "target_clip_sec": duration_sec,
-            "transition_in": "hold_in",
+            "pattern_family": "release_tail",
+            "target_clip_sec": _scaled_target_clip(duration_sec, 0.5),
+            "transition_in": "cut_in",
             "transition_out": "fade_out",
+        }
+    if motion_variant == "pulsed":
+        return {
+            "edit_priority": "medium",
+            "section_emphasis": "sequence_support",
+            "pattern_family": "support_drive",
+            "target_clip_sec": _scaled_target_clip(duration_sec, 0.45),
+            "transition_in": "cut_in",
+            "transition_out": "cut_out",
         }
     return {
         "edit_priority": "medium",
         "section_emphasis": "sequence_support",
-        "target_clip_sec": duration_sec,
-        "transition_in": "cut_in",
+        "pattern_family": "support_hold",
+        "target_clip_sec": _scaled_target_clip(duration_sec, 0.7),
+        "transition_in": "hold_in",
         "transition_out": "cut_out",
     }
+
+
+
+def _scaled_target_clip(duration_sec: float, ratio: float) -> float:
+    duration = max(0.0, float(duration_sec or 0.0))
+    if duration <= 0.0:
+        return 0.0
+    scaled = max(0.6, duration * float(ratio))
+    return float(_round_half_up(min(duration, scaled), 3))
 
 
 
