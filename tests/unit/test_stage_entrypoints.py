@@ -180,6 +180,50 @@ def test_assemble_mv_propagates_render_planning_metadata_into_review_inputs(monk
     }
 
 
+
+def test_assemble_mv_orders_clip_mux_and_timing_from_shot_plan(monkeypatch, tmp_path):
+    mux_calls = {}
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-ordered.mp4")
+
+    def _fake_run_ffmpeg_mux(clips, *_args, **_kwargs):
+        mux_calls["clip_names"] = [Path(path).name for path in clips]
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
+
+    for name in ("clip1.mp4", "clip2.mp4", "song.wav"):
+        (tmp_path / name).write_text("x", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-assemble-ordering",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001"},
+                {"shot_id": "S002", "section_id": "SEC_002"},
+            ],
+            "clip_results": [
+                {"shot_id": "S002", "video": "clip2.mp4", "section_id": "SEC_002"},
+                {"shot_id": "S001", "video": "clip1.mp4", "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "edit_intent": {"target_clip_sec": 2.0}},
+                {"shot_id": "S002", "section_id": "SEC_002", "edit_intent": {"target_clip_sec": 3.0}},
+            ],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    assert mux_calls["clip_names"] == ["clip1.mp4", "clip2.mp4"]
+    assert [section["section_id"] for section in out.payload["assembly_plan"]["section_edits"]] == ["SEC_001", "SEC_002"]
+    assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["sequence_index"] == 0
+    assert out.payload["assembly_plan"]["timing_map"]["SEC_002"]["sequence_index"] == 1
+
+
 def test_render_stills_uses_generic_fallback_prompt_text_when_empty():
     prompt = _still_prompt_text({})
 

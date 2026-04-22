@@ -9,7 +9,8 @@ from ai_mv.utils.path_utils import resolve_generated_file
 
 
 def run_assemble_mv(stage_input: StageInput) -> StageOutput:
-    clips = _resolve_clip_results(stage_input.config, stage_input.payload)
+    ordered_clip_rows = _ordered_clip_rows(stage_input.payload)
+    clips = _resolve_clip_results(stage_input.config, ordered_clip_rows)
     audio = Path(
         resolve_generated_file(
             stage_input.config,
@@ -47,9 +48,9 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
     )
 
 
-def _resolve_clip_results(config: dict, payload: dict) -> list[Path]:
+def _resolve_clip_results(config: dict, clip_rows: list[dict]) -> list[Path]:
     out: list[Path] = []
-    for row in payload.get("clip_results", []):
+    for row in clip_rows:
         if not isinstance(row, dict):
             continue
         video = str(row.get("video", "")).strip()
@@ -67,6 +68,29 @@ def _review_quality_findings_path(config: object) -> str:
     if not isinstance(review_cfg, dict):
         return ""
     return str(review_cfg.get("quality_findings_path", "")).strip()
+
+
+
+def _ordered_clip_rows(payload: dict) -> list[dict]:
+    clip_results = payload.get("clip_results") if isinstance(payload, dict) else None
+    shot_plan = payload.get("shot_plan") if isinstance(payload, dict) else None
+    clip_rows = [dict(row) for row in clip_results if isinstance(row, dict)] if isinstance(clip_results, list) else []
+    if not clip_rows:
+        return []
+    shot_order = {
+        str(row.get("shot_id", "")).strip(): idx
+        for idx, row in enumerate(shot_plan)
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    } if isinstance(shot_plan, list) else {}
+    if not shot_order:
+        return clip_rows
+    return sorted(
+        clip_rows,
+        key=lambda row: (
+            shot_order.get(str(row.get("shot_id", "")).strip(), len(shot_order)),
+            str(row.get("shot_id", "")).strip(),
+        ),
+    )
 
 
 
@@ -145,7 +169,7 @@ def _render_planning_by_shot(payload: dict) -> dict[str, dict]:
 def _assembly_plan(payload: dict) -> dict:
     clip_results = payload.get("clip_results") if isinstance(payload, dict) else None
     render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
-    clip_rows = [row for row in clip_results if isinstance(row, dict)] if isinstance(clip_results, list) else []
+    clip_rows = _ordered_clip_rows(payload)
     render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
     edit_intent_by_shot = {
         str(row.get("shot_id", "")).strip(): dict(row.get("edit_intent", {}))
