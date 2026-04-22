@@ -6,7 +6,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 _STAGE_SCHEMA = {
     "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
-    "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids"),
+    "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids", "assembly_plan", "review_inputs"),
 }
 
 
@@ -30,6 +30,13 @@ def run_prepare_rerender(stage_input: StageInput) -> StageOutput:
             target = stage_inputs.setdefault(stage_name, _empty_stage_payload(stage_name))
             for key in required_keys:
                 _merge_stage_field(target, key, stage_patch.get(key))
+
+    review_target = stage_inputs.get("review") if isinstance(stage_inputs.get("review"), dict) else None
+    if isinstance(review_target, dict):
+        if isinstance(stage_input.payload.get("assembly_plan"), dict):
+            review_target["assembly_plan"] = _merge_nested_context(review_target.get("assembly_plan"), stage_input.payload.get("assembly_plan"))
+        if isinstance(stage_input.payload.get("review_inputs"), dict):
+            review_target["review_inputs"] = _merge_nested_context(review_target.get("review_inputs"), stage_input.payload.get("review_inputs"))
 
     return StageOutput(
         "prepare_rerender",
@@ -55,6 +62,8 @@ def _empty_stage_payload(stage_name: str) -> dict[str, object]:
             "target_shots": [],
             "target_material_ids": [],
             "target_section_ids": [],
+            "assembly_plan": {},
+            "review_inputs": {},
         }
     return {"shot_plan": [], "material_plan": [], "render_plan": [], "still_results": [], "style_bible": {}}
 
@@ -67,6 +76,12 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
             target[key] = text
         return
     if key == "style_bible":
+        if isinstance(value, dict) and not isinstance(target.get(key), dict):
+            target[key] = dict(value)
+        elif isinstance(value, dict) and not target.get(key):
+            target[key] = dict(value)
+        return
+    if key in {"assembly_plan", "review_inputs"}:
         if isinstance(value, dict) and not isinstance(target.get(key), dict):
             target[key] = dict(value)
         elif isinstance(value, dict) and not target.get(key):
@@ -103,3 +118,47 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
             continue
         seen.add(dedupe_key)
         rows.append(row)
+
+
+
+def _merge_nested_context(existing: object, canonical: object) -> dict[str, object]:
+    current = dict(existing) if isinstance(existing, dict) else {}
+    source = dict(canonical) if isinstance(canonical, dict) else {}
+    merged = dict(current)
+    for key, canonical_value in source.items():
+        existing_value = merged.get(key)
+        if isinstance(existing_value, dict) and isinstance(canonical_value, dict):
+            merged[key] = _merge_nested_context(existing_value, canonical_value)
+            continue
+        if isinstance(existing_value, list) and isinstance(canonical_value, list):
+            merged[key] = _merge_context_list(existing_value, canonical_value)
+            continue
+        merged[key] = canonical_value
+    return merged
+
+
+
+def _merge_context_list(existing: list, canonical: list) -> list:
+    current_map = {_context_item_key(item): item for item in existing}
+    canonical_map = {_context_item_key(item): item for item in canonical}
+    merged_keys = list(canonical_map.keys()) + [key for key in current_map.keys() if key not in canonical_map]
+    merged: list = []
+    for key in merged_keys:
+        if key in canonical_map and key in current_map and isinstance(current_map[key], dict) and isinstance(canonical_map[key], dict):
+            merged.append(_merge_nested_context(current_map[key], canonical_map[key]))
+        elif key in canonical_map:
+            merged.append(canonical_map[key])
+        else:
+            merged.append(current_map[key])
+    return merged
+
+
+
+def _context_item_key(item: object) -> str:
+    if isinstance(item, dict):
+        for key in ("section_id", "shot_id", "material_id", "id"):
+            text = str(item.get(key, "")).strip()
+            if text:
+                return f"{key}:{text}"
+        return repr(sorted(item.items()))
+    return str(item)

@@ -2017,48 +2017,234 @@ def test_prepare_rerender_returns_empty_stage_inputs_when_review_has_no_targets(
 
 
 def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
-    stage_input = StageInput(
-        run_id="run-rerender-review-stage",
-        config={},
-        payload={
-            "review_report": {
-                "rerender_execution_payloads": [
-                    {
-                        "shot_id": "S001",
-                        "recommended_action": "repair_audio_video_sync",
-                        "rerender_stage": "review",
-                        "stage_payloads": {
-                            "review": {
-                                "final_video": "final.mp4",
-                                "music_file": "song.mp3",
-                                "recommended_action": "repair_audio_video_sync",
-                                "target_shots": ["S001"],
-                                "target_material_ids": ["MAT_001"],
-                                "target_section_ids": ["SEC_001"],
-                            }
-                        },
-                    }
-                ]
-            }
-        },
+    out = run_prepare_rerender(
+        StageInput(
+            run_id="run-prepare-review-sync",
+            config={},
+            payload={
+                "review_report": {
+                    "status": "needs_rerender",
+                    "rerender_targets": ["S001"],
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S001",
+                            "recommended_action": "repair_audio_video_sync",
+                            "rerender_stage": "review",
+                            "stage_payloads": {
+                                "review": {
+                                    "final_video": "final-sync.mp4",
+                                    "music_file": "song.mp3",
+                                    "recommended_action": "repair_audio_video_sync",
+                                    "target_shots": ["S001"],
+                                    "target_material_ids": ["MAT_001"],
+                                    "target_section_ids": ["SEC_001"],
+                                }
+                            },
+                        }
+                    ],
+                }
+            },
+        )
     )
-
-    out = run_prepare_rerender(stage_input)
 
     assert out.payload == {
         "rerender_target_ids": ["S001"],
         "rerender_stage_sequence": ["review"],
         "rerender_stage_inputs": {
             "review": {
-                "final_video": "final.mp4",
+                "final_video": "final-sync.mp4",
                 "music_file": "song.mp3",
                 "recommended_action": "repair_audio_video_sync",
                 "target_shots": ["S001"],
                 "target_material_ids": ["MAT_001"],
                 "target_section_ids": ["SEC_001"],
+                "assembly_plan": {},
+                "review_inputs": {},
             }
         },
     }
+
+
+
+def test_prepare_rerender_backfills_review_stage_with_top_level_assembly_context():
+    out = run_prepare_rerender(
+        StageInput(
+            run_id="run-prepare-review-assembly-context",
+            config={},
+            payload={
+                "assembly_plan": {
+                    "section_edit_map": {"SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"]}},
+                    "transition_map": {},
+                    "timing_map": {},
+                    "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001"]}],
+                },
+                "review_inputs": {"cadence_profile_by_shot": {"S001": "support_hold"}},
+                "review_report": {
+                    "status": "needs_rerender",
+                    "rerender_targets": ["S001"],
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S001",
+                            "recommended_action": "revise_transition_selection",
+                            "rerender_stage": "review",
+                            "stage_payloads": {
+                                "review": {
+                                    "final_video": "final-sync.mp4",
+                                    "music_file": "song.mp3",
+                                    "recommended_action": "revise_transition_selection",
+                                    "target_shots": ["S001"],
+                                    "target_material_ids": ["MAT_001"],
+                                    "target_section_ids": ["SEC_001"],
+                                }
+                            },
+                        }
+                    ],
+                },
+            },
+        )
+    )
+
+    assert out.payload["rerender_stage_inputs"]["review"]["assembly_plan"] == {
+        "section_edit_map": {"SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"]}},
+        "transition_map": {},
+        "timing_map": {},
+        "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001"]}],
+    }
+    assert out.payload["rerender_stage_inputs"]["review"]["review_inputs"] == {
+        "cadence_profile_by_shot": {"S001": "support_hold"}
+    }
+
+
+
+def test_prepare_rerender_merges_partial_review_stage_with_top_level_assembly_context():
+    out = run_prepare_rerender(
+        StageInput(
+            run_id="run-prepare-review-assembly-merge",
+            config={},
+            payload={
+                "assembly_plan": {
+                    "section_edit_map": {
+                        "SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"]},
+                        "SEC_002": {"section_id": "SEC_002", "selected_clip_ids": ["S002"]},
+                    },
+                    "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}, "SEC_002": {"transition_in": "glide_in", "transition_out": "handoff_out"}},
+                    "timing_map": {"SEC_001": {"snap_unit": "beat"}, "SEC_002": {"snap_unit": "bar"}},
+                    "section_edits": [{"section_id": "SEC_001"}, {"section_id": "SEC_002"}],
+                },
+                "review_inputs": {
+                    "edit_intent_by_shot": {
+                        "S001": {"section_emphasis": "sequence_support"},
+                        "S002": {"section_emphasis": "chorus_push"},
+                    },
+                    "cadence_profile_by_shot": {"S001": "support_hold", "S002": "hook_dense"},
+                },
+                "review_report": {
+                    "status": "needs_rerender",
+                    "rerender_targets": ["S001"],
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S001",
+                            "recommended_action": "revise_transition_selection",
+                            "rerender_stage": "review",
+                            "stage_payloads": {
+                                "review": {
+                                    "final_video": "final-sync.mp4",
+                                    "music_file": "song.mp3",
+                                    "recommended_action": "revise_transition_selection",
+                                    "target_shots": ["S001"],
+                                    "target_material_ids": ["MAT_001"],
+                                    "target_section_ids": ["SEC_001"],
+                                    "assembly_plan": {
+                                        "section_edit_map": {"SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"]}},
+                                        "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                                        "timing_map": {"SEC_001": {"snap_unit": "beat"}},
+                                        "section_edits": [{"section_id": "SEC_001"}],
+                                    },
+                                    "review_inputs": {
+                                        "edit_intent_by_shot": {"S001": {"section_emphasis": "sequence_support"}},
+                                        "cadence_profile_by_shot": {"S001": "support_hold"},
+                                    },
+                                }
+                            },
+                        }
+                    ],
+                },
+            },
+        )
+    )
+
+    assert out.payload["rerender_stage_inputs"]["review"]["assembly_plan"] == {
+        "section_edit_map": {
+            "SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"]},
+            "SEC_002": {"section_id": "SEC_002", "selected_clip_ids": ["S002"]},
+        },
+        "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}, "SEC_002": {"transition_in": "glide_in", "transition_out": "handoff_out"}},
+        "timing_map": {"SEC_001": {"snap_unit": "beat"}, "SEC_002": {"snap_unit": "bar"}},
+        "section_edits": [{"section_id": "SEC_001"}, {"section_id": "SEC_002"}],
+    }
+    assert out.payload["rerender_stage_inputs"]["review"]["review_inputs"] == {
+        "edit_intent_by_shot": {
+            "S001": {"section_emphasis": "sequence_support"},
+            "S002": {"section_emphasis": "chorus_push"},
+        },
+        "cadence_profile_by_shot": {"S001": "support_hold", "S002": "hook_dense"},
+    }
+
+
+
+def test_prepare_rerender_prefers_canonical_top_level_review_context_over_stale_stage_subset():
+    out = run_prepare_rerender(
+        StageInput(
+            run_id="run-prepare-review-assembly-override",
+            config={},
+            payload={
+                "assembly_plan": {
+                    "section_edit_map": {"SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"], "editorial_weight": "high"}},
+                    "transition_map": {"SEC_001": {"transition_in": "glide_in", "transition_out": "handoff_out"}},
+                    "timing_map": {"SEC_001": {"snap_unit": "bar"}},
+                    "section_edits": [{"section_id": "SEC_001", "editorial_weight": "high"}],
+                },
+                "review_inputs": {
+                    "edit_intent_by_shot": {"S001": {"section_emphasis": "sequence_support", "transition_in": "glide_in", "transition_out": "handoff_out"}},
+                    "cadence_profile_by_shot": {"S001": "support_release"},
+                },
+                "review_report": {
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S001",
+                            "recommended_action": "revise_transition_selection",
+                            "rerender_stage": "review",
+                            "stage_payloads": {
+                                "review": {
+                                    "final_video": "final-sync.mp4",
+                                    "music_file": "song.mp3",
+                                    "recommended_action": "revise_transition_selection",
+                                    "target_shots": ["S001"],
+                                    "target_material_ids": ["MAT_001"],
+                                    "target_section_ids": ["SEC_001"],
+                                    "assembly_plan": {
+                                        "section_edit_map": {"SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"], "editorial_weight": "medium"}},
+                                        "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                                        "timing_map": {"SEC_001": {"snap_unit": "beat"}},
+                                        "section_edits": [{"section_id": "SEC_001", "editorial_weight": "medium"}],
+                                    },
+                                    "review_inputs": {
+                                        "edit_intent_by_shot": {"S001": {"section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"}},
+                                        "cadence_profile_by_shot": {"S001": "support_hold"},
+                                    },
+                                }
+                            },
+                        }
+                    ]
+                },
+            },
+        )
+    )
+
+    assert out.payload["rerender_stage_inputs"]["review"]["assembly_plan"]["section_edit_map"]["SEC_001"]["editorial_weight"] == "high"
+    assert out.payload["rerender_stage_inputs"]["review"]["assembly_plan"]["transition_map"]["SEC_001"] == {"transition_in": "glide_in", "transition_out": "handoff_out"}
+    assert out.payload["rerender_stage_inputs"]["review"]["review_inputs"]["edit_intent_by_shot"]["S001"] == {"section_emphasis": "sequence_support", "transition_in": "glide_in", "transition_out": "handoff_out"}
+    assert out.payload["rerender_stage_inputs"]["review"]["review_inputs"]["cadence_profile_by_shot"]["S001"] == "support_release"
 
 
 
@@ -2149,6 +2335,8 @@ def test_prepare_rerender_merges_review_target_provenance_across_multiple_payloa
         "target_shots": ["S001", "S002"],
         "target_material_ids": ["MAT_001", "MAT_002"],
         "target_section_ids": ["SEC_001", "SEC_002"],
+        "assembly_plan": {},
+        "review_inputs": {},
     }
 
 
@@ -2343,17 +2531,29 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
                 "target_shots": ["S010", "S011"],
                 "target_material_ids": ["MAT_010", "MAT_011"],
                 "target_section_ids": ["SEC_010", "SEC_011"],
+                "revised_review_inputs": {
+                    "cadence_profile_by_shot": {},
+                    "snap_unit_by_shot": {},
+                    "trimmed_coverage_by_shot": {},
+                    "edit_intent_by_shot": {},
+                },
             }
         },
         "assembly_revision_result": {
             "action": "revise_assembly_weights_before_clip_rerender",
-            "status": "ready",
+            "status": "applied",
             "target": "assembly",
             "output_final_video": "final.mp4",
             "revision_focus": "weights",
             "target_shots": ["S010", "S011"],
             "target_material_ids": ["MAT_010", "MAT_011"],
             "target_section_ids": ["SEC_010", "SEC_011"],
+            "revised_assembly_plan": {
+                "section_edit_map": {},
+                "transition_map": {},
+                "timing_map": {},
+                "section_edits": [],
+            },
         },
     }
     assert out.artifacts == []
@@ -2380,6 +2580,32 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
                         "final_video": "final.mp4",
                         "music_file": "song.mp3",
                         "recommended_action": "revise_transition_selection",
+                        "assembly_plan": {
+                            "section_edit_map": {
+                                "SEC_001": {
+                                    "section_id": "SEC_001",
+                                    "selected_clip_ids": ["S001"],
+                                    "selected_material_ids": ["MAT_001"],
+                                    "transition_in": "cut_in",
+                                    "transition_out": "cut_out",
+                                    "snap_unit": "free",
+                                    "cadence_profile": "support_hold",
+                                    "trimmed_coverage_sec": 4.0,
+                                }
+                            },
+                            "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                            "timing_map": {"SEC_001": {"selected_clip_ids": ["S001"], "snap_unit": "free", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}},
+                            "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001"], "transition_in": "cut_in", "transition_out": "cut_out", "snap_unit": "free", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}],
+                        },
+                        "review_inputs": {
+                            "edit_intent_by_shot": {"S001": {"section_emphasis": "sequence_support"}},
+                            "cadence_profile_by_shot": {"S001": "support_hold"},
+                            "snap_unit_by_shot": {"S001": "free"},
+                            "trimmed_coverage_by_shot": {"S001": 4.0},
+                        },
+                        "target_shots": ["S001"],
+                        "target_material_ids": ["MAT_001"],
+                        "target_section_ids": ["SEC_001"],
                     }
                 },
             },
@@ -2388,27 +2614,91 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
 
     assert calls == []
     assert out.payload["review_action"] == "revise_transition_selection"
-    assert out.payload["review_inputs"] == {
-        "assembly_revision": {
-            "action": "revise_transition_selection",
-            "target": "assembly",
-            "final_video": "final.mp4",
-            "music_file": "song.mp3",
-            "target_shots": [],
-            "target_material_ids": [],
-            "target_section_ids": [],
-        }
+    assert out.payload["review_inputs"]["assembly_revision"]["revised_review_inputs"] == {
+        "cadence_profile_by_shot": {"S001": "support_release"},
+        "snap_unit_by_shot": {"S001": "beat"},
+        "trimmed_coverage_by_shot": {"S001": 3.6},
+        "edit_intent_by_shot": {
+            "S001": {
+                "section_emphasis": "sequence_support",
+                "transition_in": "glide_in",
+                "transition_out": "handoff_out",
+            }
+        },
     }
-    assert out.payload["assembly_revision_result"] == {
-        "action": "revise_transition_selection",
-        "status": "ready",
-        "target": "assembly",
-        "output_final_video": "final.mp4",
-        "revision_focus": "transitions",
-        "target_shots": [],
-        "target_material_ids": [],
-        "target_section_ids": [],
+    assert out.payload["review_inputs"]["edit_intent_by_shot"]["S001"] == {
+        "section_emphasis": "sequence_support",
+        "transition_in": "glide_in",
+        "transition_out": "handoff_out",
     }
+    assert out.payload["assembly_revision_result"]["status"] == "applied"
+    assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["transition_map"]["SEC_001"] == {
+        "transition_in": "glide_in",
+        "transition_out": "handoff_out",
+    }
+
+
+
+def test_execute_rerender_applies_weight_revision_to_assembly_metadata(monkeypatch):
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_repair_audio_video_sync", lambda stage_input: StageOutput("repair_audio_video_sync", "done", {}, []))
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-exec-weight-review",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["review"],
+                "rerender_stage_inputs": {
+                    "review": {
+                        "final_video": "final.mp4",
+                        "music_file": "song.mp3",
+                        "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                        "assembly_plan": {
+                            "section_edit_map": {
+                                "SEC_001": {
+                                    "section_id": "SEC_001",
+                                    "selected_clip_ids": ["S010", "S011"],
+                                    "selected_material_ids": ["MAT_010", "MAT_011"],
+                                    "editorial_weight": "medium",
+                                    "snap_unit": "beat",
+                                    "cadence_profile": "support_hold",
+                                    "trimmed_coverage_sec": 4.0,
+                                }
+                            },
+                            "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                            "timing_map": {"SEC_001": {"selected_clip_ids": ["S010", "S011"], "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}},
+                            "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S010", "S011"], "editorial_weight": "medium", "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}],
+                        },
+                        "review_inputs": {
+                            "edit_intent_by_shot": {
+                                "S010": {"section_emphasis": "chorus_push"},
+                                "S011": {"section_emphasis": "chorus_push"},
+                            },
+                            "cadence_profile_by_shot": {"S010": "support_hold", "S011": "support_hold"},
+                            "snap_unit_by_shot": {"S010": "beat", "S011": "beat"},
+                            "trimmed_coverage_by_shot": {"S010": 4.0, "S011": 4.0},
+                        },
+                        "target_shots": ["S010", "S011"],
+                        "target_material_ids": ["MAT_010", "MAT_011"],
+                        "target_section_ids": ["SEC_001"],
+                    }
+                },
+            },
+        )
+    )
+
+    revised_inputs = out.payload["review_inputs"]["assembly_revision"]["revised_review_inputs"]
+    assert revised_inputs == {
+        "cadence_profile_by_shot": {"S010": "hook_dense", "S011": "hook_dense"},
+        "snap_unit_by_shot": {"S010": "bar", "S011": "bar"},
+        "trimmed_coverage_by_shot": {"S010": 3.2, "S011": 3.2},
+        "edit_intent_by_shot": {
+            "S010": {"section_emphasis": "chorus_push", "transition_in": "cut_in", "transition_out": "cut_out"},
+            "S011": {"section_emphasis": "chorus_push", "transition_in": "cut_in", "transition_out": "cut_out"},
+        },
+    }
+    assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["section_edit_map"]["SEC_001"]["editorial_weight"] == "high"
+    assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["timing_map"]["SEC_001"]["trimmed_coverage_sec"] == 3.2
 
 
 
@@ -2456,7 +2746,19 @@ def test_rerender_review_preserves_real_assembly_revision_result():
         "target": "assembly",
         "output_final_video": "D:/renders/final.mp4",
         "revision_focus": "transitions",
+        "improvement_summary": {
+            "targeted_issue_improved": False,
+            "before_repetitive_edit_risk_score": 0.0,
+            "after_repetitive_edit_risk_score": 0.0,
+            "before_safe_editing_within_threshold": False,
+            "after_safe_editing_within_threshold": False,
+            "before_transition_intentionality_score": 0.0,
+            "after_transition_intentionality_score": 0.0,
+            "before_slideshow_risk_within_threshold": False,
+            "after_slideshow_risk_within_threshold": False,
+        },
     }
+    assert out.payload["assembly_plan"] == {}
 
 
 
@@ -2580,6 +2882,308 @@ def test_rerender_review_preserves_assembly_revision_review_inputs():
         "target_material_ids": ["MAT_010", "MAT_011"],
         "target_section_ids": ["SEC_010", "SEC_011"],
     }
+
+
+
+def test_rerender_review_reports_assembly_revision_improvement_from_revised_metadata():
+    out = run_rerender_review(
+        StageInput(
+            run_id="run-rerender-review-assembly-improvement",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "music_file": "D:/renders/song.mp3",
+                "shot_plan": [
+                    {"shot_id": "S010", "section": "chorus", "section_role": "hook", "section_emphasis": "chorus_push"},
+                    {"shot_id": "S011", "section": "chorus", "section_role": "hook", "section_emphasis": "chorus_push"},
+                    {"shot_id": "S012", "section": "verse", "section_role": "support", "section_emphasis": "sequence_support"},
+                ],
+                "render_plan": [
+                    {"shot_id": "S010", "render_mode": "ia2v", "section_role": "hook"},
+                    {"shot_id": "S011", "render_mode": "ia2v", "section_role": "hook"},
+                    {"shot_id": "S012", "render_mode": "ia2v", "section_role": "support"},
+                ],
+                "clip_results": [
+                    {"shot_id": "S010", "video": "D:/renders/S010.mp4", "status": "done"},
+                    {"shot_id": "S011", "video": "D:/renders/S011.mp4", "status": "done"},
+                    {"shot_id": "S012", "video": "D:/renders/S012.mp4", "status": "done"},
+                ],
+                "review_report": {
+                    "assembly_quality_summary": {
+                        "repetitive_edit_risk_score": 0.92,
+                        "safe_editing_within_threshold": False,
+                    }
+                },
+                "review_inputs": {
+                    "music_file": "D:/renders/song.mp3",
+                    "edit_intent_by_shot": {
+                        "S010": {"section_emphasis": "chorus_push"},
+                        "S011": {"section_emphasis": "chorus_push"},
+                        "S012": {"section_emphasis": "sequence_support"},
+                    },
+                    "cadence_profile_by_shot": {"S010": "support_hold", "S011": "support_hold", "S012": "support_hold"},
+                    "snap_unit_by_shot": {"S010": "beat", "S011": "beat", "S012": "beat"},
+                    "trimmed_coverage_by_shot": {"S010": 4.0, "S011": 4.0, "S012": 4.0},
+                    "assembly_revision": {
+                        "action": "revise_assembly_weights_before_clip_rerender",
+                        "target": "assembly",
+                        "final_video": "D:/renders/final.mp4",
+                        "music_file": "D:/renders/song.mp3",
+                        "target_shots": ["S010", "S011"],
+                        "target_material_ids": ["MAT_010", "MAT_011"],
+                        "target_section_ids": ["SEC_001"],
+                    },
+                },
+                "assembly_plan": {
+                    "section_edit_map": {
+                        "SEC_001": {
+                            "section_id": "SEC_001",
+                            "selected_clip_ids": ["S010", "S011"],
+                            "selected_material_ids": ["MAT_010", "MAT_011"],
+                            "editorial_weight": "medium",
+                            "snap_unit": "beat",
+                            "cadence_profile": "support_hold",
+                            "trimmed_coverage_sec": 4.0,
+                        },
+                        "SEC_002": {
+                            "section_id": "SEC_002",
+                            "selected_clip_ids": ["S012"],
+                            "selected_material_ids": ["MAT_012"],
+                            "editorial_weight": "medium",
+                            "snap_unit": "beat",
+                            "cadence_profile": "support_hold",
+                            "trimmed_coverage_sec": 4.0,
+                        },
+                    },
+                    "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}, "SEC_002": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                    "timing_map": {"SEC_001": {"selected_clip_ids": ["S010", "S011"], "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}, "SEC_002": {"selected_clip_ids": ["S012"], "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}},
+                    "section_edits": [
+                        {"section_id": "SEC_001", "selected_clip_ids": ["S010", "S011"], "editorial_weight": "medium", "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0},
+                        {"section_id": "SEC_002", "selected_clip_ids": ["S012"], "editorial_weight": "medium", "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0},
+                    ],
+                },
+                "review_action": "revise_assembly_weights_before_clip_rerender",
+                "assembly_revision_result": {
+                    "action": "revise_assembly_weights_before_clip_rerender",
+                    "status": "applied",
+                    "target": "assembly",
+                    "output_final_video": "D:/renders/final.mp4",
+                    "revision_focus": "weights",
+                    "revised_assembly_plan": {
+                        "section_edit_map": {
+                            "SEC_001": {
+                                "section_id": "SEC_001",
+                                "selected_clip_ids": ["S010", "S011"],
+                                "selected_material_ids": ["MAT_010", "MAT_011"],
+                                "editorial_weight": "high",
+                                "snap_unit": "bar",
+                                "cadence_profile": "hook_dense",
+                                "trimmed_coverage_sec": 3.2,
+                            },
+                            "SEC_002": {
+                                "section_id": "SEC_002",
+                                "selected_clip_ids": ["S012"],
+                                "selected_material_ids": ["MAT_012"],
+                                "editorial_weight": "medium",
+                                "snap_unit": "beat",
+                                "cadence_profile": "support_hold",
+                                "trimmed_coverage_sec": 4.0,
+                            },
+                        },
+                        "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}, "SEC_002": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                        "timing_map": {"SEC_001": {"selected_clip_ids": ["S010", "S011"], "snap_unit": "bar", "cadence_profile": "hook_dense", "trimmed_coverage_sec": 3.2}, "SEC_002": {"selected_clip_ids": ["S012"], "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}},
+                        "section_edits": [
+                            {"section_id": "SEC_001", "selected_clip_ids": ["S010", "S011"], "editorial_weight": "high", "snap_unit": "bar", "cadence_profile": "hook_dense", "trimmed_coverage_sec": 3.2},
+                            {"section_id": "SEC_002", "selected_clip_ids": ["S012"], "editorial_weight": "medium", "snap_unit": "beat", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0},
+                        ],
+                    },
+                },
+                "rerender_results": {
+                    "completed_stages": ["review"],
+                    "still_results": [],
+                    "clip_results": [],
+                    "review_inputs": {
+                        "cadence_profile_by_shot": {"S010": "hook_dense", "S011": "hook_dense", "S012": "support_hold"},
+                        "snap_unit_by_shot": {"S010": "bar", "S011": "bar", "S012": "beat"},
+                        "trimmed_coverage_by_shot": {"S010": 3.2, "S011": 3.2, "S012": 4.0},
+                    },
+                },
+            },
+        )
+    )
+
+    improvement = out.payload["assembly_revision_result"]["improvement_summary"]
+    assert improvement["targeted_issue_improved"] is True
+    assert improvement["before_repetitive_edit_risk_score"] == 0.92
+    assert improvement["after_repetitive_edit_risk_score"] < improvement["before_repetitive_edit_risk_score"]
+    assert out.payload["assembly_plan"] == out.payload["assembly_revision_result"]["revised_assembly_plan"]
+    assert out.payload["review_inputs"]["cadence_profile_by_shot"] == {
+        "S010": "hook_dense",
+        "S011": "hook_dense",
+        "S012": "support_hold",
+    }
+
+
+
+def test_rerender_review_reports_transition_revision_improvement_from_revised_transitions():
+    out = run_rerender_review(
+        StageInput(
+            run_id="run-rerender-review-transition-improvement",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "music_file": "D:/renders/song.mp3",
+                "shot_plan": [
+                    {"shot_id": "S001", "section": "verse", "section_role": "support", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+                    {"shot_id": "S002", "section": "chorus", "section_role": "hook", "section_emphasis": "chorus_push", "transition_in": "cut_in", "transition_out": "cut_out"},
+                    {"shot_id": "S003", "section": "bridge", "section_role": "support", "section_emphasis": "bridge_lift", "transition_in": "cut_in", "transition_out": "cut_out"},
+                ],
+                "render_plan": [
+                    {"shot_id": "S001", "render_mode": "ia2v", "section_role": "support"},
+                    {"shot_id": "S002", "render_mode": "ia2v", "section_role": "hook"},
+                    {"shot_id": "S003", "render_mode": "ia2v", "section_role": "support"},
+                ],
+                "clip_results": [
+                    {"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"},
+                    {"shot_id": "S002", "video": "D:/renders/S002.mp4", "status": "done"},
+                    {"shot_id": "S003", "video": "D:/renders/S003.mp4", "status": "done"},
+                ],
+                "review_report": {
+                    "assembly_quality_summary": {
+                        "transition_intentionality_score": 0.0,
+                        "slideshow_risk_within_threshold": False,
+                    }
+                },
+                "review_inputs": {
+                    "edit_intent_by_shot": {
+                        "S001": {"section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+                        "S002": {"section_emphasis": "chorus_push", "transition_in": "cut_in", "transition_out": "cut_out"},
+                        "S003": {"section_emphasis": "bridge_lift", "transition_in": "cut_in", "transition_out": "cut_out"},
+                    },
+                    "cadence_profile_by_shot": {"S001": "support_hold", "S002": "hook_dense", "S003": "bridge_pivot"},
+                    "snap_unit_by_shot": {"S001": "beat", "S002": "bar", "S003": "beat"},
+                    "trimmed_coverage_by_shot": {"S001": 4.0, "S002": 3.2, "S003": 3.8},
+                    "assembly_revision": {
+                        "action": "revise_transition_selection",
+                        "target": "assembly",
+                        "final_video": "D:/renders/final.mp4",
+                        "music_file": "D:/renders/song.mp3",
+                        "target_shots": ["S001"],
+                        "target_material_ids": ["MAT_001"],
+                        "target_section_ids": ["SEC_001"],
+                    },
+                },
+                "assembly_revision_result": {
+                    "action": "revise_transition_selection",
+                    "status": "applied",
+                    "target": "assembly",
+                    "output_final_video": "D:/renders/final.mp4",
+                    "revision_focus": "transitions",
+                    "revised_assembly_plan": {
+                        "section_edit_map": {
+                            "SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"], "selected_material_ids": ["MAT_001"], "transition_in": "glide_in", "transition_out": "handoff_out", "snap_unit": "beat", "cadence_profile": "support_release", "trimmed_coverage_sec": 3.6}
+                        },
+                        "transition_map": {"SEC_001": {"transition_in": "glide_in", "transition_out": "handoff_out"}},
+                        "timing_map": {"SEC_001": {"selected_clip_ids": ["S001"], "snap_unit": "beat", "cadence_profile": "support_release", "trimmed_coverage_sec": 3.6}},
+                        "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001"], "transition_in": "glide_in", "transition_out": "handoff_out", "snap_unit": "beat", "cadence_profile": "support_release", "trimmed_coverage_sec": 3.6}],
+                    },
+                },
+                "rerender_results": {
+                    "completed_stages": ["review"],
+                    "still_results": [],
+                    "clip_results": [],
+                    "review_inputs": {
+                        "edit_intent_by_shot": {
+                            "S001": {"section_emphasis": "sequence_support", "transition_in": "glide_in", "transition_out": "handoff_out"}
+                        },
+                        "cadence_profile_by_shot": {"S001": "support_release"},
+                        "snap_unit_by_shot": {"S001": "beat"},
+                        "trimmed_coverage_by_shot": {"S001": 3.6},
+                    },
+                },
+            },
+        )
+    )
+
+    improvement = out.payload["assembly_revision_result"]["improvement_summary"]
+    assert improvement["targeted_issue_improved"] is True
+    assert improvement["after_transition_intentionality_score"] > improvement["before_transition_intentionality_score"]
+    assert out.payload["assembly_plan"] == out.payload["assembly_revision_result"]["revised_assembly_plan"]
+    assert out.payload["review_inputs"]["edit_intent_by_shot"]["S001"]["transition_in"] == "glide_in"
+    assert out.payload["review_inputs"]["edit_intent_by_shot"]["S001"]["transition_out"] == "handoff_out"
+
+
+
+def test_rerender_review_scores_transition_improvement_on_targeted_subset_not_global_average():
+    shot_plan = [{"shot_id": "S001", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"}]
+    shot_plan.extend({"shot_id": f"S{idx:03d}", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"} for idx in range(2, 41))
+    render_plan = [{"shot_id": row["shot_id"], "render_mode": "ia2v", "section_role": "support"} for row in shot_plan]
+    clip_results = [{"shot_id": row["shot_id"], "video": f"D:/renders/{row['shot_id']}.mp4", "status": "done"} for row in shot_plan]
+    edit_intent_before = {row["shot_id"]: {"section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"} for row in shot_plan}
+    edit_intent_after = dict(edit_intent_before)
+    edit_intent_after["S001"] = {"section_emphasis": "sequence_support", "transition_in": "glide_in", "transition_out": "handoff_out"}
+
+    out = run_rerender_review(
+        StageInput(
+            run_id="run-rerender-review-transition-targeted-subset",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "music_file": "D:/renders/song.mp3",
+                "shot_plan": shot_plan,
+                "render_plan": render_plan,
+                "clip_results": clip_results,
+                "review_report": {
+                    "assembly_quality_summary": {
+                        "transition_intentionality_score": 0.0,
+                        "slideshow_risk_within_threshold": False,
+                    }
+                },
+                "review_inputs": {
+                    "edit_intent_by_shot": edit_intent_before,
+                    "cadence_profile_by_shot": {row["shot_id"]: "support_hold" for row in shot_plan},
+                    "snap_unit_by_shot": {row["shot_id"]: "beat" for row in shot_plan},
+                    "trimmed_coverage_by_shot": {row["shot_id"]: 4.0 for row in shot_plan},
+                    "assembly_revision": {
+                        "action": "revise_transition_selection",
+                        "target": "assembly",
+                        "final_video": "D:/renders/final.mp4",
+                        "music_file": "D:/renders/song.mp3",
+                        "target_shots": ["S001"],
+                        "target_material_ids": ["MAT_001"],
+                        "target_section_ids": ["SEC_001"],
+                    },
+                },
+                "assembly_revision_result": {
+                    "action": "revise_transition_selection",
+                    "status": "applied",
+                    "target": "assembly",
+                    "output_final_video": "D:/renders/final.mp4",
+                    "revision_focus": "transitions",
+                    "target_shots": ["S001"],
+                    "target_material_ids": ["MAT_001"],
+                    "target_section_ids": ["SEC_001"],
+                    "revised_assembly_plan": {"section_edit_map": {"SEC_001": {"section_id": "SEC_001"}}, "transition_map": {"SEC_001": {"transition_in": "glide_in", "transition_out": "handoff_out"}}, "timing_map": {"SEC_001": {"snap_unit": "beat"}}, "section_edits": [{"section_id": "SEC_001"}]},
+                },
+                "rerender_results": {
+                    "completed_stages": ["review"],
+                    "still_results": [],
+                    "clip_results": [],
+                    "review_inputs": {
+                        "edit_intent_by_shot": {"S001": edit_intent_after["S001"]},
+                        "cadence_profile_by_shot": {"S001": "support_release"},
+                        "snap_unit_by_shot": {"S001": "beat"},
+                        "trimmed_coverage_by_shot": {"S001": 3.6},
+                    },
+                },
+            },
+        )
+    )
+
+    improvement = out.payload["assembly_revision_result"]["improvement_summary"]
+    assert improvement["targeted_issue_improved"] is True
+    assert improvement["before_transition_intentionality_score"] == 0.0
+    assert improvement["after_transition_intentionality_score"] == 1.0
 
 
 
@@ -2840,6 +3444,7 @@ def test_rerender_loop_preserves_execute_stage_artifacts(monkeypatch):
             {
                 "rerender_results": {"completed_stages": ["review"], "still_results": [], "clip_results": []},
                 "final_video": "synced-final.mp4",
+                "assembly_revision_result": {"action": "revise_transition_selection", "revised_assembly_plan": {"section_edit_map": {"SEC_001": {"section_id": "SEC_001"}}, "transition_map": {}, "timing_map": {}, "section_edits": []}},
             },
             ["synced-final.mp4"],
         ),
@@ -2849,7 +3454,7 @@ def test_rerender_loop_preserves_execute_stage_artifacts(monkeypatch):
         lambda stage_input: StageOutput(
             "rerender_review",
             "done",
-            {"rerender_review_report": {"status": "done", "rerender_targets": []}, "still_results": [], "clip_results": []},
+            {"rerender_review_report": {"status": "done", "rerender_targets": []}, "still_results": [], "clip_results": [], "assembly_plan": {"section_edit_map": {"SEC_001": {"section_id": "SEC_001"}}, "transition_map": {}, "timing_map": {}, "section_edits": []}},
             [],
         ),
     )
@@ -2857,6 +3462,7 @@ def test_rerender_loop_preserves_execute_stage_artifacts(monkeypatch):
     out = run_rerender_loop(StageInput(run_id="run-rerender-loop-artifacts", config={}, payload={"review_report": {"status": "needs_rerender"}}))
 
     assert out.payload["rerender_final_video"] == "synced-final.mp4"
+    assert out.payload["assembly_plan"] == {"section_edit_map": {"SEC_001": {"section_id": "SEC_001"}}, "transition_map": {}, "timing_map": {}, "section_edits": []}
     assert "final_video" not in out.payload
     assert out.artifacts == ["synced-final.mp4"]
 

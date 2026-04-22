@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.stages.assemble_mv import apply_assembly_revision
 from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
@@ -109,8 +110,34 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
         target_shots = [str(value).strip() for value in stage_payload.get("target_shots", []) if str(value).strip()] if isinstance(stage_payload.get("target_shots"), list) else []
         target_material_ids = [str(value).strip() for value in stage_payload.get("target_material_ids", []) if str(value).strip()] if isinstance(stage_payload.get("target_material_ids"), list) else []
         target_section_ids = [str(value).strip() for value in stage_payload.get("target_section_ids", []) if str(value).strip()] if isinstance(stage_payload.get("target_section_ids"), list) else []
+        base_review_inputs = passthrough_payload.get("review_inputs") if isinstance(passthrough_payload.get("review_inputs"), dict) else {}
+        assembly_plan = stage_payload.get("assembly_plan") if isinstance(stage_payload.get("assembly_plan"), dict) else {}
+        revised_assembly_plan, revisions_by_shot = apply_assembly_revision(
+            assembly_plan,
+            action=recommended_action,
+            target_shots=target_shots,
+            target_material_ids=target_material_ids,
+            target_section_ids=target_section_ids,
+        )
+        revised_review_inputs = {
+            "cadence_profile_by_shot": {shot_id: str(values.get("cadence_profile", "")).strip() for shot_id, values in revisions_by_shot.items() if str(values.get("cadence_profile", "")).strip()},
+            "snap_unit_by_shot": {shot_id: str(values.get("snap_unit", "")).strip() for shot_id, values in revisions_by_shot.items() if str(values.get("snap_unit", "")).strip()},
+            "trimmed_coverage_by_shot": {shot_id: float(values.get("trimmed_coverage_sec", 0.0) or 0.0) for shot_id, values in revisions_by_shot.items() if float(values.get("trimmed_coverage_sec", 0.0) or 0.0) > 0.0},
+            "edit_intent_by_shot": {
+                shot_id: {
+                    **(base_review_inputs.get("edit_intent_by_shot", {}).get(shot_id) if isinstance(base_review_inputs.get("edit_intent_by_shot"), dict) and isinstance(base_review_inputs.get("edit_intent_by_shot", {}).get(shot_id), dict) else {}),
+                    **{
+                        key: str(values.get(key, "")).strip()
+                        for key in ("transition_in", "transition_out")
+                        if str(values.get(key, "")).strip()
+                    },
+                }
+                for shot_id, values in revisions_by_shot.items()
+            },
+        }
         passthrough_payload["review_inputs"] = {
-            **(passthrough_payload.get("review_inputs") if isinstance(passthrough_payload.get("review_inputs"), dict) else {}),
+            **base_review_inputs,
+            **{key: {**(base_review_inputs.get(key) if isinstance(base_review_inputs.get(key), dict) else {}), **value} for key, value in revised_review_inputs.items() if value},
             "assembly_revision": {
                 "action": recommended_action,
                 "target": "assembly",
@@ -119,17 +146,20 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
                 "target_shots": target_shots,
                 "target_material_ids": target_material_ids,
                 "target_section_ids": target_section_ids,
+                "revised_review_inputs": revised_review_inputs,
             },
         }
         passthrough_payload["assembly_revision_result"] = {
             "action": recommended_action,
-            "status": "ready",
+            "status": "applied",
             "target": "assembly",
             "output_final_video": str(stage_payload.get("final_video", "")).strip(),
             "revision_focus": "weights" if recommended_action == "revise_assembly_weights_before_clip_rerender" else "transitions",
             "target_shots": target_shots,
             "target_material_ids": target_material_ids,
             "target_section_ids": target_section_ids,
+            "revised_assembly_plan": revised_assembly_plan,
         }
+        passthrough_payload["assembly_plan"] = revised_assembly_plan
     passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
     return StageOutput("review_action", "done", passthrough_payload, [])

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import math
 from pathlib import Path
 from typing import Any
@@ -570,3 +571,114 @@ def _combine_cadence_profiles(left: str, right: str) -> str:
     normalized_left = str(left or "support_hold").strip() or "support_hold"
     normalized_right = str(right or "support_hold").strip() or "support_hold"
     return normalized_left if rank.get(normalized_left, 0) >= rank.get(normalized_right, 0) else normalized_right
+
+
+
+def apply_assembly_revision(
+    assembly_plan: dict,
+    *,
+    action: str,
+    target_shots: list[str] | None = None,
+    target_material_ids: list[str] | None = None,
+    target_section_ids: list[str] | None = None,
+) -> tuple[dict, dict[str, dict[str, object]]]:
+    plan = copy.deepcopy(assembly_plan) if isinstance(assembly_plan, dict) else {}
+    section_edit_map = plan.get("section_edit_map") if isinstance(plan.get("section_edit_map"), dict) else {}
+    transition_map = plan.get("transition_map") if isinstance(plan.get("transition_map"), dict) else {}
+    timing_map = plan.get("timing_map") if isinstance(plan.get("timing_map"), dict) else {}
+    section_edits = plan.get("section_edits") if isinstance(plan.get("section_edits"), list) else []
+    targeted_shots = {str(value).strip() for value in target_shots or [] if str(value).strip()}
+    targeted_materials = {str(value).strip() for value in target_material_ids or [] if str(value).strip()}
+    targeted_sections = {str(value).strip() for value in target_section_ids or [] if str(value).strip()}
+    revisions_by_shot: dict[str, dict[str, object]] = {}
+
+    for section_id, section_row in section_edit_map.items():
+        if not isinstance(section_row, dict):
+            continue
+        normalized_section_id = str(section_id).strip()
+        selected_shots = [str(value).strip() for value in section_row.get("selected_clip_ids", []) if str(value).strip()] if isinstance(section_row.get("selected_clip_ids"), list) else []
+        selected_materials = [str(value).strip() for value in section_row.get("selected_material_ids", []) if str(value).strip()] if isinstance(section_row.get("selected_material_ids"), list) else []
+        if not _section_is_targeted(normalized_section_id, selected_shots, selected_materials, targeted_sections, targeted_shots, targeted_materials):
+            continue
+        timing_row = timing_map.get(normalized_section_id) if isinstance(timing_map.get(normalized_section_id), dict) else {}
+        transition_row = transition_map.get(normalized_section_id) if isinstance(transition_map.get(normalized_section_id), dict) else {}
+        if action == "revise_assembly_weights_before_clip_rerender":
+            _apply_weight_revision(section_row, timing_row)
+        elif action == "revise_transition_selection":
+            _apply_transition_revision(section_row, timing_row, transition_row)
+        transition_map[normalized_section_id] = {
+            "transition_in": str(section_row.get("transition_in", transition_row.get("transition_in", "cut_in"))).strip() or "cut_in",
+            "transition_out": str(section_row.get("transition_out", transition_row.get("transition_out", "cut_out"))).strip() or "cut_out",
+        }
+        timing_map[normalized_section_id] = dict(timing_row)
+        for shot_id in selected_shots:
+            revisions_by_shot[shot_id] = {
+                "cadence_profile": str(section_row.get("cadence_profile", timing_row.get("cadence_profile", ""))).strip() or str(timing_row.get("cadence_profile", "")).strip(),
+                "snap_unit": str(section_row.get("snap_unit", timing_row.get("snap_unit", ""))).strip() or str(timing_row.get("snap_unit", "")).strip(),
+                "trimmed_coverage_sec": float(timing_row.get("trimmed_coverage_sec", section_row.get("trimmed_coverage_sec", 0.0)) or 0.0),
+                "transition_in": str(section_row.get("transition_in", transition_row.get("transition_in", "cut_in"))).strip() or "cut_in",
+                "transition_out": str(section_row.get("transition_out", transition_row.get("transition_out", "cut_out"))).strip() or "cut_out",
+            }
+
+    if isinstance(section_edits, list):
+        for row in section_edits:
+            if not isinstance(row, dict):
+                continue
+            section_id = str(row.get("section_id", "")).strip()
+            updated = section_edit_map.get(section_id)
+            if isinstance(updated, dict):
+                row.clear()
+                row.update(updated)
+
+    plan["section_edit_map"] = section_edit_map
+    plan["transition_map"] = transition_map
+    plan["timing_map"] = timing_map
+    plan["section_edits"] = section_edits
+    return plan, revisions_by_shot
+
+
+
+def _section_is_targeted(
+    section_id: str,
+    selected_shots: list[str],
+    selected_materials: list[str],
+    target_sections: set[str],
+    target_shots_set: set[str],
+    target_materials_set: set[str],
+) -> bool:
+    if not target_sections and not target_shots_set and not target_materials_set:
+        return True
+    if section_id and section_id in target_sections:
+        return True
+    if any(shot_id in target_shots_set for shot_id in selected_shots):
+        return True
+    return any(material_id in target_materials_set for material_id in selected_materials)
+
+
+
+def _apply_weight_revision(section_row: dict, timing_row: dict) -> None:
+    section_row["editorial_weight"] = "high"
+    section_row["cadence_profile"] = "hook_dense"
+    section_row["snap_unit"] = "bar"
+    base_trimmed = _safe_float(timing_row.get("trimmed_coverage_sec", section_row.get("trimmed_coverage_sec", 0.0)), 0.0)
+    revised_trimmed = round(base_trimmed * 0.8, 3) if base_trimmed > 0.0 else base_trimmed
+    section_row["trimmed_coverage_sec"] = revised_trimmed
+    timing_row["trimmed_coverage_sec"] = revised_trimmed
+    timing_row["cadence_profile"] = "hook_dense"
+    timing_row["snap_unit"] = "bar"
+
+
+
+def _apply_transition_revision(section_row: dict, timing_row: dict, transition_row: dict) -> None:
+    section_row["transition_in"] = "glide_in"
+    section_row["transition_out"] = "handoff_out"
+    section_row["cadence_profile"] = "support_release"
+    section_row["snap_unit"] = "beat"
+    base_trimmed = _safe_float(timing_row.get("trimmed_coverage_sec", section_row.get("trimmed_coverage_sec", 0.0)), 0.0)
+    revised_trimmed = round(base_trimmed * 0.9, 3) if base_trimmed > 0.0 else base_trimmed
+    section_row["trimmed_coverage_sec"] = revised_trimmed
+    timing_row["trimmed_coverage_sec"] = revised_trimmed
+    timing_row["cadence_profile"] = "support_release"
+    timing_row["snap_unit"] = "beat"
+    transition_row["transition_in"] = "glide_in"
+    transition_row["transition_out"] = "handoff_out"
