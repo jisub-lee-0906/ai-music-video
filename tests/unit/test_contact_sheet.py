@@ -51,6 +51,8 @@ def test_build_contact_sheet_manifest_includes_escalation_context_when_provided(
             "run_id": "run-rerender-escalate-1",
             "status": "manual_review_required",
             "shot_ids": ["S003", "S007"],
+            "material_ids": ["MAT_003", "MAT_007"],
+            "section_ids": ["SEC_003", "SEC_007"],
         },
     )
 
@@ -59,4 +61,6 @@ def test_build_contact_sheet_manifest_includes_escalation_context_when_provided(
         "run_id": "run-rerender-escalate-1",
         "status": "manual_review_required",
         "shot_ids": ["S003", "S007"],
+        "material_ids": ["MAT_003", "MAT_007"],
+        "section_ids": ["SEC_003", "SEC_007"],
     }

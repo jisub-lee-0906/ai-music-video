@@ -55,7 +55,21 @@ def _normalize_escalation_context(context: dict[str, object] | None) -> dict[str
         ]
         if isinstance(context.get("shot_ids"), list)
         else [],
+        "material_ids": [
+            str(material_id).strip()
+            for material_id in context.get("material_ids", [])
+            if str(material_id).strip()
+        ]
+        if isinstance(context.get("material_ids"), list)
+        else [],
+        "section_ids": [
+            str(section_id).strip()
+            for section_id in context.get("section_ids", [])
+            if str(section_id).strip()
+        ]
+        if isinstance(context.get("section_ids"), list)
+        else [],
     }
-    if not normalized["source_stage"] and not normalized["run_id"] and not normalized["status"] and not normalized["shot_ids"]:
+    if not any(normalized.values()):
         return {}
     return normalized

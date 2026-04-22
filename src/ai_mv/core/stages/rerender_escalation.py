@@ -37,6 +37,34 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
 
     output_dir = run_file(stage_input.run_id, "rerender-escalation")
     output_dir.mkdir(parents=True, exist_ok=True)
+    predicted_artifacts = {
+        "review_packet_manifest": str(output_dir / "review-packet.json"),
+        "quality_findings": str(output_dir / "review-findings.json"),
+        "reviewer_notes": str(output_dir / "review-notes.md"),
+        "contact_sheet_image": str(output_dir / "contact-sheet.png"),
+        "contact_sheet_manifest": str(output_dir / "contact-sheet.json"),
+    }
+    summary_by_shot = _summary_by_shot(
+        shot_ids,
+        predicted_artifacts,
+        review_report.get("rerender_reasons") if isinstance(review_report.get("rerender_reasons"), dict) else {},
+        review_report.get("rerender_plan") if isinstance(review_report.get("rerender_plan"), list) else [],
+        review_report.get("rerender_execution_payloads") if isinstance(review_report.get("rerender_execution_payloads"), list) else [],
+    )
+    material_ids = sorted(
+        {
+            str(row.get("material_id", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict) and str(row.get("material_id", "")).strip()
+        }
+    )
+    section_ids = sorted(
+        {
+            str(row.get("section_id", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict) and str(row.get("section_id", "")).strip()
+        }
+    )
     written = write_review_packet(
         video_path=final_video,
         output_dir=output_dir,
@@ -48,11 +76,15 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
             "run_id": stage_input.run_id,
             "status": "manual_review_required",
             "shot_ids": shot_ids,
+            "material_ids": material_ids,
+            "section_ids": section_ids,
         },
     )
     report = {
         "status": "manual_review_required",
         "shot_ids": shot_ids,
+        "material_ids": material_ids,
+        "section_ids": section_ids,
         "shot_count": len(shot_ids),
         "video_path": final_video,
         "review_packet_manifest_path": str(written["manifest_path"]),
@@ -75,21 +107,7 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         review_report.get("rerender_plan") if isinstance(review_report.get("rerender_plan"), list) else [],
         review_report.get("rerender_execution_payloads") if isinstance(review_report.get("rerender_execution_payloads"), list) else [],
     )
-    report["material_ids"] = sorted(
-        {
-            str(row.get("material_id", "")).strip()
-            for row in report["summary_by_shot"]
-            if isinstance(row, dict) and str(row.get("material_id", "")).strip()
-        }
-    )
-    report["section_ids"] = sorted(
-        {
-            str(row.get("section_id", "")).strip()
-            for row in report["summary_by_shot"]
-            if isinstance(row, dict) and str(row.get("section_id", "")).strip()
-        }
-    )
-    report["reviewer_summary"] = _reviewer_summary(shot_ids, report["material_ids"], report["section_ids"])
+    report["reviewer_summary"] = _reviewer_summary(shot_ids, material_ids, section_ids)
     return StageOutput(
         "rerender_escalation",
         "done",

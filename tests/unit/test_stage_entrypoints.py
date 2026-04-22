@@ -2463,6 +2463,8 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         "run_id": "run-rerender-escalate-1",
         "status": "manual_review_required",
         "shot_ids": ["S003", "S007"],
+        "material_ids": ["MAT_003", "MAT_007"],
+        "section_ids": ["SEC_003", "SEC_007"],
     }
     assert out.artifacts == [
         report["review_packet_manifest_path"],
