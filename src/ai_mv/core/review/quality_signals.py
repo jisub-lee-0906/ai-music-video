@@ -10,6 +10,7 @@ def build_quality_signals(
     audio_video_drift_sec: float,
     config: dict,
     rerender_reasons: dict[str, list[str]] | None = None,
+    assembly_quality_summary: dict[str, object] | None = None,
 ) -> dict:
     total = len(planned_shot_ids)
     still_done = sum(1 for shot_id in planned_shot_ids if still_status.get(shot_id, False))
@@ -51,6 +52,7 @@ def build_quality_signals(
         coverage_severity = "medium"
 
     reason_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
+    assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else {}
     all_reasons = {reason for reasons in reason_map.values() if isinstance(reasons, list) for reason in reasons}
     visual_continuity_preserved = not bool(all_reasons & {"continuity_break", "identity_drift"})
     terminal_frames_clean = "terminal_frame_corruption" not in all_reasons
@@ -97,12 +99,22 @@ def build_quality_signals(
         and scene_intrusion_absent
     )
     style_constraints_respected = final_video_exists and overlay_intrusion_absent and duplicate_subject_absent
+    chorus_emphasis_within_threshold = bool(assembly.get("chorus_emphasis_within_threshold", True))
+    slideshow_risk_within_threshold = bool(assembly.get("slideshow_risk_within_threshold", True))
 
     non_blocking_checks = {
         "camera_restraint": final_video_exists,
         "memorable_shot": clip_done > 0,
         "style_identity": style_identity,
-        "mood_consistency": final_video_exists and still_done > 0 and visual_continuity_preserved and environment_match_preserved and scene_intrusion_absent,
+        "mood_consistency": (
+            final_video_exists
+            and still_done > 0
+            and visual_continuity_preserved
+            and environment_match_preserved
+            and scene_intrusion_absent
+            and chorus_emphasis_within_threshold
+            and slideshow_risk_within_threshold
+        ),
     }
 
     overall_score = 100.0

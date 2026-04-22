@@ -497,6 +497,37 @@ def test_review_models_downgrade_final_review_summary_when_blocking_failures_exi
 
 
 
+def test_review_models_treat_assembly_publishability_failures_as_mood_consistency_failures():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.24,
+            "transition_intentionality_score": 0.18,
+            "slideshow_risk_score": 0.72,
+            "chorus_emphasis_within_threshold": False,
+            "slideshow_risk_within_threshold": False,
+        },
+    )
+
+    assert report["non_blocking_checks"]["mood_consistency"] is False
+    assert report["review_signal_buckets"]["model_judged"]["failed_checks"] == ["mood_consistency"]
+    assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == [
+        "mood_consistency",
+        "chorus_emphasis_within_threshold",
+        "slideshow_risk_within_threshold",
+    ]
+
+
+
 def test_review_models_build_rerender_plan_payload_and_execution_payloads():
     report = build_review_report(
         planned_shot_ids=["S001", "S002", "S003"],
@@ -893,6 +924,7 @@ def test_review_models_route_assembly_only_failures_to_publishability_summary_be
     )
 
     assert report["publishability_summary"]["final_mv_publishability"]["failed_checks"] == [
+        "mood_consistency",
         "chorus_emphasis_within_threshold",
         "slideshow_risk_within_threshold",
     ]

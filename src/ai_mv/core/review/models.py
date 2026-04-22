@@ -344,6 +344,7 @@ def build_review_report(
         audio_video_drift_sec=audio_video_drift_sec,
         config=config,
         rerender_reasons=rerender_reasons,
+        assembly_quality_summary=assembly_quality_summary,
     )
     blocking_checks = signals["blocking_checks"]
     non_blocking_checks = signals["non_blocking_checks"]
