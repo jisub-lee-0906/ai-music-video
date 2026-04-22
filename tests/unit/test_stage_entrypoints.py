@@ -3,7 +3,7 @@ from pathlib import Path
 from ai_mv.core.contracts.errors import StageFailure
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
-from ai_mv.core.stages.assemble_mv import run_assemble_mv
+from ai_mv.core.stages.assemble_mv import run_assemble_mv, _assembly_clip_segments
 from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.repair_rerender_prompts import run_repair_rerender_prompts
@@ -186,9 +186,10 @@ def test_assemble_mv_orders_clip_mux_and_timing_from_shot_plan(monkeypatch, tmp_
 
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-ordered.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.ffprobe_duration", lambda _path: 0.0)
 
     def _fake_run_ffmpeg_mux(clips, *_args, **_kwargs):
-        mux_calls["clip_names"] = [Path(path).name for path in clips]
+        mux_calls["clip_names"] = [Path(item["path"]).name for item in clips]
         return True
 
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
@@ -222,6 +223,54 @@ def test_assemble_mv_orders_clip_mux_and_timing_from_shot_plan(monkeypatch, tmp_
     assert [section["section_id"] for section in out.payload["assembly_plan"]["section_edits"]] == ["SEC_001", "SEC_002"]
     assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["sequence_index"] == 0
     assert out.payload["assembly_plan"]["timing_map"]["SEC_002"]["sequence_index"] == 1
+
+
+def test_assemble_mv_uses_edit_intent_to_build_trimmed_clip_segments(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    clip2 = tmp_path / "clip2.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001"},
+                {"shot_id": "S002", "section_id": "SEC_002"},
+            ],
+            "clip_results": [
+                {"shot_id": "S002", "video": str(clip2), "section_id": "SEC_002"},
+                {"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "chorus_push",
+                        "target_clip_sec": 2.0,
+                        "transition_in": "accent_in",
+                        "transition_out": "accent_out",
+                    },
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_002",
+                    "edit_intent": {
+                        "section_emphasis": "release_fade",
+                        "target_clip_sec": 2.0,
+                        "transition_in": "hold_in",
+                        "transition_out": "fade_out",
+                    },
+                },
+            ],
+        },
+        duration_by_shot={"S001": 5.0, "S002": 5.0},
+    )
+
+    assert [Path(segment["path"]).name for segment in segments] == ["clip1.mp4", "clip2.mp4"]
+    assert segments[0]["trim_start_sec"] == 1.5
+    assert segments[0]["trim_end_sec"] == 3.5
+    assert segments[1]["trim_start_sec"] == 3.0
+    assert segments[1]["trim_end_sec"] == 5.0
 
 
 def test_render_stills_uses_generic_fallback_prompt_text_when_empty():

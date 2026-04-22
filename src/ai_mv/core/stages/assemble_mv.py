@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
+from typing import Any
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.output_paths import final_video_path
 from ai_mv.core.stages.ffmpeg_muxer import run_ffmpeg_mux
 from ai_mv.utils.path_utils import resolve_generated_file
+from ai_mv.utils.time_utils import ffprobe_duration
 
 
 def run_assemble_mv(stage_input: StageInput) -> StageOutput:
-    ordered_clip_rows = _ordered_clip_rows(stage_input.payload)
-    clips = _resolve_clip_results(stage_input.config, ordered_clip_rows)
+    clip_segments = _assembly_clip_segments(stage_input.config, stage_input.payload)
     audio = Path(
         resolve_generated_file(
             stage_input.config,
@@ -20,7 +22,7 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         )
     )
     final_video = final_video_path(stage_input.config, stage_input.run_id)
-    ok = run_ffmpeg_mux(clips, audio, final_video, stage_input.config)
+    ok = run_ffmpeg_mux(clip_segments, audio, final_video, stage_input.config)
     if not ok:
         raise RuntimeError("ffmpeg assemble failed")
     review_inputs = {
@@ -48,15 +50,23 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
     )
 
 
-def _resolve_clip_results(config: dict, clip_rows: list[dict]) -> list[Path]:
-    out: list[Path] = []
+def _resolve_clip_results(config: dict, clip_rows: list[dict]) -> list[dict]:
+    out: list[dict] = []
     for row in clip_rows:
         if not isinstance(row, dict):
             continue
+        shot_id = str(row.get("shot_id", "")).strip()
         video = str(row.get("video", "")).strip()
         if not video:
             continue
-        out.append(Path(resolve_generated_file(config, video, {".mp4", ".mov", ".mkv", ".webm"}, "video")))
+        out.append(
+            {
+                "shot_id": shot_id,
+                "section_id": str(row.get("section_id", "")).strip(),
+                "material_id": str(row.get("material_id", "")).strip(),
+                "path": Path(resolve_generated_file(config, video, {".mp4", ".mov", ".mkv", ".webm"}, "video")),
+            }
+        )
     if not out:
         raise RuntimeError("assemble requires at least one rendered clip")
     return out
@@ -68,6 +78,59 @@ def _review_quality_findings_path(config: object) -> str:
     if not isinstance(review_cfg, dict):
         return ""
     return str(review_cfg.get("quality_findings_path", "")).strip()
+
+
+
+def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[str, float] | None = None) -> list[dict]:
+    clip_rows = _resolve_clip_results(config, _ordered_clip_rows(payload))
+    render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
+    render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
+    edit_intent_by_shot = {
+        str(row.get("shot_id", "")).strip(): dict(row.get("edit_intent", {}))
+        for row in render_rows
+        if str(row.get("shot_id", "")).strip() and isinstance(row.get("edit_intent"), dict)
+    }
+    durations = duration_by_shot if isinstance(duration_by_shot, dict) else {}
+    out: list[dict] = []
+    for row in clip_rows:
+        shot_id = str(row.get("shot_id", "")).strip()
+        edit_intent = edit_intent_by_shot.get(shot_id, {})
+        clip_duration = float(durations.get(shot_id) or ffprobe_duration(row["path"]))
+        target_clip_sec = _safe_float(edit_intent.get("target_clip_sec"), 0.0)
+        trim_start_sec, trim_end_sec = _trim_window_for_clip(clip_duration, target_clip_sec, edit_intent)
+        out.append({**row, "trim_start_sec": trim_start_sec, "trim_end_sec": trim_end_sec})
+    return out
+
+
+
+def _trim_window_for_clip(clip_duration: float, target_clip_sec: float, edit_intent: dict) -> tuple[float | None, float | None]:
+    duration = max(0.0, float(clip_duration or 0.0))
+    target = max(0.0, float(target_clip_sec or 0.0))
+    if duration <= 0.0 or target <= 0.0 or duration <= target + 0.05:
+        return None, None
+    section_emphasis = str(edit_intent.get("section_emphasis", "")).strip()
+    transition_in = str(edit_intent.get("transition_in", "")).strip()
+    transition_out = str(edit_intent.get("transition_out", "")).strip()
+    available = max(0.0, duration - target)
+    if section_emphasis == "chorus_push":
+        start = available / 2.0
+    elif section_emphasis in {"release_fade", "bridge_contrast"} or transition_out in {"fade_out", "handoff_out", "accent_out"}:
+        start = available
+    elif transition_in in {"accent_in", "cut_in", "glide_in", "hold_in"}:
+        start = 0.0
+    else:
+        start = available / 2.0
+    end = min(duration, start + target)
+    return round(start, 3), round(end, 3)
+
+
+
+def _safe_float(value: object, default: float) -> float:
+    try:
+        parsed = float(value)
+    except Exception:
+        return default
+    return parsed if math.isfinite(parsed) else default
 
 
 

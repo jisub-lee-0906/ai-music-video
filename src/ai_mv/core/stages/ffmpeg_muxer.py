@@ -3,12 +3,13 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from ai_mv.utils.text_utils import parse_target
 
 
 def run_ffmpeg_mux(
-    clips: list[Path],
+    clips: list[dict[str, Any]],
     audio: Path,
     out: Path,
     config: dict,
@@ -21,7 +22,7 @@ def run_ffmpeg_mux(
     concat = out.parent / "concat.txt"
     temp_out = out.with_suffix(".tmp.mp4")
     try:
-        concat.write_text("\n".join(_concat_line(p) for p in clips), encoding="utf-8")
+        concat.write_text("\n".join(_concat_block(item) for item in clips), encoding="utf-8")
         w, h, fps = parse_target(str(config["video"]["target"]))
         cmd = _ffmpeg_cmd(ffmpeg, concat, audio, temp_out, str(w), str(h), fps)
         try:
@@ -74,6 +75,14 @@ def _ffmpeg_cmd(ffmpeg: str, concat: Path, audio: Path, out: Path, w: str, h: st
     ]
 
 
-def _concat_line(path: Path) -> str:
+def _concat_block(item: dict[str, Any]) -> str:
+    path = Path(item["path"])
     safe = path.as_posix().replace("'", "'\\''")
-    return f"file '{safe}'"
+    lines = [f"file '{safe}'"]
+    trim_start_sec = item.get("trim_start_sec")
+    trim_end_sec = item.get("trim_end_sec")
+    if trim_start_sec is not None:
+        lines.append(f"inpoint {trim_start_sec}")
+    if trim_end_sec is not None:
+        lines.append(f"outpoint {trim_end_sec}")
+    return "\n".join(lines)
