@@ -104,6 +104,34 @@ def test_build_review_packet_manifest_is_json_serializable(tmp_path):
     assert data["contact_sheet_image_path"] == str(tmp_path / "packet" / "contact-sheet.png")
 
 
+def test_build_review_packet_manifest_uses_callable_duration_fn_when_not_explicitly_provided(tmp_path, monkeypatch):
+    captured = {}
+
+    def _fake_plan(**kwargs):
+        captured.update(kwargs)
+        return [
+            {
+                "label": "final_01",
+                "timestamp_sec": 1.0,
+                "output_path": tmp_path / "packet" / "frames" / "final_01.png",
+            }
+        ]
+
+    monkeypatch.setattr("ai_mv.analysis.review_packet.representative_frame_plan", _fake_plan)
+
+    manifest = build_review_packet_manifest(
+        video_path=tmp_path / "final.mp4",
+        output_dir=tmp_path / "packet",
+        kind="final",
+        shot_ids=["S001"],
+        sample_count=1,
+    )
+
+    assert callable(captured["duration_fn"])
+    assert manifest["frame_paths"] == [str(tmp_path / "packet" / "frames" / "final_01.png")]
+
+
+
 def test_write_review_packet_returns_contact_sheet_image_path(tmp_path):
     written = write_review_packet(
         video_path=tmp_path / "clip.mp4",

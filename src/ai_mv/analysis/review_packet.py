@@ -6,6 +6,7 @@ from pathlib import Path
 from ai_mv.analysis.contact_sheet import build_contact_sheet_manifest
 from ai_mv.analysis.frame_extract import representative_frame_plan
 from ai_mv.core.review.quality_findings import quality_findings_review_input_template
+from ai_mv.utils.time_utils import ffprobe_duration
 
 
 
@@ -16,7 +17,7 @@ def build_review_packet_manifest(
     kind: str,
     shot_ids: list[str] | tuple[str, ...],
     sample_count: int = 6,
-    duration_fn=None,
+    duration_fn=ffprobe_duration,
     escalation_context: dict[str, object] | None = None,
 ) -> dict[str, object]:
     output_root = Path(output_dir)
@@ -54,7 +55,7 @@ def write_review_packet(
     kind: str,
     shot_ids: list[str] | tuple[str, ...],
     sample_count: int = 6,
-    duration_fn=None,
+    duration_fn=ffprobe_duration,
     escalation_context: dict[str, object] | None = None,
 ) -> dict[str, Path]:
     output_root = Path(output_dir)
