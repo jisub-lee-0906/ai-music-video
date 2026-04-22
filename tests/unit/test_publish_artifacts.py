@@ -31,7 +31,13 @@ def test_write_manifest_emits_blueprint_aligned_public_output_contract(monkeypat
             "final_video": "final.mp4",
             "assembly_plan": {"section_edits": [{"section_id": "SEC_001"}]},
             "review_inputs": {"music_file": "music.mp3"},
-            "rerender_escalation": {"artifacts": {"review_packet_manifest": "review/review-packet.json"}},
+            "rerender_escalation": {
+                "status": "manual_review_required",
+                "shot_ids": ["S001"],
+                "material_ids": ["MAT_001"],
+                "section_ids": ["SEC_001"],
+                "artifacts": {"review_packet_manifest": "review/review-packet.json"},
+            },
         },
     )
 
@@ -60,6 +66,12 @@ def test_write_manifest_emits_blueprint_aligned_public_output_contract(monkeypat
     assert manifest["review"] == {
         "review_report": {"status": "done", "rerender_targets": []},
         "review_packet_manifest": "review/review-packet.json",
+        "rerender_escalation": {
+            "status": "manual_review_required",
+            "shot_ids": ["S001"],
+            "material_ids": ["MAT_001"],
+            "section_ids": ["SEC_001"],
+        },
     }
     assert manifest["artifacts"] == {"scope": "run"}
     assert "concept_text" not in manifest
@@ -115,7 +127,7 @@ def test_write_manifest_is_empty_safe_for_blueprint_public_output_sections(monke
     assert manifest["stills"] == {"material_results": []}
     assert manifest["clips"] == {"clip_results": []}
     assert manifest["assembly"] == {"final_video": "", "assembly_plan": {}, "review_inputs": {}}
-    assert manifest["review"] == {"review_report": {}, "review_packet_manifest": ""}
+    assert manifest["review"] == {"review_report": {}, "review_packet_manifest": "", "rerender_escalation": {}}
     assert manifest["artifacts"] == {"scope": "run"}
 
 
@@ -340,7 +352,13 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
                 "music_file": "music.mp3",
             },
         },
-        "rerender_escalation": {"artifacts": {"review_packet_manifest": "review/review-packet.json"}},
+        "rerender_escalation": {
+            "status": "manual_review_required",
+            "shot_ids": ["S001"],
+            "material_ids": ["MAT_001"],
+            "section_ids": ["SEC_001"],
+            "artifacts": {"review_packet_manifest": "review/review-packet.json"},
+        },
     }
 
     write_pipeline_artifacts(state, payload, {})
@@ -401,6 +419,12 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
             },
         },
         "review_packet_manifest": "review/review-packet.json",
+        "rerender_escalation": {
+            "status": "manual_review_required",
+            "shot_ids": ["S001"],
+            "material_ids": ["MAT_001"],
+            "section_ids": ["SEC_001"],
+        },
     }
     assert run_summary["schema_version"] == "ai_mv_schema_v2"
     assert run_summary["style_lane"] == "citypop"

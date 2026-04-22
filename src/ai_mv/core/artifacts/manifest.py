@@ -49,6 +49,7 @@ def write_manifest(state: dict, payload: dict) -> None:
         "review": {
             "review_report": dict(payload.get("review_report", {})),
             "review_packet_manifest": str(escalation_artifacts.get("review_packet_manifest", "")).strip(),
+            "rerender_escalation": _manifest_rerender_escalation(rerender_escalation),
         },
         "artifacts": {
             "scope": scope,
@@ -58,6 +59,28 @@ def write_manifest(state: dict, payload: dict) -> None:
     write_json(latest_file("manifest.json", scope), out)
     if latest_success_eligible(state, payload):
         write_json(latest_success_file("manifest.json", scope), out)
+
+
+def _manifest_rerender_escalation(rerender_escalation: dict) -> dict:
+    out = {
+        "status": str(rerender_escalation.get("status", "")).strip(),
+        "shot_ids": [
+            str(shot_id).strip()
+            for shot_id in rerender_escalation.get("shot_ids", [])
+            if str(shot_id).strip()
+        ] if isinstance(rerender_escalation.get("shot_ids"), list) else [],
+        "material_ids": [
+            str(material_id).strip()
+            for material_id in rerender_escalation.get("material_ids", [])
+            if str(material_id).strip()
+        ] if isinstance(rerender_escalation.get("material_ids"), list) else [],
+        "section_ids": [
+            str(section_id).strip()
+            for section_id in rerender_escalation.get("section_ids", [])
+            if str(section_id).strip()
+        ] if isinstance(rerender_escalation.get("section_ids"), list) else [],
+    }
+    return out if any(out.values()) else {}
 
 
 def _manifest_section_plan(payload: dict, audio_map: dict) -> list[dict]:
