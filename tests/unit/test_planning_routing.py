@@ -83,4 +83,4 @@ def test_routing_does_not_promote_bridge_to_removed_flf2v_path():
     )
 
     assert out[0]["render_mode"] == "ia2v"
-    assert "bridge_to_shot_id" not in out[0]
+    assert set(out[0]) == {"shot_id", "section_type", "visual_mode", "duration_sec", "render_mode", "workflow_intent"}

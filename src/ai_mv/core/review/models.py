@@ -178,9 +178,6 @@ def _clip_dependency_shot_ids(shot_row: dict | None, render_row: dict | None) ->
     primary = str((shot_row or {}).get("shot_id", "") or (render_row or {}).get("shot_id", "")).strip()
     if primary:
         shot_ids.append(primary)
-    bridge_target = str((render_row or {}).get("still_b", "") or (shot_row or {}).get("bridge_to_shot_id", "")).strip()
-    if bridge_target and bridge_target not in shot_ids:
-        shot_ids.append(bridge_target)
     return shot_ids
 
 

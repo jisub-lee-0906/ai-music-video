@@ -12,7 +12,7 @@ def test_gate_accepts_generic_style_bible_for_stills():
         {
             "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
             "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
             "style_bible": {"style": "synthwave"},
         },
     )
@@ -24,7 +24,7 @@ def test_gate_rejects_legacy_citypop_bible_for_stills():
             "stills",
             {
                 "shot_plan": [{"shot_id": "S001"}],
-                "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
                 "citypop_bible": {"style": "japanese_citypop_80s_90s"},
             },
         )

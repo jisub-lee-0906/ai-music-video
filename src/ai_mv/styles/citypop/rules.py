@@ -21,7 +21,7 @@ OUTRO_RELEASE_FAMILIES = (
 
 
 def citypop_section_shot_specs(section_type: str, duration_sec: float) -> list[dict]:
-    m1_mode = "i2v"
+    m1_mode = "ia2v"
     if section_type == "intro":
         return [_spec("intro_mood", _select_family(INTRO_WORLD_FIRST_FAMILIES, hint="intro_mood"), "low", m1_mode, 1.0)]
     if section_type == "outro":

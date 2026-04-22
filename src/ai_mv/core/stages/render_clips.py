@@ -79,14 +79,6 @@ def _clip_prompt_text(render_item: dict) -> str:
     return "music video shot with a clear cinematic action beat"
 
 
-def _bridge_target_image(shot_id: str, shot: dict, render_item: dict, still_map: dict) -> str:
-    bridge_to_shot_id = str(render_item.get("still_b") or shot.get("bridge_to_shot_id", "")).strip()
-    target = str(still_map.get(bridge_to_shot_id, {}).get("image", "")).strip()
-    if target:
-        return target
-    raise RuntimeError(f"missing bridge target still for shot: {shot_id}")
-
-
 def _clip_material_id(shot: dict, render_item: dict, still_row: dict) -> str:
     return str(
         still_row.get("material_id")

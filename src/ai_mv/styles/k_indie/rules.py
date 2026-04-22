@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def k_indie_section_shot_specs(section_type: str, duration_sec: float) -> list[dict]:
-    render_mode = "i2v"
+    render_mode = "ia2v"
     if section_type == "intro":
         return [_spec("intro_wait", "bookstore_window", "low", render_mode, 1.0)]
     if section_type == "chorus":

@@ -25,7 +25,7 @@ def still_prefix(run_id: str, shot_id: str, scope: str = "run") -> str:
 
 
 def ltx_clip_prefix(run_id: str, shot_id: str, mode: str, scope: str = "run") -> str:
-    clean_mode = _clean_segment(mode) or "i2v"
+    clean_mode = _clean_segment(mode) or "ia2v"
     return f"{_media_root(run_id, scope)}/{CLIP_DIR}/shot-{_clean_segment(shot_id)}-{clean_mode}"
 
 

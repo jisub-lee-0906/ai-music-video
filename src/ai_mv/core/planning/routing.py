@@ -32,29 +32,6 @@ def _apply_ia2v_routing(config: dict, shots: list[dict]) -> list[dict]:
 
 
 
-def _apply_flf2v_routing(config: dict, shots: list[dict]) -> list[dict]:
-    planning = config.get("planning", {}) if isinstance(config, dict) else {}
-    if not bool(planning.get("enable_flf2v", False)):
-        return shots
-    max_flf2v_shots = _int(planning.get("max_flf2v_shots"), 1, minimum=1)
-    min_sec = _float(planning.get("flf2v_min_sec"), 3.0)
-    max_sec = _float(planning.get("flf2v_max_sec"), 6.0)
-    routed = [dict(shot) for shot in shots]
-    flf2v_count = 0
-    for idx, shot in enumerate(routed[:-1]):
-        next_shot = routed[idx + 1]
-        if flf2v_count >= max_flf2v_shots:
-            break
-        if _eligible_for_flf2v(shot, next_shot, min_sec, max_sec):
-            shot["render_mode"] = "flf2v"
-            shot["bridge_to_shot_id"] = next_shot["shot_id"]
-            shot["shot_role"] = "bridge_transition"
-            shot["visual_mode"] = "bridge_transition"
-            flf2v_count += 1
-    return routed
-
-
-
 def _eligible_for_ia2v(shot: dict, min_sec: float, max_sec: float) -> bool:
     duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)
     workflow_intent = str(shot.get("workflow_intent", "")).strip()
@@ -65,21 +42,6 @@ def _eligible_for_ia2v(shot: dict, min_sec: float, max_sec: float) -> bool:
     if str(shot.get("visual_mode", "")) != "chorus_performance":
         return False
     return min_sec <= duration_sec <= max_sec
-
-
-
-def _eligible_for_flf2v(shot: dict, next_shot: dict, min_sec: float, max_sec: float) -> bool:
-    workflow_intent = str(shot.get("workflow_intent", "")).strip()
-    if workflow_intent and workflow_intent != "bridge_candidate":
-        return False
-    duration_sec = float(shot.get("duration_sec", 0.0) or 0.0)
-    if not (min_sec <= duration_sec <= max_sec):
-        return False
-    section_type = str(shot.get("section_type", ""))
-    next_section_type = str(next_shot.get("section_type", ""))
-    if section_type in {"bridge", "pre_chorus"} and next_section_type != section_type:
-        return True
-    return section_type == "verse" and next_section_type == "chorus" and str(shot.get("visual_mode", "")) == "window_reflection"
 
 
 

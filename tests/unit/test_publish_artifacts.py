@@ -24,7 +24,7 @@ def test_write_manifest_emits_blueprint_aligned_public_output_contract(monkeypat
             "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
             "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
             "shot_plan": [{"shot_id": "S001"}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
             "still_results": [{"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"}],
             "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
             "review_report": {"status": "done", "rerender_targets": []},
@@ -54,7 +54,7 @@ def test_write_manifest_emits_blueprint_aligned_public_output_contract(monkeypat
         "style_resolution": {"style_lane": "citypop", "selection_source": "auto"},
         "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
         "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-        "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+        "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
     }
     assert manifest["stills"] == {"material_results": [{"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"}]}
     assert manifest["clips"] == {"clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}]}
@@ -328,7 +328,7 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
         "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
         "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
         "shot_plan": [{"shot_id": "S001"}],
-        "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+        "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
         "still_results": [{"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"}],
         "clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}],
         "final_video": "final.mp4",
@@ -390,7 +390,7 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
         },
         "section_plan": [{"section_id": "SEC_001", "section_type": "verse"}],
         "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-        "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+        "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
     }
     assert run_manifest["stills"] == {"material_results": [{"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"}]}
     assert run_manifest["clips"] == {"clip_results": [{"shot_id": "S001", "video": "clips/S001.mp4"}]}

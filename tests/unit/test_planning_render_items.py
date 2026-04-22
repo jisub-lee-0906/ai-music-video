@@ -12,7 +12,7 @@ def test_render_item_adds_edit_intent_metadata():
         {
             "shot_id": "S006",
             "section_id": "SEC_003",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "chorus_breakout",
             "section_type": "chorus",
             "section_name": "Chorus",
@@ -44,7 +44,7 @@ def test_render_item_preserves_material_id_for_material_layer_join():
             "shot_id": "S006",
             "section_id": "SEC_003",
             "material_id": "MAT_003",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "chorus_breakout",
             "section_type": "chorus",
             "section_name": "Chorus",
@@ -58,15 +58,14 @@ def test_render_item_preserves_material_id_for_material_layer_join():
 
 
 
-def test_render_item_builds_prompt_fields_and_still_bridge():
+def test_render_item_builds_prompt_fields_for_ia2v_clip():
     out = build_render_item(
         {},
         "Japanese 80s city pop night drive",
         get_citypop_bible(),
         {
             "shot_id": "S001",
-            "render_mode": "flf2v",
-            "bridge_to_shot_id": "S002",
+            "render_mode": "ia2v",
             "shot_role": "chorus_arrive",
             "section_name": "Chorus",
             "visual_mode": "chorus_performance",
@@ -76,7 +75,6 @@ def test_render_item_builds_prompt_fields_and_still_bridge():
     )
 
     assert out["shot_id"] == "S001"
-    assert out["still_b"] == "S002"
     assert out["prompt_seed"]
     assert out["prompt_draft"]
     assert out["prompt_polish"]
@@ -146,7 +144,7 @@ def test_render_item_separates_still_and_clip_prompt_contracts():
         get_synthwave_bible(),
         {
             "shot_id": "S007",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "chorus_breakout",
             "section_name": "Chorus",
             "visual_mode": "grid_surge",
@@ -171,7 +169,7 @@ def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_rele
         get_citypop_bible(),
         {
             "shot_id": "S012",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "chorus_hold",
             "section_type": "chorus",
             "section_name": "Chorus",
@@ -190,7 +188,7 @@ def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_rele
     assert "close-up" not in out["still_prompt_text"]
 
 
-def test_render_item_uses_short_transition_prompt_for_flf2v():
+def test_render_item_keeps_ia2v_clip_prompt_compact_for_bridge_sections():
     out = build_render_item(
         {},
         "dreamy synthwave neon highway night drive",
@@ -198,8 +196,7 @@ def test_render_item_uses_short_transition_prompt_for_flf2v():
         get_synthwave_bible(),
         {
             "shot_id": "S008",
-            "render_mode": "flf2v",
-            "bridge_to_shot_id": "S009",
+            "render_mode": "ia2v",
             "shot_role": "bridge_escape",
             "section_name": "Bridge",
             "visual_mode": "tunnel_reveal",
@@ -208,10 +205,10 @@ def test_render_item_uses_short_transition_prompt_for_flf2v():
         },
     )
 
-    assert out["still_b"] == "S009"
     assert out["clip_prompt_seed"]
     assert out["clip_positive_prompt"]
-    assert len(out["clip_positive_prompt"].split(",")) <= 6
+    assert "bridge escape" in out["clip_prompt_seed"]
+    assert "stable performer identity" in out["clip_positive_prompt"]
 
 
 def test_render_item_keeps_style_seed_inside_clip_prompt_contract():
@@ -222,7 +219,7 @@ def test_render_item_keeps_style_seed_inside_clip_prompt_contract():
         get_synthwave_bible(),
         {
             "shot_id": "S010",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "chorus_breakout",
             "section_name": "Chorus",
             "visual_mode": "grid_surge",
@@ -298,7 +295,7 @@ def test_render_item_render_count_follows_appendix_duration_bands():
         get_citypop_bible(),
         {
             "shot_id": "S014",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "intro_mood",
             "section_type": "intro",
             "section_name": "Intro",
@@ -316,7 +313,7 @@ def test_render_item_render_count_follows_appendix_duration_bands():
         get_citypop_bible(),
         {
             "shot_id": "S015",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "verse_drift",
             "section_type": "verse",
             "section_name": "Verse",
@@ -334,7 +331,7 @@ def test_render_item_render_count_follows_appendix_duration_bands():
         get_citypop_bible(),
         {
             "shot_id": "S016",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "verse_drift",
             "section_type": "verse",
             "section_name": "Verse",
@@ -352,7 +349,7 @@ def test_render_item_render_count_follows_appendix_duration_bands():
         get_citypop_bible(),
         {
             "shot_id": "S017",
-            "render_mode": "i2v",
+            "render_mode": "ia2v",
             "shot_role": "verse_drift",
             "section_type": "verse",
             "section_name": "Verse",

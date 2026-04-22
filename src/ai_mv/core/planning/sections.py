@@ -303,12 +303,7 @@ def merged_source_section_index(left: dict, right: dict) -> int:
 
 
 def _merged_render_mode(left: dict, right: dict) -> str:
-    modes = [str(left.get("render_mode", "")).strip(), str(right.get("render_mode", "")).strip()]
-    if "flf2v" in modes:
-        return "flf2v"
-    if "ia2v" in modes:
-        return "ia2v"
-    return "i2v"
+    return "ia2v"
 
 
 

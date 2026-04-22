@@ -63,7 +63,7 @@ def test_plan_mv_uses_audio_sections_and_stays_within_m1_bounds():
     assert 4 <= len(shot_plan) <= 6
     assert len(render_plan) == len(shot_plan)
     assert any(shot["section_type"] == "chorus" for shot in shot_plan)
-    assert all(shot["render_mode"] in {"ia2v", "flf2v"} for shot in shot_plan)
+    assert all(shot["render_mode"] in {"ia2v"} for shot in shot_plan)
     assert round(sum(float(shot["duration_sec"]) for shot in shot_plan), 3) == 19.0
 
 
@@ -317,14 +317,12 @@ def test_plan_mv_defaults_to_ia2v_centered_render_modes():
     assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
 
 
-def test_plan_mv_does_not_route_removed_flf2v_bridge_mode():
+def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
     out = build_plan_preview_payload(
         {
             "planning": {
-                "enable_flf2v": True,
-                "max_flf2v_shots": 1,
-                "flf2v_min_sec": 3.0,
-                "flf2v_max_sec": 6.0,
+                "enable_audio_motion": True,
+                "max_audio_motion_shots": 1,
             }
         },
         {
@@ -342,8 +340,7 @@ def test_plan_mv_does_not_route_removed_flf2v_bridge_mode():
     )
 
     assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
-    assert all("bridge_to_shot_id" not in shot for shot in out["shot_plan"])
-    assert all(not str(item.get("still_b", "")).strip() for item in out["render_plan"])
+    assert all(set(item) == {"shot_id", "section_id", "material_id", "render_mode", "render_count", "render_planning", "render_priority_score", "seed", "prompt_seed", "prompt_draft", "prompt_polish", "still_prompt_text", "clip_prompt_seed", "clip_positive_prompt", "edit_intent", "still_a", "audio_segment"} for item in out["render_plan"])
 
 
 def test_plan_mv_does_not_drop_tail_when_shot_count_exceeds_m1_max():

@@ -45,7 +45,6 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         "clip_positive_prompt": clip_positive_prompt,
         "edit_intent": edit_intent,
         "still_a": "",
-        "still_b": str(shot.get("bridge_to_shot_id", "")).strip(),
     }
     if render_mode == "ia2v":
         out["audio_segment"] = {
@@ -75,59 +74,24 @@ def build_clip_prompt_seed(render_mode: str, shot: dict, prompt_seed: str) -> st
     role = str(shot.get("shot_role", "")).replace("_", " ").strip()
     visual_mode = str(shot.get("visual_mode", "")).replace("_", " ").strip()
     seed_prefix = str(prompt_seed or "").split(",")[0].strip()
-    if render_mode == "flf2v":
-        return _join_prompt_tokens(
-            [
-                seed_prefix,
-                "bridge transition",
-                role or "continuous handoff",
-            ]
-        )
-    if render_mode == "ia2v":
-        return _join_prompt_tokens(
-            [
-                seed_prefix,
-                role or "performance shot",
-                visual_mode or "music-responsive motion",
-                "stable camera motion",
-                "audio-reactive energy",
-            ]
-        )
     return _join_prompt_tokens(
         [
             seed_prefix,
-            role or "cinematic motion beat",
-            visual_mode or "single-shot movement",
-            "stable motion",
-            "preserve subject continuity",
+            role or "performance shot",
+            visual_mode or "music-responsive motion",
+            "stable camera motion",
+            "audio-reactive energy",
         ]
     )
 
 
 
 def build_clip_positive_prompt(render_mode: str, shot: dict, clip_prompt_seed: str) -> str:
-    if render_mode == "flf2v":
-        return _join_prompt_tokens(
-            [
-                clip_prompt_seed,
-                "matched endpoints",
-                "short transition beat",
-                "no world change",
-            ]
-        )
-    if render_mode == "ia2v":
-        return _join_prompt_tokens(
-            [
-                clip_prompt_seed,
-                "stable performer identity",
-                "restrained camera",
-                "no abrupt pose change",
-            ]
-        )
     return _join_prompt_tokens(
         [
             clip_prompt_seed,
-            "single continuous motion",
+            "stable performer identity",
+            "restrained camera",
             "no abrupt pose change",
         ]
     )
@@ -269,12 +233,11 @@ def _section_emphasis_score(section_type: str) -> float:
 
 def _mode_importance_score(shot: dict) -> float:
     framing_intent = str(shot.get("framing_intent", "")).strip()
-    render_mode = str(shot.get("render_mode", "")).strip()
     section_type = str(shot.get("section_type", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
-    if render_mode == "ia2v" or framing_intent == "performance_medium" or section_type == "chorus":
+    if framing_intent == "performance_medium" or section_type == "chorus":
         return 1.00
-    if render_mode == "flf2v" or "bridge" in visual_mode or section_type == "bridge":
+    if "bridge" in visual_mode or section_type == "bridge":
         return 0.85
     if framing_intent == "release_wide" or visual_mode.endswith("anchor"):
         return 0.72

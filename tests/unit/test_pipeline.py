@@ -37,7 +37,7 @@ def test_pipeline_runs_ordered_stages(monkeypatch):
         ("plan", _stage("plan", {
             "style_bible": {"style": "citypop"},
             "shot_plan": [{"shot_id": "S001", "start_sec": 0.0, "end_sec": 4.0}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
         })),
         ("stills", _stage("stills", {
             "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
@@ -102,7 +102,7 @@ def test_pipeline_runs_rerender_loop_when_review_needs_rerender(monkeypatch):
         ("plan", _stage("plan", {
             "style_bible": {"style": "citypop"},
             "shot_plan": [{"shot_id": "S001", "start_sec": 0.0, "end_sec": 4.0}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
         })),
         ("stills", _stage("stills", {
             "still_results": [{"shot_id": "S001", "image": "stills/S001.png"}],
@@ -165,7 +165,7 @@ def test_pipeline_marks_unresolved_rerender_outcome_when_loop_still_needs_rerend
 
     monkeypatch.setattr(pipeline, "_ordered_stages", lambda: [
         ("audio", _stage("audio", {"audio_plan": {"genre_description": "x"}, "audio_map": {"sections": [{"name": "verse"}]}, "music_file": "music.mp3"})),
-        ("plan", _stage("plan", {"style_bible": {"style": "citypop"}, "shot_plan": [{"shot_id": "S001"}], "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}]})),
+        ("plan", _stage("plan", {"style_bible": {"style": "citypop"}, "shot_plan": [{"shot_id": "S001"}], "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}]})),
         ("stills", _stage("stills", {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]})),
         ("clips", _stage("clips", {"clip_results": [{"shot_id": "S001", "video": "clips/S001_i2v.mp4"}]})),
         ("assemble", _stage("assemble", {"final_video": "final.mp4", "review_inputs": {"music_file": "music.mp3"}})),
@@ -233,7 +233,7 @@ def test_pipeline_runs_escalation_after_exhausted_rerender(monkeypatch):
 
     monkeypatch.setattr(pipeline, "_ordered_stages", lambda: [
         ("audio", _stage("audio", {"audio_plan": {"genre_description": "x"}, "audio_map": {"sections": [{"name": "verse"}]}, "music_file": "music.mp3"})),
-        ("plan", _stage("plan", {"style_bible": {"style": "citypop"}, "shot_plan": [{"shot_id": "S001"}], "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}]})),
+        ("plan", _stage("plan", {"style_bible": {"style": "citypop"}, "shot_plan": [{"shot_id": "S001"}], "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}]})),
         ("stills", _stage("stills", {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]})),
         ("clips", _stage("clips", {"clip_results": [{"shot_id": "S001", "video": "clips/S001_i2v.mp4"}]})),
         ("assemble", _stage("assemble", {"final_video": "final.mp4", "review_inputs": {"music_file": "music.mp3"}})),
@@ -318,7 +318,7 @@ def test_pipeline_skips_rerender_loop_when_review_is_done(monkeypatch):
 
     monkeypatch.setattr(pipeline, "_ordered_stages", lambda: [
         ("audio", _stage("audio", {"audio_plan": {"genre_description": "x"}, "audio_map": {"sections": [{"name": "verse"}]}, "music_file": "music.mp3"})),
-        ("plan", _stage("plan", {"style_bible": {"style": "citypop"}, "shot_plan": [{"shot_id": "S001"}], "render_plan": [{"shot_id": "S001", "render_mode": "i2v"}]})),
+        ("plan", _stage("plan", {"style_bible": {"style": "citypop"}, "shot_plan": [{"shot_id": "S001"}], "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}]})),
         ("stills", _stage("stills", {"still_results": [{"shot_id": "S001", "image": "stills/S001.png"}]})),
         ("clips", _stage("clips", {"clip_results": [{"shot_id": "S001", "video": "clips/S001_i2v.mp4"}]})),
         ("assemble", _stage("assemble", {"final_video": "final.mp4", "review_inputs": {"music_file": "music.mp3"}})),

@@ -408,7 +408,7 @@ def test_review_models_include_publishability_summary_levels():
     }
     assert summary["isolated_asset_quality"]["rerender_prescription"] == {
         "stage_focus": "clips",
-        "workflow_focus": ["i2v", "ia2v", "flf2v"],
+        "workflow_focus": ["ia2v"],
         "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
         "fix_strategy": "shorter_motion_and_clean_terminal_frames",
     }
@@ -554,9 +554,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
         audio_video_drift_sec=0.0,
         config={"review": {"max_audio_video_drift_sec": 0.5}},
         shot_plan=[
-            {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"},
-            {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
-            {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v"},
+            {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"},
+            {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v"},
+            {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "ia2v"},
         ],
         material_plan=[
             {"material_id": "MAT_001", "section_id": "SEC_001"},
@@ -564,9 +564,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             {"material_id": "MAT_003", "section_id": "SEC_003"},
         ],
         render_plan=[
-            {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "still-1"},
-            {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"},
-            {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v", "still_prompt_text": "still-3"},
+            {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v", "still_prompt_text": "still-1"},
+            {"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v", "clip_prompt_seed": "clip-2"},
+            {"shot_id": "S003", "material_id": "MAT_003", "render_mode": "ia2v", "still_prompt_text": "still-3"},
         ],
         style_bible={"style": "synthwave"},
         music_file="song.mp3",
@@ -613,7 +613,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S002",
             "quality_findings": ["motion_fragile_frame"],
             "rerender_stage": "stills_then_clips",
-            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "ia2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
             "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
@@ -626,9 +626,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "rerender_stage": "stills",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v"}],
+                    "shot_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "ia2v"}],
                     "material_plan": [{"material_id": "MAT_003", "section_id": "SEC_003"}],
-                    "render_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "i2v", "still_prompt_text": "still-3"}],
+                    "render_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "ia2v", "still_prompt_text": "still-3"}],
                     "style_bible": {"style": "synthwave"},
                 }
             },
@@ -639,9 +639,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "rerender_stage": "stills",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                     "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v", "still_prompt_text": "still-1"}],
                     "style_bible": {"style": "synthwave"},
                 }
             },
@@ -652,17 +652,16 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "rerender_stage": "stills_then_clips",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
+                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v"}],
                     "material_plan": [{"material_id": "MAT_002", "section_id": "SEC_002"}],
-                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v", "clip_prompt_seed": "clip-2"}],
                     "style_bible": {"style": "synthwave"},
                 },
                 "clips": {
-                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "bridge_to_shot_id": "S004"}],
-                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004", "clip_prompt_seed": "clip-2"}],
+                    "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v"}],
+                    "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v", "clip_prompt_seed": "clip-2"}],
                     "still_results": [
                         {"shot_id": "S002", "image": "still-2.png", "material_id": "MAT_002"},
-                        {"shot_id": "S004", "image": "still-4.png"},
                     ],
                     "music_file": "song.mp3",
                 },
@@ -675,9 +674,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
 def test_review_models_build_rerender_execution_payloads_falls_back_to_shot_material_id_when_render_row_omits_it():
     payloads = build_rerender_execution_payloads(
         rerender_payload=[{"shot_id": "S001", "rerender_stage": "stills", "recommended_action": "rerender_panelized_keyframes"}],
-        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
         material_plan=[{"material_id": "MAT_001", "section_id": "SEC_001"}],
-        render_plan=[{"shot_id": "S001", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+        render_plan=[{"shot_id": "S001", "render_mode": "ia2v", "still_prompt_text": "still-1"}],
         still_results=[],
         style_bible={"style": "synthwave"},
         music_file="song.mp3",
@@ -691,9 +690,9 @@ def test_review_models_build_rerender_execution_payloads_falls_back_to_shot_mate
 def test_review_models_build_rerender_execution_payloads_normalizes_blank_render_material_id():
     payloads = build_rerender_execution_payloads(
         rerender_payload=[{"shot_id": "S001", "rerender_stage": "stills", "recommended_action": "rerender_panelized_keyframes"}],
-        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
         material_plan=[{"material_id": "MAT_001", "section_id": "SEC_001"}],
-        render_plan=[{"shot_id": "S001", "material_id": "", "render_mode": "i2v", "still_prompt_text": "still-1"}],
+        render_plan=[{"shot_id": "S001", "material_id": "", "render_mode": "ia2v", "still_prompt_text": "still-1"}],
         still_results=[],
         style_bible={"style": "synthwave"},
         music_file="song.mp3",
@@ -706,9 +705,9 @@ def test_review_models_build_rerender_execution_payloads_normalizes_blank_render
 def test_review_models_build_rerender_execution_payloads_normalizes_blank_clips_render_material_id():
     payloads = build_rerender_execution_payloads(
         rerender_payload=[{"shot_id": "S001", "rerender_stage": "clips", "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes"}],
-        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+        shot_plan=[{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
         material_plan=[{"material_id": "MAT_001", "section_id": "SEC_001"}],
-        render_plan=[{"shot_id": "S001", "material_id": "", "render_mode": "i2v", "clip_prompt_seed": "clip-1"}],
+        render_plan=[{"shot_id": "S001", "material_id": "", "render_mode": "ia2v", "clip_prompt_seed": "clip-1"}],
         still_results=[{"shot_id": "S001", "material_id": "MAT_001", "image": "still-1.png"}],
         style_bible={"style": "synthwave"},
         music_file="song.mp3",
@@ -758,7 +757,7 @@ def test_classify_rerender_target_uses_identity_continuity_fix_strategy_for_iden
         "recommended_action": "rerender_weak_shots_with_prompt_tightening",
         "rerender_prescription": {
             "stage_focus": "stills_then_clips",
-            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "ia2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "tighten_identity_continuity_anchors",
         },
@@ -774,7 +773,7 @@ def test_classify_rerender_target_uses_composite_continuity_policy_for_identity_
         "recommended_action": "rerender_continuity_break_shots",
         "rerender_prescription": {
             "stage_focus": "stills_then_clips",
-            "workflow_focus": ["flux2_image", "i2v", "flf2v"],
+            "workflow_focus": ["flux2_image", "ia2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "tighten_identity_continuity_anchors",
         },
@@ -855,8 +854,8 @@ def test_review_models_build_review_stage_execution_payload_for_audio_sync_repai
         rerender_reasons={"S001": ["drift_too_high"]},
         audio_video_drift_sec=0.75,
         config={"review": {"max_audio_video_drift_sec": 0.5}},
-        shot_plan=[{"shot_id": "S001", "render_mode": "i2v"}],
-        render_plan=[{"shot_id": "S001", "render_mode": "i2v", "clip_prompt_seed": "clip-1"}],
+        shot_plan=[{"shot_id": "S001", "render_mode": "ia2v"}],
+        render_plan=[{"shot_id": "S001", "render_mode": "ia2v", "clip_prompt_seed": "clip-1"}],
         music_file="song.mp3",
         final_video_path="final.mp4",
     )
@@ -1125,7 +1124,7 @@ def test_review_models_surface_new_publishability_quality_findings():
     }
     assert report["publishability_summary"]["final_mv_publishability"]["rerender_prescription"] == {
         "stage_focus": "stills_then_clips",
-        "workflow_focus": ["flux2_image", "i2v", "flf2v"],
+        "workflow_focus": ["flux2_image", "ia2v"],
         "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
         "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
     }

@@ -104,7 +104,6 @@ def _validate_clips_inputs(payload: dict) -> None:
         shot_material_ids[shot_id] = _require_non_empty_str(item.get("material_id"), f"clips shot_plan[{idx}].material_id")
     render_material_ids = {}
     render_shot_ids = set()
-    dependency_shot_ids = set()
     for idx, row in enumerate(renders, start=1):
         item = _require_dict(row, f"clips render_plan[{idx}]")
         shot_id = _require_non_empty_str(item.get("shot_id"), f"clips render_plan[{idx}].shot_id")
@@ -115,9 +114,6 @@ def _validate_clips_inputs(payload: dict) -> None:
         expected_shot_material_id = shot_material_ids.get(shot_id)
         if material_id and expected_shot_material_id and material_id != expected_shot_material_id:
             raise StageFailure(f"clips render_plan[{idx}].material_id must match shot_plan material linkage")
-        dependency_shot_id = str(item.get("still_b", "") or item.get("bridge_to_shot_id", "")).strip()
-        if dependency_shot_id:
-            dependency_shot_ids.add(dependency_shot_id)
     shot_ids = set(shot_material_ids.keys())
     still_shot_ids = set()
     for idx, row in enumerate(stills, start=1):
@@ -130,10 +126,9 @@ def _validate_clips_inputs(payload: dict) -> None:
         if expected_material_id:
             if material_id != expected_material_id:
                 raise StageFailure(f"clips still_results[{idx}].material_id must match shot/render material linkage")
-        elif shot_id not in dependency_shot_ids:
+        else:
             _require_non_empty_str(item.get("material_id"), f"clips still_results[{idx}].material_id")
-    allowed_still_ids = shot_ids | dependency_shot_ids
-    extra_still_ids = sorted(still_shot_ids - allowed_still_ids)
+    extra_still_ids = sorted(still_shot_ids - shot_ids)
     if extra_still_ids:
         raise StageFailure("clips still_results contains shot_ids not present in shot_plan")
     extra_render_ids = sorted(render_shot_ids - shot_ids)

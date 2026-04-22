@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.engines.ltx_i2v.mapper import _ltx_size, _int_value, _float_value
+from ai_mv.engines.ltx_ia2v.common import float_value, int_value, ltx_size, non_negative_float
 
 LTX_IA2V_IMAGE = "269"
 LTX_IA2V_AUDIO = "276"
@@ -13,11 +13,12 @@ LTX_IA2V_TRIM = "340:332"
 LTX_IA2V_SAVE = "341"
 
 
+
 def map_ltx_ia2v_workflow(config: dict, item: dict) -> dict:
-    _ltx_size(config, item, "ltx_ia2v_size")
-    fps = _int_value(item.get("fps") or config.get("render", {}).get("ltx_fps"), 24)
-    duration_sec = _float_value(item.get("duration_sec"), 4.0)
-    start_sec = _non_negative_float(item.get("audio_start_sec"), 0.0)
+    ltx_size(config, item, "ltx_ia2v_size")
+    fps = int_value(item.get("fps") or config.get("render", {}).get("ltx_fps"), 24)
+    duration_sec = float_value(item.get("duration_sec"), 4.0)
+    start_sec = non_negative_float(item.get("audio_start_sec"), 0.0)
     prompt_seed = str(item.get("clip_prompt_seed") or item.get("prompt_seed") or "").strip()
     positive_prompt = str(item.get("clip_positive_prompt") or item.get("positive_prompt") or "").strip()
     return {
@@ -35,6 +36,7 @@ def map_ltx_ia2v_workflow(config: dict, item: dict) -> dict:
     }
 
 
+
 def ltx_ia2v_required_inputs() -> dict[str, list[str]]:
     return {
         "SaveVideo": ["filename_prefix"],
@@ -46,11 +48,3 @@ def ltx_ia2v_required_inputs() -> dict[str, list[str]]:
         "TrimAudioDuration": ["start_index", "duration"],
         "CLIPTextEncode": ["text"],
     }
-
-
-def _non_negative_float(value: object, default: float) -> float:
-    try:
-        parsed = float(value)
-    except Exception:
-        return default
-    return max(0.0, parsed)

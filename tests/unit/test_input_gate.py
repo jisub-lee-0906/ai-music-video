@@ -23,7 +23,7 @@ def test_gate_accepts_planning_chain():
         {
             "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
             "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
             "style_bible": {"style": "citypop"},
         },
     )
@@ -34,7 +34,7 @@ def test_gate_accepts_render_chain():
         "clips",
         {
             "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
-            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+            "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
             "still_results": [{"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"}],
             "music_file": "music.mp3",
         },
@@ -49,7 +49,7 @@ def test_gate_rejects_stills_inputs_when_material_linkage_is_missing():
             {
                 "shot_plan": [{"shot_id": "S001", "material_id": ""}],
                 "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                 "style_bible": {"style": "citypop"},
             },
         )
@@ -70,8 +70,8 @@ def test_gate_rejects_stills_inputs_when_render_plan_material_id_belongs_to_anot
                     {"material_id": "MAT_002", "section_id": "SEC_002"},
                 ],
                 "render_plan": [
-                    {"shot_id": "S001", "material_id": "MAT_002", "render_mode": "i2v"},
-                    {"shot_id": "S002", "material_id": "MAT_001", "render_mode": "i2v"},
+                    {"shot_id": "S001", "material_id": "MAT_002", "render_mode": "ia2v"},
+                    {"shot_id": "S002", "material_id": "MAT_001", "render_mode": "ia2v"},
                 ],
                 "style_bible": {"style": "citypop"},
             },
@@ -87,8 +87,8 @@ def test_gate_rejects_stills_inputs_when_render_plan_contains_unknown_shot_id():
                 "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
                 "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
                 "render_plan": [
-                    {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"},
-                    {"shot_id": "S999", "material_id": "MAT_001", "render_mode": "i2v"},
+                    {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"},
+                    {"shot_id": "S999", "material_id": "MAT_001", "render_mode": "ia2v"},
                 ],
                 "style_bible": {"style": "citypop"},
             },
@@ -106,7 +106,7 @@ def test_gate_rejects_stills_inputs_when_material_plan_contains_unused_row():
                     {"material_id": "MAT_001", "section_id": "SEC_001"},
                     {"material_id": "MAT_999", "section_id": "SEC_999"},
                 ],
-                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                 "style_bible": {"style": "citypop"},
             },
         )
@@ -119,7 +119,7 @@ def test_gate_rejects_clips_inputs_when_still_material_id_disagrees_with_render_
             "clips",
             {
                 "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
-                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                 "still_results": [{"shot_id": "S001", "material_id": "MAT_999", "image": "stills/S001.png"}],
                 "music_file": "music.mp3",
             },
@@ -133,7 +133,7 @@ def test_gate_rejects_clips_inputs_when_still_results_contains_unknown_shot_id()
             "clips",
             {
                 "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
-                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                 "still_results": [
                     {"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"},
                     {"shot_id": "S999", "material_id": "MAT_001", "image": "stills/S999.png"},
@@ -151,8 +151,8 @@ def test_gate_rejects_clips_inputs_when_render_plan_contains_unknown_shot_id():
             {
                 "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
                 "render_plan": [
-                    {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"},
-                    {"shot_id": "S999", "material_id": "", "render_mode": "i2v"},
+                    {"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"},
+                    {"shot_id": "S999", "material_id": "", "render_mode": "ia2v"},
                 ],
                 "still_results": [{"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"}],
                 "music_file": "music.mp3",
@@ -167,7 +167,7 @@ def test_gate_rejects_clips_inputs_when_duplicate_still_rows_exist():
             "clips",
             {
                 "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001"}],
-                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                 "still_results": [
                     {"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001.png"},
                     {"shot_id": "S001", "material_id": "MAT_001", "image": "stills/S001-dup.png"},
@@ -178,16 +178,17 @@ def test_gate_rejects_clips_inputs_when_duplicate_still_rows_exist():
 
 
 
-def test_gate_accepts_clips_inputs_with_valid_dependency_still_rows():
-    validate_stage_input(
-        "clips",
-        {
-            "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002"}],
-            "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "flf2v", "still_b": "S004"}],
-            "still_results": [
-                {"shot_id": "S002", "material_id": "MAT_002", "image": "stills/S002.png"},
-                {"shot_id": "S004", "material_id": "MAT_004", "image": "stills/S004.png"},
-            ],
-            "music_file": "music.mp3",
-        },
-    )
+def test_gate_rejects_clips_inputs_when_still_results_contains_unplanned_dependency_row():
+    with pytest.raises(StageFailure):
+        validate_stage_input(
+            "clips",
+            {
+                "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002"}],
+                "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v"}],
+                "still_results": [
+                    {"shot_id": "S002", "material_id": "MAT_002", "image": "stills/S002.png"},
+                    {"shot_id": "S004", "material_id": "MAT_004", "image": "stills/S004.png"},
+                ],
+                "music_file": "music.mp3",
+            },
+        )

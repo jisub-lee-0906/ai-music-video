@@ -66,9 +66,9 @@ def test_review_stage_builds_material_aware_rerender_execution_payloads(monkeypa
                     "music_file": "D:/renders/song.mp3",
                     "final_video": "D:/renders/final.mp4",
                     "style_bible": {"style": "synthwave"},
-                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                     "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "hero frame"}],
+                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v", "still_prompt_text": "hero frame"}],
                     "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "material_id": "MAT_001", "section_id": "SEC_001", "quality_issues": ["panel_layout"]}],
                     "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "material_id": "MAT_001", "section_id": "SEC_001"}],
                     "review_inputs": {"music_file": "D:/renders/song.mp3"},
@@ -87,9 +87,9 @@ def test_review_stage_builds_material_aware_rerender_execution_payloads(monkeypa
             "rerender_stage": "stills",
             "stage_payloads": {
                 "stills": {
-                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v"}],
+                    "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
                     "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_001"}],
-                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "i2v", "still_prompt_text": "hero frame"}],
+                    "render_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v", "still_prompt_text": "hero frame"}],
                     "style_bible": {"style": "synthwave"},
                 }
             },
