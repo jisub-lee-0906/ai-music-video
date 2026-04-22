@@ -116,19 +116,23 @@ def test_assemble_mv_aggregates_multiple_shots_under_one_section_id(monkeypatch,
 
     out = run_assemble_mv(stage_input)
 
-    assert out.payload["assembly_plan"]["section_edits"] == [
-        {
-            "section_id": "SEC_001",
-            "selected_clip_ids": ["S001", "S002"],
-            "selected_material_ids": ["MAT_001", "MAT_002"],
-            "coverage_sec": 5.0,
-            "editorial_weight": "high",
-            "transition_in": "accent_in",
-            "transition_out": "glide_out",
-        }
-    ]
+    section_edit = out.payload["assembly_plan"]["section_edits"][0]
+    assert section_edit["section_id"] == "SEC_001"
+    assert section_edit["selected_clip_ids"] == ["S001", "S002"]
+    assert section_edit["selected_material_ids"] == ["MAT_001", "MAT_002"]
+    assert section_edit["coverage_sec"] == 5.0
+    assert section_edit["trimmed_coverage_sec"] == 5.0
+    assert section_edit["editorial_weight"] == "high"
+    assert section_edit["transition_in"] == "accent_in"
+    assert section_edit["transition_out"] == "glide_out"
+    assert section_edit["trim_start_sec"] is None
+    assert section_edit["trim_end_sec"] is None
+    assert section_edit["snap_unit"] == "free"
+    assert section_edit["cadence_profile"] == "support_hold"
     assert out.payload["assembly_plan"]["section_edit_map"]["SEC_001"]["selected_clip_ids"] == ["S001", "S002"]
     assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["selected_clip_ids"] == ["S001", "S002"]
+    assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["trim_start_sec"] is None
+    assert out.payload["assembly_plan"]["timing_map"]["SEC_001"]["trim_end_sec"] is None
 
 
 
@@ -271,6 +275,166 @@ def test_assemble_mv_uses_edit_intent_to_build_trimmed_clip_segments(monkeypatch
     assert segments[0]["trim_end_sec"] == 3.5
     assert segments[1]["trim_start_sec"] == 3.0
     assert segments[1]["trim_end_sec"] == 5.0
+
+
+
+def test_assemble_mv_exposes_cadence_profile_and_snap_summary_in_assembly_plan(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-cadence.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.ffprobe_duration", lambda _path: 5.0)
+
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "clip2.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    out = run_assemble_mv(
+        StageInput(
+            run_id="run-assemble-cadence-summary",
+            config={},
+            payload={
+                "music_file": "song.wav",
+                "audio_map": {
+                    "timing": {
+                        "bar_times_sec": [0.0, 2.0, 4.0, 6.0, 8.0],
+                        "grid_beat_times_sec": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0],
+                    }
+                },
+                "shot_plan": [
+                    {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 5.0},
+                    {"shot_id": "S002", "section_id": "SEC_002", "start_sec": 5.0, "duration_sec": 5.0},
+                ],
+                "clip_results": [
+                    {"shot_id": "S001", "video": "clip1.mp4", "section_id": "SEC_001", "material_id": "MAT_001"},
+                    {"shot_id": "S002", "video": "clip2.mp4", "section_id": "SEC_002", "material_id": "MAT_002"},
+                ],
+                "render_plan": [
+                    {
+                        "shot_id": "S001",
+                        "section_id": "SEC_001",
+                        "material_id": "MAT_001",
+                        "edit_intent": {
+                            "edit_priority": "high",
+                            "section_emphasis": "chorus_push",
+                            "target_clip_sec": 2.1,
+                            "transition_in": "accent_in",
+                            "transition_out": "accent_out",
+                        },
+                    },
+                    {
+                        "shot_id": "S002",
+                        "section_id": "SEC_002",
+                        "material_id": "MAT_002",
+                        "edit_intent": {
+                            "edit_priority": "medium",
+                            "section_emphasis": "sequence_support",
+                            "target_clip_sec": 2.1,
+                            "transition_in": "cut_in",
+                            "transition_out": "cut_out",
+                        },
+                    },
+                ],
+            },
+        )
+    )
+
+    sec1 = out.payload["assembly_plan"]["section_edit_map"]["SEC_001"]
+    sec2 = out.payload["assembly_plan"]["section_edit_map"]["SEC_002"]
+    time1 = out.payload["assembly_plan"]["timing_map"]["SEC_001"]
+    time2 = out.payload["assembly_plan"]["timing_map"]["SEC_002"]
+
+    assert sec1["cadence_profile"] == "hook_dense"
+    assert sec1["snap_unit"] == "bar"
+    assert sec1["trim_start_sec"] == 2.0
+    assert sec1["trim_end_sec"] == 4.0
+    assert time1["snap_unit"] == "bar"
+    assert time1["cadence_profile"] == "hook_dense"
+    assert time1["trimmed_coverage_sec"] == 2.0
+
+    assert sec2["cadence_profile"] == "support_hold"
+    assert sec2["snap_unit"] == "beat"
+    assert sec2["trim_start_sec"] == 0.0
+    assert sec2["trim_end_sec"] == 1.0
+    assert time2["snap_unit"] == "beat"
+    assert time2["cadence_profile"] == "support_hold"
+    assert time2["trimmed_coverage_sec"] == 1.0
+
+
+
+def test_assemble_mv_marks_free_snap_when_audio_timing_is_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-free-snap.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.ffprobe_duration", lambda _path: 5.0)
+
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    out = run_assemble_mv(
+        StageInput(
+            run_id="run-assemble-free-snap",
+            config={},
+            payload={
+                "music_file": "song.wav",
+                "shot_plan": [{"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 5.0}],
+                "clip_results": [{"shot_id": "S001", "video": "clip1.mp4", "section_id": "SEC_001"}],
+                "render_plan": [
+                    {
+                        "shot_id": "S001",
+                        "section_id": "SEC_001",
+                        "edit_intent": {
+                            "edit_priority": "medium",
+                            "section_emphasis": "bridge_contrast",
+                            "target_clip_sec": 2.0,
+                            "transition_in": "glide_in",
+                            "transition_out": "handoff_out",
+                        },
+                    }
+                ],
+            },
+        )
+    )
+
+    sec1 = out.payload["assembly_plan"]["section_edit_map"]["SEC_001"]
+    time1 = out.payload["assembly_plan"]["timing_map"]["SEC_001"]
+
+    assert sec1["cadence_profile"] == "bridge_pivot"
+    assert sec1["snap_unit"] == "free"
+    assert sec1["trim_start_sec"] == 3.0
+    assert sec1["trim_end_sec"] == 5.0
+    assert time1["snap_unit"] == "free"
+    assert time1["trimmed_coverage_sec"] == 2.0
+
+
+
+def test_assembly_clip_segments_use_actual_clip_duration_when_target_exceeds_clip(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "shot_plan": [{"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 2.0}],
+            "clip_results": [{"shot_id": "S001", "video": str(clip1), "section_id": "SEC_001"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {
+                        "section_emphasis": "sequence_support",
+                        "target_clip_sec": 3.0,
+                        "transition_in": "cut_in",
+                        "transition_out": "cut_out",
+                    },
+                }
+            ],
+        },
+        duration_by_shot={"S001": 2.0},
+    )
+
+    assert segments[0]["trim_start_sec"] is None
+    assert segments[0]["trim_end_sec"] is None
+    assert segments[0]["trimmed_coverage_sec"] == 2.0
 
 
 
