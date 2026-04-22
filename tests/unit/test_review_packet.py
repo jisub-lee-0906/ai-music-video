@@ -59,6 +59,31 @@ def test_build_review_packet_manifest_includes_escalation_context_when_provided(
     }
 
 
+def test_build_review_packet_manifest_preserves_material_and_section_only_escalation_context(tmp_path):
+    manifest = build_review_packet_manifest(
+        video_path=tmp_path / "final.mp4",
+        output_dir=tmp_path / "review-packet",
+        kind="final",
+        shot_ids=[],
+        sample_count=4,
+        duration_fn=lambda _path: 20.0,
+        escalation_context={
+            "material_ids": ["MAT_003"],
+            "section_ids": ["SEC_003"],
+        },
+    )
+
+    assert manifest["escalation_context"] == {
+        "source_stage": "",
+        "run_id": "",
+        "status": "",
+        "shot_ids": [],
+        "material_ids": ["MAT_003"],
+        "section_ids": ["SEC_003"],
+    }
+
+
+
 def test_build_review_packet_manifest_is_json_serializable(tmp_path):
     manifest = build_review_packet_manifest(
         video_path=tmp_path / "clip.mp4",

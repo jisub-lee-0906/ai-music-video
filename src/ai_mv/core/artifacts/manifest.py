@@ -62,25 +62,32 @@ def write_manifest(state: dict, payload: dict) -> None:
 
 
 def _manifest_rerender_escalation(rerender_escalation: dict) -> dict:
+    shot_ids = _normalized_text_list(rerender_escalation.get("shot_ids"))
+    material_ids = _normalized_text_list(rerender_escalation.get("material_ids"))
+    section_ids = _normalized_text_list(rerender_escalation.get("section_ids"))
     out = {
         "status": str(rerender_escalation.get("status", "")).strip(),
-        "shot_ids": [
-            str(shot_id).strip()
-            for shot_id in rerender_escalation.get("shot_ids", [])
-            if str(shot_id).strip()
-        ] if isinstance(rerender_escalation.get("shot_ids"), list) else [],
-        "material_ids": [
-            str(material_id).strip()
-            for material_id in rerender_escalation.get("material_ids", [])
-            if str(material_id).strip()
-        ] if isinstance(rerender_escalation.get("material_ids"), list) else [],
-        "section_ids": [
-            str(section_id).strip()
-            for section_id in rerender_escalation.get("section_ids", [])
-            if str(section_id).strip()
-        ] if isinstance(rerender_escalation.get("section_ids"), list) else [],
+        "shot_ids": shot_ids,
+        "material_ids": material_ids,
+        "section_ids": section_ids,
+        "unique_material_ids": _dedupe_preserve_order(material_ids),
+        "unique_section_ids": _dedupe_preserve_order(section_ids),
     }
     return out if any(out.values()) else {}
+
+
+def _normalized_text_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [text for item in value if (text := str(item).strip())]
+
+
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    out: list[str] = []
+    for value in values:
+        if value not in out:
+            out.append(value)
+    return out
 
 
 def _manifest_section_plan(payload: dict, audio_map: dict) -> list[dict]:

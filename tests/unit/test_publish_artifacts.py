@@ -71,6 +71,8 @@ def test_write_manifest_emits_blueprint_aligned_public_output_contract(monkeypat
             "shot_ids": ["S001"],
             "material_ids": ["MAT_001"],
             "section_ids": ["SEC_001"],
+            "unique_material_ids": ["MAT_001"],
+            "unique_section_ids": ["SEC_001"],
         },
     }
     assert manifest["artifacts"] == {"scope": "run"}
@@ -424,6 +426,8 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
             "shot_ids": ["S001"],
             "material_ids": ["MAT_001"],
             "section_ids": ["SEC_001"],
+            "unique_material_ids": ["MAT_001"],
+            "unique_section_ids": ["SEC_001"],
         },
     }
     assert run_summary["schema_version"] == "ai_mv_schema_v2"

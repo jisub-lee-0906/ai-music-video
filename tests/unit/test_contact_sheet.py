@@ -64,3 +64,24 @@ def test_build_contact_sheet_manifest_includes_escalation_context_when_provided(
         "material_ids": ["MAT_003", "MAT_007"],
         "section_ids": ["SEC_003", "SEC_007"],
     }
+
+
+def test_build_contact_sheet_manifest_preserves_material_and_section_only_escalation_context(tmp_path):
+    manifest = build_contact_sheet_manifest(
+        frame_paths=[tmp_path / "first.png"],
+        frame_labels=["first"],
+        output_image_path=tmp_path / "contact-sheet.png",
+        escalation_context={
+            "material_ids": ["MAT_003"],
+            "section_ids": ["SEC_003"],
+        },
+    )
+
+    assert manifest["escalation_context"] == {
+        "source_stage": "",
+        "run_id": "",
+        "status": "",
+        "shot_ids": [],
+        "material_ids": ["MAT_003"],
+        "section_ids": ["SEC_003"],
+    }
