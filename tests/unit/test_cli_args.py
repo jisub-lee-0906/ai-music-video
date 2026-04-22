@@ -36,6 +36,14 @@ def test_sample_config_uses_flux2_keys_and_has_no_qwen_residue():
     assert "qwen_negative:" not in text
 
 
+def test_sample_config_does_not_hardcode_lyrics_language_or_override_default_concept_bias():
+    text = Path("docs/sample-config.yaml").read_text(encoding="utf-8")
+    assert 'language: "ja"' not in text
+    assert 'language: ""' in text
+    assert 'city pop' not in text.lower()
+    assert 'citypop' not in text.lower()
+
+
 def test_preflight_accepts_concept_text():
     parser = build_parser()
     args = parser.parse_args(["preflight", "--concept-text", "city pop night drive"])

@@ -7,7 +7,8 @@ concept_text: "dreamy synthwave night drive with lonely neon romance"
 
 audio:
   quality: "V0"
-  language: "ja"
+  # Leave lyrics language unset here; actual language should stay style/genre-dependent.
+  language: ""
   beats_per_bar: 4
   target_duration_min_sec: 15
   target_duration_max_sec: 20
