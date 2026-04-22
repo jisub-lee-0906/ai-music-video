@@ -2407,6 +2407,8 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
     report = out.payload["rerender_escalation"]
     assert report["status"] == "manual_review_required"
     assert report["shot_ids"] == ["S003", "S007"]
+    assert report["material_ids"] == ["MAT_003", "MAT_007"]
+    assert report["section_ids"] == ["SEC_003", "SEC_007"]
     assert report["shot_count"] == 2
     assert report["summary_by_shot"] == [
         {
@@ -2443,7 +2445,7 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         },
     ]
     assert report["video_path"] == "D:/renders/final.mp4"
-    assert report["reviewer_summary"] == "Manual review required for 2 shots: S003, S007"
+    assert report["reviewer_summary"] == "Manual review required for 2 shots across 2 materials and 2 sections: S003, S007"
     assert report["review_packet_manifest_path"].endswith("review-packet.json")
     assert report["quality_findings_path"].endswith("review-findings.json")
     assert report["reviewer_notes_path"].endswith("review-notes.md")
@@ -2472,6 +2474,64 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
 
 
 
+def test_rerender_escalation_reviewer_summary_uses_unique_material_and_section_counts(monkeypatch):
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_escalation.write_review_packet",
+        lambda **kwargs: {
+            "manifest_path": kwargs["output_dir"] / "review-packet.json",
+            "quality_findings_path": kwargs["output_dir"] / "review-findings.json",
+            "reviewer_notes_path": kwargs["output_dir"] / "review-notes.md",
+            "contact_sheet_image_path": kwargs["output_dir"] / "contact-sheet.png",
+            "contact_sheet_manifest_path": kwargs["output_dir"] / "contact-sheet.json",
+        },
+    )
+
+    out = run_rerender_escalation(
+        StageInput(
+            run_id="run-rerender-escalate-shared-provenance",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "review_report": {
+                    "rerender_targets": ["S003", "S004"],
+                    "rerender_reasons": {
+                        "S003": ["continuity_break"],
+                        "S004": ["continuity_break"],
+                    },
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S003",
+                            "stage_payloads": {
+                                "review": {
+                                    "target_shots": ["S003"],
+                                    "target_material_ids": ["MAT_SHARED"],
+                                    "target_section_ids": ["SEC_SHARED"],
+                                }
+                            },
+                        },
+                        {
+                            "shot_id": "S004",
+                            "stage_payloads": {
+                                "review": {
+                                    "target_shots": ["S004"],
+                                    "target_material_ids": ["MAT_SHARED"],
+                                    "target_section_ids": ["SEC_SHARED"],
+                                }
+                            },
+                        },
+                    ],
+                },
+                "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
+            },
+        )
+    )
+
+    assert out.payload["rerender_escalation"]["material_ids"] == ["MAT_SHARED"]
+    assert out.payload["rerender_escalation"]["section_ids"] == ["SEC_SHARED"]
+    assert out.payload["rerender_escalation"]["reviewer_summary"] == "Manual review required for 2 shots across 1 materials and 1 sections: S003, S004"
+
+
+
 def test_rerender_escalation_skips_packet_creation_when_not_exhausted(monkeypatch):
     called = []
     monkeypatch.setattr(
@@ -2495,6 +2555,8 @@ def test_rerender_escalation_skips_packet_creation_when_not_exhausted(monkeypatc
     assert out.payload["rerender_escalation"] == {
         "status": "not_required",
         "shot_ids": [],
+        "material_ids": [],
+        "section_ids": [],
         "shot_count": 0,
         "summary_by_shot": [],
         "video_path": "D:/renders/final.mp4",

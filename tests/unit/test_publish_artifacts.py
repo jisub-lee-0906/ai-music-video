@@ -434,7 +434,7 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
             "rerender_escalation": {
                 "status": "manual_review_required",
                 "shot_count": 1,
-                "reviewer_summary": "Manual review required for 1 shots: S001",
+                "reviewer_summary": "Manual review required for 1 shots across 1 materials and 1 sections: S001",
                 "artifacts": {
                     "review_packet_manifest": "review-packet.json",
                     "quality_findings": "review-findings.json",
@@ -457,10 +457,12 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
 
     assert captured["rerender_escalation_status"] == "manual_review_required"
     assert captured["rerender_escalation_shot_count"] == 1
-    assert captured["rerender_escalation_reviewer_summary"] == "Manual review required for 1 shots: S001"
+    assert captured["rerender_escalation_reviewer_summary"] == "Manual review required for 1 shots across 1 materials and 1 sections: S001"
     assert captured["rerender_escalation_shot_ids"] == ["S001"]
     assert captured["rerender_escalation_material_ids"] == ["MAT_001"]
     assert captured["rerender_escalation_section_ids"] == ["SEC_001"]
+    assert captured["rerender_escalation_unique_material_ids"] == ["MAT_001"]
+    assert captured["rerender_escalation_unique_section_ids"] == ["SEC_001"]
     assert captured["rerender_escalation_actions"] == ["rerender_continuity_break_shots"]
     assert captured["rerender_escalation_max_priority"] == 7
     assert captured["rerender_escalation_unique_actions"] == ["rerender_continuity_break_shots"]
@@ -503,6 +505,8 @@ def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monke
     assert captured["rerender_escalation_shot_ids"] == []
     assert captured["rerender_escalation_material_ids"] == []
     assert captured["rerender_escalation_section_ids"] == []
+    assert captured["rerender_escalation_unique_material_ids"] == []
+    assert captured["rerender_escalation_unique_section_ids"] == []
     assert captured["rerender_escalation_actions"] == []
     assert captured["rerender_escalation_max_priority"] == 0
     assert captured["rerender_escalation_unique_actions"] == []

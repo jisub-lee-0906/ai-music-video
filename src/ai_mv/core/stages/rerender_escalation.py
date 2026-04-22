@@ -23,6 +23,8 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
                 "rerender_escalation": {
                     "status": "not_required",
                     "shot_ids": [],
+                    "material_ids": [],
+                    "section_ids": [],
                     "shot_count": 0,
                     "summary_by_shot": [],
                     "video_path": final_video,
@@ -59,7 +61,6 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         "contact_sheet_image_path": str(written["contact_sheet_image_path"]),
         "contact_sheet_manifest_path": str(written["contact_sheet_manifest_path"]),
     }
-    report["reviewer_summary"] = _reviewer_summary(shot_ids)
     report["artifacts"] = {
         "review_packet_manifest": report["review_packet_manifest_path"],
         "quality_findings": report["quality_findings_path"],
@@ -74,6 +75,21 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         review_report.get("rerender_plan") if isinstance(review_report.get("rerender_plan"), list) else [],
         review_report.get("rerender_execution_payloads") if isinstance(review_report.get("rerender_execution_payloads"), list) else [],
     )
+    report["material_ids"] = sorted(
+        {
+            str(row.get("material_id", "")).strip()
+            for row in report["summary_by_shot"]
+            if isinstance(row, dict) and str(row.get("material_id", "")).strip()
+        }
+    )
+    report["section_ids"] = sorted(
+        {
+            str(row.get("section_id", "")).strip()
+            for row in report["summary_by_shot"]
+            if isinstance(row, dict) and str(row.get("section_id", "")).strip()
+        }
+    )
+    report["reviewer_summary"] = _reviewer_summary(shot_ids, report["material_ids"], report["section_ids"])
     return StageOutput(
         "rerender_escalation",
         "done",
@@ -88,11 +104,17 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
     )
 
 
-def _reviewer_summary(shot_ids: list[str]) -> str:
+def _reviewer_summary(shot_ids: list[str], material_ids: list[str] | None = None, section_ids: list[str] | None = None) -> str:
     normalized = [str(shot_id).strip() for shot_id in shot_ids if str(shot_id).strip()]
     if not normalized:
-        return "Manual review required"
-    return f"Manual review required for {len(normalized)} shots: {', '.join(normalized)}"
+        return "No manual review required"
+    normalized_material_ids = [str(material_id).strip() for material_id in material_ids or [] if str(material_id).strip()]
+    normalized_section_ids = [str(section_id).strip() for section_id in section_ids or [] if str(section_id).strip()]
+    return (
+        f"Manual review required for {len(normalized)} shots across "
+        f"{len(normalized_material_ids)} materials and {len(normalized_section_ids)} sections: "
+        f"{', '.join(normalized)}"
+    )
 
 
 def _summary_by_shot(
