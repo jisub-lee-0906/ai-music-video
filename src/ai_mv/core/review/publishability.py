@@ -28,6 +28,7 @@ _FINAL_MV_PUBLISHABILITY_CHECKS = (
     "motion_source_safe",
     "chorus_emphasis_within_threshold",
     "slideshow_risk_within_threshold",
+    "safe_editing_within_threshold",
 )
 
 _GUIDANCE_BY_CHECK = {
@@ -51,6 +52,7 @@ _GUIDANCE_BY_CHECK = {
     "motion_source_safe": "rerender motion-fragile shots with safer keyframes and simpler motion sources",
     "chorus_emphasis_within_threshold": "revise assembly weights so chorus reads stronger than verse before clip rerender",
     "slideshow_risk_within_threshold": "revise transition selection and clip ordering before rerendering clips",
+    "safe_editing_within_threshold": "revise assembly pattern selection and cut density to avoid repetitive safe edits before rerendering clips",
 }
 
 _TECHNICAL_PRIORITY = (
@@ -77,6 +79,7 @@ _ISOLATED_PRIORITY = (
 _FINAL_PRIORITY = (
     ("chorus_emphasis_within_threshold", "revise_assembly_weights_before_clip_rerender"),
     ("slideshow_risk_within_threshold", "revise_transition_selection"),
+    ("safe_editing_within_threshold", "revise_transition_selection"),
     ("visual_continuity_preserved", "rerender_continuity_break_shots"),
     ("motion_source_safe", "rerender_motion_fragile_shots_with_safer_keyframes"),
     ("mood_consistency", "rerender_mood_drift_shots"),
@@ -551,13 +554,34 @@ def _final_mv_quality_score(
         non_blocking_checks,
     )
     slideshow_risk_score = _assembly_float(assembly_quality_summary, "slideshow_risk_score", 1.0)
+    has_repetition_signals = all(
+        key in assembly_quality_summary
+        for key in ("cadence_variety_score", "snap_variety_score", "repetitive_edit_risk_score")
+    )
+    if not has_repetition_signals:
+        score = (
+            0.22 * section_readability_score
+            + 0.20 * chorus_emphasis_score
+            + 0.18 * transition_intentionality_score
+            + 0.15 * continuity_score
+            + 0.15 * lane_identity_score
+            + 0.10 * (1.0 - slideshow_risk_score)
+        )
+        return round(max(0.0, min(1.0, score)) * 100.0, 2)
+
+    cadence_variety_score = _assembly_float(assembly_quality_summary, "cadence_variety_score", 1.0)
+    snap_variety_score = _assembly_float(assembly_quality_summary, "snap_variety_score", 1.0)
+    repetitive_edit_risk_score = _assembly_float(assembly_quality_summary, "repetitive_edit_risk_score", 0.0)
     score = (
-        0.22 * section_readability_score
-        + 0.20 * chorus_emphasis_score
-        + 0.18 * transition_intentionality_score
-        + 0.15 * continuity_score
-        + 0.15 * lane_identity_score
-        + 0.10 * (1.0 - slideshow_risk_score)
+        0.18 * section_readability_score
+        + 0.18 * chorus_emphasis_score
+        + 0.14 * transition_intentionality_score
+        + 0.12 * cadence_variety_score
+        + 0.08 * snap_variety_score
+        + 0.12 * continuity_score
+        + 0.12 * lane_identity_score
+        + 0.06 * (1.0 - slideshow_risk_score)
+        + 0.10 * (1.0 - repetitive_edit_risk_score)
     )
     return round(max(0.0, min(1.0, score)) * 100.0, 2)
 

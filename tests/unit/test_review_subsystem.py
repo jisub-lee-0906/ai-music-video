@@ -282,6 +282,123 @@ def test_review_models_ignore_stale_and_blank_shot_metadata_in_assembly_quality_
 
 
 
+def test_review_models_penalize_repetitive_safe_assembly_patterns_from_cadence_metadata():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003", "S004"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}, {"shot_id": "S004"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}, {"shot_id": "S004"}],
+        still_status={"S001": True, "S002": True, "S003": True, "S004": True},
+        clip_status={"S001": True, "S002": True, "S003": True, "S004": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "cut_in", "transition_out": "cut_out"},
+            "S002": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+            "S003": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+            "S004": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+        },
+        render_count_by_shot={"S001": 1, "S002": 1, "S003": 1, "S004": 1},
+        render_priority_by_shot={"S001": 0.7, "S002": 0.7, "S003": 0.7, "S004": 0.7},
+        render_planning_by_shot={
+            "S001": {"mode_importance_score": 0.8, "section_emphasis_score": 1.0},
+            "S002": {"mode_importance_score": 0.7, "section_emphasis_score": 0.6},
+            "S003": {"mode_importance_score": 0.7, "section_emphasis_score": 0.6},
+            "S004": {"mode_importance_score": 0.7, "section_emphasis_score": 0.6},
+        },
+        cadence_profile_by_shot={"S001": "support_hold", "S002": "support_hold", "S003": "support_hold", "S004": "support_hold"},
+        snap_unit_by_shot={"S001": "free", "S002": "free", "S003": "free", "S004": "free"},
+        trimmed_coverage_by_shot={"S001": 4.0, "S002": 4.0, "S003": 4.0, "S004": 4.0},
+    )
+
+    assert report["assembly_quality_summary"]["repetitive_edit_risk_score"] == 0.92
+    assert report["assembly_quality_summary"]["cadence_variety_score"] == 0.25
+    assert report["assembly_quality_summary"]["snap_variety_score"] == 0.33
+    assert report["assembly_quality_summary"]["safe_editing_within_threshold"] is False
+    assert report["non_blocking_checks"]["mood_consistency"] is False
+    assert "safe_editing_within_threshold" in report["publishability_summary"]["final_mv_publishability"]["failed_checks"]
+    assert "revise assembly pattern selection and cut density to avoid repetitive safe edits before rerendering clips" in report["publishability_summary"]["final_mv_publishability"]["rerender_guidance"]
+
+
+
+def test_review_models_keep_legacy_assembly_summary_when_only_cadence_metadata_is_present():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}],
+        still_status={"S001": True, "S002": True, "S003": True},
+        clip_status={"S001": True, "S002": True, "S003": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+            "S002": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "cut_in", "transition_out": "cut_out"},
+            "S003": {"edit_priority": "medium", "section_emphasis": "bridge_contrast", "transition_in": "glide_in", "transition_out": "handoff_out"},
+        },
+        render_count_by_shot={"S001": 3, "S002": 1, "S003": 2},
+        render_priority_by_shot={"S001": 0.9, "S002": 0.6, "S003": 0.78},
+        render_planning_by_shot={
+            "S001": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+            "S002": {"mode_importance_score": 0.68, "section_emphasis_score": 0.6},
+            "S003": {"mode_importance_score": 0.85, "section_emphasis_score": 0.78},
+        },
+        cadence_profile_by_shot={"S001": "hook_dense", "S002": "support_hold", "S003": "bridge_pivot"},
+    )
+
+    assert report["assembly_quality_summary"] == {
+        "chorus_emphasis_score": 0.9,
+        "slideshow_risk_score": 0.13,
+        "transition_intentionality_score": 0.67,
+        "chorus_emphasis_within_threshold": True,
+        "slideshow_risk_within_threshold": True,
+    }
+
+
+
+def test_review_models_reward_varied_cadence_and_snap_patterns_in_assembly_quality_summary():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003", "S004"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}, {"shot_id": "S004"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}, {"shot_id": "S004"}],
+        still_status={"S001": True, "S002": True, "S003": True, "S004": True},
+        clip_status={"S001": True, "S002": True, "S003": True, "S004": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+            "S002": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "hold_in", "transition_out": "cut_out"},
+            "S003": {"edit_priority": "medium", "section_emphasis": "bridge_contrast", "transition_in": "glide_in", "transition_out": "handoff_out"},
+            "S004": {"edit_priority": "medium", "section_emphasis": "release_fade", "transition_in": "hold_in", "transition_out": "fade_out"},
+        },
+        render_count_by_shot={"S001": 3, "S002": 1, "S003": 2, "S004": 2},
+        render_priority_by_shot={"S001": 0.9, "S002": 0.62, "S003": 0.78, "S004": 0.74},
+        render_planning_by_shot={
+            "S001": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+            "S002": {"mode_importance_score": 0.68, "section_emphasis_score": 0.6},
+            "S003": {"mode_importance_score": 0.85, "section_emphasis_score": 0.78},
+            "S004": {"mode_importance_score": 0.82, "section_emphasis_score": 0.72},
+        },
+        cadence_profile_by_shot={"S001": "hook_dense", "S002": "support_hold", "S003": "bridge_pivot", "S004": "release_tail"},
+        snap_unit_by_shot={"S001": "bar", "S002": "beat", "S003": "free", "S004": "bar"},
+        trimmed_coverage_by_shot={"S001": 2.0, "S002": 4.2, "S003": 2.8, "S004": 3.6},
+    )
+
+    assert report["assembly_quality_summary"]["repetitive_edit_risk_score"] == 0.23
+    assert report["assembly_quality_summary"]["cadence_variety_score"] == 1.0
+    assert report["assembly_quality_summary"]["snap_variety_score"] == 1.0
+    assert report["assembly_quality_summary"]["safe_editing_within_threshold"] is True
+    assert report["non_blocking_checks"]["mood_consistency"] is True
+
+
+
 def test_review_models_include_assembly_revision_summary():
     report = build_review_report(
         planned_shot_ids=["S001"],

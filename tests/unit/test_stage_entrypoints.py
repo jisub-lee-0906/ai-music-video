@@ -1392,13 +1392,14 @@ def test_review_outputs_propagates_assembly_quality_summary_from_review_inputs(m
 
     out = run_review_outputs(stage_input)
 
-    assert out.payload["review_report"]["assembly_quality_summary"] == {
-        "chorus_emphasis_score": 0.9,
-        "slideshow_risk_score": 0.13,
-        "transition_intentionality_score": 0.67,
-        "chorus_emphasis_within_threshold": True,
-        "slideshow_risk_within_threshold": True,
-    }
+    summary = out.payload["review_report"]["assembly_quality_summary"]
+    assert summary["chorus_emphasis_score"] == 0.9
+    assert summary["slideshow_risk_score"] == 0.13
+    assert summary["transition_intentionality_score"] == 0.67
+    assert summary["chorus_emphasis_within_threshold"] is True
+    assert summary["slideshow_risk_within_threshold"] is True
+    assert "cadence_variety_score" not in summary
+    assert "snap_variety_score" not in summary
 
 
 
@@ -1461,13 +1462,14 @@ def test_review_outputs_sanitizes_non_finite_numeric_metadata(monkeypatch):
 
     out = run_review_outputs(stage_input)
 
-    assert out.payload["review_report"]["assembly_quality_summary"] == {
-        "chorus_emphasis_score": 0.0,
-        "slideshow_risk_score": 0.33,
-        "transition_intentionality_score": 1.0,
-        "chorus_emphasis_within_threshold": False,
-        "slideshow_risk_within_threshold": True,
-    }
+    summary = out.payload["review_report"]["assembly_quality_summary"]
+    assert summary["chorus_emphasis_score"] == 0.0
+    assert summary["slideshow_risk_score"] == 0.33
+    assert summary["transition_intentionality_score"] == 1.0
+    assert summary["chorus_emphasis_within_threshold"] is False
+    assert summary["slideshow_risk_within_threshold"] is True
+    assert "cadence_variety_score" not in summary
+    assert "snap_variety_score" not in summary
 
 
 

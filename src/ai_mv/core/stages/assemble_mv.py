@@ -33,6 +33,9 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         "render_count_by_shot": _render_count_by_shot(stage_input.payload),
         "render_priority_by_shot": _render_priority_by_shot(stage_input.payload),
         "render_planning_by_shot": _render_planning_by_shot(stage_input.payload),
+        "cadence_profile_by_shot": _clip_segment_value_by_shot(clip_segments, "cadence_profile"),
+        "snap_unit_by_shot": _clip_segment_value_by_shot(clip_segments, "snap_unit"),
+        "trimmed_coverage_by_shot": _clip_segment_float_by_shot(clip_segments, "trimmed_coverage_sec"),
     }
     assembly_plan = _assembly_plan(stage_input.payload, clip_segments=clip_segments)
     quality_findings_path = _review_quality_findings_path(stage_input.config)
@@ -398,6 +401,34 @@ def _render_planning_by_shot(payload: dict) -> dict[str, dict]:
         render_planning = row.get("render_planning")
         if shot_id and isinstance(render_planning, dict):
             out[shot_id] = dict(render_planning)
+    return out
+
+
+
+def _clip_segment_value_by_shot(clip_segments: list[dict], key: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for row in clip_segments if isinstance(clip_segments, list) else []:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        value = str(row.get(key, "")).strip()
+        if shot_id and value:
+            out[shot_id] = value
+    return out
+
+
+
+def _clip_segment_float_by_shot(clip_segments: list[dict], key: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for row in clip_segments if isinstance(clip_segments, list) else []:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        if not shot_id:
+            continue
+        value = _safe_float(row.get(key), -1.0)
+        if value >= 0.0:
+            out[shot_id] = value
     return out
 
 

@@ -219,17 +219,22 @@ def build_mv_intent_checks(edit_intent_summary: dict | None) -> dict[str, bool]:
 
 
 def summarize_assembly_quality(
-    *,
     planned_shot_ids: list[str],
     edit_intent_by_shot: dict[str, dict] | None,
     render_count_by_shot: dict[str, int] | None,
     render_priority_by_shot: dict[str, float] | None,
     render_planning_by_shot: dict[str, dict] | None,
+    cadence_profile_by_shot: dict[str, str] | None = None,
+    snap_unit_by_shot: dict[str, str] | None = None,
+    trimmed_coverage_by_shot: dict[str, float] | None = None,
 ) -> dict:
     edit_data = edit_intent_by_shot if isinstance(edit_intent_by_shot, dict) else {}
     render_counts = render_count_by_shot if isinstance(render_count_by_shot, dict) else {}
     render_priorities = render_priority_by_shot if isinstance(render_priority_by_shot, dict) else {}
     render_planning = render_planning_by_shot if isinstance(render_planning_by_shot, dict) else {}
+    cadence_data = cadence_profile_by_shot if isinstance(cadence_profile_by_shot, dict) else {}
+    snap_data = snap_unit_by_shot if isinstance(snap_unit_by_shot, dict) else {}
+    trimmed_data = trimmed_coverage_by_shot if isinstance(trimmed_coverage_by_shot, dict) else {}
 
     normalized_planned_shot_ids = {str(shot_id).strip() for shot_id in planned_shot_ids if str(shot_id or "").strip()}
     normalized_edit_data = {
@@ -253,19 +258,38 @@ def summarize_assembly_quality(
     verse_count = _avg([_float(render_counts.get(shot_id), 0.0) for shot_id in verse_shots])
     chorus_cut_density_advantage = max(0.0, min(1.0, (chorus_count - verse_count) / 2.0))
 
+    chorus_trimmed = _avg([_float(trimmed_data.get(shot_id), 0.0) for shot_id in chorus_shots])
+    verse_trimmed = _avg([_float(trimmed_data.get(shot_id), 0.0) for shot_id in verse_shots])
+    has_full_trimmed_metadata = bool(valid_shot_ids) and all(shot_id in trimmed_data for shot_id in valid_shot_ids)
+    has_trimmed_comparison = has_full_trimmed_metadata and bool(chorus_shots) and bool(verse_shots) and chorus_trimmed > 0.0 and verse_trimmed > 0.0
+    chorus_trim_density_advantage = 0.0
+    if has_trimmed_comparison:
+        chorus_trim_density_advantage = max(0.0, min(1.0, (verse_trimmed - chorus_trimmed) / verse_trimmed))
+
     chorus_priority = _avg([_float(render_priorities.get(shot_id), 0.0) for shot_id in chorus_shots])
     verse_priority = _avg([_float(render_priorities.get(shot_id), 0.0) for shot_id in verse_shots])
     chorus_motion_energy_advantage = max(0.0, min(1.0, chorus_priority - verse_priority))
     chorus_highlight_selection_advantage = _avg([1.0 if _float(render_priorities.get(shot_id), 0.0) >= 0.8 else 0.0 for shot_id in chorus_shots])
 
-    chorus_emphasis_score = round(
-        (0.30 * chorus_performance_material_ratio)
-        + (0.20 * chorus_cut_density_advantage)
-        + (0.20 * chorus_frontality_advantage)
-        + (0.15 * chorus_motion_energy_advantage)
-        + (0.15 * chorus_highlight_selection_advantage),
-        2,
-    )
+    if has_trimmed_comparison:
+        chorus_emphasis_score = round(
+            (0.24 * chorus_performance_material_ratio)
+            + (0.18 * chorus_cut_density_advantage)
+            + (0.18 * chorus_trim_density_advantage)
+            + (0.15 * chorus_frontality_advantage)
+            + (0.13 * chorus_motion_energy_advantage)
+            + (0.12 * chorus_highlight_selection_advantage),
+            2,
+        )
+    else:
+        chorus_emphasis_score = round(
+            (0.30 * chorus_performance_material_ratio)
+            + (0.20 * chorus_cut_density_advantage)
+            + (0.20 * chorus_frontality_advantage)
+            + (0.15 * chorus_motion_energy_advantage)
+            + (0.15 * chorus_highlight_selection_advantage),
+            2,
+        )
 
     unique_emphases = {
         str(row.get("section_emphasis", "")).strip()
@@ -290,21 +314,66 @@ def summarize_assembly_quality(
     transition_flatness_score = max(0.0, 1.0 - transition_intentionality_score)
     section_variation_deficit = max(0.0, 1.0 - min(1.0, _safe_divide(len(unique_emphases), 3.0)))
     motion_energy_deficit = max(0.0, 1.0 - _avg([_float(render_priorities.get(shot_id), 0.0) for shot_id in valid_shot_ids]))
-    slideshow_risk_score = round(
-        (0.35 * repetition_penalty_mean)
-        + (0.25 * transition_flatness_score)
-        + (0.20 * section_variation_deficit)
-        + (0.20 * motion_energy_deficit),
-        2,
-    )
 
-    return {
+    cadence_profiles = [str(cadence_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids if str(cadence_data.get(shot_id, "")).strip()]
+    snap_units = [str(snap_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids if str(snap_data.get(shot_id, "")).strip()]
+    has_full_cadence_metadata = bool(valid_shot_ids) and all(str(cadence_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids)
+    has_full_snap_metadata = bool(valid_shot_ids) and all(str(snap_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids)
+    has_repetition_metadata = has_full_cadence_metadata and has_full_snap_metadata
+    cadence_variety_score = round(min(1.0, _safe_divide(len(set(cadence_profiles)), 4.0)), 2) if has_full_cadence_metadata else 0.0
+    snap_variety_score = round(min(1.0, _safe_divide(len(set(snap_units)), 3.0)), 2) if has_full_snap_metadata else 0.0
+    cadence_dominance = _dominant_share(cadence_profiles) if has_full_cadence_metadata else 0.0
+    snap_dominance = _dominant_share(snap_units) if has_full_snap_metadata else 0.0
+    if has_repetition_metadata:
+        repetitive_edit_risk_score = round(
+            min(
+                1.0,
+                (0.5 * cadence_dominance)
+                + (0.2 * snap_dominance)
+                + (0.2 * (1.0 - cadence_variety_score))
+                + (0.1 * (1.0 - snap_variety_score)),
+            ),
+            2,
+        )
+        slideshow_risk_score = round(
+            min(
+                1.0,
+                (0.2 * repetition_penalty_mean)
+                + (0.15 * transition_flatness_score)
+                + (0.15 * section_variation_deficit)
+                + (0.1 * motion_energy_deficit)
+                + (0.4 * repetitive_edit_risk_score),
+            ),
+            2,
+        )
+    else:
+        repetitive_edit_risk_score = 0.0
+        slideshow_risk_score = round(
+            (0.35 * repetition_penalty_mean)
+            + (0.25 * transition_flatness_score)
+            + (0.20 * section_variation_deficit)
+            + (0.20 * motion_energy_deficit),
+            2,
+        )
+    safe_editing_within_threshold = repetitive_edit_risk_score <= 0.45
+
+    out = {
         "chorus_emphasis_score": chorus_emphasis_score,
         "slideshow_risk_score": slideshow_risk_score,
         "transition_intentionality_score": transition_intentionality_score,
         "chorus_emphasis_within_threshold": chorus_emphasis_score >= 0.62,
         "slideshow_risk_within_threshold": slideshow_risk_score <= 0.38,
     }
+    if has_repetition_metadata:
+        out.update(
+            {
+                "cadence_variety_score": cadence_variety_score,
+                "snap_variety_score": snap_variety_score,
+                "repetitive_edit_risk_score": repetitive_edit_risk_score,
+                "safe_editing_within_threshold": safe_editing_within_threshold,
+            }
+        )
+    return out
 
 
 
@@ -330,9 +399,37 @@ def build_review_report(
     render_count_by_shot: dict[str, int] | None = None,
     render_priority_by_shot: dict[str, float] | None = None,
     render_planning_by_shot: dict[str, dict] | None = None,
+    cadence_profile_by_shot: dict[str, str] | None = None,
+    snap_unit_by_shot: dict[str, str] | None = None,
+    trimmed_coverage_by_shot: dict[str, float] | None = None,
     assembly_quality_summary: dict[str, object] | None = None,
     assembly_revision: dict[str, object] | None = None,
 ) -> dict:
+    computed_assembly_quality_summary = summarize_assembly_quality(
+        planned_shot_ids=planned_shot_ids,
+        edit_intent_by_shot=edit_intent_by_shot,
+        render_count_by_shot=render_count_by_shot,
+        render_priority_by_shot=render_priority_by_shot,
+        render_planning_by_shot=render_planning_by_shot,
+        cadence_profile_by_shot=cadence_profile_by_shot,
+        snap_unit_by_shot=snap_unit_by_shot,
+        trimmed_coverage_by_shot=trimmed_coverage_by_shot,
+    )
+    has_assembly_metadata = (
+        isinstance(edit_intent_by_shot, dict)
+        and bool(edit_intent_by_shot)
+        and isinstance(render_count_by_shot, dict)
+        and bool(render_count_by_shot)
+        and isinstance(render_priority_by_shot, dict)
+        and bool(render_priority_by_shot)
+        and isinstance(render_planning_by_shot, dict)
+        and bool(render_planning_by_shot)
+    )
+    effective_assembly_quality_summary = (
+        assembly_quality_summary
+        if isinstance(assembly_quality_summary, dict)
+        else (computed_assembly_quality_summary if has_assembly_metadata else None)
+    )
     signals = build_quality_signals(
         planned_shot_ids=planned_shot_ids,
         still_status=still_status,
@@ -341,7 +438,7 @@ def build_review_report(
         audio_video_drift_sec=audio_video_drift_sec,
         config=config,
         rerender_reasons=rerender_reasons,
-        assembly_quality_summary=assembly_quality_summary,
+        assembly_quality_summary=effective_assembly_quality_summary,
     )
     blocking_checks = signals["blocking_checks"]
     non_blocking_checks = signals["non_blocking_checks"]
@@ -358,28 +455,6 @@ def build_review_report(
     review_signal_buckets = summarize_review_signal_buckets(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
-    )
-    computed_assembly_quality_summary = summarize_assembly_quality(
-        planned_shot_ids=planned_shot_ids,
-        edit_intent_by_shot=edit_intent_by_shot,
-        render_count_by_shot=render_count_by_shot,
-        render_priority_by_shot=render_priority_by_shot,
-        render_planning_by_shot=render_planning_by_shot,
-    )
-    has_assembly_metadata = (
-        isinstance(edit_intent_by_shot, dict)
-        and bool(edit_intent_by_shot)
-        and isinstance(render_count_by_shot, dict)
-        and bool(render_count_by_shot)
-        and isinstance(render_priority_by_shot, dict)
-        and bool(render_priority_by_shot)
-        and isinstance(render_planning_by_shot, dict)
-        and bool(render_planning_by_shot)
-    )
-    effective_assembly_quality_summary = (
-        assembly_quality_summary
-        if isinstance(assembly_quality_summary, dict)
-        else (computed_assembly_quality_summary if has_assembly_metadata else None)
     )
     publishability_summary = summarize_publishability(
         blocking_checks=blocking_checks,
@@ -464,6 +539,17 @@ def build_review_report(
 def _avg(values: list[float]) -> float:
     cleaned = [float(value) for value in values if value is not None]
     return round(sum(cleaned) / len(cleaned), 3) if cleaned else 0.0
+
+
+
+def _dominant_share(values: list[str]) -> float:
+    normalized = [str(value).strip() for value in values if str(value).strip()]
+    if not normalized:
+        return 0.0
+    counts: dict[str, int] = {}
+    for value in normalized:
+        counts[value] = int(counts.get(value, 0)) + 1
+    return round(max(counts.values()) / len(normalized), 3)
 
 
 
