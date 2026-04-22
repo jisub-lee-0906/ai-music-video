@@ -166,8 +166,8 @@ def _audio_config(config: dict) -> dict:
 
 
 def _audio_language(audio: dict) -> str:
-    raw = str(audio.get("language", "ja")).strip().lower() if isinstance(audio, dict) else "ja"
-    return raw if raw in {"en", "ja", "ko"} else "ja"
+    raw = str(audio.get("language", "")).strip().lower() if isinstance(audio, dict) else ""
+    return raw if raw in {"en", "ja", "ko"} else ""
 
 
 def _target_bpm_clause(plan: dict) -> str:

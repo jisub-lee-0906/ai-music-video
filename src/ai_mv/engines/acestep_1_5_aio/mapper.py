@@ -152,8 +152,8 @@ def audio_required_inputs() -> dict[str, list[str]]:
 
 
 def _audio_language(plan: dict) -> str:
-    raw = str(plan.get("language", "ja")).strip().lower()
-    return raw if raw in {"en", "ja", "ko"} else "ja"
+    raw = str(plan.get("language", "")).strip().lower()
+    return raw if raw in {"en", "ja", "ko"} else ""
 
 
 def _audio_seed(plan: dict) -> int:

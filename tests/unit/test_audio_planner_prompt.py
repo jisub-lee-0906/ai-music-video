@@ -171,6 +171,39 @@ def test_build_audio_plan_infers_japanese_for_city_pop_when_language_missing(mon
     assert plan["language"] == "ja"
 
 
+def test_audio_fixed_fields_do_not_force_japanese_when_language_is_blank():
+    assert audio_planner._audio_fixed_fields({"language": ""})["language"] == ""
+
+
+def test_build_audio_plan_treats_blank_audio_language_as_unset_and_still_infers_from_concept(monkeypatch):
+    seen = {}
+
+    def _fake_plan_with_llm(_config, plan):
+        seen["prompt_language"] = plan["language"]
+        return {
+            "genre_description": "Synthwave: pulsing analog pads, driving bass arpeggios, and a glossy nocturnal lead vocal.",
+            "bpm": 112,
+            "keyscale": "D minor",
+            "seed": 41,
+            "duration": 150,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["Streetlight flickers", "Rearview ghosts", "Midnight breathing", "Stay with me"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["Drive through the blue", "Hold to the glow", "Nothing is over", "We still move"]},
+            ],
+        }
+
+    monkeypatch.setattr(audio_planner, "_plan_with_llm", _fake_plan_with_llm)
+    cfg = {
+        "concept_text": "dreamy synthwave night drive with lonely neon romance",
+        "audio": {"language": ""},
+    }
+
+    plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+
+    assert seen["prompt_language"] == "en"
+    assert plan["language"] == "en"
+
+
 def test_build_audio_plan_prefers_audio_brief_over_concept_text(monkeypatch):
     monkeypatch.setattr(
         audio_planner,
