@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.core.artifacts.manifest import write_manifest
+from ai_mv.core.artifacts.manifest import _dedupe_preserve_order, write_manifest
 from ai_mv.core.artifacts.run_summary import write_run_summary
 from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.core.artifacts.summary_fields import derive_summary_fields
@@ -26,6 +26,21 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         for row in summary_by_shot
         if isinstance(row, dict)
         for reason in row.get("reason_codes", []) if str(reason).strip()
+    ]
+    escalation_shot_ids = [
+        str(row.get("shot_id", "")).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    ]
+    escalation_material_ids = [
+        str(row.get("material_id", "")).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict) and str(row.get("material_id", "")).strip()
+    ]
+    escalation_section_ids = [
+        str(row.get("section_id", "")).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict) and str(row.get("section_id", "")).strip()
     ]
     summary_fields = derive_summary_fields(payload)
     review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
@@ -54,35 +69,11 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "rerender_escalation_status": str(rerender_escalation.get("status", "")).strip(),
         "rerender_escalation_shot_count": int(rerender_escalation.get("shot_count", 0) or 0),
         "rerender_escalation_reviewer_summary": str(rerender_escalation.get("reviewer_summary", "")).strip(),
-        "rerender_escalation_shot_ids": [
-            str(row.get("shot_id", "")).strip()
-            for row in summary_by_shot
-            if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
-        ],
-        "rerender_escalation_material_ids": [
-            str(row.get("material_id", "")).strip()
-            for row in summary_by_shot
-            if isinstance(row, dict) and str(row.get("material_id", "")).strip()
-        ],
-        "rerender_escalation_section_ids": [
-            str(row.get("section_id", "")).strip()
-            for row in summary_by_shot
-            if isinstance(row, dict) and str(row.get("section_id", "")).strip()
-        ],
-        "rerender_escalation_unique_material_ids": sorted(
-            {
-                str(row.get("material_id", "")).strip()
-                for row in summary_by_shot
-                if isinstance(row, dict) and str(row.get("material_id", "")).strip()
-            }
-        ),
-        "rerender_escalation_unique_section_ids": sorted(
-            {
-                str(row.get("section_id", "")).strip()
-                for row in summary_by_shot
-                if isinstance(row, dict) and str(row.get("section_id", "")).strip()
-            }
-        ),
+        "rerender_escalation_shot_ids": escalation_shot_ids,
+        "rerender_escalation_material_ids": escalation_material_ids,
+        "rerender_escalation_section_ids": escalation_section_ids,
+        "rerender_escalation_unique_material_ids": _dedupe_preserve_order(escalation_material_ids),
+        "rerender_escalation_unique_section_ids": _dedupe_preserve_order(escalation_section_ids),
         "rerender_escalation_actions": escalation_actions,
         "rerender_escalation_max_priority": max(escalation_priorities) if escalation_priorities else 0,
         "rerender_escalation_unique_actions": sorted(set(escalation_actions)),

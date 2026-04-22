@@ -508,19 +508,15 @@ def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monke
     monkeypatch.setattr("ai_mv.core.artifacts.publish.write_run_summary", lambda state, summary: captured.update(summary))
 
     write_pipeline_artifacts(
-        {"run_id": "run-124", "status": "done", "current_stage": "review", "completed_stages": ["review"]},
+        {"run_id": "run-124", "status": "done", "current_stage": "escalation", "completed_stages": ["review", "rerender", "escalation"]},
         {
             "concept_text": "citypop night drive",
-            "final_video": "final.mp4",
-            "music_file": "music.mp3",
-            "review_report": {"status": "done", "rerender_targets": []},
+            "review_report": {"status": "pass", "rerender_targets": []},
             "rerender_escalation": {
                 "status": "not_required",
-                "shot_ids": [],
                 "shot_count": 0,
-                "summary_by_shot": [],
-                "video_path": "final.mp4",
                 "reviewer_summary": "No manual review required",
+                "summary_by_shot": [],
                 "artifacts": {},
             },
         },
@@ -541,3 +537,35 @@ def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monke
     assert captured["rerender_escalation_reason_codes"] == []
     assert captured["rerender_escalation_unique_reason_codes"] == []
     assert captured["rerender_escalation_artifact_keys"] == []
+
+
+
+def test_write_pipeline_artifacts_preserves_first_seen_order_for_unique_escalation_provenance(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_manifest", lambda state, payload: None)
+    monkeypatch.setattr("ai_mv.core.artifacts.publish.write_run_summary", lambda state, summary: captured.update(summary))
+
+    write_pipeline_artifacts(
+        {"run_id": "run-125", "status": "done", "current_stage": "escalation", "completed_stages": ["review", "rerender", "escalation"]},
+        {
+            "concept_text": "citypop night drive",
+            "review_report": {"status": "needs_rerender", "rerender_targets": ["S010", "S011", "S012"]},
+            "rerender_escalation": {
+                "status": "manual_review_required",
+                "shot_count": 3,
+                "reviewer_summary": "Manual review required",
+                "summary_by_shot": [
+                    {"shot_id": "S010", "material_id": "MAT_B", "section_id": "SEC_B"},
+                    {"shot_id": "S011", "material_id": "MAT_A", "section_id": "SEC_A"},
+                    {"shot_id": "S012", "material_id": "MAT_B", "section_id": "SEC_B"},
+                ],
+                "artifacts": {},
+            },
+        },
+        {},
+    )
+
+    assert captured["rerender_escalation_material_ids"] == ["MAT_B", "MAT_A", "MAT_B"]
+    assert captured["rerender_escalation_section_ids"] == ["SEC_B", "SEC_A", "SEC_B"]
+    assert captured["rerender_escalation_unique_material_ids"] == ["MAT_B", "MAT_A"]
+    assert captured["rerender_escalation_unique_section_ids"] == ["SEC_B", "SEC_A"]
