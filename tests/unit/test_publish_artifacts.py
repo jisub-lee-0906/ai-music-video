@@ -443,6 +443,8 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
                 "summary_by_shot": [
                     {
                         "shot_id": "S001",
+                        "material_id": "MAT_001",
+                        "section_id": "SEC_001",
                         "reason_codes": ["continuity_break"],
                         "priority_score": 7,
                         "recommended_action": "rerender_continuity_break_shots",
@@ -457,6 +459,8 @@ def test_write_pipeline_artifacts_includes_rerender_escalation_summary(monkeypat
     assert captured["rerender_escalation_shot_count"] == 1
     assert captured["rerender_escalation_reviewer_summary"] == "Manual review required for 1 shots: S001"
     assert captured["rerender_escalation_shot_ids"] == ["S001"]
+    assert captured["rerender_escalation_material_ids"] == ["MAT_001"]
+    assert captured["rerender_escalation_section_ids"] == ["SEC_001"]
     assert captured["rerender_escalation_actions"] == ["rerender_continuity_break_shots"]
     assert captured["rerender_escalation_max_priority"] == 7
     assert captured["rerender_escalation_unique_actions"] == ["rerender_continuity_break_shots"]
@@ -497,6 +501,8 @@ def test_write_pipeline_artifacts_handles_not_required_rerender_escalation(monke
     assert captured["rerender_escalation_shot_count"] == 0
     assert captured["rerender_escalation_reviewer_summary"] == "No manual review required"
     assert captured["rerender_escalation_shot_ids"] == []
+    assert captured["rerender_escalation_material_ids"] == []
+    assert captured["rerender_escalation_section_ids"] == []
     assert captured["rerender_escalation_actions"] == []
     assert captured["rerender_escalation_max_priority"] == 0
     assert captured["rerender_escalation_unique_actions"] == []

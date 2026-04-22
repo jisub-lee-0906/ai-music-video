@@ -59,6 +59,16 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
             for row in summary_by_shot
             if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
         ],
+        "rerender_escalation_material_ids": [
+            str(row.get("material_id", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict) and str(row.get("material_id", "")).strip()
+        ],
+        "rerender_escalation_section_ids": [
+            str(row.get("section_id", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict) and str(row.get("section_id", "")).strip()
+        ],
         "rerender_escalation_actions": escalation_actions,
         "rerender_escalation_max_priority": max(escalation_priorities) if escalation_priorities else 0,
         "rerender_escalation_unique_actions": sorted(set(escalation_actions)),

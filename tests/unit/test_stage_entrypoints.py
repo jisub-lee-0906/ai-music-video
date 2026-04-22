@@ -2337,6 +2337,43 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
                         "S003": ["continuity_break", "identity_drift"],
                         "S007": ["terminal_frame_corruption"],
                     },
+                    "rerender_bundle": {
+                        "action": "rerender_continuity_break_shots",
+                        "target_shots": ["S003"],
+                        "target_material_ids": ["MAT_003"],
+                        "target_section_ids": ["SEC_003"],
+                        "reason_codes": ["continuity_break", "identity_drift"],
+                    },
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S003",
+                            "recommended_action": "rerender_continuity_break_shots",
+                            "rerender_stage": "review",
+                            "stage_payloads": {
+                                "review": {
+                                    "final_video": "D:/renders/final.mp4",
+                                    "music_file": "song.mp3",
+                                    "recommended_action": "rerender_continuity_break_shots",
+                                    "target_shots": ["S003"],
+                                    "target_material_ids": ["MAT_003"],
+                                    "target_section_ids": ["SEC_003"],
+                                }
+                            },
+                        },
+                        {
+                            "shot_id": "S007",
+                            "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                            "rerender_stage": "clips",
+                            "stage_payloads": {
+                                "clips": {
+                                    "shot_plan": [{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007"}],
+                                    "render_plan": [{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007", "render_mode": "i2v"}],
+                                    "still_results": [{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007", "image": "still-7.png"}],
+                                    "music_file": "song.mp3",
+                                }
+                            },
+                        },
+                    ],
                     "rerender_plan": [
                         {
                             "shot_id": "S003",
@@ -2374,6 +2411,8 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
     assert report["summary_by_shot"] == [
         {
             "shot_id": "S003",
+            "material_id": "MAT_003",
+            "section_id": "SEC_003",
             "reason_codes": ["continuity_break", "identity_drift"],
             "priority_score": 9,
             "recommended_action": "rerender_continuity_break_shots",
@@ -2388,6 +2427,8 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         },
         {
             "shot_id": "S007",
+            "material_id": "MAT_007",
+            "section_id": "SEC_007",
             "reason_codes": ["terminal_frame_corruption"],
             "priority_score": 5,
             "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
