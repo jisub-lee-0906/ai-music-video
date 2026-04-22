@@ -29,11 +29,26 @@ def test_default_config_sets_flux2_size_and_flux_workflows_for_stills():
     assert FLUX2_KEYFRAME_WORKFLOW == "image_flux2.json"
 
 
+def test_default_config_exposes_only_ia2v_video_controls_in_current_canon():
+    cfg = default_config()
+    assert cfg["render"]["ltx_ia2v_size"] == "1280x720"
+    assert "ltx_i2v_size" not in cfg["render"]
+    assert "ltx_flf2v_size" not in cfg["render"]
+    assert cfg["planning"]["enable_ia2v"] is True
+    assert "enable_flf2v" not in cfg["planning"]
+    assert "max_flf2v_shots" not in cfg["planning"]
+    assert "flf2v_min_sec" not in cfg["planning"]
+    assert "flf2v_max_sec" not in cfg["planning"]
+
+
 def test_sample_config_uses_flux2_keys_and_has_no_qwen_residue():
     text = Path("docs/sample-config.yaml").read_text(encoding="utf-8")
     assert "flux2_size:" in text
     assert "qwen_size:" not in text
     assert "qwen_negative:" not in text
+    assert "ltx_i2v_size:" not in text
+    assert "ltx_flf2v_size:" not in text
+    assert "enable_flf2v:" not in text
 
 
 def test_sample_config_does_not_hardcode_lyrics_language_or_override_default_concept_bias():

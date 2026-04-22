@@ -277,7 +277,7 @@ def test_plan_mv_can_route_ia2v_for_chorus_when_enabled():
     assert all(4.0 <= float(shot["duration_sec"]) <= 8.0 for shot in ia2v_shots)
 
 
-def test_plan_mv_keeps_i2v_when_ia2v_is_disabled():
+def test_plan_mv_keeps_ia2v_when_legacy_disable_flag_is_present():
     out = build_plan_preview_payload(
         {"planning": {"enable_ia2v": False}},
         {
@@ -294,7 +294,7 @@ def test_plan_mv_keeps_i2v_when_ia2v_is_disabled():
         },
     )
 
-    assert all(shot["render_mode"] == "i2v" for shot in out["shot_plan"])
+    assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
 
 
 def test_plan_mv_defaults_to_ia2v_centered_render_modes():
@@ -317,7 +317,7 @@ def test_plan_mv_defaults_to_ia2v_centered_render_modes():
     assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
 
 
-def test_plan_mv_can_route_flf2v_for_bridge_when_enabled():
+def test_plan_mv_does_not_route_removed_flf2v_bridge_mode():
     out = build_plan_preview_payload(
         {
             "planning": {
@@ -341,13 +341,9 @@ def test_plan_mv_can_route_flf2v_for_bridge_when_enabled():
         },
     )
 
-    flf2v_shots = [shot for shot in out["shot_plan"] if shot["render_mode"] == "flf2v"]
-    assert len(flf2v_shots) == 1
-    assert flf2v_shots[0]["bridge_to_shot_id"]
-    render_item = next(item for item in out["render_plan"] if item["shot_id"] == flf2v_shots[0]["shot_id"])
-    assert render_item["still_b"] == flf2v_shots[0]["bridge_to_shot_id"]
-    assert flf2v_shots[0]["shot_role"] == "bridge_transition"
-    assert flf2v_shots[0]["visual_mode"] == "bridge_transition"
+    assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
+    assert all("bridge_to_shot_id" not in shot for shot in out["shot_plan"])
+    assert all(not str(item.get("still_b", "")).strip() for item in out["render_plan"])
 
 
 def test_plan_mv_does_not_drop_tail_when_shot_count_exceeds_m1_max():

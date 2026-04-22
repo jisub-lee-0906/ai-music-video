@@ -629,24 +629,24 @@ def test_plan_preview_builds_flux2_style_prompt_tokens():
     assert "film grain" in prompt
 
 
-def test_render_clips_routes_i2v(monkeypatch):
+def test_render_clips_routes_ia2v(monkeypatch):
     calls = []
 
-    def _fake_run_ltx_i2v(_config, item):
-        calls.append(("i2v", item))
-        return f"D:/renders/{item['shot_id']}_i2v.mp4"
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(("ia2v", item))
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
 
-    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_i2v", _fake_run_ltx_i2v)
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
     stage_input = StageInput(
         run_id="run-2",
         config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
         payload={
             "music_file": "music/song.mp3",
-            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "i2v", "material_id": "MAT_001", "section_id": "SEC_001"}],
+            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "ia2v", "material_id": "MAT_001", "section_id": "SEC_001", "start_sec": 0.0}],
             "render_plan": [
                 {
                     "shot_id": "S001",
-                    "render_mode": "i2v",
+                    "render_mode": "ia2v",
                     "material_id": "MAT_001",
                     "section_id": "SEC_001",
                     "prompt_seed": "night drive",
@@ -660,13 +660,14 @@ def test_render_clips_routes_i2v(monkeypatch):
 
     out = run_render_clips(stage_input)
 
-    assert out.payload["clip_results"][0]["video"] == "D:/renders/S001_i2v.mp4"
+    assert out.payload["clip_results"][0]["video"] == "D:/renders/S001_ia2v.mp4"
     assert out.payload["clip_results"][0]["material_id"] == "MAT_001"
     assert out.payload["clip_results"][0]["section_id"] == "SEC_001"
     assert calls[0][1]["image"] == "D:/renders/S001.png"
-    assert calls[0][1]["filename_prefix"] == "ai_mv/runs/run-2/clips/shot-S001-i2v"
+    assert calls[0][1]["filename_prefix"] == "ai_mv/runs/run-2/clips/shot-S001-ia2v"
     assert calls[0][1]["prompt_seed"] == "slow windshield drift"
     assert calls[0][1]["positive_prompt"] == "slow windshield drift, stable motion, no abrupt pose change"
+    assert calls[0][1]["audio"] == "music/song.mp3"
 
 
 def test_render_clips_requires_explicit_render_mode_in_canonical_runtime():
@@ -687,14 +688,14 @@ def test_render_clips_requires_explicit_render_mode_in_canonical_runtime():
         run_render_clips(stage_input)
 
 
-def test_render_clips_fails_fast_when_i2v_still_is_missing():
+def test_render_clips_fails_fast_when_ia2v_still_is_missing():
     stage_input = StageInput(
         run_id="run-2-missing-still",
         config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
         payload={
             "music_file": "music/song.mp3",
-            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "i2v"}],
-            "render_plan": [{"shot_id": "S001", "render_mode": "i2v", "prompt_seed": "night drive"}],
+            "shot_plan": [{"shot_id": "S001", "duration_sec": 5.0, "render_mode": "ia2v", "start_sec": 0.0}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "ia2v", "prompt_seed": "night drive"}],
             "still_results": [],
         },
     )
@@ -723,30 +724,19 @@ def test_render_clips_fails_fast_when_ia2v_music_file_is_missing():
         run_render_clips(stage_input)
 
 
-def test_render_clips_routes_flf2v_with_bridge_target(monkeypatch):
-    calls = []
-
-    def _fake_run_ltx_flf2v(_config, item):
-        calls.append(item)
-        return f"D:/renders/{item['shot_id']}_flf2v.mp4"
-
-    def _fake_run_ltx_i2v(_config, item):
-        return f"D:/renders/{item['shot_id']}_i2v.mp4"
-
-    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_flf2v", _fake_run_ltx_flf2v)
-    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_i2v", _fake_run_ltx_i2v)
+def test_render_clips_rejects_removed_flf2v_mode():
     stage_input = StageInput(
-        run_id="run-2b",
+        run_id="run-2-removed-flf2v",
         config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
         payload={
             "music_file": "music/song.mp3",
             "shot_plan": [
                 {"shot_id": "S003", "duration_sec": 4.0, "render_mode": "flf2v", "bridge_to_shot_id": "S004"},
-                {"shot_id": "S004", "duration_sec": 4.0, "render_mode": "i2v"},
+                {"shot_id": "S004", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 4.0},
             ],
             "render_plan": [
                 {"shot_id": "S003", "render_mode": "flf2v", "prompt_seed": "bridge move", "still_b": "S004"},
-                {"shot_id": "S004", "render_mode": "i2v", "prompt_seed": "chorus hold"},
+                {"shot_id": "S004", "render_mode": "ia2v", "prompt_seed": "chorus hold"},
             ],
             "still_results": [
                 {"shot_id": "S003", "image": "D:/renders/S003.png"},
@@ -755,11 +745,10 @@ def test_render_clips_routes_flf2v_with_bridge_target(monkeypatch):
         },
     )
 
-    out = run_render_clips(stage_input)
+    import pytest
 
-    assert out.payload["clip_results"][0]["video"] == "D:/renders/S003_flf2v.mp4"
-    assert calls[0]["first_image"] == "D:/renders/S003.png"
-    assert calls[0]["last_image"] == "D:/renders/S004.png"
+    with pytest.raises(RuntimeError, match="unsupported render_mode for shot S003: flf2v"):
+        run_render_clips(stage_input)
 
 
 def test_review_outputs_propagates_assembly_quality_summary_from_review_inputs(monkeypatch):

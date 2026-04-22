@@ -165,10 +165,6 @@ def _continuity_mode(config: dict) -> str:
 
 
 def _default_render_mode(config: dict, part: dict) -> str:
-    planning = config.get("planning", {}) if isinstance(config, dict) else {}
-    enable_ia2v = planning.get("enable_ia2v")
-    if enable_ia2v is False:
-        return str(part.get("render_mode", "i2v")).strip() or "i2v"
     return "ia2v"
 
 

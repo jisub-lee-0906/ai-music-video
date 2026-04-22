@@ -18,9 +18,7 @@ DEFAULT_CONFIG: dict = {
     "video": {"target": "1920x1080@24"},
     "render": {
         "flux2_size": "1280x720",
-        "ltx_i2v_size": "1280x720",
         "ltx_ia2v_size": "1280x720",
-        "ltx_flf2v_size": "1280x720",
         "ltx_fps": 24,
         "ltx_default_shot_sec": 4.0,
         "ltx_negative": "pc game, console game, video game, cartoon, childish, ugly",
@@ -50,14 +48,10 @@ DEFAULT_CONFIG: dict = {
     },
     "planning": {
         "enable_ia2v": True,
-        "enable_flf2v": False,
         "max_shot_sec": 8.0,
         "max_ia2v_shots": 2,
         "ia2v_min_sec": 4.0,
         "ia2v_max_sec": 8.0,
-        "max_flf2v_shots": 1,
-        "flf2v_min_sec": 3.0,
-        "flf2v_max_sec": 6.0,
     },
 }
 

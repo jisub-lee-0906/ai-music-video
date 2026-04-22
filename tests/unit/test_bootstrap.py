@@ -22,7 +22,9 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     out = bootstrap_config(cfg, tmp_path / "artifacts")
     assert out["video"]["target"] == "1920x1080@24"
     assert out["render"]["flux2_size"] == "1280x720"
-    assert out["render"]["ltx_i2v_size"] == "1280x720"
+    assert out["render"]["ltx_ia2v_size"] == "1280x720"
+    assert "ltx_i2v_size" not in out["render"]
+    assert "ltx_flf2v_size" not in out["render"]
     assert out["concept_text"]
 
 

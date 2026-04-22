@@ -1,9 +1,6 @@
 from __future__ import annotations
-
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.output_paths import ltx_clip_prefix
-from ai_mv.engines.ltx_flf2v.runner import run_ltx_flf2v
-from ai_mv.engines.ltx_i2v.runner import run_ltx_i2v
 from ai_mv.engines.ltx_ia2v.runner import run_ltx_ia2v
 
 
@@ -46,6 +43,8 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
 
 
 def _run_clip(stage_input: StageInput, shot_id: str, shot: dict, render_item: dict, still_map: dict, render_mode: str) -> str:
+    if render_mode != "ia2v":
+        raise RuntimeError(f"unsupported render_mode for shot {shot_id}: {render_mode}")
     prompt_seed = _clip_prompt_text(render_item)
     positive_prompt = str(render_item.get("clip_positive_prompt") or render_item.get("prompt_polish") or render_item.get("prompt_draft") or "").strip()
     negative_prompt = str(stage_input.config.get("render", {}).get("ltx_negative", "")).strip()
@@ -61,31 +60,13 @@ def _run_clip(stage_input: StageInput, shot_id: str, shot: dict, render_item: di
     }
     still_image = str(still_map.get(shot_id, {}).get("image", "")).strip()
     _validate_clip_assets(stage_input, shot_id, render_mode, still_image, shot, render_item, still_map)
-    if render_mode == "ia2v":
-        return run_ltx_ia2v(
-            stage_input.config,
-            {
-                **base_item,
-                "image": still_image,
-                "audio": str(stage_input.payload.get("music_file", "")).strip(),
-                "audio_start_sec": float(shot.get("start_sec", 0.0) or 0.0),
-            },
-        )
-    if render_mode == "flf2v":
-        next_still = _bridge_target_image(shot_id, shot, render_item, still_map)
-        return run_ltx_flf2v(
-            stage_input.config,
-            {
-                **base_item,
-                "first_image": still_image,
-                "last_image": next_still,
-            },
-        )
-    return run_ltx_i2v(
+    return run_ltx_ia2v(
         stage_input.config,
         {
             **base_item,
             "image": still_image,
+            "audio": str(stage_input.payload.get("music_file", "")).strip(),
+            "audio_start_sec": float(shot.get("start_sec", 0.0) or 0.0),
         },
     )
 
@@ -125,12 +106,7 @@ def _clip_section_id(shot: dict, render_item: dict, still_row: dict) -> str:
 
 
 def _validate_clip_assets(stage_input: StageInput, shot_id: str, render_mode: str, still_image: str, shot: dict, render_item: dict, still_map: dict) -> None:
-    if render_mode in {"i2v", "ia2v", "flf2v"} and not still_image:
+    if render_mode == "ia2v" and not still_image:
         raise RuntimeError(f"missing source still for shot: {shot_id}")
     if render_mode == "ia2v" and not str(stage_input.payload.get("music_file", "")).strip():
         raise RuntimeError(f"missing music file for ia2v shot: {shot_id}")
-    if render_mode == "flf2v":
-        bridge_to_shot_id = str(render_item.get("still_b") or shot.get("bridge_to_shot_id", "")).strip()
-        target = str(still_map.get(bridge_to_shot_id, {}).get("image", "")).strip()
-        if not bridge_to_shot_id or not target:
-            raise RuntimeError(f"missing bridge target still for shot: {shot_id}")

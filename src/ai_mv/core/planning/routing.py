@@ -2,8 +2,7 @@ from __future__ import annotations
 
 
 def apply_render_routing(config: dict, shots: list[dict]) -> list[dict]:
-    routed = _apply_ia2v_routing(config, shots)
-    return _apply_flf2v_routing(config, routed)
+    return _apply_ia2v_routing(config, shots)
 
 
 

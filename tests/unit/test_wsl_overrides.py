@@ -74,7 +74,6 @@ def test_apply_wsl_runtime_overrides_enables_smoke_mode(monkeypatch):
         },
         "planning": {
             "enable_ia2v": True,
-            "enable_flf2v": True,
         },
         "integrations": {
             "comfyui_base_url": "http://127.0.0.1:8000",
@@ -97,4 +96,7 @@ def test_apply_wsl_runtime_overrides_enables_smoke_mode(monkeypatch):
     assert out["audio"]["target_duration_min_sec"] == 15
     assert out["audio"]["target_duration_max_sec"] == 20
     assert out["planning"]["enable_ia2v"] is True
-    assert out["planning"]["enable_flf2v"] is False
+    assert "enable_flf2v" not in out["planning"]
+    assert "max_flf2v_shots" not in out["planning"]
+    assert "flf2v_min_sec" not in out["planning"]
+    assert "flf2v_max_sec" not in out["planning"]
