@@ -87,14 +87,14 @@ Operational meaning:
 
 Artifact schema notes:
 - both `manifest.json` and `run_summary.json` carry `schema_version`
-- the current canonical schema version is `ai_mv_schema_v1`
+- the current canonical schema version is `ai_mv_schema_v2`
 - `manifest.json` is the canonical source for structured pipeline outputs
 - `run_summary.json` is the compact operational summary for quick inspection and downstream automation
 
 Important:
 - the final video file itself is not mirrored into `artifacts/latest/` or `artifacts/latest_success/`
 - instead, read `final_video` from `artifacts/latest/manifest.json` or `artifacts/latest_success/manifest.json`
-- `manifest.json` also records canonical sections such as `input`, `song`, `style_resolution`, `sections`, `materials`, `renders`, `assembly`, `review`, and `artifacts`
+- `manifest.json` also records canonical sections such as `input`, `song`, `plan`, `stills`, `clips`, `assembly`, `review`, and `artifacts`
 
 ## WSL Usage
 
