@@ -1,4 +1,4 @@
-from ai_mv.core.planning.render_items import build_edit_intent, build_render_item
+from ai_mv.core.planning.render_items import build_clip_positive_prompt, build_edit_intent, build_render_item
 from ai_mv.styles.citypop.bible import get_citypop_bible
 from ai_mv.styles.synthwave.bible import get_synthwave_bible
 
@@ -343,6 +343,53 @@ def test_render_item_keeps_style_seed_inside_clip_prompt_contract():
     assert first_seed_token
     assert first_seed_token in out["clip_prompt_seed"]
     assert first_seed_token in out["clip_positive_prompt"]
+
+
+def test_render_item_keeps_intro_clip_camera_more_neutral_even_when_still_framing_is_environment_led():
+    prompt = build_clip_positive_prompt(
+        "ia2v",
+        {"section_type": "intro", "section_name": "Intro", "shot_role": "intro_mood"},
+        "late-night city pop walk under wet neon lights, intro mood",
+        {"framing_variant": "environment_forward", "environment_variant": "atmospheric", "continuity_variant": "expressive"},
+    )
+
+    assert "environment-led camera framing" not in prompt
+    assert "restrained camera" in prompt
+
+
+def test_render_item_keeps_bridge_clip_camera_more_neutral_even_when_still_framing_is_environment_led():
+    prompt = build_clip_positive_prompt(
+        "ia2v",
+        {"section_type": "bridge", "section_name": "Bridge", "shot_role": "bridge_shift"},
+        "late-night city pop walk under wet neon lights, bridge shift",
+        {"framing_variant": "environment_forward", "environment_variant": "spatial", "continuity_variant": "expressive"},
+    )
+
+    assert "environment-led camera framing" not in prompt
+    assert "restrained camera" in prompt
+
+
+def test_render_item_keeps_outro_clip_camera_more_neutral_even_when_still_framing_is_environment_led():
+    prompt = build_clip_positive_prompt(
+        "ia2v",
+        {"section_type": "outro", "section_name": "Outro", "shot_role": "outro_release"},
+        "late-night city pop walk under wet neon lights, outro release",
+        {"framing_variant": "environment_forward", "environment_variant": "spatial", "continuity_variant": "expressive"},
+    )
+
+    assert "environment-led camera framing" not in prompt
+    assert "restrained camera" in prompt
+
+
+def test_render_item_keeps_non_intro_bridge_outro_release_roles_scenic_when_requested():
+    prompt = build_clip_positive_prompt(
+        "ia2v",
+        {"section_type": "pre_chorus", "section_name": "Pre-Chorus", "shot_role": "prechorus_release"},
+        "late-night city pop walk under wet neon lights, prechorus release",
+        {"framing_variant": "environment_forward", "environment_variant": "atmospheric", "continuity_variant": "expressive"},
+    )
+
+    assert "environment-led camera framing" in prompt
 
 
 def test_render_item_requires_explicit_render_mode():

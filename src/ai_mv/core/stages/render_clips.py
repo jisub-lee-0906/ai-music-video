@@ -46,7 +46,7 @@ def _run_clip(stage_input: StageInput, shot_id: str, shot: dict, render_item: di
     if render_mode != "ia2v":
         raise RuntimeError(f"unsupported render_mode for shot {shot_id}: {render_mode}")
     prompt_seed = _clip_prompt_text(render_item)
-    positive_prompt = str(render_item.get("clip_positive_prompt") or render_item.get("prompt_polish") or render_item.get("prompt_draft") or "").strip()
+    positive_prompt = str(render_item.get("clip_positive_prompt") or render_item.get("positive_prompt") or prompt_seed).strip()
     negative_prompt = str(stage_input.config.get("render", {}).get("ltx_negative", "")).strip()
     duration_sec = float(shot.get("duration_sec", stage_input.config.get("render", {}).get("ltx_default_shot_sec", 4.0)) or 4.0)
     base_item = {
@@ -72,7 +72,7 @@ def _run_clip(stage_input: StageInput, shot_id: str, shot: dict, render_item: di
 
 
 def _clip_prompt_text(render_item: dict) -> str:
-    for key in ("clip_prompt_seed", "prompt_seed", "clip_positive_prompt", "prompt_polish", "prompt_draft"):
+    for key in ("clip_prompt_seed", "prompt_seed", "clip_positive_prompt", "positive_prompt"):
         value = str(render_item.get(key, "")).strip()
         if value:
             return value

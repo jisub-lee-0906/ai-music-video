@@ -103,11 +103,12 @@ def build_clip_prompt_seed(render_mode: str, shot: dict, prompt_seed: str, varia
 
 def build_clip_positive_prompt(render_mode: str, shot: dict, clip_prompt_seed: str, variation_profile: dict | None = None) -> str:
     variation = variation_profile if isinstance(variation_profile, dict) else {}
+    framing_variant = _clip_framing_variant(shot, str(variation.get("framing_variant", "")).strip())
     return _join_prompt_tokens(
         [
             clip_prompt_seed,
             _continuity_identity_token(str(variation.get("continuity_variant", "")).strip()),
-            _framing_camera_token(str(variation.get("framing_variant", "")).strip()),
+            _framing_camera_token(framing_variant),
             _environment_motion_token(str(variation.get("environment_variant", "")).strip()),
         ]
     )
@@ -432,6 +433,17 @@ def _framing_camera_token(variant: str) -> str:
         "subject_forward": "subject-led camera framing",
         "environment_forward": "environment-led camera framing",
     }.get(variant, "restrained camera")
+
+
+
+def _clip_framing_variant(shot: dict, variant: str) -> str:
+    normalized_variant = str(variant or "").strip()
+    if normalized_variant != "environment_forward":
+        return normalized_variant
+    section_type = str(shot.get("section_type", "")).strip().lower()
+    if section_type in {"intro", "bridge", "outro"}:
+        return "balanced"
+    return normalized_variant
 
 
 

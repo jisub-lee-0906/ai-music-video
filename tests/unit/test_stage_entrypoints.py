@@ -806,6 +806,53 @@ def test_render_clips_prefers_workflow_specific_clip_prompt_seed():
     assert prompt == "camera drift forward, stable motion"
 
 
+def test_render_clips_does_not_fall_back_to_still_facing_prompt_polish_for_seed_text():
+    prompt = _clip_prompt_text(
+        {
+            "prompt_seed": "night drive style seed",
+            "prompt_polish": "single cinematic keyframe, one uninterrupted composition, no collage",
+            "prompt_draft": "still-only dramatic tableau",
+        }
+    )
+
+    assert prompt == "night drive style seed"
+    assert "single cinematic keyframe" not in prompt
+
+
+def test_render_clips_uses_compact_positive_fallback_instead_of_prompt_polish(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-clip-fallback-compact",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload={
+            "music_file": "music/song.mp3",
+            "shot_plan": [{"shot_id": "S002", "duration_sec": 5.0, "render_mode": "ia2v", "start_sec": 0.0}],
+            "render_plan": [
+                {
+                    "shot_id": "S002",
+                    "render_mode": "ia2v",
+                    "prompt_seed": "night drive style seed",
+                    "prompt_polish": "single cinematic keyframe, one uninterrupted composition, no collage",
+                    "prompt_draft": "still-only dramatic tableau",
+                }
+            ],
+            "still_results": [{"shot_id": "S002", "image": "D:/renders/S002.png"}],
+        },
+    )
+
+    run_render_clips(stage_input)
+
+    assert calls[0]["prompt_seed"] == "night drive style seed"
+    assert calls[0]["positive_prompt"] == "night drive style seed"
+    assert "single cinematic keyframe" not in calls[0]["positive_prompt"]
+
+
 def test_render_stills_calls_flux2_runner(monkeypatch):
     calls = []
 
