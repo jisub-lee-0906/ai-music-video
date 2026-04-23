@@ -1,0 +1,150 @@
+flowchart TD
+    A0[User / CLI ai-mv] --> A1[cli/app.py main]
+    A1 --> A2[cli/args.py parser]
+    A2 --> A3[cli/commands.py dispatch]
+
+    A3 -->|start| B0[entrypoints/start.py]
+    A3 -->|preflight| B1[entrypoints/preflight.py]
+    A3 -->|status| B2[entrypoints/status.py]
+    A3 -->|doctor| B3[entrypoints/doctor.py]
+    A3 -->|review-packet| B4[entrypoints/review_packet.py]
+    A3 -->|extract-frames| B5[entrypoints/extract_frames.py]
+    A3 -->|quality-findings-template| B6[entrypoints/quality_findings_template.py]
+
+    subgraph Bootstrap_and_Runtime
+      B0 --> C0[config_defaults.py default_config/apply_defaults]
+      B1 --> C0
+      C0 --> C1[wsl_overrides.py apply_wsl_runtime_overrides]
+      C1 --> C2[bootstrap_guard.py input defaults / size / template validation]
+      C2 --> C3[doctor checks]
+      C3 --> C4[state_store.py ensure_run_dir/init_run_state]
+      C4 --> C5[pipeline.py run_pipeline or orchestration/preflight.py run_preflight]
+    end
+
+    subgraph Main_Pipeline
+      C5 --> D0[stage_runs.py run_result_stage]
+      D0 --> D1[audio stage]
+      D1 --> D2[plan stage]
+      D2 --> D3[stills stage]
+      D3 --> D4[clips stage]
+      D4 --> D5[assemble stage]
+      D5 --> D6[review stage]
+    end
+
+    subgraph Audio_Stage
+      D1 --> E0[stages/acestep_music.py]
+      E0 --> E1[engines/acestep_1_5_aio/planner.py]
+      E1 --> E2[engines/acestep_1_5_aio/prompting.py]
+      E1 --> E3[engines/acestep_1_5_aio/lyric_blocks.py]
+      E0 --> E4[engines/acestep_1_5_aio/mapper.py]
+      E0 --> E5[engines/acestep_1_5_aio/runner.py]
+      E5 --> E6[utils/audio_timing.py]
+      E5 --> E7[audio_plan + audio_map + music_file]
+    end
+
+    subgraph Plan_Stage
+      D2 --> F0[stages/plan_mv.py]
+      F0 --> F1[styles/resolver.py resolve_style_selection]
+      F1 --> F2[styles/*/bible.py]
+      F1 --> F3[styles/*/prompting.py]
+      F1 --> F4[styles/*/rules.py]
+      F0 --> F5[planning/sections.py normalized_sections]
+      F0 --> F6[planning/creative_direction.py]
+      F0 --> F7[planning/shot_plan.py build_shot_plan]
+      F7 --> F8[planning/shot_intent.py]
+      F7 --> F9[planning/routing.py apply_render_routing]
+      F0 --> F10[material_plan builder]
+      F0 --> F11[planning/render_items.py build_render_item]
+      F11 --> F12[prompt_seed / prompt_draft / prompt_polish]
+      F11 --> F13[still_prompt_text]
+      F11 --> F14[clip_prompt_seed / clip_positive_prompt]
+      F11 --> F15[variation_profile / render_planning / edit_intent]
+      F0 --> F16[section_plan + shot_plan + material_plan + render_plan]
+    end
+
+    subgraph Still_Generation
+      D3 --> G0[stages/render_stills.py]
+      G0 --> G1[_still_prompt_text]
+      G0 --> G2[_apply_still_constraint_policy]
+      G2 --> G3[_single_keyframe_prompt_text / raw mode]
+      G0 --> G4[engines/flux2_image/runner.py]
+      G4 --> G5[engines/flux2_image/mapper.py]
+      G4 --> G6[infra/comfy_client.py + workflow_patcher.py]
+      G0 --> G7[still_results]
+    end
+
+    subgraph Clip_Generation
+      D4 --> H0[stages/render_clips.py]
+      H0 --> H1[_clip_prompt_text]
+      H0 --> H2[build_clip_positive_prompt result consumption]
+      H0 --> H3[engines/ltx_ia2v/runner.py]
+      H3 --> H4[engines/ltx_ia2v/mapper.py]
+      H3 --> H5[infra/comfy_client.py + workflow_patcher.py]
+      H0 --> H6[clip_results]
+    end
+
+    subgraph Assembly
+      D5 --> I0[stages/assemble_mv.py]
+      I0 --> I1[clip path resolution]
+      I0 --> I2[trim window calculation]
+      I0 --> I3[beat/bar snap from audio_map timing]
+      I0 --> I4[assembly_plan]
+      I0 --> I5[review_inputs enrichment]
+      I0 --> I6[stages/ffmpeg_muxer.py]
+      I6 --> I7[final_video]
+    end
+
+    subgraph Review
+      D6 --> J0[stages/review_stage.py]
+      J0 --> J1[quality_findings merge]
+      J0 --> J2[review/models.py build_review_report]
+      J2 --> J3[review/quality_signals.py]
+      J2 --> J4[review/publishability.py]
+      J2 --> J5[review/signal_buckets.py]
+      J2 --> J6[review/benchmark_dimensions.py]
+      J2 --> J7[assembly_quality_summary]
+      J2 --> J8[rerender_plan / rerender_payload / rerender_execution_payloads]
+      J0 --> J9[review_report]
+    end
+
+    J9 --> K0{needs_rerender?}
+    K0 -->|no| L0[publish artifacts]
+    K0 -->|yes| M0[stages/rerender_loop.py]
+
+    subgraph Rerender_Loop
+      M0 --> M1[prepare_rerender.py]
+      M1 --> M2[repair_rerender_prompts.py]
+      M2 --> M3[execute_rerender.py]
+      M3 --> M4[rerender_review.py]
+      M4 --> M5[rerender_review_report]
+      M5 --> M6[rerender_outcome]
+    end
+
+    subgraph Execute_Rerender_Details
+      M3 --> N0[rerender stills -> render_stills]
+      M3 --> N1[rerender clips -> render_clips]
+      M3 --> N2[review action -> repair_audio_video_sync.py]
+      M3 --> N3[review action -> apply_assembly_revision in assemble_mv.py]
+    end
+
+    M6 --> O0{resolved?}
+    O0 -->|yes| L0
+    O0 -->|no/exhausted| P0[rerender_escalation.py]
+
+    subgraph Escalation_and_QA
+      P0 --> P1[analysis/review_packet.py]
+      P0 --> P2[analysis/frame_extract.py]
+      P0 --> P3[entrypoints/quality_findings_template.py]
+      P0 --> P4[review packet + findings template + reviewer notes + contact-sheet manifest]
+    end
+
+    subgraph Artifact_Publication
+      L0 --> Q0[state_snapshot.py save_snapshot]
+      L0 --> Q1[artifacts/manifest.py]
+      L0 --> Q2[artifacts/run_summary.py]
+      L0 --> Q3[artifacts/publish.py write_pipeline_artifacts]
+      Q3 --> Q4[artifacts/runs/<run_id>/manifest.json]
+      Q3 --> Q5[artifacts/runs/<run_id>/run_summary.json]
+      Q3 --> Q6[artifacts/runs/<run_id>/snapshot.json]
+      Q3 --> Q7[artifacts/latest and latest_success aliases]
+    end

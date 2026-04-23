@@ -8,7 +8,7 @@ from ai_mv.core.prompt_digests import compact_sentences, compact_series
 AUDIO_TEXT = "94"
 AUDIO_LATENT = "98"
 AUDIO_KSAMPLER = "3"
-AUDIO_SAVE = "107"
+AUDIO_SAVE = "104"
 
 GENRE_ALIASES = {
     "aor": "AOR",

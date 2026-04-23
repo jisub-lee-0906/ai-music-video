@@ -999,11 +999,12 @@ def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
 
     prompt = calls[0]["positive_prompt"]
     assert "night station portrait, reflective glass, film grain" in prompt
-    assert "cinematic still image" in prompt
+    assert "photoreal live-action still frame" in prompt
     assert "single cinematic keyframe" in prompt
     assert "subject integrated into the environment" in prompt
     assert "close-up portrait integrated into the environment" not in prompt
     assert "no inset portrait" in prompt
+    assert "cinematic still image" not in prompt
 
 
 def test_single_keyframe_prompt_text_uses_subject_level_environment_constraint():
@@ -1011,6 +1012,8 @@ def test_single_keyframe_prompt_text_uses_subject_level_environment_constraint()
 
     assert "subject integrated into the environment" in prompt
     assert "close-up portrait integrated into the environment" not in prompt
+    assert "photoreal live-action still frame" in prompt
+    assert "cinematic still image" not in prompt
 
 
 def test_render_stills_constrained_wider_body_case_uses_soft_single_scene_variant(monkeypatch):
@@ -1033,7 +1036,7 @@ def test_render_stills_constrained_wider_body_case_uses_soft_single_scene_varian
     run_render_stills(stage_input)
 
     prompt = calls[0]["positive_prompt"]
-    assert "Render it as one clean cinematic still image in a single continuous scene" in prompt
+    assert "Render it as one clean photoreal live-action still frame in a single continuous scene" in prompt
     assert "subject integrated into the environment" in prompt
     assert "no inset portrait" not in prompt
     assert "close-up portrait integrated into the environment" not in prompt
@@ -1269,7 +1272,7 @@ def test_plan_preview_builds_flux2_style_prompt_tokens():
     )
 
     prompt = payload["render_plan"][0]["prompt_polish"]
-    assert "cinematic illustration lighting" in prompt
+    assert "cinematic live-action lighting" in prompt
     assert "same protagonist" in prompt
     assert "motion-safe keyframe" in prompt
     assert "80s japanese city pop illustration" not in prompt

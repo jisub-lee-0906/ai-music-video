@@ -230,6 +230,73 @@ def test_plan_mv_threads_expressive_continuity_mode_into_direction_and_prompts()
     assert "allowing a deliberate visual reset" in item["prompt_seed"]
 
 
+def test_plan_mv_threads_explicit_continuity_anchor_bundle_into_shots_and_render_prompts():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    creative_direction = out["creative_direction"]
+    assert creative_direction["protagonist_anchor"]
+    assert creative_direction["world_anchor"]
+    assert all(shot["protagonist_anchor"] == creative_direction["protagonist_anchor"] for shot in out["shot_plan"])
+    assert all(shot["world_anchor"] == creative_direction["world_anchor"] for shot in out["shot_plan"])
+    assert all(item["prompt_seed"].count(creative_direction["protagonist_anchor"]) == 1 for item in out["render_plan"])
+    assert all(item["prompt_seed"].count(creative_direction["world_anchor"]) == 1 for item in out["render_plan"])
+    assert all("young woman" not in item["prompt_seed"] for item in out["render_plan"])
+
+
+def test_plan_mv_emits_structured_continuity_and_neighbor_contracts():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    creative_direction = out["creative_direction"]
+    first_shot = out["shot_plan"][0]
+    second_shot = out["shot_plan"][1]
+
+    assert first_shot["continuity_contract"] == {
+        "protagonist_anchor": creative_direction["protagonist_anchor"],
+        "world_anchor": creative_direction["world_anchor"],
+        "wardrobe_anchor": "stable dark outerwear silhouette",
+        "no_competing_subjects": True,
+        "time_band_anchor": "same night time band",
+    }
+    assert first_shot["shot_relation_contract"] == {
+        "relation_to_previous_shot": "sequence opener",
+        "camera_distance_progression": "set baseline distance",
+        "same_block_vs_new_block": "same block baseline",
+        "emotional_delta": "establish lonely night-world baseline",
+    }
+    assert second_shot["shot_relation_contract"]["relation_to_previous_shot"] == "continue same protagonist and world from previous shot"
+    assert second_shot["shot_relation_contract"]["camera_distance_progression"]
+    assert second_shot["shot_relation_contract"]["same_block_vs_new_block"]
+    assert second_shot["shot_relation_contract"]["emotional_delta"]
+
+
 def test_plan_mv_uses_prechorus_progression_hint_before_chorus_hint():
     out = build_plan_preview_payload(
         {},
@@ -340,7 +407,30 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
     )
 
     assert all(shot["render_mode"] == "ia2v" for shot in out["shot_plan"])
-    assert all(set(item) == {"shot_id", "section_id", "material_id", "render_mode", "render_count", "render_planning", "render_priority_score", "seed", "variation_seed", "variation_profile", "prompt_seed", "prompt_draft", "prompt_polish", "still_prompt_text", "clip_prompt_seed", "clip_positive_prompt", "edit_intent", "still_a", "audio_segment"} for item in out["render_plan"])
+    expected_keys = {
+        "shot_id",
+        "section_id",
+        "material_id",
+        "render_mode",
+        "render_count",
+        "render_planning",
+        "render_priority_score",
+        "seed",
+        "variation_seed",
+        "variation_profile",
+        "continuity_contract",
+        "shot_relation_contract",
+        "prompt_seed",
+        "prompt_draft",
+        "prompt_polish",
+        "still_prompt_text",
+        "clip_prompt_seed",
+        "clip_positive_prompt",
+        "edit_intent",
+        "still_a",
+        "audio_segment",
+    }
+    assert all(set(item) == expected_keys for item in out["render_plan"])
 
 
 def test_plan_mv_does_not_drop_tail_when_shot_count_exceeds_m1_max():

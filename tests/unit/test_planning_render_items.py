@@ -176,6 +176,44 @@ def test_render_item_adds_audio_segment_for_ia2v():
     assert out["audio_segment"] == {"start_sec": 3.0, "duration_sec": 5.0}
 
 
+def test_render_item_surfaces_structured_continuity_and_neighbor_contracts():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        get_citypop_bible(),
+        {
+            "shot_id": "S002",
+            "render_mode": "ia2v",
+            "shot_role": "verse_setup",
+            "section_type": "verse",
+            "section_name": "Verse 1",
+            "visual_mode": "night_drive",
+            "start_sec": 3.0,
+            "duration_sec": 5.0,
+            "protagonist_anchor": "same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders",
+            "world_anchor": "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage",
+            "continuity_contract": {
+                "protagonist_anchor": "same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders",
+                "world_anchor": "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage",
+                "wardrobe_anchor": "stable dark outerwear silhouette",
+                "no_competing_subjects": True,
+                "time_band_anchor": "same night time band",
+            },
+            "shot_relation_contract": {
+                "relation_to_previous_shot": "continue same protagonist and world from previous shot",
+                "camera_distance_progression": "move closer than previous shot",
+                "same_block_vs_new_block": "same block, new angle",
+                "emotional_delta": "increase intimacy without changing world",
+            },
+        },
+    )
+
+    assert out["continuity_contract"]["wardrobe_anchor"] == "stable dark outerwear silhouette"
+    assert out["shot_relation_contract"]["camera_distance_progression"] == "move closer than previous shot"
+    assert out["still_prompt_text"].count("move closer than previous shot") == 1
+    assert out["still_prompt_text"].count("same block, new angle") == 1
+
+
 def test_render_item_emits_distinct_seed_and_variation_metadata_per_shot():
     first = build_render_item(
         {},

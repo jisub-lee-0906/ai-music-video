@@ -19,7 +19,7 @@ SRC_ROOT = Path(__file__).resolve().parents[2] / "src" / "ai_mv"
 
 def test_workflow_registry_contains_only_current_canon_files():
     assert WORKFLOW_FILES == (
-        "audio_ace_step1_5_xl_sft.json",
+        "audio_ace_step_1_5_checkpoint.json",
         "image_flux2_text_to_image.json",
         "image_flux2.json",
         "video_ltx2_3_ia2v.json",

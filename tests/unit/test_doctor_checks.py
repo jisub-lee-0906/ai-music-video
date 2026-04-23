@@ -14,7 +14,7 @@ def test_workflow_files_match_canonical_four_workflow_blueprint_stack():
         FLUX2_KEYFRAME_WORKFLOW,
         LTX_IA2V_WORKFLOW,
     )
-    assert AUDIO_WORKFLOW == "audio_ace_step1_5_xl_sft.json"
+    assert AUDIO_WORKFLOW == "audio_ace_step_1_5_checkpoint.json"
     assert LTX_IA2V_WORKFLOW == "video_ltx2_3_ia2v.json"
 
 

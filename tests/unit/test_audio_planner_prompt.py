@@ -71,6 +71,38 @@ def test_audio_prompt_lets_llm_choose_bpm_when_unlocked():
     assert "Choose it yourself from genre, songform, and breathing room." in prompt
 
 
+def test_audio_prompt_surfaces_retry_feedback_for_korean_lyrics_failures():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            audio_retry_attempt=1,
+            audio_retry_feedback="audio lyrics quality mismatch: expected readable Korean lines",
+        )
+    )
+    assert "Rewrite attempt 2." in prompt
+    assert "Previous issue: audio lyrics quality mismatch: expected readable Korean lines." in prompt
+    assert "Every non-empty lyric line must contain readable Hangul words." in prompt
+    assert "Do not output any English-only lyric lines." in prompt
+
+
+def test_audio_lyrics_draft_prompt_surfaces_retry_feedback_for_korean_lyrics_failures():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "chorus", "label": "Chorus", "style": "release", "line_count": 4},
+        ]
+    }
+    prompt = audio_planner._audio_lyrics_draft_prompt(
+        _prompt_plan(
+            audio_retry_attempt=1,
+            audio_retry_feedback="audio lyrics quality mismatch: expected readable Korean lines",
+        ),
+        outline,
+    )
+    assert "Rewrite attempt 2." in prompt
+    assert "Every non-empty lyric line must contain readable Hangul words." in prompt
+    assert "Do not output any English-only lyric lines." in prompt
+
+
 def test_hook_scoring_prefers_world_anchored_korean_hook_over_generic_english():
     plan = _prompt_plan(hook_english_fragments=["all night", "call my name"])
     korean = {"fragment": "새벽 너머", "language_mode": "primary_only", "placement": "chorus"}
@@ -391,6 +423,31 @@ def test_parse_audio_lyrics_draft_allows_omitted_zero_line_outro_header():
             "[Verse 1]",
             "젖은 유리 위로 밤이 번져",
             "늦은 숨결만 손끝에 남아",
+        ]
+    )
+
+    out = audio_planner._parse_audio_lyrics_draft(outline, drafted)
+
+    assert out == [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 유리 위로 밤이 번져", "늦은 숨결만 손끝에 남아"]},
+        {"section": "outro", "label": "Outro", "style": "tail", "lines": []},
+    ]
+
+
+
+def test_parse_audio_lyrics_draft_allows_omitted_zero_line_outro_header_before_end_tag():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "outro", "label": "Outro", "style": "tail", "line_count": 0},
+        ]
+    }
+    drafted = "\n".join(
+        [
+            "[Verse 1]",
+            "젖은 유리 위로 밤이 번져",
+            "늦은 숨결만 손끝에 남아",
+            "[end]",
         ]
     )
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict) -> str:
     concept = _concept_seed_phrase(concept_text)
     continuity = _continuity_anchor(shot)
+    protagonist_anchor = _protagonist_anchor_phrase(shot)
+    world_anchor = _world_anchor_phrase(shot)
     subject = _still_subject_phrase(shot)
     location = _still_location_phrase(shot)
     palette = _still_palette_phrase(shot, citypop_bible)
@@ -12,12 +14,14 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
         shot,
         concept=concept,
         continuity=continuity,
+        protagonist_anchor=protagonist_anchor,
+        world_anchor=world_anchor,
         subject=subject,
         location=location,
         palette=palette,
     )
     tail_parts = [
-        "cinematic illustration lighting",
+        "cinematic live-action lighting",
         _world_continuity_phrase(continuity_mode),
         _identity_continuity_phrase(continuity_mode),
         "film grain",
@@ -40,7 +44,8 @@ def build_citypop_prompt_draft(shot: dict) -> str:
         for part in [
             framing,
             composition,
-            "soft reflective portrait styling",
+            "photoreal live-action lighting",
+            "natural skin texture",
             "motion-safe keyframe",
             "no layered collage",
             "no abstract overlay",
@@ -120,16 +125,24 @@ def _identity_continuity_phrase(continuity_mode: str) -> str:
 
 
 
-def _ordered_seed_parts(shot: dict, *, concept: str, continuity: str, subject: str, location: str, palette: str) -> list[str]:
+def _ordered_seed_parts(shot: dict, *, concept: str, continuity: str, protagonist_anchor: str, world_anchor: str, subject: str, location: str, palette: str) -> list[str]:
     framing_intent = str(shot.get("framing_intent", "")).strip()
     if framing_intent in {"establishing_wide", "release_wide"}:
-        return [concept, continuity, location, subject, palette]
-    return [concept, continuity, subject, location, palette]
+        return [concept, continuity, protagonist_anchor, world_anchor, location, subject, palette]
+    return [concept, continuity, protagonist_anchor, world_anchor, subject, location, palette]
 
+
+def _protagonist_anchor_phrase(shot: dict) -> str:
+    return str(shot.get("protagonist_anchor", "")).strip()
+
+
+def _world_anchor_phrase(shot: dict) -> str:
+    return str(shot.get("world_anchor", "")).strip()
 
 
 def _still_subject_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
+    protagonist_anchor = _protagonist_subject_stub(shot)
     if visual_mode == "empty_boulevard_anchor":
         return "one distant anchored figure under the boulevard lights"
     if visual_mode == "curbside_silhouette":
@@ -139,32 +152,39 @@ def _still_subject_phrase(shot: dict) -> str:
     if visual_mode == "street_establishing":
         return "one anchored figure under the city lights"
     if visual_mode == "profile_mood":
-        return "young woman with long dark hair under fluorescent station light"
+        return f"{protagonist_anchor} under fluorescent station light"
     if visual_mode == "night_drive":
-        return "young woman driver with reflected night light and steady expression"
+        return f"{protagonist_anchor} driver with reflected night light and steady expression"
     if visual_mode == "window_reflection":
-        return "young woman seen through side glass with reflected city lights"
+        return f"{protagonist_anchor} seen through side glass with reflected city lights"
     if visual_mode == "rain_window_detail":
         return "rain-streaked car window and a partial figure reflection"
     if visual_mode == "partial_figure_transition":
         return "partial figure crossing the frame with the face turned away"
     if visual_mode == "city_glance":
-        return "young woman turning toward the camera through city reflections"
+        return f"{protagonist_anchor} turning toward the camera through city reflections"
     if visual_mode == "chorus_performance":
         return "performance-led singer in a three-quarter medium frame with neon reflections"
     if visual_mode == "neon_release":
-        return "young woman framed by neon reflections and moving city light"
+        return f"{protagonist_anchor} framed by neon reflections and moving city light"
     if visual_mode == "night_bridge":
-        return "young woman with bridge lights behind her"
+        return f"{protagonist_anchor} with bridge lights behind the silhouette"
     if visual_mode == "bridge_overlook":
         return "anchored figure near the bridge lights seen from a slight distance"
     if visual_mode == "memory_flash":
-        return "young woman in a soft afterglow portrait with wind in her hair"
+        return f"{protagonist_anchor} in a soft afterglow portrait with wind in the silhouette"
     if visual_mode == "skyline_release":
         return "one anchored figure under the skyline glow"
     if visual_mode == "bridge_transition":
-        return "young woman shifting from reflection to open night air"
-    return "young woman in a reflective summer night portrait"
+        return f"{protagonist_anchor} shifting from reflection to open night air"
+    return f"{protagonist_anchor} in a reflective summer night portrait"
+
+
+def _protagonist_subject_stub(shot: dict) -> str:
+    anchor = str(shot.get("protagonist_anchor", "")).strip()
+    if anchor:
+        return "same protagonist"
+    return "same protagonist"
 
 
 def _still_location_phrase(shot: dict) -> str:

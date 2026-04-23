@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai_mv.engines.acestep_1_5_aio.prompting import _intent_clause, _language_clause
+from ai_mv.engines.acestep_1_5_aio.prompting import _audio_retry_clause, _intent_clause, _language_clause
 
 
 def _section_bar_count(plan: dict, block: dict) -> int:
@@ -75,6 +75,7 @@ def _audio_lyrics_block_prompt(plan: dict, outline: dict, completed: list[dict],
     line_count = int(block.get("line_count", 1))
     return (
         _audio_lyrics_rules(plan)
+        + _audio_retry_clause(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
         + _bar_feel_clause(plan, block)
@@ -121,6 +122,7 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         sections.append(summary)
     return (
         _audio_lyrics_rules(plan)
+        + _audio_retry_clause(plan)
         + _language_clause(plan)
         + _intent_clause(plan, include_selected_hook=False, include_hook_fragments=False)
         + "Write the full lyrics draft for the entire song in one pass so section progression feels connected. "
@@ -176,7 +178,7 @@ def _parse_audio_lyrics_draft(outline: dict, text: str) -> list[dict]:
             cursor += 1
         expected_header = f"[{label}]"
         if cursor >= len(lines) or str(lines[cursor]).strip() != expected_header:
-            if line_count == 0 and cursor >= len(lines):
+            if line_count == 0 and _remaining_lines_allow_omitted_zero_line_header(lines, cursor):
                 parsed.append(
                     {
                         "section": str(spec.get("section", "")).strip(),
@@ -208,9 +210,18 @@ def _parse_audio_lyrics_draft(outline: dict, text: str) -> list[dict]:
             }
         )
     trailing = [str(line).strip() for line in lines[cursor:] if str(line).strip()]
+    if trailing == ["[end]"]:
+        trailing = []
     if trailing:
         raise RuntimeError("audio lyrics draft contained unexpected trailing text")
     return parsed
+
+
+def _remaining_lines_allow_omitted_zero_line_header(lines: list[str], cursor: int) -> bool:
+    trailing = [str(line).strip() for line in lines[cursor:] if str(line).strip()]
+    if not trailing:
+        return True
+    return trailing == ["[end]"]
 
 
 def _current_block_constraints(completed: list[dict], block: dict) -> str:
@@ -298,14 +309,3 @@ def _visible_char_count(text: str) -> int:
     for token in [",", "，", "."]:
         cleaned = cleaned.replace(token, "")
     return len(cleaned)
-
-
-def _audio_retry_clause(plan: dict) -> str:
-    attempt = int(plan.get("audio_retry_attempt", 0) or 0)
-    feedback = str(plan.get("audio_retry_feedback", "")).strip()
-    if attempt <= 0:
-        return ""
-    clause = f"Rewrite attempt {attempt + 1}. Regenerate from scratch with fresher lines and clearer section separation. "
-    if feedback:
-        clause += f"Previous issue: {feedback}. "
-    return clause

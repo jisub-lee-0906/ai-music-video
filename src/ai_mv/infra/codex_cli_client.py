@@ -94,7 +94,7 @@ def _generate_once(config: dict, prompt: str, schema: dict) -> dict:
 def _generate_text_once(config: dict, prompt: str) -> str:
     cmd = _codex_command_parts(config)
     model = _codex_model(config)
-    timeout = _codex_timeout(config)
+    timeout = _codex_text_timeout(config)
     args = cmd + [
         "exec",
         "--skip-git-repo-check",
@@ -262,4 +262,16 @@ def _codex_timeout(config: dict) -> int | None:
         value = int(raw)
     except Exception:
         return None
+    return None if value <= 0 else max(10, value)
+
+
+def _codex_text_timeout(config: dict) -> int | None:
+    integ = config.get("integrations", {}) if isinstance(config, dict) else {}
+    raw = integ.get("codex_timeout_text_sec", None) if isinstance(integ, dict) else None
+    if raw is None or str(raw).strip() == "":
+        return _codex_timeout(config)
+    try:
+        value = int(raw)
+    except Exception:
+        return _codex_timeout(config)
     return None if value <= 0 else max(10, value)

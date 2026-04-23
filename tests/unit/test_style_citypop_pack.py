@@ -52,6 +52,8 @@ def test_citypop_prompting_builds_seed_from_style_pack_helpers():
     assert "scene event:" not in seed
     assert "performance-led singer in a three-quarter medium frame with neon reflections" in seed
     assert "close-up of a singer facing the camera" not in seed
+    assert "cinematic live-action lighting" in seed
+    assert "cinematic illustration lighting" not in seed
 
 
 def test_citypop_prompting_supports_expressive_continuity_mode():
@@ -78,6 +80,9 @@ def test_citypop_prompting_builds_draft_from_style_pack_helpers():
     assert "no layered collage" in draft
     assert "tight portrait close-up" in draft
     assert "film grain" in draft
+    assert "photoreal live-action lighting" in draft
+    assert "natural skin texture" in draft
+    assert "soft reflective portrait styling" not in draft
 
 
 def test_citypop_prompt_draft_keeps_chorus_performance_out_of_front_facing_closeup_default():
@@ -140,6 +145,25 @@ def test_citypop_prompt_seed_keeps_release_wide_environment_first_without_droppi
     assert "rainy neon skyline boulevard at dusk" in seed
     assert "one anchored figure under the skyline glow" in seed
     assert seed.index("rainy neon skyline boulevard at dusk") < seed.index("one anchored figure under the skyline glow")
+
+
+def test_citypop_prompt_seed_threads_explicit_protagonist_and_world_anchors_into_every_shot():
+    seed = build_citypop_prompt_seed(
+        "late-night city pop walk under wet neon lights",
+        get_citypop_bible(),
+        {
+            "section_name": "Verse 1",
+            "shot_role": "verse_setup",
+            "visual_mode": "night_drive",
+            "protagonist_anchor": "same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders",
+            "world_anchor": "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage",
+        },
+    )
+
+    assert "same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders" in seed
+    assert "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage" in seed
+    assert seed.index("same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders") < seed.index("same protagonist driver with reflected night light and steady expression")
+    assert "young woman driver" not in seed
 
 
 def test_citypop_prompt_seed_uses_world_first_intro_family_without_empty_canvas_language():

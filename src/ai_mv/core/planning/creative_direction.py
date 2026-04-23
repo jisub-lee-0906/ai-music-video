@@ -20,6 +20,8 @@ def build_creative_direction(*, concept_text: str, style_name: str, sections: li
         "bridge_intent": _bridge_intent(text=text),
         "continuity_mode": normalized_continuity_mode,
         "continuity_rules": _continuity_rules(style_name=style_name, continuity_mode=normalized_continuity_mode),
+        "protagonist_anchor": _protagonist_anchor(text=text, style_name=style_name),
+        "world_anchor": _world_anchor(text=text, style_name=style_name),
         "style_lane": str(style_name).strip(),
         "section_count": len(sections),
     }
@@ -65,6 +67,22 @@ def _bridge_intent(*, text: str) -> str:
     if "lonely" in text:
         return "use the bridge to turn inward before returning to the main release"
     return "use the bridge as a contrast beat before the final payoff"
+
+
+def _protagonist_anchor(*, text: str, style_name: str) -> str:
+    if style_name == "synthwave":
+        return "same lone neon-night protagonist, stable dark outerwear silhouette, no competing bystanders"
+    if any(token in text for token in ("walk", "wet", "neon", "late-night")):
+        return "same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders"
+    return "same lone protagonist, stable silhouette, no competing bystanders"
+
+
+def _world_anchor(*, text: str, style_name: str) -> str:
+    if style_name == "synthwave":
+        return "same neon-night boulevard world, reflective pavement, glowing urban signage"
+    if any(token in text for token in ("wet", "neon", "city", "late-night")):
+        return "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage"
+    return "same coherent night-city world, readable street depth, stable urban lighting"
 
 
 def _continuity_rules(*, style_name: str, continuity_mode: str) -> list[str]:

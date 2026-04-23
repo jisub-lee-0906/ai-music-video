@@ -89,7 +89,7 @@ def _still_prompt_text(render_item: dict) -> str:
         value = str(render_item.get(key, "")).strip()
         if value:
             return value
-    return "cinematic still image, neon-lit night street, cinematic mood, bittersweet atmosphere"
+    return "photoreal live-action still frame, neon-lit night street, cinematic mood, bittersweet atmosphere"
 
 
 def _single_keyframe_prompt_text(prompt_text: str) -> str:
@@ -97,7 +97,7 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
     if _should_use_soft_single_scene_constraint(base):
         return _soft_single_scene_constraint_prompt_text(base)
     constraints = [
-        "cinematic still image",
+        "photoreal live-action still frame",
         "single cinematic keyframe",
         "single continuous scene",
         "one camera shot",
@@ -105,6 +105,8 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
         "full-bleed frame",
         "continuous background perspective",
         "subject integrated into the environment",
+        "natural skin texture",
+        "physically plausible neon reflections",
         "reflections within the same shot",
         "diegetic reflections only",
         "no inset portrait",
@@ -114,6 +116,8 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
         "no collage",
         "no split screen",
         "no text",
+        "not anime-stylized",
+        "not illustrated",
     ]
     tokens: list[str] = []
     for block in [base, *constraints]:
@@ -126,7 +130,7 @@ def _single_keyframe_prompt_text(prompt_text: str) -> str:
 def _soft_single_scene_constraint_prompt_text(prompt_text: str) -> str:
     base = str(prompt_text).strip()
     suffix = (
-        "Render it as one clean cinematic still image in a single continuous scene, "
+        "Render it as one clean photoreal live-action still frame in a single continuous scene, "
         "with the subject integrated into the environment and no inset frame, collage, or split screen."
     )
     return f"{base} {suffix}".strip()

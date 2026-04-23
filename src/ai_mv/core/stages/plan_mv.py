@@ -33,6 +33,8 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
         continuity_mode=continuity_mode,
     )
     shot_plan = build_shot_plan(config, sections, style_name=style_lane)
+    _thread_continuity_anchor_bundle(shot_plan, creative_direction)
+    _thread_shot_relation_contracts(shot_plan)
     material_plan = build_material_plan(style_lane, shot_plan)
     render_plan = [build_render_item(config, concept_text, style_lane, style_bible, shot) for shot in shot_plan]
     return {
@@ -105,3 +107,76 @@ def _mode_hint_for_shot(shot: dict) -> str:
     if section_type == "intro":
         return "anchor"
     return "general_narrative"
+
+
+def _thread_continuity_anchor_bundle(shot_plan: list[dict], creative_direction: dict) -> None:
+    protagonist_anchor = str(creative_direction.get("protagonist_anchor", "")).strip() if isinstance(creative_direction, dict) else ""
+    world_anchor = str(creative_direction.get("world_anchor", "")).strip() if isinstance(creative_direction, dict) else ""
+    for shot in shot_plan:
+        if not isinstance(shot, dict):
+            continue
+        if protagonist_anchor:
+            shot["protagonist_anchor"] = protagonist_anchor
+        if world_anchor:
+            shot["world_anchor"] = world_anchor
+        shot["continuity_contract"] = {
+            "protagonist_anchor": protagonist_anchor,
+            "world_anchor": world_anchor,
+            "wardrobe_anchor": "stable dark outerwear silhouette",
+            "no_competing_subjects": True,
+            "time_band_anchor": "same night time band",
+        }
+
+
+
+def _thread_shot_relation_contracts(shot_plan: list[dict]) -> None:
+    previous_shot: dict | None = None
+    for shot in shot_plan:
+        if not isinstance(shot, dict):
+            continue
+        if previous_shot is None:
+            shot["shot_relation_contract"] = {
+                "relation_to_previous_shot": "sequence opener",
+                "camera_distance_progression": "set baseline distance",
+                "same_block_vs_new_block": "same block baseline",
+                "emotional_delta": "establish lonely night-world baseline",
+            }
+        else:
+            shot["shot_relation_contract"] = {
+                "relation_to_previous_shot": "continue same protagonist and world from previous shot",
+                "camera_distance_progression": _camera_distance_progression(shot),
+                "same_block_vs_new_block": _same_block_vs_new_block(shot, previous_shot),
+                "emotional_delta": _emotional_delta(shot),
+            }
+        previous_shot = shot
+
+
+
+def _camera_distance_progression(shot: dict) -> str:
+    framing_intent = str(shot.get("framing_intent", "")).strip()
+    return {
+        "establishing_wide": "hold or widen from previous shot",
+        "hero_medium": "move closer than previous shot",
+        "connective_medium": "shift laterally while keeping distance readable",
+        "performance_medium": "move into performance distance",
+        "release_wide": "step wider for release",
+    }.get(framing_intent, "adjust distance without breaking continuity")
+
+
+
+def _same_block_vs_new_block(current_shot: dict, previous_shot: dict) -> str:
+    current_section = str(current_shot.get("section_type", "")).strip()
+    previous_section = str(previous_shot.get("section_type", "")).strip()
+    if current_section == previous_section:
+        return "same block, new angle"
+    return "same block, evolved staging"
+
+
+
+def _emotional_delta(shot: dict) -> str:
+    section_type = str(shot.get("section_type", "")).strip().lower()
+    return {
+        "chorus": "open into hook release without changing world",
+        "bridge": "turn inward without changing world",
+        "outro": "resolve into afterglow on the same block",
+    }.get(section_type, "increase intimacy without changing world")

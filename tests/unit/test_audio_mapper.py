@@ -37,3 +37,22 @@ def test_map_audio_workflow_preserves_explicit_supported_language():
     )
 
     assert out["node.inputs"][audio_mapper.AUDIO_TEXT]["language"] == "ko"
+
+
+def test_map_audio_workflow_targets_current_checkpoint_workflow_save_node():
+    out = audio_mapper.map_audio_workflow(
+        {},
+        {
+            "genre_description": "City Pop: glossy synths and warm live drums.",
+            "lyrics": "late night signs glow",
+            "seed": 7,
+            "bpm": 108,
+            "duration": 120,
+            "language": "en",
+            "filename_prefix": "audio/run-7",
+            "quality": "V0",
+        },
+    )
+
+    assert out["node.inputs"][audio_mapper.AUDIO_SAVE]["filename_prefix"] == "audio/run-7"
+    assert out["node.inputs"][audio_mapper.AUDIO_SAVE]["quality"] == "V0"

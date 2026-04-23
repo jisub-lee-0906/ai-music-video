@@ -22,11 +22,13 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     prompt_draft = build_prompt_draft(style_name, shot)
     prompt_polish = polish_prompt(prompt_seed, prompt_draft)
     render_mode = str(shot["render_mode"]).strip()
+    continuity_contract = build_continuity_contract(shot)
+    shot_relation_contract = build_shot_relation_contract(shot)
     variation_seed = _variation_seed_for_shot(shot)
     variation_profile = build_variation_profile(variation_seed, shot)
-    still_prompt_text = build_still_prompt_text(prompt_seed, prompt_draft, prompt_polish, variation_profile)
-    clip_prompt_seed = build_clip_prompt_seed(render_mode, shot, prompt_seed, variation_profile)
-    clip_positive_prompt = build_clip_positive_prompt(render_mode, shot, clip_prompt_seed, variation_profile)
+    still_prompt_text = build_still_prompt_text(prompt_seed, prompt_draft, prompt_polish, variation_profile, shot_relation_contract)
+    clip_prompt_seed = build_clip_prompt_seed(render_mode, shot, prompt_seed, variation_profile, shot_relation_contract)
+    clip_positive_prompt = build_clip_positive_prompt(render_mode, shot, clip_prompt_seed, variation_profile, shot_relation_contract)
     edit_intent = build_edit_intent(shot, variation_profile)
     render_count = calculate_render_count(float(shot.get("duration_sec", 0.0) or 0.0))
     render_planning = build_render_planning(style_name, shot)
@@ -41,6 +43,8 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         "seed": _render_seed_for_shot(shot),
         "variation_seed": variation_seed,
         "variation_profile": variation_profile,
+        "continuity_contract": continuity_contract,
+        "shot_relation_contract": shot_relation_contract,
         "prompt_seed": prompt_seed,
         "prompt_draft": prompt_draft,
         "prompt_polish": prompt_polish,
@@ -69,24 +73,40 @@ def build_prompt_draft(style_name: str, shot: dict) -> str:
 
 
 
-def build_still_prompt_text(prompt_seed: str, prompt_draft: str, prompt_polish: str, variation_profile: dict | None = None) -> str:
+def build_still_prompt_text(
+    prompt_seed: str,
+    prompt_draft: str,
+    prompt_polish: str,
+    variation_profile: dict | None = None,
+    shot_relation_contract: dict | None = None,
+) -> str:
     base = str(prompt_polish or prompt_draft or prompt_seed).strip()
     variation = variation_profile if isinstance(variation_profile, dict) else {}
+    relation = shot_relation_contract if isinstance(shot_relation_contract, dict) else {}
     return _join_prompt_tokens(
         [
             base,
             _framing_variant_token(str(variation.get("framing_variant", "")).strip()),
             _environment_variant_token(str(variation.get("environment_variant", "")).strip()),
             _section_emphasis_variant_token(str(variation.get("section_emphasis_variant", "")).strip()),
+            str(relation.get("camera_distance_progression", "")).strip(),
+            str(relation.get("same_block_vs_new_block", "")).strip(),
         ]
     )
 
 
 
-def build_clip_prompt_seed(render_mode: str, shot: dict, prompt_seed: str, variation_profile: dict | None = None) -> str:
+def build_clip_prompt_seed(
+    render_mode: str,
+    shot: dict,
+    prompt_seed: str,
+    variation_profile: dict | None = None,
+    shot_relation_contract: dict | None = None,
+) -> str:
     role = str(shot.get("shot_role", "")).replace("_", " ").strip()
     visual_mode = str(shot.get("visual_mode", "")).replace("_", " ").strip()
     variation = variation_profile if isinstance(variation_profile, dict) else {}
+    relation = shot_relation_contract if isinstance(shot_relation_contract, dict) else {}
     seed_prefix = str(prompt_seed or "").split(",")[0].strip()
     return _join_prompt_tokens(
         [
@@ -96,13 +116,21 @@ def build_clip_prompt_seed(render_mode: str, shot: dict, prompt_seed: str, varia
             _motion_variant_token(str(variation.get("motion_variant", "")).strip()),
             _continuity_variant_token(str(variation.get("continuity_variant", "")).strip()),
             _section_emphasis_clip_token(str(variation.get("section_emphasis_variant", "")).strip()),
+            str(relation.get("relation_to_previous_shot", "")).strip(),
         ]
     )
 
 
 
-def build_clip_positive_prompt(render_mode: str, shot: dict, clip_prompt_seed: str, variation_profile: dict | None = None) -> str:
+def build_clip_positive_prompt(
+    render_mode: str,
+    shot: dict,
+    clip_prompt_seed: str,
+    variation_profile: dict | None = None,
+    shot_relation_contract: dict | None = None,
+) -> str:
     variation = variation_profile if isinstance(variation_profile, dict) else {}
+    relation = shot_relation_contract if isinstance(shot_relation_contract, dict) else {}
     framing_variant = _clip_framing_variant(shot, str(variation.get("framing_variant", "")).strip())
     return _join_prompt_tokens(
         [
@@ -110,8 +138,60 @@ def build_clip_positive_prompt(render_mode: str, shot: dict, clip_prompt_seed: s
             _continuity_identity_token(str(variation.get("continuity_variant", "")).strip()),
             _framing_camera_token(framing_variant),
             _environment_motion_token(str(variation.get("environment_variant", "")).strip()),
+            str(relation.get("same_block_vs_new_block", "")).strip(),
+            str(relation.get("emotional_delta", "")).strip(),
         ]
     )
+
+
+
+def build_continuity_contract(shot: dict) -> dict:
+    return {
+        "protagonist_anchor": str(shot.get("protagonist_anchor", "")).strip(),
+        "world_anchor": str(shot.get("world_anchor", "")).strip(),
+        "wardrobe_anchor": _wardrobe_anchor(shot),
+        "no_competing_subjects": True,
+        "time_band_anchor": "same night time band",
+    }
+
+
+
+def build_shot_relation_contract(shot: dict) -> dict:
+    explicit = shot.get("shot_relation_contract") if isinstance(shot.get("shot_relation_contract"), dict) else {}
+    if explicit:
+        return {
+            "relation_to_previous_shot": str(explicit.get("relation_to_previous_shot", "")).strip(),
+            "camera_distance_progression": str(explicit.get("camera_distance_progression", "")).strip(),
+            "same_block_vs_new_block": str(explicit.get("same_block_vs_new_block", "")).strip(),
+            "emotional_delta": str(explicit.get("emotional_delta", "")).strip(),
+        }
+    section_type = str(shot.get("section_type", "")).strip().lower()
+    framing_intent = str(shot.get("framing_intent", "")).strip()
+    if section_type == "intro":
+        return {
+            "relation_to_previous_shot": "sequence opener",
+            "camera_distance_progression": "set baseline distance",
+            "same_block_vs_new_block": "same block baseline",
+            "emotional_delta": "establish lonely night-world baseline",
+        }
+    progression = {
+        "establishing_wide": "hold or widen from previous shot",
+        "hero_medium": "move closer than previous shot",
+        "connective_medium": "shift laterally while keeping distance readable",
+        "performance_medium": "move into performance distance",
+        "release_wide": "step wider for release",
+    }.get(framing_intent, "adjust distance without breaking continuity")
+    emotional = {
+        "chorus": "open into hook release without changing world",
+        "bridge": "turn inward without changing world",
+        "outro": "resolve into afterglow on the same block",
+    }.get(section_type, "increase intimacy without changing world")
+    return {
+        "relation_to_previous_shot": "continue same protagonist and world from previous shot",
+        "camera_distance_progression": progression,
+        "same_block_vs_new_block": "same block, new angle",
+        "emotional_delta": emotional,
+    }
 
 
 
@@ -337,6 +417,18 @@ def _section_emphasis_variant(section_type: str, energy: str, seed: int) -> str:
     if normalized_energy == "high":
         return _pick_variant(seed, ["forward_drive", "cinematic_push", "contained_intensity"])
     return _pick_variant(seed, ["sequence_support", "observational_flow", "ambient_progression"])
+
+
+
+def _wardrobe_anchor(shot: dict) -> str:
+    continuity = shot.get("continuity_contract") if isinstance(shot.get("continuity_contract"), dict) else {}
+    explicit = str(continuity.get("wardrobe_anchor", "")).strip()
+    if explicit:
+        return explicit
+    protagonist_anchor = str(shot.get("protagonist_anchor", "")).strip().lower()
+    if "dark outerwear silhouette" in protagonist_anchor:
+        return "stable dark outerwear silhouette"
+    return "stable signature silhouette"
 
 
 

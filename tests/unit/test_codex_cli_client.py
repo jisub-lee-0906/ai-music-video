@@ -111,3 +111,51 @@ def test_load_output_accepts_valid_json(tmp_path: Path):
     path.write_text(json.dumps(data), encoding="utf-8")
     out = codex_cli_client._load_output(path)
     assert out == data
+
+
+def test_generate_text_uses_text_specific_timeout_when_configured(monkeypatch):
+    captured = {}
+
+    def _fake_run(*args, **kwargs):
+        captured["timeout"] = kwargs.get("timeout")
+
+        class Result:
+            returncode = 0
+            stdout = "ok"
+            stderr = ""
+
+        return Result()
+
+    monkeypatch.setattr(codex_cli_client.subprocess, "run", _fake_run)
+
+    out = codex_cli_client.generate_text(
+        {"integrations": {"codex_timeout_structured_sec": 30, "codex_timeout_text_sec": 12}},
+        "prompt",
+    )
+
+    assert out == "ok"
+    assert captured["timeout"] == 12
+
+
+def test_generate_text_falls_back_to_structured_timeout_when_text_timeout_missing(monkeypatch):
+    captured = {}
+
+    def _fake_run(*args, **kwargs):
+        captured["timeout"] = kwargs.get("timeout")
+
+        class Result:
+            returncode = 0
+            stdout = "ok"
+            stderr = ""
+
+        return Result()
+
+    monkeypatch.setattr(codex_cli_client.subprocess, "run", _fake_run)
+
+    out = codex_cli_client.generate_text(
+        {"integrations": {"codex_timeout_structured_sec": 21}},
+        "prompt",
+    )
+
+    assert out == "ok"
+    assert captured["timeout"] == 21

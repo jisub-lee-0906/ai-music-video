@@ -13,6 +13,7 @@ def _audio_outline_prompt(plan: dict) -> str:
         + _target_duration_clause(plan)
         + _target_bpm_clause(plan)
         + f"Planner seed={int(plan.get('seed', 31))}. This is a planning hint, not the workflow execution seed. "
+        + _audio_retry_clause(plan)
         + _language_clause(plan)
         + _intent_clause(plan)
         + _outline_label_clause(plan)
@@ -127,7 +128,11 @@ def _language_style_rules(plan: dict) -> str:
             "Avoid Korean-style direct confession, overpacked literary metaphor, and awkward slogan-like hooks. "
         )
     if lang == "ko":
-        return "Write fluent modern Korean lyrics later. Keep them short, singable, and direct. "
+        return (
+            "Write fluent modern Korean lyrics later. Keep them short, singable, and direct. "
+            "Every non-empty lyric line must contain readable Hangul words. "
+            "Do not output any English-only lyric lines. "
+        )
     if lang == "en":
         return "Write fluent English lyrics later. Keep them lyric-like, compact, and memorable. "
     return ""
@@ -189,6 +194,29 @@ def _target_duration_clause(plan: dict) -> str:
 def _language_clause(plan: dict) -> str:
     lang = str(plan.get("language", "")).strip().lower()
     return f"Lyrics language={lang}. " if lang else ""
+
+
+def _audio_retry_clause(plan: dict) -> str:
+    attempt = int(plan.get("audio_retry_attempt", 0) or 0)
+    feedback = str(plan.get("audio_retry_feedback", "")).strip()
+    if attempt <= 0:
+        return ""
+    clause = f"Rewrite attempt {attempt + 1}. Regenerate from scratch with fresher lines and clearer section separation. "
+    if feedback:
+        clause += f"Previous issue: {feedback}. "
+    lowered = feedback.lower()
+    if "expected readable korean lines" in lowered:
+        clause += (
+            "Every non-empty lyric line must contain readable Hangul words. "
+            "Do not output any English-only lyric lines. "
+            "Keep any English to at most one very short hook fragment inside the chorus family. "
+        )
+    elif "leaked too much english" in lowered:
+        clause += (
+            "Reduce English sharply. "
+            "Keep any English to at most one very short hook fragment inside the chorus family. "
+        )
+    return clause
 
 
 def _intent_clause(
