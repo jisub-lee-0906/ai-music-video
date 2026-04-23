@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -23,9 +24,9 @@ def apply_wsl_runtime_overrides(config: dict) -> dict:
     elif gateway and _needs_wsl_base_url_override(base_url):
         integrations["comfyui_base_url"] = f"http://{gateway}:8000"
 
-    explicit_input = str(os.getenv("AI_MV_COMFY_INPUT_DIR") or "").strip()
-    explicit_output = str(os.getenv("AI_MV_COMFY_OUTPUT_DIR") or "").strip()
-    explicit_codex = str(os.getenv("AI_MV_CODEX_BIN") or "").strip()
+    explicit_input = str(os.getenv("AI_MV_COMFY_INPUT_DIR") or _default_wsl_comfy_input_dir() or "").strip()
+    explicit_output = str(os.getenv("AI_MV_COMFY_OUTPUT_DIR") or _default_wsl_comfy_output_dir() or "").strip()
+    explicit_codex = str(os.getenv("AI_MV_CODEX_BIN") or _default_wsl_codex_bin() or "").strip()
 
     if explicit_input and _needs_wsl_path_override(str(integrations.get("comfyui_input_dir") or "")):
         integrations["comfyui_input_dir"] = explicit_input
@@ -99,6 +100,45 @@ def _is_windows_path(raw: str) -> bool:
     if len(value) >= 3 and value[1] == ":" and value[2] in {"/", "\\"}:
         return True
     return value.startswith("\\\\")
+
+
+def _default_wsl_comfy_input_dir() -> str | None:
+    return _discover_wsl_comfy_dir("input")
+
+
+
+def _default_wsl_comfy_output_dir() -> str | None:
+    return _discover_wsl_comfy_dir("output")
+
+
+
+def _discover_wsl_comfy_dir(kind: str, users_root: Path | None = None) -> str | None:
+    root = users_root or Path("/mnt/c/Users")
+    if not root.is_dir():
+        return None
+    normalized_kind = str(kind).strip().lower()
+    if normalized_kind not in {"input", "output"}:
+        return None
+    for user_dir in sorted((path for path in root.iterdir() if path.is_dir()), key=lambda path: path.name.lower()):
+        candidate = user_dir / "Documents" / "ComfyUI" / normalized_kind
+        if candidate.is_dir():
+            return str(candidate)
+    return None
+
+
+
+def _default_wsl_codex_bin() -> str | None:
+    home_fallback = str((Path.home() / ".hermes" / "node" / "bin" / "codex")).strip()
+    for raw in (
+        os.getenv("AI_MV_CODEX_BIN"),
+        shutil.which("codex"),
+        home_fallback,
+    ):
+        candidate = str(raw or "").strip()
+        if candidate and Path(candidate).is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
 
 
 def _wsl_windows_gateway_host() -> str | None:

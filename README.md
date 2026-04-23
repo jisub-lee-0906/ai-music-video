@@ -98,11 +98,11 @@ Important:
 
 ## WSL Usage
 
-If you run the repo from WSL while ComfyUI stays on Windows, prefer the WSL wrapper scripts instead of the default CLI commands. The wrappers inject WSL-safe values for the ComfyUI host, mounted input/output directories, and Codex path.
+If you run the repo from WSL while ComfyUI stays on Windows, the core CLI now auto-detects the WSL gateway, default mounted ComfyUI input/output directories, and a local Codex binary when those integrations are still blank or Windows-oriented in config. The wrapper scripts remain the easiest smoke-run path because they also enable the short smoke envelope, but they are now convenience wrappers rather than the only safe way to launch the CLI.
 
-### First successful WSL run target
+### Recommended WSL entrypoints
 
-Use this as the initial success envelope:
+For the shortest first-run path, keep using:
 - concept-text driven run only
 - target music duration: 15–20 seconds
 - ia2v-centered canonical path enabled

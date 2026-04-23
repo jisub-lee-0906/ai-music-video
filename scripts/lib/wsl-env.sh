@@ -22,8 +22,8 @@ ai_mv_detect_gateway_host() {
 ai_mv_detect_codex_bin() {
   local codex_bin
   codex_bin="$(command -v codex || true)"
-  if [ -z "$codex_bin" ] && [ -x "/home/jisub-lee/.hermes/node/bin/codex" ]; then
-    codex_bin="/home/jisub-lee/.hermes/node/bin/codex"
+  if [ -z "$codex_bin" ] && [ -x "$HOME/.hermes/node/bin/codex" ]; then
+    codex_bin="$HOME/.hermes/node/bin/codex"
   fi
   printf '%s\n' "$codex_bin"
 }
