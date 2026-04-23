@@ -36,4 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
     review_packet.add_argument("--kind", choices=("clip", "final"), default="clip")
     review_packet.add_argument("--sample-count", dest="sample_count", type=int, default=6)
     review_packet.add_argument("--shot-id", dest="shot_ids", action="append", default=[])
+
+    validate_latest = sub.add_parser("validate-latest")
+    validate_latest.add_argument("--output-dir", dest="output_dir", required=True)
+    validate_latest.add_argument("--sample-count", dest="sample_count", type=int, default=8)
+    validate_latest.add_argument("--shot-id", dest="shot_ids", action="append", default=[])
     return parser

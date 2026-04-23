@@ -62,6 +62,8 @@ ai-mv extract-frames --video <final_video_path_from_manifest> --output-dir .anal
 ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json
 ai-mv review-packet --video <final_video_path_from_manifest> --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002
 # packet now includes review-packet.json, review-findings.json, review-notes.md, and contact-sheet.json
+ai-mv validate-latest --output-dir .analysis/latest-validation --sample-count 8
+# validate-latest reads artifacts/latest_success/manifest.json, extracts final frames, builds a review packet, and writes validation-summary.json
 ```
 
 ## Artifact contract

@@ -77,6 +77,29 @@ def test_build_parser_supports_review_packet_command():
     assert args.shot_ids == ["S001", "S002"]
 
 
+
+def test_build_parser_supports_validate_latest_command():
+    parser = build_parser()
+
+    args = parser.parse_args(
+        [
+            "validate-latest",
+            "--output-dir",
+            ".analysis/latest-validation",
+            "--sample-count",
+            "8",
+            "--shot-id",
+            "S001",
+        ]
+    )
+
+    assert args.command == "validate-latest"
+    assert args.output_dir == ".analysis/latest-validation"
+    assert args.sample_count == 8
+    assert args.shot_ids == ["S001"]
+
+
+
 def test_main_handles_dispatch_error(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["ai-mv", "start", "--run-id", "bad/run-id"])
 

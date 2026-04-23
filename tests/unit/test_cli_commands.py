@@ -1,6 +1,8 @@
 from ai_mv.cli.commands import dispatch
 
 
+
+
 def test_dispatch_routes_extract_frames_command(monkeypatch):
     calls = []
     monkeypatch.setattr(
@@ -55,3 +57,22 @@ def test_dispatch_routes_review_packet_command(monkeypatch):
 
     assert rc == 0
     assert calls == [("renders/final.mp4", ".analysis/run-1", "final", 8, ["S001", "S002"])]
+
+
+
+def test_dispatch_routes_validate_latest_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "ai_mv.cli.commands.run_validate_latest",
+        lambda output_dir, sample_count, shot_ids: calls.append((output_dir, sample_count, shot_ids)) or 0,
+    )
+
+    rc = dispatch(
+        "validate-latest",
+        output_dir=".analysis/latest-validation",
+        sample_count=8,
+        shot_ids=["S001"],
+    )
+
+    assert rc == 0
+    assert calls == [('.analysis/latest-validation', 8, ['S001'])]

@@ -7,6 +7,7 @@ from ai_mv.entrypoints.quality_findings_template import run_quality_findings_tem
 from ai_mv.entrypoints.review_packet import run_review_packet
 from ai_mv.entrypoints.start import run_start
 from ai_mv.entrypoints.status import show_status
+from ai_mv.entrypoints.validate_latest import run_validate_latest
 
 
 def dispatch(command: str, **kwargs: str) -> int:
@@ -24,4 +25,6 @@ def dispatch(command: str, **kwargs: str) -> int:
         return run_quality_findings_template(kwargs.get("shot_ids", []), kwargs["output"])
     if command == "review-packet":
         return run_review_packet(kwargs["video"], kwargs["output_dir"], kwargs.get("kind", "clip"), int(kwargs.get("sample_count", 6) or 6), kwargs.get("shot_ids", []))
+    if command == "validate-latest":
+        return run_validate_latest(kwargs["output_dir"], int(kwargs.get("sample_count", 8) or 8), kwargs.get("shot_ids", []))
     raise ValueError(f"Unsupported command: {command}")

@@ -13,6 +13,7 @@ def test_parser_has_clean_commands():
     assert "start" in names
     assert "preflight" in names
     assert "doctor" in names
+    assert "validate-latest" in names
 
 
 
