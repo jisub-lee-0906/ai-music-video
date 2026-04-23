@@ -1032,6 +1032,123 @@ def test_review_models_lower_final_mv_quality_score_for_manual_payoff_failures()
 
 
 
+def test_review_models_backfill_rerender_bundle_provenance_from_legacy_manifest_shot_context():
+    report = build_review_report(
+        planned_shot_ids=["S004", "S006"],
+        still_results=[{"shot_id": "S004"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S004"}, {"shot_id": "S006"}],
+        still_status={"S004": True, "S006": True},
+        clip_status={"S004": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S004", "S006"],
+        rerender_reasons={
+            "S004": ["weak_character_payoff", "background_dominant_composition"],
+            "S006": ["weak_character_payoff", "background_dominant_composition"],
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[
+            {"shot_id": "S004", "section_name": "Verse 2->Bridge", "source_section_index": 5},
+            {"shot_id": "S006", "section_name": "Outro", "source_section_index": 8},
+        ],
+        render_plan=[{"shot_id": "S004"}, {"shot_id": "S006"}],
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "rerender_character_payoff_shots",
+        "target_shots": ["S004", "S006"],
+        "target_material_ids": ["MAT_001", "MAT_002"],
+        "target_section_ids": ["SEC_001", "SEC_002"],
+        "reason_codes": ["background_dominant_composition", "weak_character_payoff"],
+    }
+
+
+
+def test_review_models_prefer_explicit_rerender_bundle_provenance_over_legacy_manifest_backfill():
+    report = build_review_report(
+        planned_shot_ids=["S004"],
+        still_results=[{"shot_id": "S004", "material_id": "MAT_777", "section_id": "SEC_777"}],
+        clip_results=[{"shot_id": "S004"}],
+        still_status={"S004": True},
+        clip_status={"S004": True},
+        final_video_exists=True,
+        rerender_targets=["S004"],
+        rerender_reasons={"S004": ["weak_character_payoff", "background_dominant_composition"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[{"shot_id": "S004", "section_name": "Verse 2->Bridge", "source_section_index": 5}],
+        render_plan=[{"shot_id": "S004"}],
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "rerender_character_payoff_shots",
+        "target_shots": ["S004"],
+        "target_material_ids": ["MAT_777"],
+        "target_section_ids": ["SEC_777"],
+        "reason_codes": ["background_dominant_composition", "weak_character_payoff"],
+    }
+
+
+
+def test_review_models_preserve_sparse_live_manifest_order_when_backfilling_rerender_bundle_provenance():
+    shot_plan = [
+        {"shot_id": "S001", "section_name": "Intro->Verse 1", "source_section_index": 1},
+        {"shot_id": "S002", "section_name": "Pre-Chorus", "source_section_index": 3},
+        {"shot_id": "S003", "section_name": "Chorus", "source_section_index": 4},
+        {"shot_id": "S004", "section_name": "Verse 2->Bridge", "source_section_index": 5},
+        {"shot_id": "S005", "section_name": "Final Chorus", "source_section_index": 7},
+        {"shot_id": "S006", "section_name": "Outro", "source_section_index": 8},
+    ]
+    report = build_review_report(
+        planned_shot_ids=[row["shot_id"] for row in shot_plan],
+        still_results=[{"shot_id": row["shot_id"]} for row in shot_plan],
+        clip_results=[{"shot_id": row["shot_id"]} for row in shot_plan],
+        still_status={row["shot_id"]: True for row in shot_plan},
+        clip_status={row["shot_id"]: True for row in shot_plan},
+        final_video_exists=True,
+        rerender_targets=["S001", "S004", "S006"],
+        rerender_reasons={
+            "S001": ["weak_character_payoff", "background_dominant_composition"],
+            "S004": ["weak_character_payoff", "background_dominant_composition"],
+            "S006": ["weak_character_payoff", "background_dominant_composition"],
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=shot_plan,
+        render_plan=[{"shot_id": row["shot_id"]} for row in shot_plan],
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "rerender_character_payoff_shots",
+        "target_shots": ["S001", "S004", "S006"],
+        "target_material_ids": ["MAT_001", "MAT_004", "MAT_006"],
+        "target_section_ids": ["SEC_001", "SEC_004", "SEC_006"],
+        "reason_codes": ["background_dominant_composition", "weak_character_payoff"],
+    }
+
+
+
 def test_review_models_leave_rerender_plan_empty_when_no_targets():
     report = build_review_report(
         planned_shot_ids=["S001"],

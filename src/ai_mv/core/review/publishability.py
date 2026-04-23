@@ -393,6 +393,7 @@ def _build_rerender_context_by_shot(
         for row in shot_plan
         if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
     }
+    legacy_provenance_by_shot = _build_legacy_manifest_provenance_by_shot(shot_plan)
     render_map = {
         str(row.get("shot_id", "")).strip(): row
         for row in render_plan
@@ -432,13 +433,45 @@ def _build_rerender_context_by_shot(
             or render_row.get("section_id")
             or shot_row.get("section_id")
             or material_section_by_id.get(material_id, "")
+            or legacy_provenance_by_shot.get(shot_id, {}).get("section_id", "")
             or ""
         ).strip()
+        if not material_id:
+            material_id = str(legacy_provenance_by_shot.get(shot_id, {}).get("material_id", "")).strip()
         out[shot_id] = {
             "material_id": material_id,
             "section_id": section_id,
         }
     return out
+
+
+def _build_legacy_manifest_provenance_by_shot(shot_plan: list[dict]) -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    for idx, row in enumerate(shot_plan, start=1):
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        if not shot_id or not _has_legacy_manifest_section_context(row):
+            continue
+        out[shot_id] = {
+            "material_id": f"MAT_{idx:03d}",
+            "section_id": str(row.get("section_id", "")).strip() or f"SEC_{idx:03d}",
+        }
+    return out
+
+
+
+def _has_legacy_manifest_section_context(row: dict) -> bool:
+    return bool(str(row.get("section_name", "")).strip() or _int_like(row.get("source_section_index")) is not None)
+
+
+
+def _int_like(value: object) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
 
 
 def _rerender_prescription(action_name: str, reason_codes: list[str] | None = None) -> dict[str, object]:
