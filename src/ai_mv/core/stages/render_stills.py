@@ -36,7 +36,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
         render_count = _render_count(render_item)
-        candidate_images: list[str] = []
+        candidate_results: list[dict] = []
         for retry in range(render_count):
             item = {
                 "shot_id": shot_id,
@@ -50,13 +50,20 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
                 item["seed"] = seed + retry
             if previous_image and str(render_item.get("reference_mode", "")).strip() == "reuse_prior_still":
                 item["reference_image"] = previous_image
-            candidate_images.append(
-                run_flux2_still(
-                    stage_input.config,
-                    item,
-                )
+            image_path = run_flux2_still(
+                stage_input.config,
+                item,
             )
-        image_path = candidate_images[0]
+            candidate_results.append(
+                {
+                    "image": image_path,
+                    "retry": retry,
+                    "seed": item.get("seed"),
+                }
+            )
+        selected_candidate, selected_candidate_index, selection_policy = _select_still_candidate(candidate_results, render_item)
+        candidate_images = [str(row.get("image", "")).strip() for row in candidate_results]
+        image_path = str(selected_candidate.get("image", "")).strip()
         still_results.append(
             {
                 "shot_id": shot_id,
@@ -65,6 +72,10 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
                 "image": image_path,
                 "candidate_images": candidate_images,
                 "candidate_count": len(candidate_images),
+                "candidate_results": candidate_results,
+                "selected_candidate": dict(selected_candidate),
+                "selected_candidate_index": selected_candidate_index,
+                "selection_policy": selection_policy,
                 "prompt_seed": str(render_item.get("prompt_seed", "")).strip(),
                 "prompt_text": prompt_text,
                 "status": "done",
@@ -167,6 +178,21 @@ def _render_count(render_item: dict) -> int:
     except Exception:
         return 1
     return max(1, render_count)
+
+
+
+def _select_still_candidate(candidate_results: list[dict], render_item: dict) -> tuple[dict, int, str]:
+    candidates = [row for row in candidate_results if isinstance(row, dict) and str(row.get("image", "")).strip()]
+    if not candidates:
+        return {"image": "", "retry": 0, "seed": None}, 0, "first_candidate"
+    explicit_index = render_item.get("still_selection_index") if isinstance(render_item, dict) else None
+    try:
+        selected_index = int(explicit_index)
+    except Exception:
+        selected_index = 0
+    if 0 <= selected_index < len(candidates) and explicit_index is not None:
+        return dict(candidates[selected_index]), selected_index, "explicit_index"
+    return dict(candidates[0]), 0, "first_candidate"
 
 
 

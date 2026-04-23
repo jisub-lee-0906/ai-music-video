@@ -939,6 +939,48 @@ def test_render_stills_uses_render_count_for_candidate_exploration(monkeypatch):
         "D:/renders/S010_candidate_2.png",
     ]
     assert out.payload["still_results"][0]["candidate_count"] == 3
+    assert out.payload["still_results"][0]["selected_candidate_index"] == 0
+    assert out.payload["still_results"][0]["selection_policy"] == "first_candidate"
+    assert out.payload["still_results"][0]["selected_candidate"]["image"] == "D:/renders/S010_candidate_0.png"
+
+
+
+def test_render_stills_can_select_non_default_candidate_by_explicit_index(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        retry = int(item.get("retry", 0) or 0)
+        return f"D:/renders/{item['shot_id']}_candidate_{retry}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-render-count-selection",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S011", "material_id": "MAT_011"}],
+            "material_plan": [{"material_id": "MAT_011", "section_id": "SEC_011"}],
+            "render_plan": [
+                {
+                    "shot_id": "S011",
+                    "material_id": "MAT_011",
+                    "prompt_seed": "city pop boulevard",
+                    "render_count": 3,
+                    "seed": 100,
+                    "still_selection_index": 2,
+                }
+            ],
+        },
+    )
+
+    out = run_render_stills(stage_input)
+
+    assert len(calls) == 3
+    assert out.payload["still_results"][0]["image"] == "D:/renders/S011_candidate_2.png"
+    assert out.payload["still_results"][0]["selected_candidate_index"] == 2
+    assert out.payload["still_results"][0]["selection_policy"] == "explicit_index"
+    assert out.payload["still_results"][0]["selected_candidate"]["retry"] == 2
+    assert out.payload["still_results"][0]["selected_candidate"]["seed"] == 102
 
 
 def test_gate_requires_material_plan_for_stills_contract():
