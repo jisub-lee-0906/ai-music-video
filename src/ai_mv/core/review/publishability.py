@@ -574,18 +574,24 @@ def _final_mv_quality_score(
         non_blocking_checks,
     )
     slideshow_risk_score = _assembly_float(assembly_quality_summary, "slideshow_risk_score", 1.0)
+    character_payoff_score = _average_check_score(
+        ("character_payoff_present", "background_dominance_within_threshold"),
+        blocking_checks,
+        non_blocking_checks,
+    )
     has_repetition_signals = all(
         key in assembly_quality_summary
         for key in ("cadence_variety_score", "snap_variety_score", "repetitive_edit_risk_score")
     )
     if not has_repetition_signals:
         score = (
-            0.22 * section_readability_score
-            + 0.20 * chorus_emphasis_score
-            + 0.18 * transition_intentionality_score
-            + 0.15 * continuity_score
-            + 0.15 * lane_identity_score
-            + 0.10 * (1.0 - slideshow_risk_score)
+            0.20 * section_readability_score
+            + 0.18 * chorus_emphasis_score
+            + 0.16 * transition_intentionality_score
+            + 0.14 * continuity_score
+            + 0.12 * lane_identity_score
+            + 0.12 * character_payoff_score
+            + 0.08 * (1.0 - slideshow_risk_score)
         )
         return round(max(0.0, min(1.0, score)) * 100.0, 2)
 
@@ -593,13 +599,14 @@ def _final_mv_quality_score(
     snap_variety_score = _assembly_float(assembly_quality_summary, "snap_variety_score", 1.0)
     repetitive_edit_risk_score = _assembly_float(assembly_quality_summary, "repetitive_edit_risk_score", 0.0)
     score = (
-        0.18 * section_readability_score
-        + 0.18 * chorus_emphasis_score
-        + 0.14 * transition_intentionality_score
-        + 0.12 * cadence_variety_score
-        + 0.08 * snap_variety_score
-        + 0.12 * continuity_score
-        + 0.12 * lane_identity_score
+        0.17 * section_readability_score
+        + 0.16 * chorus_emphasis_score
+        + 0.12 * transition_intentionality_score
+        + 0.11 * cadence_variety_score
+        + 0.07 * snap_variety_score
+        + 0.10 * continuity_score
+        + 0.10 * lane_identity_score
+        + 0.11 * character_payoff_score
         + 0.06 * (1.0 - slideshow_risk_score)
         + 0.10 * (1.0 - repetitive_edit_risk_score)
     )

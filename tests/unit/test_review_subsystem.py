@@ -591,7 +591,7 @@ def test_review_models_emit_blueprint_aligned_final_review_summary_scores_and_ti
     assert report["scores"]["overall"] == 100.0
     assert report["scores"]["technical_completion"] == 100.0
     assert report["scores"]["material_quality"] == 100.0
-    assert report["scores"]["final_mv_quality"] == 91.6
+    assert report["scores"]["final_mv_quality"] == 92.6
     assert report["scores"]["shots"] == {"S001": 100.0, "S002": 100.0}
 
 
@@ -622,7 +622,7 @@ def test_review_models_downgrade_final_review_summary_when_blocking_failures_exi
     assert report["recommended_next_action"] == "rerender_missing_clips"
     assert report["scores"]["technical_completion"] == 66.67
     assert report["scores"]["material_quality"] == 100.0
-    assert report["scores"]["final_mv_quality"] == 84.27
+    assert report["scores"]["final_mv_quality"] == 85.93
 
 
 
@@ -984,6 +984,51 @@ def test_review_models_route_single_manual_payoff_findings_to_character_payoff_r
 
     assert weak_payoff["recommended_action"] == "rerender_character_payoff_shots"
     assert background_dominant["recommended_action"] == "rerender_character_payoff_shots"
+
+
+
+def test_review_models_lower_final_mv_quality_score_for_manual_payoff_failures():
+    baseline = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+    degraded = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=["S001"],
+        rerender_reasons={"S001": ["weak_character_payoff", "background_dominant_composition"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert degraded["scores"]["final_mv_quality"] < baseline["scores"]["final_mv_quality"]
+    assert degraded["scores"]["final_mv_quality"] <= 85.0
 
 
 
