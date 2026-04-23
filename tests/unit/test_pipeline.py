@@ -1,5 +1,10 @@
 from ai_mv.core.contracts.stage_io import StageOutput
 from ai_mv.core.orchestration import pipeline
+from ai_mv.core.orchestration import scheduler
+
+
+def test_scheduler_uses_pipeline_stage_truth():
+    assert scheduler.schedule() == pipeline._ordered_stages()
 
 
 def test_pipeline_runs_ordered_stages(monkeypatch):

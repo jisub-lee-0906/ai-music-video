@@ -69,7 +69,7 @@ def run_pipeline(config: dict, run_id: str = "", allow_existing_run: bool = Fals
     return state["run_id"]
 
 
-def _ordered_stages() -> list[tuple[str, callable]]:
+def ordered_stages() -> list[tuple[str, callable]]:
     return [
         ("audio", run_acestep_music),
         ("plan", run_plan_mv),
@@ -78,6 +78,11 @@ def _ordered_stages() -> list[tuple[str, callable]]:
         ("assemble", run_assemble_mv),
         ("review", run_review_stage),
     ]
+
+
+
+def _ordered_stages() -> list[tuple[str, callable]]:
+    return ordered_stages()
 
 
 
