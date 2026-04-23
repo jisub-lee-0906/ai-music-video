@@ -2657,12 +2657,30 @@ def test_execute_rerender_does_not_route_assembly_review_actions_into_sync_repai
 
 def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch):
     calls = []
+    assembly_calls = []
 
     def _fake_repair_audio_video_sync(stage_input):
         calls.append(stage_input.payload)
         return StageOutput("repair_audio_video_sync", "done", {"final_video": "should-not-run.mp4"}, [])
 
+    def _fake_render_revised_assembly(*, config, run_id, music_file, final_video, review_inputs, revised_assembly_plan, revisions_by_shot):
+        assembly_calls.append(
+            {
+                "run_id": run_id,
+                "music_file": music_file,
+                "final_video": final_video,
+                "review_inputs": review_inputs,
+                "revised_assembly_plan": revised_assembly_plan,
+                "revisions_by_shot": revisions_by_shot,
+            }
+        )
+        return {
+            "final_video": "final-revised.mp4",
+            "artifacts": ["final-revised.mp4"],
+        }
+
     monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_repair_audio_video_sync", _fake_repair_audio_video_sync)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender._render_revised_assembly", _fake_render_revised_assembly)
 
     out = run_execute_rerender(
         StageInput(
@@ -2693,6 +2711,7 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
                             "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001"], "transition_in": "cut_in", "transition_out": "cut_out", "snap_unit": "free", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}],
                         },
                         "review_inputs": {
+                            "clip_results": [{"shot_id": "S001", "video": "clip1.mp4", "section_id": "SEC_001", "material_id": "MAT_001"}],
                             "edit_intent_by_shot": {"S001": {"section_emphasis": "sequence_support"}},
                             "cadence_profile_by_shot": {"S001": "support_hold"},
                             "snap_unit_by_shot": {"S001": "free"},
@@ -2708,6 +2727,9 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
     )
 
     assert calls == []
+    assert assembly_calls[0]["run_id"] == "run-rerender-exec-transition-review"
+    assert assembly_calls[0]["final_video"] == "final.mp4"
+    assert out.payload["final_video"] == "final-revised.mp4"
     assert out.payload["review_action"] == "revise_transition_selection"
     assert out.payload["review_inputs"]["assembly_revision"]["revised_review_inputs"] == {
         "cadence_profile_by_shot": {"S001": "support_release"},
@@ -2727,10 +2749,12 @@ def test_execute_rerender_emits_distinct_transition_revision_payload(monkeypatch
         "transition_out": "handoff_out",
     }
     assert out.payload["assembly_revision_result"]["status"] == "applied"
+    assert out.payload["assembly_revision_result"]["output_final_video"] == "final-revised.mp4"
     assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["transition_map"]["SEC_001"] == {
         "transition_in": "glide_in",
         "transition_out": "handoff_out",
     }
+    assert out.artifacts == ["final-revised.mp4"]
 
 
 

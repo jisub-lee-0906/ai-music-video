@@ -1,11 +1,13 @@
-from __future__ import annotations
+from pathlib import Path
 
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.assemble_mv import apply_assembly_revision
+from ai_mv.core.stages.ffmpeg_muxer import run_ffmpeg_mux
 from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
+from ai_mv.utils.path_utils import resolve_generated_file
 
 
 REVIEW_ACTIONS_REQUIRING_SYNC_REPAIR = {"repair_audio_video_sync"}
@@ -106,6 +108,7 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
         for key in ("final_video", "music_file", "review_inputs")
         if key in stage_payload and stage_payload[key]
     }
+    action_artifacts: list[str] = []
     if recommended_action in ASSEMBLY_REVIEW_ACTIONS:
         target_shots = [str(value).strip() for value in stage_payload.get("target_shots", []) if str(value).strip()] if isinstance(stage_payload.get("target_shots"), list) else []
         target_material_ids = [str(value).strip() for value in stage_payload.get("target_material_ids", []) if str(value).strip()] if isinstance(stage_payload.get("target_material_ids"), list) else []
@@ -149,11 +152,24 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
                 "revised_review_inputs": revised_review_inputs,
             },
         }
+        assembly_render = _render_revised_assembly(
+            config=stage_input.config,
+            run_id=stage_input.run_id,
+            music_file=str(stage_payload.get("music_file", "")).strip(),
+            final_video=str(stage_payload.get("final_video", "")).strip(),
+            review_inputs=passthrough_payload.get("review_inputs") if isinstance(passthrough_payload.get("review_inputs"), dict) else {},
+            revised_assembly_plan=revised_assembly_plan,
+            revisions_by_shot=revisions_by_shot,
+        )
+        rendered_final_video = str(assembly_render.get("final_video", "")).strip()
+        if rendered_final_video:
+            passthrough_payload["final_video"] = rendered_final_video
+        action_artifacts.extend(str(path).strip() for path in assembly_render.get("artifacts", []) if str(path).strip())
         passthrough_payload["assembly_revision_result"] = {
             "action": recommended_action,
             "status": "applied",
             "target": "assembly",
-            "output_final_video": str(stage_payload.get("final_video", "")).strip(),
+            "output_final_video": rendered_final_video or str(stage_payload.get("final_video", "")).strip(),
             "revision_focus": "weights" if recommended_action == "revise_assembly_weights_before_clip_rerender" else "transitions",
             "target_shots": target_shots,
             "target_material_ids": target_material_ids,
@@ -162,4 +178,60 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
         }
         passthrough_payload["assembly_plan"] = revised_assembly_plan
     passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
-    return StageOutput("review_action", "done", passthrough_payload, [])
+    return StageOutput("review_action", "done", passthrough_payload, action_artifacts)
+
+
+
+def _render_revised_assembly(
+    *,
+    config: dict,
+    run_id: str,
+    music_file: str,
+    final_video: str,
+    review_inputs: dict,
+    revised_assembly_plan: dict,
+    revisions_by_shot: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    clip_rows = review_inputs.get("clip_results") if isinstance(review_inputs.get("clip_results"), list) else []
+    clip_map = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in clip_rows
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip() and str(row.get("video", "")).strip()
+    }
+    section_edits = revised_assembly_plan.get("section_edits") if isinstance(revised_assembly_plan.get("section_edits"), list) else []
+    clips: list[dict[str, object]] = []
+    for section in section_edits:
+        if not isinstance(section, dict):
+            continue
+        for shot_id in section.get("selected_clip_ids", []) if isinstance(section.get("selected_clip_ids"), list) else []:
+            normalized_shot_id = str(shot_id).strip()
+            clip_row = clip_map.get(normalized_shot_id)
+            if not clip_row:
+                continue
+            segment: dict[str, object] = {
+                "shot_id": normalized_shot_id,
+                "path": Path(resolve_generated_file(config, str(clip_row.get("video", "")).strip(), {".mp4", ".mov", ".mkv", ".webm"}, "video")),
+            }
+            revised = revisions_by_shot.get(normalized_shot_id) if isinstance(revisions_by_shot.get(normalized_shot_id), dict) else {}
+            trimmed_coverage_sec = _safe_positive_float(revised.get("trimmed_coverage_sec"))
+            if trimmed_coverage_sec is not None:
+                segment["trim_start_sec"] = 0.0
+                segment["trim_end_sec"] = trimmed_coverage_sec
+            clips.append(segment)
+    if not clips:
+        return {"final_video": final_video, "artifacts": []}
+    resolved_audio = Path(resolve_generated_file(config, music_file, {".wav", ".mp3", ".flac", ".m4a"}, "audio"))
+    resolved_final_video = Path(str(final_video).strip())
+    ok = run_ffmpeg_mux(clips, resolved_audio, resolved_final_video, config)
+    if not ok:
+        raise RuntimeError("ffmpeg assemble failed")
+    return {"final_video": str(resolved_final_video), "artifacts": [str(resolved_final_video)]}
+
+
+
+def _safe_positive_float(value: object) -> float | None:
+    try:
+        parsed = float(value)
+    except Exception:
+        return None
+    return parsed if parsed > 0.0 else None
