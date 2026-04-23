@@ -270,7 +270,7 @@ def test_render_item_variation_profile_changes_still_and_clip_prompt_translation
         assert "environment-led camera framing" not in out["clip_positive_prompt"]
 
 
-def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_release_shot():
+def test_render_item_uses_reanchored_medium_wide_prompt_for_connective_release_shot():
     out = build_render_item(
         {},
         "late-night city pop walk under wet neon lights",
@@ -293,8 +293,10 @@ def test_render_item_uses_environment_led_medium_wide_prompt_for_connective_rele
     )
 
     assert "wide release frame" in out["still_prompt_text"]
-    assert "skyline-led negative space" in out["still_prompt_text"]
+    assert "anchored figure" in out["still_prompt_text"]
+    assert "controlled negative space" in out["still_prompt_text"]
     assert "close-up" not in out["still_prompt_text"]
+    assert "skyline-led negative space" not in out["still_prompt_text"]
 
 
 def test_render_item_keeps_ia2v_clip_prompt_compact_for_bridge_sections():

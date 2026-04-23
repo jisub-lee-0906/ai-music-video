@@ -131,13 +131,13 @@ def _ordered_seed_parts(shot: dict, *, concept: str, continuity: str, subject: s
 def _still_subject_phrase(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode == "empty_boulevard_anchor":
-        return "no foreground figure, only a barely noticeable distant human presence"
+        return "one distant anchored figure under the boulevard lights"
     if visual_mode == "curbside_silhouette":
-        return "tiny curbside silhouette with the face turned away from camera"
+        return "curbside silhouette kept readable with the face turned away from camera"
     if visual_mode == "roadway_overview":
-        return "tiny figure held at the curb edge beneath the city lights"
+        return "anchored figure held at the curb edge beneath the city lights"
     if visual_mode == "street_establishing":
-        return "one small figure under the city lights"
+        return "one anchored figure under the city lights"
     if visual_mode == "profile_mood":
         return "young woman with long dark hair under fluorescent station light"
     if visual_mode == "night_drive":
@@ -157,11 +157,11 @@ def _still_subject_phrase(shot: dict) -> str:
     if visual_mode == "night_bridge":
         return "young woman with bridge lights behind her"
     if visual_mode == "bridge_overlook":
-        return "small figure near the bridge lights seen from a slight distance"
+        return "anchored figure near the bridge lights seen from a slight distance"
     if visual_mode == "memory_flash":
         return "young woman in a soft afterglow portrait with wind in her hair"
     if visual_mode == "skyline_release":
-        return "one small figure in the distance"
+        return "one anchored figure under the skyline glow"
     if visual_mode == "bridge_transition":
         return "young woman shifting from reflection to open night air"
     return "young woman in a reflective summer night portrait"
@@ -209,14 +209,14 @@ def _still_framing_phrase(shot: dict) -> str:
     framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
     specialized_mapping = {
-        "empty_boulevard_anchor": "world-first establishing frame with the boulevard and city light as the unquestioned subject",
-        "curbside_silhouette": "world-first establishing frame with boulevard depth and an incidental edge-held silhouette",
-        "roadway_overview": "wide establishing frame with roadway-led depth and a tiny edge-held subject",
-        "street_establishing": "wide establishing frame with a small subject and dominant city perspective",
+        "empty_boulevard_anchor": "world-first establishing frame with boulevard depth and one distant anchored figure",
+        "curbside_silhouette": "world-first establishing frame with boulevard depth and one anchored curbside silhouette",
+        "roadway_overview": "wide establishing frame with roadway-led depth and an anchored edge-held subject",
+        "street_establishing": "wide establishing frame with one anchored subject and dominant city perspective",
         "rain_window_detail": "detail insert framing through rain-streaked reflective glass",
-        "partial_figure_transition": "partial-figure transition frame with the environment carrying most of the image",
-        "bridge_overlook": "observational medium shot with bridge-led depth and a smaller subject",
-        "skyline_release": "wide release frame with skyline-led negative space",
+        "partial_figure_transition": "partial-figure transition frame with an anchored partial figure moving through the environment",
+        "bridge_overlook": "observational medium shot with bridge-led depth and a clearly anchored subject",
+        "skyline_release": "wide release frame with an anchored subject silhouette and skyline afterglow",
     }
     if visual_mode in specialized_mapping:
         return specialized_mapping[visual_mode]
@@ -226,7 +226,7 @@ def _still_framing_phrase(shot: dict) -> str:
         "connective_medium": "environment-led medium shot with connective framing",
         "performance_medium": "performance-led medium shot with stable environment context",
         "performance_medium": "performance-led medium shot with stable environment context",
-        "release_wide": "wide release frame with skyline-led negative space",
+        "release_wide": "wide release frame with an anchored figure and controlled skyline afterglow",
     }
     if framing_intent in intent_mapping:
         return intent_mapping[framing_intent]
@@ -249,15 +249,15 @@ def _still_composition_constraints(shot: dict) -> str:
     framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode == "empty_boulevard_anchor":
-        return "no foreground figure, only a tiny distant human trace if any, large negative space, vanishing point separated from any human presence, roadway and city light dominate the frame"
+        return "one distant anchored figure, controlled negative space, readable subject placement, vanishing point separated from the subject, avoid empty dead zones"
     if visual_mode == "curbside_silhouette":
-        return "subject on the extreme outer edge, subject barely legible, no readable face, large negative space, vanishing point separated from the subject, roadway and city light dominate the frame"
+        return "subject on the outer third, readable silhouette, no direct face toward camera, controlled negative space, boulevard depth supports the subject"
     if visual_mode == "roadway_overview":
-        return "off-center composition, subject on the outer third, large negative space, no direct face toward camera, vanishing point separated from the subject"
+        return "off-center composition, anchored edge-held subject, controlled negative space, readable silhouette, no direct face toward camera, vanishing point separated from the subject"
     if framing_intent in {"establishing_wide", "release_wide"} or visual_mode in {"street_establishing", "skyline_release"}:
-        return "off-center composition, large negative space, small figure emphasis, no direct face toward camera"
+        return "off-center composition, anchored subject silhouette, controlled negative space, readable subject scale, no direct face toward camera"
     if visual_mode == "rain_window_detail":
         return "detail-first composition, partial figure only, no hero framing, no direct face toward camera"
     if visual_mode in {"partial_figure_transition", "bridge_overlook"}:
-        return "partial figure only, off-center subject, no direct face toward camera, environment dominates the frame"
+        return "anchored partial figure, off-center subject, no direct face toward camera, environment supports the subject instead of dominating it"
     return ""

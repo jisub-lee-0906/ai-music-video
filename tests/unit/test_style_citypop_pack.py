@@ -125,7 +125,7 @@ def test_citypop_rules_apply_progressive_section_variants():
     assert [item["visual_mode"] for item in out] == ["night_drive", "rain_window_detail", "night_drive", "city_glance"]
 
 
-def test_citypop_prompt_seed_prioritizes_environment_for_release_wide():
+def test_citypop_prompt_seed_keeps_release_wide_environment_first_without_dropping_subject_anchor():
     seed = build_citypop_prompt_seed(
         "late-night city pop walk under wet neon lights",
         get_citypop_bible(),
@@ -138,11 +138,11 @@ def test_citypop_prompt_seed_prioritizes_environment_for_release_wide():
     )
 
     assert "rainy neon skyline boulevard at dusk" in seed
-    assert "one small figure in the distance" in seed
-    assert seed.index("rainy neon skyline boulevard at dusk") < seed.index("one small figure in the distance")
+    assert "one anchored figure under the skyline glow" in seed
+    assert seed.index("rainy neon skyline boulevard at dusk") < seed.index("one anchored figure under the skyline glow")
 
 
-def test_citypop_prompt_seed_uses_world_first_intro_family():
+def test_citypop_prompt_seed_uses_world_first_intro_family_without_empty_canvas_language():
     seed = build_citypop_prompt_seed(
         "late-night city pop walk under wet neon lights",
         get_citypop_bible(),
@@ -155,30 +155,51 @@ def test_citypop_prompt_seed_uses_world_first_intro_family():
     )
 
     assert "near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow" in seed
-    assert "no foreground figure, only a barely noticeable distant human presence" in seed
-    assert seed.index("near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow") < seed.index("no foreground figure, only a barely noticeable distant human presence")
+    assert "one distant anchored figure under the boulevard lights" in seed
+    assert seed.index("near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow") < seed.index("one distant anchored figure under the boulevard lights")
 
 
-def test_citypop_prompt_draft_adds_off_center_negative_space_rules_for_true_wide_families():
+def test_citypop_prompt_draft_keeps_true_wide_release_but_reanchors_the_subject():
     draft = build_citypop_prompt_draft({"visual_mode": "skyline_release", "framing_intent": "release_wide"})
 
     assert "off-center composition" in draft
-    assert "large negative space" in draft
-    assert "small figure emphasis" in draft
+    assert "anchored subject silhouette" in draft
+    assert "controlled negative space" in draft
+    assert "readable subject scale" in draft
     assert "no direct face toward camera" in draft
+    assert "skyline-led negative space" not in draft
+    assert "small figure emphasis" not in draft
 
 
-def test_citypop_prompt_draft_strengthens_world_first_rules_for_intro_family():
+def test_citypop_prompt_draft_strengthens_world_first_rules_for_intro_family_without_allowing_blank_subject_loss():
     draft = build_citypop_prompt_draft({"visual_mode": "empty_boulevard_anchor", "framing_intent": "establishing_wide"})
 
-    assert "world-first establishing frame with the boulevard and city light as the unquestioned subject" in draft
-    assert "no foreground figure" in draft
-    assert "only a tiny distant human trace if any" in draft
+    assert "world-first establishing frame with boulevard depth and one distant anchored figure" in draft
+    assert "one distant anchored figure" in draft
+    assert "avoid empty dead zones" in draft
+    assert "no foreground figure" not in draft
 
 
-def test_citypop_prompt_draft_adds_partial_figure_rules_for_connective_family():
+def test_citypop_prompt_draft_adds_partial_figure_rules_for_connective_family_without_environment_dominance():
     draft = build_citypop_prompt_draft({"visual_mode": "partial_figure_transition", "framing_intent": "connective_medium"})
 
     assert "partial-figure transition frame" in draft
-    assert "partial figure only" in draft
+    assert "anchored partial figure" in draft
     assert "no direct face toward camera" in draft
+    assert "environment dominates the frame" not in draft
+
+
+def test_citypop_prompt_draft_keeps_bridge_overlook_subject_readable():
+    draft = build_citypop_prompt_draft({"visual_mode": "bridge_overlook", "framing_intent": "connective_medium"})
+
+    assert "observational medium shot with bridge-led depth and a clearly anchored subject" in draft
+    assert "anchored partial figure" in draft
+    assert "environment dominates the frame" not in draft
+
+
+def test_citypop_prompt_draft_keeps_curbside_silhouette_readable_even_when_world_first():
+    draft = build_citypop_prompt_draft({"visual_mode": "curbside_silhouette", "framing_intent": "establishing_wide"})
+
+    assert "one anchored curbside silhouette" in draft
+    assert "readable silhouette" in draft
+    assert "subject barely legible" not in draft
