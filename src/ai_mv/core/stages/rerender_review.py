@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.stages.review_stage import run_review_stage
 from ai_mv.core.review.models import summarize_assembly_quality
@@ -19,6 +22,10 @@ def run_rerender_review(stage_input: StageInput) -> StageOutput:
     merged_payload["still_results"] = merged_stills
     merged_payload["clip_results"] = merged_clips
     merged_payload["review_inputs"] = _merged_review_inputs(stage_input.payload.get("review_inputs"), rerender_results.get("review_inputs"))
+    merged_payload["review_inputs"] = _drop_stale_manual_findings(
+        merged_payload.get("review_inputs"),
+        rerendered_shot_ids=_rerendered_shot_ids(rerender_results),
+    )
     merged_payload["assembly_plan"] = _merged_assembly_plan(
         stage_input.payload.get("assembly_plan"),
         stage_input.payload.get("assembly_revision_result"),
@@ -98,6 +105,84 @@ def _merged_review_inputs(existing_inputs: object, fresh_inputs: object) -> dict
         else:
             merged[key] = value
     return merged
+
+
+
+def _drop_stale_manual_findings(review_inputs: object, *, rerendered_shot_ids: set[str]) -> dict:
+    inputs = dict(review_inputs) if isinstance(review_inputs, dict) else {}
+    combined_findings = _combined_quality_findings(inputs)
+    filtered_findings = {
+        shot_id: reasons
+        for shot_id, reasons in combined_findings.items()
+        if shot_id not in rerendered_shot_ids
+    } if rerendered_shot_ids else combined_findings
+    if combined_findings or "quality_findings" in inputs or "quality_findings_path" in inputs:
+        inputs["quality_findings"] = filtered_findings
+    inputs.pop("quality_findings_path", None)
+    return inputs
+
+
+
+def _combined_quality_findings(review_inputs: dict) -> dict[str, list[str]]:
+    combined: dict[str, list[str]] = {}
+    explicit_findings = review_inputs.get("quality_findings") if isinstance(review_inputs.get("quality_findings"), dict) else {}
+    for shot_id, reasons in explicit_findings.items():
+        _extend_unique(combined.setdefault(str(shot_id).strip(), []), reasons)
+    path_findings = _load_quality_findings_from_path(review_inputs.get("quality_findings_path"))
+    for shot_id, reasons in path_findings.items():
+        _extend_unique(combined.setdefault(shot_id, []), reasons)
+    return {shot_id: reasons for shot_id, reasons in combined.items() if shot_id and reasons}
+
+
+
+def _load_quality_findings_from_path(path_value: object) -> dict[str, list[str]]:
+    path_str = str(path_value or "").strip()
+    if not path_str:
+        return {}
+    try:
+        payload = json.loads(Path(path_str).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"invalid review quality findings file: {path_str}") from exc
+    if isinstance(payload.get("review_inputs"), dict) and isinstance(payload["review_inputs"].get("quality_findings"), dict):
+        payload = payload["review_inputs"].get("quality_findings")
+    elif isinstance(payload.get("quality_findings"), dict):
+        payload = payload.get("quality_findings")
+    if not isinstance(payload, dict):
+        return {}
+    findings: dict[str, list[str]] = {}
+    for shot_id, reasons in payload.items():
+        normalized_shot_id = str(shot_id or "").strip()
+        if not normalized_shot_id:
+            continue
+        _extend_unique(findings.setdefault(normalized_shot_id, []), reasons)
+    return {shot_id: reasons for shot_id, reasons in findings.items() if reasons}
+
+
+
+def _extend_unique(target: list[str], reasons: object) -> None:
+    if not isinstance(reasons, (list, tuple, set)):
+        return
+    for reason in reasons:
+        value = str(reason or "").strip()
+        if value and value not in target:
+            target.append(value)
+
+
+
+def _rerendered_shot_ids(rerender_results: object) -> set[str]:
+    if not isinstance(rerender_results, dict):
+        return set()
+    shot_ids: set[str] = set()
+    for key in ("still_results", "clip_results"):
+        for row in rerender_results.get(key, []) if isinstance(rerender_results.get(key), list) else []:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("status", "")).strip().lower() not in {"done", "completed", "success"}:
+                continue
+            shot_id = str(row.get("shot_id", "")).strip()
+            if shot_id:
+                shot_ids.add(shot_id)
+    return shot_ids
 
 
 

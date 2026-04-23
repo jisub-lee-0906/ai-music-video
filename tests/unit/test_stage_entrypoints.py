@@ -2827,6 +2827,160 @@ def test_rerender_review_merges_fresh_assets_and_recomputes_review(monkeypatch):
 
 
 
+def test_rerender_review_drops_stale_manual_findings_for_rerendered_shots(monkeypatch, tmp_path):
+
+    findings_path = tmp_path / "review-findings.json"
+    findings_path.write_text(
+        '{"review_inputs": {"quality_findings": {"S001": ["weak_character_payoff", "background_dominant_composition"], "S009": ["continuity_break"]}}}\n',
+        encoding="utf-8",
+    )
+    existing = {
+        "D:/renders/final.mp4",
+        "D:/renders/song.mp3",
+        "D:/renders/S001_retry.png",
+        "D:/renders/S001_retry.mp4",
+        "D:/renders/S009.png",
+        "D:/renders/S009.mp4",
+        str(findings_path),
+    }
+
+    def _fake_exists(self):
+        return str(self).replace("\\", "/") in {path.replace("\\", "/") for path in existing}
+
+    from pathlib import Path as _Path
+
+    _original_exists = _Path.exists
+    _Path.exists = _fake_exists
+    try:
+        out = run_rerender_review(
+            StageInput(
+                run_id="run-rerender-review-drop-stale-findings",
+                config={},
+                payload={
+                    "final_video": "D:/renders/final.mp4",
+                    "music_file": "D:/renders/song.mp3",
+                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S009"}],
+                    "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}, {"shot_id": "S009", "render_mode": "ia2v"}],
+                    "still_results": [{"shot_id": "S001", "image": "", "status": "failed"}, {"shot_id": "S009", "image": "D:/renders/S009.png", "status": "done"}],
+                    "clip_results": [{"shot_id": "S001", "video": "", "status": "failed"}, {"shot_id": "S009", "video": "D:/renders/S009.mp4", "status": "done"}],
+                    "review_inputs": {
+                        "music_file": "D:/renders/song.mp3",
+                        "quality_findings": {"S001": ["weak_character_payoff", "background_dominant_composition"]},
+                        "quality_findings_path": str(findings_path),
+                    },
+                    "rerender_results": {
+                        "completed_stages": ["stills", "clips"],
+                        "still_results": [{"shot_id": "S001", "image": "D:/renders/S001_retry.png", "status": "done"}],
+                        "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001_retry.mp4", "status": "done"}],
+                    },
+                },
+            )
+        )
+
+        assert out.payload["rerender_review_report"]["status"] == "needs_rerender"
+        assert out.payload["rerender_review_report"]["rerender_targets"] == ["S009"]
+        assert out.payload["review_inputs"] == {
+            "music_file": "D:/renders/song.mp3",
+            "quality_findings": {"S009": ["continuity_break"]},
+        }
+    finally:
+        _Path.exists = _original_exists
+
+
+
+def test_rerender_review_preserves_manual_findings_for_failed_rerender_attempts(monkeypatch, tmp_path):
+
+    findings_path = tmp_path / "review-findings.json"
+    findings_path.write_text(
+        '{"review_inputs": {"quality_findings": {"S001": ["weak_character_payoff"], "S009": ["continuity_break"]}}}\n',
+        encoding="utf-8",
+    )
+    existing = {
+        "D:/renders/final.mp4",
+        "D:/renders/song.mp3",
+        "D:/renders/S009.png",
+        "D:/renders/S009.mp4",
+        str(findings_path),
+    }
+
+    def _fake_exists(self):
+        return str(self).replace("\\", "/") in {path.replace("\\", "/") for path in existing}
+
+    from pathlib import Path as _Path
+
+    _original_exists = _Path.exists
+    _Path.exists = _fake_exists
+    try:
+        out = run_rerender_review(
+            StageInput(
+                run_id="run-rerender-review-preserve-failed-findings",
+                config={},
+                payload={
+                    "final_video": "D:/renders/final.mp4",
+                    "music_file": "D:/renders/song.mp3",
+                    "shot_plan": [{"shot_id": "S001"}, {"shot_id": "S009"}],
+                    "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}, {"shot_id": "S009", "render_mode": "ia2v"}],
+                    "still_results": [{"shot_id": "S001", "image": "", "status": "failed"}, {"shot_id": "S009", "image": "D:/renders/S009.png", "status": "done"}],
+                    "clip_results": [{"shot_id": "S001", "video": "", "status": "failed"}, {"shot_id": "S009", "video": "D:/renders/S009.mp4", "status": "done"}],
+                    "review_inputs": {
+                        "music_file": "D:/renders/song.mp3",
+                        "quality_findings_path": str(findings_path),
+                    },
+                    "rerender_results": {
+                        "completed_stages": ["stills", "clips"],
+                        "still_results": [{"shot_id": "S001", "image": "", "status": "failed"}],
+                        "clip_results": [{"shot_id": "S001", "video": "", "status": "failed"}],
+                    },
+                },
+            )
+        )
+
+        assert out.payload["rerender_review_report"]["rerender_targets"] == ["S001", "S009"]
+        assert out.payload["review_inputs"] == {
+            "music_file": "D:/renders/song.mp3",
+            "quality_findings": {
+                "S001": ["weak_character_payoff"],
+                "S009": ["continuity_break"],
+            },
+        }
+    finally:
+        _Path.exists = _original_exists
+
+
+
+def test_rerender_review_raises_for_invalid_quality_findings_path(tmp_path):
+    import pytest
+
+    findings_path = tmp_path / "review-findings.json"
+    findings_path.write_text('{"review_inputs": ', encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="invalid review quality findings file"):
+        run_rerender_review(
+            StageInput(
+                run_id="run-rerender-review-invalid-findings",
+                config={},
+                payload={
+                    "final_video": "D:/renders/final.mp4",
+                    "music_file": "D:/renders/song.mp3",
+                    "shot_plan": [{"shot_id": "S001"}],
+                    "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
+                    "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"}],
+                    "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"}],
+                    "review_inputs": {
+                        "music_file": "D:/renders/song.mp3",
+                        "quality_findings_path": str(findings_path),
+                    },
+                    "rerender_results": {
+                        "completed_stages": [],
+                        "still_results": [],
+                        "clip_results": [],
+                    },
+                },
+            )
+        )
+
+
+
 def test_rerender_review_preserves_assembly_revision_review_inputs():
     out = run_rerender_review(
         StageInput(
