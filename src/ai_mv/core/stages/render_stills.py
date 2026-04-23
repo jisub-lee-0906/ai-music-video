@@ -36,6 +36,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
         render_count = _render_count(render_item)
+        candidate_score_rows = render_item.get("still_candidate_scores") if isinstance(render_item.get("still_candidate_scores"), list) else []
         candidate_results: list[dict] = []
         for retry in range(render_count):
             item = {
@@ -54,11 +55,15 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
                 stage_input.config,
                 item,
             )
+            score_row = candidate_score_rows[retry] if retry < len(candidate_score_rows) and isinstance(candidate_score_rows[retry], dict) else {}
             candidate_results.append(
                 {
                     "image": image_path,
                     "retry": retry,
                     "seed": item.get("seed"),
+                    "continuity_score": _safe_score(score_row.get("continuity_score")),
+                    "identity_score": _safe_score(score_row.get("identity_score")),
+                    "world_score": _safe_score(score_row.get("world_score")),
                 }
             )
         selected_candidate, selected_candidate_index, selection_policy = _select_still_candidate(candidate_results, render_item)
@@ -192,7 +197,50 @@ def _select_still_candidate(candidate_results: list[dict], render_item: dict) ->
         selected_index = 0
     if 0 <= selected_index < len(candidates) and explicit_index is not None:
         return dict(candidates[selected_index]), selected_index, "explicit_index"
+    ranked_candidates = _rank_continuity_candidates(candidates, render_item)
+    if ranked_candidates:
+        ranked_index, selected_candidate = ranked_candidates[0]
+        if ranked_index != 0:
+            return dict(selected_candidate), ranked_index, "continuity_score"
     return dict(candidates[0]), 0, "first_candidate"
+
+
+
+def _rank_continuity_candidates(candidates: list[dict], render_item: dict) -> list[tuple[int, dict]]:
+    if not isinstance(render_item, dict):
+        return []
+    continuity_contract = render_item.get("continuity_contract") if isinstance(render_item.get("continuity_contract"), dict) else {}
+    has_continuity_anchor = bool(str(continuity_contract.get("protagonist_anchor", "")).strip() or str(continuity_contract.get("world_anchor", "")).strip())
+    if not has_continuity_anchor:
+        return []
+    scored: list[tuple[int, dict]] = []
+    for index, row in enumerate(candidates):
+        continuity_score = _safe_score(row.get("continuity_score"))
+        if continuity_score is None:
+            return []
+        scored.append((index, row))
+    return sorted(
+        scored,
+        key=lambda item: (
+            -(_safe_score(item[1].get("continuity_score")) or 0.0),
+            -(_safe_score(item[1].get("identity_score")) or 0.0),
+            -(_safe_score(item[1].get("world_score")) or 0.0),
+            int(item[1].get("retry", 0) or 0),
+        ),
+    )
+
+
+
+def _safe_score(value: object) -> float | None:
+    try:
+        score = float(value)
+    except Exception:
+        return None
+    if score < 0.0:
+        return 0.0
+    if score > 1.0:
+        return 1.0
+    return score
 
 
 

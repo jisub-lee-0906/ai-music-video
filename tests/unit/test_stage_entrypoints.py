@@ -983,6 +983,98 @@ def test_render_stills_can_select_non_default_candidate_by_explicit_index(monkey
     assert out.payload["still_results"][0]["selected_candidate"]["seed"] == 102
 
 
+
+def test_render_stills_prefers_highest_continuity_candidate_when_scores_present(monkeypatch):
+    def _fake_run_flux2_still(_config, item):
+        retry = int(item.get("retry", 0) or 0)
+        return f"D:/renders/{item['shot_id']}_candidate_{retry}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-render-continuity-selection",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [
+                {
+                    "shot_id": "S012",
+                    "material_id": "MAT_012",
+                    "protagonist_anchor": "same lone protagonist",
+                    "world_anchor": "same rain-slick neon boulevard world",
+                }
+            ],
+            "material_plan": [{"material_id": "MAT_012", "section_id": "SEC_012"}],
+            "render_plan": [
+                {
+                    "shot_id": "S012",
+                    "material_id": "MAT_012",
+                    "prompt_seed": "city pop boulevard",
+                    "render_count": 3,
+                    "seed": 200,
+                    "continuity_contract": {
+                        "protagonist_anchor": "same lone protagonist",
+                        "world_anchor": "same rain-slick neon boulevard world",
+                    },
+                    "still_candidate_scores": [
+                        {"continuity_score": 0.41, "identity_score": 0.50, "world_score": 0.50},
+                        {"continuity_score": 0.93, "identity_score": 0.91, "world_score": 0.90},
+                        {"continuity_score": 0.72, "identity_score": 0.70, "world_score": 0.74},
+                    ],
+                }
+            ],
+        },
+    )
+
+    out = run_render_stills(stage_input)
+
+    assert out.payload["still_results"][0]["image"] == "D:/renders/S012_candidate_1.png"
+    assert out.payload["still_results"][0]["selected_candidate_index"] == 1
+    assert out.payload["still_results"][0]["selection_policy"] == "continuity_score"
+    assert out.payload["still_results"][0]["selected_candidate"]["continuity_score"] == 0.93
+    assert out.payload["still_results"][0]["selected_candidate"]["identity_score"] == 0.91
+    assert out.payload["still_results"][0]["selected_candidate"]["world_score"] == 0.9
+
+
+
+def test_render_stills_keeps_first_candidate_when_continuity_scores_are_partial(monkeypatch):
+    def _fake_run_flux2_still(_config, item):
+        retry = int(item.get("retry", 0) or 0)
+        return f"D:/renders/{item['shot_id']}_candidate_{retry}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-render-partial-continuity-selection",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S013", "material_id": "MAT_013"}],
+            "material_plan": [{"material_id": "MAT_013", "section_id": "SEC_013"}],
+            "render_plan": [
+                {
+                    "shot_id": "S013",
+                    "material_id": "MAT_013",
+                    "prompt_seed": "city pop boulevard",
+                    "render_count": 2,
+                    "seed": 300,
+                    "continuity_contract": {
+                        "protagonist_anchor": "same lone protagonist",
+                        "world_anchor": "same rain-slick neon boulevard world",
+                    },
+                    "still_candidate_scores": [
+                        {},
+                        {"identity_score": 0.95, "world_score": 0.94},
+                    ],
+                }
+            ],
+        },
+    )
+
+    out = run_render_stills(stage_input)
+
+    assert out.payload["still_results"][0]["image"] == "D:/renders/S013_candidate_0.png"
+    assert out.payload["still_results"][0]["selected_candidate_index"] == 0
+    assert out.payload["still_results"][0]["selection_policy"] == "first_candidate"
+
+
+
 def test_gate_requires_material_plan_for_stills_contract():
     import pytest
 
