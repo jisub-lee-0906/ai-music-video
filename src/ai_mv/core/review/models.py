@@ -166,6 +166,9 @@ def build_rerender_execution_payloads(
                 "shot_id": shot_id,
                 "recommended_action": str(item.get("recommended_action", "")).strip(),
                 "rerender_stage": stage_focus,
+                "workflow_focus": list(item.get("workflow_focus") or []) if isinstance(item.get("workflow_focus"), list) else item.get("workflow_focus"),
+                "prompt_contract_focus": list(item.get("prompt_contract_focus") or []) if isinstance(item.get("prompt_contract_focus"), list) else [],
+                "fix_strategy": str(item.get("fix_strategy", "")).strip(),
                 "stage_payloads": stage_payloads,
             }
         )

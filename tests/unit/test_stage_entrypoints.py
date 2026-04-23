@@ -1790,6 +1790,9 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
                 "shot_id": "S006",
                 "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
                 "rerender_stage": "clips",
+                "workflow_focus": ["ia2v"],
+                "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
+                "fix_strategy": "shorter_motion_and_clean_terminal_frames",
                 "stage_payloads": {
                     "clips": {
                         "shot_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "ia2v"}],

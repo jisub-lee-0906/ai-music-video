@@ -753,6 +753,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S003",
             "recommended_action": "rerender_scene_intrusion_shots",
             "rerender_stage": "stills",
+            "workflow_focus": ["flux2_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "tighten_subject_and_world_anchors",
             "stage_payloads": {
                 "stills": {
                     "shot_plan": [{"shot_id": "S003", "material_id": "MAT_003", "render_mode": "ia2v"}],
@@ -766,6 +769,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S001",
             "recommended_action": "rerender_panelized_keyframes",
             "rerender_stage": "stills",
+            "workflow_focus": ["flux2_image"],
+            "prompt_contract_focus": ["still_prompt_text"],
+            "fix_strategy": "enforce_single_frame_keyframe_composition",
             "stage_payloads": {
                 "stills": {
                     "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "render_mode": "ia2v"}],
@@ -779,6 +785,9 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S002",
             "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
             "rerender_stage": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
             "stage_payloads": {
                 "stills": {
                     "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v"}],
@@ -984,6 +993,89 @@ def test_review_models_route_single_manual_payoff_findings_to_character_payoff_r
 
     assert weak_payoff["recommended_action"] == "rerender_character_payoff_shots"
     assert background_dominant["recommended_action"] == "rerender_character_payoff_shots"
+
+
+
+def test_review_models_preserve_prompt_repair_contract_in_character_payoff_execution_payloads():
+    report = build_review_report(
+        planned_shot_ids=["S006"],
+        still_results=[{"shot_id": "S006", "image": "still.png", "material_id": "MAT_006", "section_id": "SEC_006"}],
+        clip_results=[{"shot_id": "S006", "video": "clip.mp4", "material_id": "MAT_006", "section_id": "SEC_006"}],
+        still_status={"S006": True},
+        clip_status={"S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={"S006": ["weak_character_payoff", "background_dominant_composition"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "ia2v"}],
+        material_plan=[{"material_id": "MAT_006", "section_id": "SEC_006"}],
+        render_plan=[
+            {
+                "shot_id": "S006",
+                "material_id": "MAT_006",
+                "section_id": "SEC_006",
+                "render_mode": "ia2v",
+                "still_prompt_text": "wide neon bridge at dusk",
+                "clip_prompt_seed": "slow bridge walk, dreamy city lights",
+                "clip_positive_prompt": "slow bridge walk, dreamy city lights, cinematic atmosphere",
+            }
+        ],
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["rerender_execution_payloads"] == [
+        {
+            "shot_id": "S006",
+            "recommended_action": "rerender_character_payoff_shots",
+            "rerender_stage": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "fix_strategy": "strengthen_character_payoff_and_subject_scale",
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "stage_payloads": {
+                "stills": {
+                    "shot_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "ia2v"}],
+                    "material_plan": [{"material_id": "MAT_006", "section_id": "SEC_006"}],
+                    "render_plan": [
+                        {
+                            "shot_id": "S006",
+                            "material_id": "MAT_006",
+                            "section_id": "SEC_006",
+                            "render_mode": "ia2v",
+                            "still_prompt_text": "wide neon bridge at dusk",
+                            "clip_prompt_seed": "slow bridge walk, dreamy city lights",
+                            "clip_positive_prompt": "slow bridge walk, dreamy city lights, cinematic atmosphere",
+                        }
+                    ],
+                    "style_bible": {},
+                },
+                "clips": {
+                    "shot_plan": [{"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "ia2v"}],
+                    "render_plan": [
+                        {
+                            "shot_id": "S006",
+                            "material_id": "MAT_006",
+                            "section_id": "SEC_006",
+                            "render_mode": "ia2v",
+                            "still_prompt_text": "wide neon bridge at dusk",
+                            "clip_prompt_seed": "slow bridge walk, dreamy city lights",
+                            "clip_positive_prompt": "slow bridge walk, dreamy city lights, cinematic atmosphere",
+                        }
+                    ],
+                    "still_results": [{"shot_id": "S006", "image": "still.png", "material_id": "MAT_006", "section_id": "SEC_006"}],
+                    "music_file": "song.mp3",
+                },
+            },
+        }
+    ]
 
 
 
@@ -1233,6 +1325,9 @@ def test_review_models_build_review_stage_execution_payload_for_audio_sync_repai
             "shot_id": "S001",
             "recommended_action": "repair_audio_video_sync",
             "rerender_stage": "review",
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "inspect_review_failures_manually",
             "stage_payloads": {
                 "review": {
                     "final_video": "final.mp4",
