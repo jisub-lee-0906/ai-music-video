@@ -129,6 +129,8 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         + "Keep the locked section order and exact line counts from the outline. "
         + "Respect the locked bar sizes of each section so the phrasing feels like it actually fits the form instead of floating free from it. "
         + "Let early sections establish the state, middle sections develop or tighten it, and later sections release or resolve it. "
+        + "Pre-Chorus lines should stay shorter on average than Chorus lines. "
+        + "Let Chorus carry the broader release phrasing and the more open hook. "
         + "Make Verse 2 change perspective, cost, or direction instead of restating Verse 1. "
         + "Make Bridge compress or reframe so the final return lands harder. A 4-bar bridge must feel brief and turning, not explanatory. "
         + "An 8-bar chorus must feel compact and hook-first. A 16-bar Final Chorus may open wider, but still needs clear internal breathing. "

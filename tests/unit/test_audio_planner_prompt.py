@@ -99,6 +99,19 @@ def test_audio_prompt_surfaces_retry_feedback_for_pre_chorus_vs_chorus_contrast_
 
 
 
+def test_audio_lyrics_draft_prompt_explicitly_demands_tighter_pre_chorus_than_chorus():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "pre_chorus", "label": "Pre-Chorus", "role": "tighten", "change": "build", "line_count": 3},
+            {"section": "chorus", "label": "Chorus", "role": "release", "change": "open", "line_count": 4},
+        ]
+    }
+    prompt = audio_planner._audio_lyrics_draft_prompt(_prompt_plan(language="en"), outline)
+    assert "Pre-Chorus lines should stay shorter on average than Chorus lines." in prompt
+    assert "Let Chorus carry the broader release phrasing and the more open hook." in prompt
+
+
+
 def test_audio_lyrics_draft_prompt_surfaces_retry_feedback_for_korean_lyrics_failures():
     outline = {
         "lyrics_blocks": [
