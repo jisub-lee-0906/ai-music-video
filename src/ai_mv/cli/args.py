@@ -55,6 +55,15 @@ def build_parser() -> argparse.ArgumentParser:
     audio_reroll_start.add_argument("--concept-text", dest="concept_text", default=None)
     audio_reroll_start.add_argument("--scope", choices=("run", "preflight"), default="run")
 
+    audio_review_score = sub.add_parser("audio-review-score")
+    audio_review_score.add_argument("--rubric-path", dest="rubric_path", required=True)
+    audio_review_score.add_argument("--segment-id", dest="segment_id", required=True)
+    audio_review_score.add_argument("--scores-json", dest="scores_json", default="{}")
+    audio_review_score.add_argument("--reason-codes-json", dest="reason_codes_json", default="[]")
+    audio_review_score.add_argument("--notes", dest="notes", default="")
+    audio_review_score.add_argument("--verdict", dest="verdict", default="")
+    audio_review_score.add_argument("--next-action", dest="next_action", default="")
+
     validate_latest = sub.add_parser("validate-latest")
     validate_latest.add_argument("--output-dir", dest="output_dir", required=True)
     validate_latest.add_argument("--sample-count", dest="sample_count", type=int, default=8)
