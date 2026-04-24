@@ -84,6 +84,21 @@ def test_audio_prompt_surfaces_retry_feedback_for_korean_lyrics_failures():
     assert "Do not output any English-only lyric lines." in prompt
 
 
+
+def test_audio_prompt_surfaces_retry_feedback_for_pre_chorus_vs_chorus_contrast_failures():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            language="en",
+            audio_retry_attempt=1,
+            audio_retry_feedback="audio lyrics quality mismatch: Pre-Chorus phrasing is too broad compared with Chorus",
+        )
+    )
+    assert "Rewrite attempt 2." in prompt
+    assert "Pre-Chorus lines must stay shorter and tighter than Chorus lines." in prompt
+    assert "Make Chorus lines more open and hook-led than Pre-Chorus." in prompt
+
+
+
 def test_audio_lyrics_draft_prompt_surfaces_retry_feedback_for_korean_lyrics_failures():
     outline = {
         "lyrics_blocks": [

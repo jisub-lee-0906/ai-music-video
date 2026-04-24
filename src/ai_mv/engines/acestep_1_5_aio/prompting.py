@@ -216,6 +216,12 @@ def _audio_retry_clause(plan: dict) -> str:
             "Reduce English sharply. "
             "Keep any English to at most one very short hook fragment inside the chorus family. "
         )
+    elif "pre-chorus phrasing is too broad compared with chorus" in lowered:
+        clause += (
+            "Pre-Chorus lines must stay shorter and tighter than Chorus lines. "
+            "Use more breath-led setup phrasing in Pre-Chorus and reserve broader release language for Chorus. "
+            "Make Chorus lines more open and hook-led than Pre-Chorus. "
+        )
     return clause
 
 
