@@ -7,6 +7,9 @@ from ai_mv.styles.dream_pop.rules import dream_pop_section_shot_specs
 from ai_mv.styles.j_rock.bible import get_j_rock_bible
 from ai_mv.styles.j_rock.prompting import build_j_rock_prompt_seed
 from ai_mv.styles.j_rock.rules import j_rock_section_shot_specs
+from ai_mv.styles.idol_pop.bible import get_idol_pop_bible
+from ai_mv.styles.idol_pop.prompting import build_idol_pop_prompt_seed
+from ai_mv.styles.idol_pop.rules import idol_pop_section_shot_specs
 from ai_mv.styles.k_indie.bible import get_k_indie_bible
 from ai_mv.styles.k_indie.prompting import build_k_indie_prompt_seed
 from ai_mv.styles.k_indie.rules import k_indie_section_shot_specs
@@ -21,6 +24,14 @@ def test_alt_pop_section_specs_keep_verse_prechorus_and_bridge_visually_distinct
     verse = _visual_mode(alt_pop_section_shot_specs("verse", 4.0))
     pre_chorus = _visual_mode(alt_pop_section_shot_specs("pre_chorus", 4.0))
     bridge = _visual_mode(alt_pop_section_shot_specs("bridge", 4.0))
+
+    assert len({verse, pre_chorus, bridge}) == 3
+
+
+def test_idol_pop_section_specs_keep_verse_prechorus_and_bridge_visually_distinct():
+    verse = _visual_mode(idol_pop_section_shot_specs("verse", 4.0))
+    pre_chorus = _visual_mode(idol_pop_section_shot_specs("pre_chorus", 4.0))
+    bridge = _visual_mode(idol_pop_section_shot_specs("bridge", 4.0))
 
     assert len({verse, pre_chorus, bridge}) == 3
 
@@ -65,6 +76,27 @@ def test_alt_pop_prompt_seed_changes_across_verse_prechorus_and_bridge_roles():
         "restless alt-pop city night",
         bible,
         {"visual_mode": "bridge_glass", "section_type": "bridge", "shot_role": "bridge_glass"},
+    )
+
+    assert len({verse, pre_chorus, bridge}) == 3
+
+
+def test_idol_pop_prompt_seed_changes_across_verse_prechorus_and_bridge_roles():
+    bible = get_idol_pop_bible()
+    verse = build_idol_pop_prompt_seed(
+        "bright idol pop city performance with glossy late-night lights",
+        bible,
+        {"visual_mode": "city_chorus_walk", "section_type": "verse", "shot_role": "verse_confidence"},
+    )
+    pre_chorus = build_idol_pop_prompt_seed(
+        "bright idol pop city performance with glossy late-night lights",
+        bible,
+        {"visual_mode": "pre_chorus_lift", "section_type": "pre_chorus", "shot_role": "pre_chorus_lift"},
+    )
+    bridge = build_idol_pop_prompt_seed(
+        "bright idol pop city performance with glossy late-night lights",
+        bible,
+        {"visual_mode": "bridge_close_gloss", "section_type": "bridge", "shot_role": "bridge_close"},
     )
 
     assert len({verse, pre_chorus, bridge}) == 3

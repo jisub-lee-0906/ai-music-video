@@ -34,7 +34,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     )
     shot_plan = build_shot_plan(config, sections, style_name=style_lane)
     _thread_continuity_anchor_bundle(shot_plan, creative_direction)
-    _thread_shot_relation_contracts(shot_plan)
+    _thread_shot_relation_contracts(shot_plan, style_name=style_lane)
     material_plan = build_material_plan(style_lane, shot_plan)
     render_plan = [build_render_item(config, concept_text, style_lane, style_bible, shot) for shot in shot_plan]
     return {
@@ -119,18 +119,20 @@ def _thread_continuity_anchor_bundle(shot_plan: list[dict], creative_direction: 
             shot["protagonist_anchor"] = protagonist_anchor
         if world_anchor:
             shot["world_anchor"] = world_anchor
+        wardrobe_anchor = "stable bright stage outfit silhouette" if str(creative_direction.get("style_lane", "")).strip() == "idol_pop" else "stable dark outerwear silhouette"
         shot["continuity_contract"] = {
             "protagonist_anchor": protagonist_anchor,
             "world_anchor": world_anchor,
-            "wardrobe_anchor": "stable dark outerwear silhouette",
+            "wardrobe_anchor": wardrobe_anchor,
             "no_competing_subjects": True,
             "time_band_anchor": "same night time band",
         }
 
 
 
-def _thread_shot_relation_contracts(shot_plan: list[dict]) -> None:
+def _thread_shot_relation_contracts(shot_plan: list[dict], *, style_name: str = "") -> None:
     previous_shot: dict | None = None
+    normalized_style = str(style_name or "").strip()
     for shot in shot_plan:
         if not isinstance(shot, dict):
             continue
@@ -138,21 +140,33 @@ def _thread_shot_relation_contracts(shot_plan: list[dict]) -> None:
             shot["shot_relation_contract"] = {
                 "relation_to_previous_shot": "sequence opener",
                 "camera_distance_progression": "set baseline distance",
-                "same_block_vs_new_block": "same block baseline",
-                "emotional_delta": "establish lonely night-world baseline",
+                "same_block_vs_new_block": _opening_block_baseline(normalized_style),
+                "emotional_delta": _opening_emotional_delta(normalized_style),
             }
         else:
             shot["shot_relation_contract"] = {
                 "relation_to_previous_shot": "continue same protagonist and world from previous shot",
                 "camera_distance_progression": _camera_distance_progression(shot),
-                "same_block_vs_new_block": _same_block_vs_new_block(shot, previous_shot),
-                "emotional_delta": _emotional_delta(shot),
+                "same_block_vs_new_block": _same_block_vs_new_block(shot, previous_shot, style_name=normalized_style),
+                "emotional_delta": _emotional_delta(shot, style_name=normalized_style),
             }
         previous_shot = shot
 
 
+def _opening_block_baseline(style_name: str) -> str:
+    if style_name == "idol_pop":
+        return "stage-ready city baseline"
+    return "same block baseline"
+
+
+def _opening_emotional_delta(style_name: str) -> str:
+    if style_name == "idol_pop":
+        return "establish bright performance-night baseline"
+    return "establish lonely night-world baseline"
+
 
 def _camera_distance_progression(shot: dict) -> str:
+
     framing_intent = str(shot.get("framing_intent", "")).strip()
     return {
         "establishing_wide": "hold or widen from previous shot",
@@ -164,17 +178,25 @@ def _camera_distance_progression(shot: dict) -> str:
 
 
 
-def _same_block_vs_new_block(current_shot: dict, previous_shot: dict) -> str:
+def _same_block_vs_new_block(current_shot: dict, previous_shot: dict, *, style_name: str = "") -> str:
     current_section = str(current_shot.get("section_type", "")).strip()
     previous_section = str(previous_shot.get("section_type", "")).strip()
+    if style_name == "idol_pop" and current_section == previous_section:
+        return "same stage lane, new move"
     if current_section == previous_section:
         return "same block, new angle"
     return "same block, evolved staging"
 
 
 
-def _emotional_delta(shot: dict) -> str:
+def _emotional_delta(shot: dict, *, style_name: str = "") -> str:
     section_type = str(shot.get("section_type", "")).strip().lower()
+    if style_name == "idol_pop":
+        return {
+            "chorus": "open into crowd-ready hook lift without losing world continuity",
+            "bridge": "tighten focus before the next performance release",
+            "outro": "resolve into bright afterglow on the same city stage",
+        }.get(section_type, "increase performer confidence without losing world continuity")
     return {
         "chorus": "open into hook release without changing world",
         "bridge": "turn inward without changing world",

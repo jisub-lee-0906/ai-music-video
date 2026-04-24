@@ -3,6 +3,9 @@ from __future__ import annotations
 from ai_mv.styles.citypop.bible import get_citypop_bible
 from ai_mv.styles.citypop.prompting import build_citypop_prompt_draft, build_citypop_prompt_seed
 from ai_mv.styles.citypop.rules import apply_citypop_section_variants, citypop_section_shot_specs
+from ai_mv.styles.idol_pop.bible import get_idol_pop_bible
+from ai_mv.styles.idol_pop.prompting import build_idol_pop_prompt_draft, build_idol_pop_prompt_seed
+from ai_mv.styles.idol_pop.rules import apply_idol_pop_section_variants, idol_pop_section_shot_specs
 from ai_mv.styles.synthwave.bible import get_synthwave_bible
 from ai_mv.styles.synthwave.prompting import build_synthwave_prompt_draft, build_synthwave_prompt_seed
 from ai_mv.styles.synthwave.rules import apply_synthwave_section_variants, synthwave_section_shot_specs
@@ -27,6 +30,13 @@ STYLE_PACKS = {
         "prompt_draft": build_citypop_prompt_draft,
         "section_specs": citypop_section_shot_specs,
         "section_variants": apply_citypop_section_variants,
+    },
+    "idol_pop": {
+        "bible": get_idol_pop_bible,
+        "prompt_seed": build_idol_pop_prompt_seed,
+        "prompt_draft": build_idol_pop_prompt_draft,
+        "section_specs": idol_pop_section_shot_specs,
+        "section_variants": apply_idol_pop_section_variants,
     },
     "synthwave": {
         "bible": get_synthwave_bible,

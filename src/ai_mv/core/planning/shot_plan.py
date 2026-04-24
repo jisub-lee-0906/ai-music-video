@@ -41,7 +41,7 @@ def build_shot_plan(config: dict, sections: list[dict], *, style_name: str) -> l
     normalized = renumber_shots(shots)
     if use_m1_window(total_duration):
         normalized = compress_shots_to_m1_window(normalized)
-        normalized = _restore_world_first_opener_after_m1_merge(normalized)
+        normalized = _restore_world_first_opener_after_m1_merge(normalized, style_name=style_name)
         normalized = renumber_shots(normalized)
     return apply_render_routing(config, normalized)
 
@@ -51,7 +51,7 @@ def split_section_into_shots(config: dict, section: dict, *, style_name: str) ->
     duration_sec = float(section["duration_sec"])
     section_type = str(section["section_type"])
     shot_specs = style_section_shot_specs(style_name, section_type, duration_sec)
-    shot_specs = _apply_world_first_opener_override(section, shot_specs)
+    shot_specs = _apply_world_first_opener_override(section, shot_specs, style_name=style_name)
     start_sec = float(section["start_sec"])
     out: list[dict] = []
     cursor = start_sec
@@ -73,7 +73,9 @@ def split_section_into_shots(config: dict, section: dict, *, style_name: str) ->
     return apply_style_section_variants(style_name, section_type, split_oversized_parts(config, out))
 
 
-def _apply_world_first_opener_override(section: dict, shot_specs: list[dict]) -> list[dict]:
+def _apply_world_first_opener_override(section: dict, shot_specs: list[dict], *, style_name: str) -> list[dict]:
+    if style_name != "citypop":
+        return shot_specs
     if not shot_specs:
         return shot_specs
     section_name = str(section.get("section_name", "")).strip().lower()
@@ -90,7 +92,9 @@ def _apply_world_first_opener_override(section: dict, shot_specs: list[dict]) ->
 
 
 
-def _restore_world_first_opener_after_m1_merge(shots: list[dict]) -> list[dict]:
+def _restore_world_first_opener_after_m1_merge(shots: list[dict], *, style_name: str) -> list[dict]:
+    if style_name != "citypop":
+        return shots
     if not shots:
         return shots
     first = dict(shots[0])

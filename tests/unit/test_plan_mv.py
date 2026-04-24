@@ -297,6 +297,65 @@ def test_plan_mv_emits_structured_continuity_and_neighbor_contracts():
     assert second_shot["shot_relation_contract"]["emotional_delta"]
 
 
+def test_plan_mv_uses_idol_pop_relation_contracts_that_do_not_revert_to_lonely_baseline():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "idol_pop"}},
+        {
+            "concept_text": "bright idol pop city performance with glossy late-night lights",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    first_shot = out["shot_plan"][0]
+    chorus_shot = next(shot for shot in out["shot_plan"] if shot["section_type"] == "chorus")
+    first_render = out["render_plan"][0]
+    chorus_render = next(item for item in out["render_plan"] if item["shot_id"] == chorus_shot["shot_id"])
+
+    assert "dark outerwear silhouette" not in first_shot["protagonist_anchor"]
+    assert "rain-slick neon boulevard world" not in first_shot["world_anchor"]
+    assert first_shot["continuity_contract"]["wardrobe_anchor"] == "stable bright stage outfit silhouette"
+    assert first_shot["shot_relation_contract"]["same_block_vs_new_block"] == "stage-ready city baseline"
+    assert first_shot["shot_relation_contract"]["emotional_delta"] == "establish bright performance-night baseline"
+    assert chorus_shot["shot_relation_contract"]["emotional_delta"] == "open into crowd-ready hook lift without losing world continuity"
+    assert "lonely night-world baseline" not in first_render["clip_positive_prompt"]
+    assert "crowd-ready hook lift" in chorus_render["clip_positive_prompt"]
+
+
+def test_plan_mv_keeps_idol_pop_opener_out_of_empty_boulevard_anchor_when_intro_merges_into_verse():
+    from ai_mv.core.planning import shot_plan as shot_plan_module
+
+    rows = [
+        {
+            'shot_id': 'S001',
+            'section_name': 'Intro->Verse',
+            'section_type': 'verse',
+            'start_sec': 0.0,
+            'shot_role': 'verse_confidence',
+            'visual_mode': 'city_chorus_walk',
+            'energy': 'medium',
+        }
+    ]
+
+    preserved = shot_plan_module._restore_world_first_opener_after_m1_merge(rows, style_name='idol_pop')
+    synthwave_preserved = shot_plan_module._restore_world_first_opener_after_m1_merge(rows, style_name='synthwave')
+    restored = shot_plan_module._restore_world_first_opener_after_m1_merge(rows, style_name='citypop')
+
+    assert preserved[0]['shot_role'] == 'verse_confidence'
+    assert preserved[0]['visual_mode'] == 'city_chorus_walk'
+    assert synthwave_preserved[0]['shot_role'] == 'verse_confidence'
+    assert synthwave_preserved[0]['visual_mode'] == 'city_chorus_walk'
+    assert restored[0]['shot_role'] == 'intro_mood'
+    assert restored[0]['visual_mode'] == 'empty_boulevard_anchor'
+
+
 def test_plan_mv_uses_prechorus_progression_hint_before_chorus_hint():
     out = build_plan_preview_payload(
         {},

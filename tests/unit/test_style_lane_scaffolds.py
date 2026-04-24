@@ -10,6 +10,7 @@ from ai_mv.styles.resolver import STYLE_PACKS, resolve_style_name
 def test_style_registry_includes_all_six_canonical_v1_lanes_with_complete_pack_contracts():
     assert tuple(STYLE_PACKS.keys()) == (
         "citypop",
+        "idol_pop",
         "synthwave",
         "dream_pop",
         "alt_pop",
@@ -42,6 +43,7 @@ def test_new_style_lane_scaffolds_expose_distinct_bibles():
 
 def test_style_resolver_detects_new_canonical_lanes_from_concept_text():
     assert resolve_style_name("dreamy haze soft romance under moonlit overpass") == "dream_pop"
+    assert resolve_style_name("bright idol pop city performance with glossy late-night lights") == "idol_pop"
     assert resolve_style_name("edgy alt pop rooftop rebellion with chrome club light") == "alt_pop"
     assert resolve_style_name("k-indie quiet street realism with bookstore rain") == "k_indie"
     assert resolve_style_name("j-rock live house drive with electric chorus sprint") == "j_rock"
@@ -51,6 +53,7 @@ def test_style_resolver_detects_new_canonical_lanes_from_concept_text():
 def test_plan_preview_accepts_all_six_canonical_style_overrides_for_ambiguous_concept():
     expected_styles = {
         "citypop": "japanese_citypop_80s_90s",
+        "idol_pop": "idol_pop_night_performance_gloss",
         "synthwave": "retro_synthwave_nightdrive_80s",
         "dream_pop": "dream_pop_cinematic_haze",
         "alt_pop": "alt_pop_modern_cinematic_edge",

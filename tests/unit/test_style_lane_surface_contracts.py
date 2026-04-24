@@ -27,6 +27,9 @@ def _assert_lane_surface(lane_name: str, expected_style_lane: str):
 def test_citypop_lane_surface_contract():
     _assert_lane_surface('citypop', 'citypop')
 
+def test_idol_pop_lane_surface_contract():
+    _assert_lane_surface('idol_pop', 'idol_pop')
+
 def test_synthwave_lane_surface_contract():
     _assert_lane_surface('synthwave', 'synthwave')
 

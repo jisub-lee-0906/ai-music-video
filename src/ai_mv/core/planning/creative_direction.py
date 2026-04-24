@@ -28,6 +28,8 @@ def build_creative_direction(*, concept_text: str, style_name: str, sections: li
 
 
 def _hook_visual(*, text: str, style_name: str) -> str:
+    if style_name == "idol_pop":
+        return "bright front-facing performance moments against a glossy city-night stage world"
     if "night drive" in text:
         return "night drive through neon-lit streets with reflective motion"
     if "romance" in text:
@@ -44,6 +46,12 @@ def _emotional_arc(*, text: str) -> str:
 
 
 def _visual_rules(*, style_name: str) -> list[str]:
+    if style_name == "idol_pop":
+        return [
+            "preserve one coherent glossy performance-night world",
+            "favor bright readable faces and stage-ready performance framing",
+            "avoid moody solitary drift or overly dark wardrobe collapse",
+        ]
     if style_name == "synthwave":
         return [
             "preserve one coherent neon-night world",
@@ -70,6 +78,8 @@ def _bridge_intent(*, text: str) -> str:
 
 
 def _protagonist_anchor(*, text: str, style_name: str) -> str:
+    if style_name == "idol_pop":
+        return "same lead idol performer, stable bright stage outfit silhouette, camera-readable face, no competing co-stars"
     if style_name == "synthwave":
         return "same lone neon-night protagonist, stable dark outerwear silhouette, no competing bystanders"
     if any(token in text for token in ("walk", "wet", "neon", "late-night")):
@@ -78,6 +88,8 @@ def _protagonist_anchor(*, text: str, style_name: str) -> str:
 
 
 def _world_anchor(*, text: str, style_name: str) -> str:
+    if style_name == "idol_pop":
+        return "same glossy city-night performance world, bright reflected lights, polished urban stage energy"
     if style_name == "synthwave":
         return "same neon-night boulevard world, reflective pavement, glowing urban signage"
     if any(token in text for token in ("wet", "neon", "city", "late-night")):
@@ -105,6 +117,8 @@ def _continuity_rules(*, style_name: str, continuity_mode: str) -> list[str]:
             "preserve world continuity between stills and clips",
             "favor motion-safe source images over decorative complexity",
         ]
+    if style_name == "idol_pop":
+        return [*base, "keep bright stage energy, readable face framing, and polished city-night gloss stable across the sequence"]
     if style_name == "synthwave":
         return [*base, "keep neon palette and reflective night setting stable across the sequence"]
     return base
