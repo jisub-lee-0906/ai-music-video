@@ -286,6 +286,100 @@ def test_build_audio_plan_uses_audio_brief_as_hook_fallback_when_hook_brief_miss
     assert plan["hook_brief"] == "music-facing brief"
 
 
+def test_build_audio_plan_applies_audio_review_reroll_prescription_to_prompt_inputs(monkeypatch):
+    seen = {}
+
+    def _fake_plan_with_llm(_config, plan):
+        seen["plan"] = dict(plan)
+        return {
+            "genre_description": "Synth-Pop: glossy synth layers, tight electronic drums, and a solo female vocal with an airy emotional tone.",
+            "bpm": 108,
+            "keyscale": "A major",
+            "seed": 31,
+            "duration": 150,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 불빛", "느린 한숨", "빈 도로", "남은 이름"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["젖은 거리 끝에서", "나는 너를 봐", "사라지지 않아", "끝까지 나아가"]},
+            ],
+        }
+
+    monkeypatch.setattr(audio_planner, "_plan_with_llm", _fake_plan_with_llm)
+    monkeypatch.setattr(
+        audio_planner,
+        "load_audio_review_summary",
+        lambda _path: {
+            "status": "reviewed",
+            "weighted_score": 48.0,
+            "recommended_next_action": "regenerate_audio",
+            "reason_codes": ["muddy_vocals", "weak_hook", "weak_mv_cues"],
+            "prescription": {
+                "fix_strategy": "strengthen_hook_and_clean_vocal_delivery",
+                "prompt_contract_focus": ["hook_brief", "vocal_profile", "audio_direction"],
+                "reason_codes": ["muddy_vocals", "weak_hook", "weak_mv_cues"],
+            },
+        },
+    )
+    cfg = {
+        "prompt": "late-night breakup song that grows from restraint to direct release",
+        "genre": "synth pop",
+        "voice": "solo female, airy and emotional",
+        "language": "ko",
+        "review": {"audio_review_rubric_path": "/tmp/audio-review-rubric.json"},
+    }
+
+    plan = audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+
+    assert "instantly memorable" in seen["plan"]["hook_brief"]
+    assert "clearer vocal delivery" in seen["plan"]["audio_direction"]
+    assert "clear diction" in seen["plan"]["vocal_profile"]
+    assert "muddy vocals" in seen["plan"]["negative_direction"]
+    assert plan["audio_direction"] == seen["plan"]["audio_direction"]
+
+
+def test_build_audio_plan_does_not_apply_audio_review_reroll_when_audio_is_already_publishable(monkeypatch):
+    seen = {}
+
+    def _fake_plan_with_llm(_config, plan):
+        seen["plan"] = dict(plan)
+        return {
+            "genre_description": "Synth-Pop: glossy synth layers, tight electronic drums, and a solo female vocal with an airy emotional tone.",
+            "bpm": 108,
+            "keyscale": "A major",
+            "seed": 31,
+            "duration": 150,
+            "lyrics_blocks": [
+                {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 불빛", "느린 한숨", "빈 도로", "남은 이름"]},
+                {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["젖은 거리 끝에서", "나는 너를 봐", "사라지지 않아", "끝까지 나아가"]},
+            ],
+        }
+
+    monkeypatch.setattr(audio_planner, "_plan_with_llm", _fake_plan_with_llm)
+    monkeypatch.setattr(
+        audio_planner,
+        "load_audio_review_summary",
+        lambda _path: {
+            "status": "reviewed",
+            "weighted_score": 88.0,
+            "recommended_next_action": "publish",
+            "reason_codes": [],
+            "prescription": {},
+        },
+    )
+    cfg = {
+        "prompt": "late-night breakup song that grows from restraint to direct release",
+        "genre": "synth pop",
+        "voice": "solo female, airy and emotional",
+        "language": "ko",
+        "review": {"audio_review_rubric_path": "/tmp/audio-review-rubric.json"},
+    }
+
+    audio_planner.build_audio_plan(cfg, {"run_id": "audio_test"})
+
+    assert seen["plan"]["hook_brief"] == "late-night breakup song that grows from restraint to direct release"
+    assert seen["plan"]["audio_direction"] == "late-night breakup song that grows from restraint to direct release"
+    assert seen["plan"]["vocal_profile"] == "solo female"
+
+
 def test_plan_lyrics_with_llm_runs_final_review_polish(monkeypatch):
     outline = {
         "genre_description": "City Pop: warm electric piano and soft bass.",

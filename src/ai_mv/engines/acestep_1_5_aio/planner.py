@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 
+from ai_mv.core.review.audio_review import apply_audio_review_prescription, load_audio_review_summary
 from ai_mv.core.output_paths import audio_prefix
 from ai_mv.core.contracts.prompt_normalize import (
     normalize_audio_fields,
@@ -158,7 +159,7 @@ def _audio_source(config: dict) -> dict:
         merged["vocal_profile"] = profile
     if tone:
         merged["vocal_tone"] = tone
-    return merged
+    return _apply_audio_review_reroll(config, merged)
 
 
 
@@ -172,6 +173,23 @@ def _configured_audio_language(config: dict, audio: dict) -> str:
         if normalized in {"en", "ja", "ko"}:
             return normalized
     return ""
+
+
+
+def _apply_audio_review_reroll(config: dict, audio: dict) -> dict:
+    rubric_path = _audio_review_rubric_path(config)
+    if not rubric_path:
+        return dict(audio)
+    summary = load_audio_review_summary(rubric_path)
+    return apply_audio_review_prescription(audio, summary)
+
+
+
+def _audio_review_rubric_path(config: dict) -> str:
+    review = config.get("review") if isinstance(config, dict) else None
+    if not isinstance(review, dict):
+        return ""
+    return str(review.get("audio_review_rubric_path", "")).strip()
 
 
 

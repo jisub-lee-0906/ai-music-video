@@ -132,3 +132,70 @@ def _prescription(reason_codes: list[str]) -> dict[str, object]:
         "prompt_contract_focus": ["audio_direction", "hook_brief"],
         "reason_codes": reason_codes,
     }
+
+
+
+def apply_audio_review_prescription(audio: dict, summary: dict | None) -> dict:
+    source = dict(audio) if isinstance(audio, dict) else {}
+    normalized = dict(summary) if isinstance(summary, dict) else {}
+    if str(normalized.get("recommended_next_action", "")).strip() == "publish":
+        return source
+    prescription = normalized.get("prescription") if isinstance(normalized.get("prescription"), dict) else {}
+    if not prescription:
+        return source
+    reason_codes = [str(value).strip() for value in normalized.get("reason_codes", []) if str(value).strip()] if isinstance(normalized.get("reason_codes"), list) else []
+    fix_strategy = str(prescription.get("fix_strategy", "")).strip()
+    updated = dict(source)
+    if fix_strategy == "strengthen_hook_and_clean_vocal_delivery":
+        updated["hook_brief"] = _append_sentence(updated.get("hook_brief", ""), "Make the chorus hook instantly memorable, title-grade, and easy to sing back")
+        updated["brief"] = _append_sentence(updated.get("brief", ""), "Prioritize clearer vocal delivery, cleaner pronunciation, and a stronger chorus lift")
+        updated["vocal_profile"] = _append_csv(updated.get("vocal_profile", ""), "clear diction")
+    elif fix_strategy == "strengthen_hook_and_chorus_lift":
+        updated["hook_brief"] = _append_sentence(updated.get("hook_brief", ""), "Make the chorus hook more immediate, memorable, and emotionally decisive")
+        updated["brief"] = _append_sentence(updated.get("brief", ""), "Push a larger chorus lift with stronger payoff and cleaner release energy")
+    elif fix_strategy == "clean_vocal_delivery_and_pronunciation":
+        updated["brief"] = _append_sentence(updated.get("brief", ""), "Prioritize cleaner vocal delivery, stable pronunciation, and less smeared phrasing")
+        updated["vocal_profile"] = _append_csv(updated.get("vocal_profile", ""), "clear diction")
+    elif fix_strategy == "tighten_genre_identity_and_mv_cues":
+        updated["brief"] = _append_sentence(updated.get("brief", ""), "Strengthen genre identity and make section lifts more usable for MV editing cues")
+        updated["hook_brief"] = _append_sentence(updated.get("hook_brief", ""), "Keep the chorus cue-rich and visually legible at the first hit")
+    updated["negative_direction"] = _append_csv(updated.get("negative_direction", ""), *_reason_code_avoid_phrases(reason_codes))
+    return updated
+
+
+
+def _append_sentence(base: object, addition: str) -> str:
+    left = str(base or "").strip().rstrip(". ")
+    right = str(addition or "").strip().rstrip(". ")
+    if not right:
+        return left
+    if not left:
+        return right
+    if right.lower() in left.lower():
+        return left
+    return f"{left}. {right}"
+
+
+
+def _append_csv(base: object, *items: str) -> str:
+    existing = [part.strip() for part in str(base or "").split(",") if part.strip()]
+    lowered = {part.lower() for part in existing}
+    for item in items:
+        normalized = str(item or "").strip()
+        if normalized and normalized.lower() not in lowered:
+            existing.append(normalized)
+            lowered.add(normalized.lower())
+    return ", ".join(existing)
+
+
+
+def _reason_code_avoid_phrases(reason_codes: list[str]) -> list[str]:
+    mapping = {
+        "muddy_vocals": "muddy vocals",
+        "pronunciation_artifacts": "unclear pronunciation",
+        "weak_hook": "forgettable hook",
+        "weak_chorus_lift": "flat chorus lift",
+        "weak_mv_cues": "weak edit cues",
+        "generic_genre_hit": "generic genre texture",
+    }
+    return [mapping[code] for code in reason_codes if code in mapping]
