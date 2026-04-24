@@ -64,6 +64,12 @@ def build_parser() -> argparse.ArgumentParser:
     audio_review_score.add_argument("--verdict", dest="verdict", default="")
     audio_review_score.add_argument("--next-action", dest="next_action", default="")
 
+    audio_review_batch_score = sub.add_parser("audio-review-batch-score")
+    audio_review_batch_score.add_argument("--rubric-path", dest="rubric_path", required=True)
+    audio_review_batch_score.add_argument("--updates-json", dest="updates_json", required=True)
+    audio_review_batch_score.add_argument("--verdict", dest="verdict", default="")
+    audio_review_batch_score.add_argument("--next-action", dest="next_action", default="")
+
     validate_latest = sub.add_parser("validate-latest")
     validate_latest.add_argument("--output-dir", dest="output_dir", required=True)
     validate_latest.add_argument("--sample-count", dest="sample_count", type=int, default=8)
