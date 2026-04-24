@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from ai_mv.core.orchestration.wsl_overrides import _default_wsl_codex_bin, _discover_wsl_comfy_dir, apply_wsl_runtime_overrides
 
 
@@ -84,6 +86,26 @@ def test_discover_wsl_comfy_dir_finds_user_documents_path(tmp_path):
 
     assert _discover_wsl_comfy_dir("input", users_root) == str(users_root / "Alice" / "Documents" / "ComfyUI" / "input")
     assert _discover_wsl_comfy_dir("output", users_root) == str(users_root / "Alice" / "Documents" / "ComfyUI" / "output")
+
+
+
+def test_discover_wsl_comfy_dir_skips_inaccessible_candidate_and_prefers_accessible_one(monkeypatch, tmp_path):
+    users_root = tmp_path / "Users"
+    sandbox = users_root / "CodexSandboxOffline" / "Documents" / "ComfyUI" / "input"
+    desktop = users_root / "Desktop" / "Documents" / "ComfyUI" / "input"
+    sandbox.mkdir(parents=True)
+    desktop.mkdir(parents=True)
+
+    original_is_dir = Path.is_dir
+
+    def _fake_is_dir(path_obj):
+        if str(path_obj) == str(sandbox):
+            raise PermissionError("permission denied")
+        return original_is_dir(path_obj)
+
+    monkeypatch.setattr(Path, "is_dir", _fake_is_dir)
+
+    assert _discover_wsl_comfy_dir("input", users_root) == str(desktop)
 
 
 

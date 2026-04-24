@@ -121,8 +121,11 @@ def _discover_wsl_comfy_dir(kind: str, users_root: Path | None = None) -> str | 
         return None
     for user_dir in sorted((path for path in root.iterdir() if path.is_dir()), key=lambda path: path.name.lower()):
         candidate = user_dir / "Documents" / "ComfyUI" / normalized_kind
-        if candidate.is_dir():
-            return str(candidate)
+        try:
+            if candidate.is_dir():
+                return str(candidate)
+        except (OSError, PermissionError):
+            continue
     return None
 
 
