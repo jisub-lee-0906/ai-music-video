@@ -5,6 +5,7 @@ from ai_mv.entrypoints.audio_reroll_start import run_audio_reroll_start
 from ai_mv.entrypoints.audio_review_batch_score import run_audio_review_batch_score
 from ai_mv.entrypoints.audio_review_packet import run_audio_review_packet
 from ai_mv.entrypoints.audio_review_score import run_audio_review_score
+from ai_mv.entrypoints.audio_review_session import run_audio_review_session
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.entrypoints.extract_frames import run_extract_frames
 from ai_mv.entrypoints.preflight import run_preflight_entry
@@ -40,6 +41,8 @@ def dispatch(command: str, **kwargs: str) -> int:
         return run_audio_review_score(kwargs["rubric_path"], kwargs["segment_id"], kwargs.get("scores_json", "{}"), kwargs.get("reason_codes_json", "[]"), kwargs.get("notes", ""), kwargs.get("verdict", ""), kwargs.get("next_action", ""))
     if command == "audio-review-batch-score":
         return run_audio_review_batch_score(kwargs["rubric_path"], kwargs.get("updates_json", "[]"), kwargs.get("verdict", ""), kwargs.get("next_action", ""))
+    if command == "audio-review-session":
+        return run_audio_review_session(kwargs["rubric_path"], kwargs.get("updates_json", "[]"), kwargs.get("verdict", ""), kwargs.get("next_action", ""), kwargs.get("reroll_mode", "none"), kwargs.get("run_id"), kwargs.get("concept_text"), kwargs.get("scope", "run"))
     if command == "validate-latest":
         return run_validate_latest(kwargs["output_dir"], int(kwargs.get("sample_count", 8) or 8), kwargs.get("shot_ids", []))
     raise ValueError(f"Unsupported command: {command}")

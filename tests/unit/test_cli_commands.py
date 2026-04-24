@@ -186,6 +186,38 @@ def test_dispatch_routes_audio_review_batch_score_command(monkeypatch):
     )]
 
 
+def test_dispatch_routes_audio_review_session_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "ai_mv.cli.commands.run_audio_review_session",
+        lambda rubric_path, updates_json, verdict, next_action, reroll_mode, run_id, concept_text, scope: calls.append((rubric_path, updates_json, verdict, next_action, reroll_mode, run_id, concept_text, scope)) or 0,
+    )
+
+    rc = dispatch(
+        "audio-review-session",
+        rubric_path=".analysis/audio-review-rubric.json",
+        updates_json='[{"segment_id":"first_chorus","scores":{"hook_memorability":2},"reason_codes":["weak_hook"],"notes":"hook weak"}]',
+        verdict="needs stronger hook",
+        next_action="regenerate_audio",
+        reroll_mode="preflight",
+        run_id="audio-session-123",
+        concept_text=None,
+        scope="run",
+    )
+
+    assert rc == 0
+    assert calls == [(
+        ".analysis/audio-review-rubric.json",
+        '[{"segment_id":"first_chorus","scores":{"hook_memorability":2},"reason_codes":["weak_hook"],"notes":"hook weak"}]',
+        "needs stronger hook",
+        "regenerate_audio",
+        "preflight",
+        "audio-session-123",
+        None,
+        "run",
+    )]
+
+
 def test_dispatch_routes_validate_latest_command(monkeypatch):
     calls = []
     monkeypatch.setattr(
