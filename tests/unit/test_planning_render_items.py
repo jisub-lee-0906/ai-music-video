@@ -561,3 +561,306 @@ def test_render_item_render_count_follows_appendix_duration_bands():
     assert medium_out["render_count"] == 2
     assert long_out["render_count"] == 3
     assert capped_out["render_count"] == 4
+
+
+
+def test_render_item_marks_sequence_opener_as_anchor_still_source():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S001",
+            "render_mode": "ia2v",
+            "shot_role": "intro_anchor",
+            "section_type": "intro",
+            "section_name": "Intro",
+            "visual_mode": "street_establishing",
+            "start_sec": 0.0,
+            "duration_sec": 3.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+                "wardrobe_anchor": "stable dark outerwear silhouette",
+                "no_competing_subjects": True,
+                "time_band_anchor": "same night time band",
+            },
+        },
+    )
+
+    assert out["reference_mode"] == "anchor_source"
+    assert out["reference_source_shot_id"] == "S001"
+    assert out["identity_lock_strength"] == "anchor"
+
+
+
+def test_render_item_routes_later_continuity_shot_to_anchor_reference():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S003",
+            "render_mode": "ia2v",
+            "shot_role": "verse_detail",
+            "section_type": "verse",
+            "section_name": "Verse 1",
+            "visual_mode": "hero_medium",
+            "start_sec": 4.0,
+            "duration_sec": 3.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+                "wardrobe_anchor": "stable dark outerwear silhouette",
+                "no_competing_subjects": True,
+                "time_band_anchor": "same night time band",
+            },
+            "reference_source_shot_id": "S001",
+        },
+    )
+
+    assert out["reference_mode"] == "use_anchor_still"
+    assert out["reference_source_shot_id"] == "S001"
+    assert out["identity_lock_strength"] == "high"
+
+
+
+def test_render_item_defaults_later_general_continuity_shot_to_anchor_reference_mode_without_explicit_source():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S004",
+            "render_mode": "ia2v",
+            "shot_role": "verse_flow",
+            "section_type": "verse",
+            "section_name": "Verse 1",
+            "visual_mode": "connective_medium",
+            "start_sec": 5.0,
+            "duration_sec": 3.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+            },
+        },
+    )
+
+    assert out["reference_mode"] == "use_anchor_still"
+    assert out["reference_source_shot_id"] == ""
+    assert out["identity_lock_strength"] == "high"
+
+
+
+def test_render_item_marks_performance_opener_as_performance_anchor_source():
+    out = build_render_item(
+        {},
+        "bright idol-pop performance night on the same city stage",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S010",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_arrive",
+            "coverage_role": "anchor",
+            "workflow_intent": "audio_reactive_candidate",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_performance",
+            "framing_intent": "performance_medium",
+            "start_sec": 8.0,
+            "duration_sec": 4.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead performer",
+                "world_anchor": "same glossy performance-night stage",
+                "wardrobe_anchor": "stable bright stage outfit silhouette",
+                "no_competing_subjects": True,
+                "time_band_anchor": "same night time band",
+            },
+        },
+    )
+
+    assert out["reference_mode"] == "performance_anchor_source"
+    assert out["reference_source_shot_id"] == "S010"
+    assert out["identity_lock_strength"] == "performance_anchor"
+
+
+
+def test_render_item_routes_later_performance_shot_to_performance_anchor_reference():
+    out = build_render_item(
+        {},
+        "bright idol-pop performance night on the same city stage",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S011",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_hold",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_front_lights",
+            "start_sec": 10.0,
+            "duration_sec": 4.0,
+            "reference_source_shot_id": "S010",
+            "identity_lock_strength": "performance_anchor",
+            "continuity_contract": {
+                "protagonist_anchor": "same lead performer",
+                "world_anchor": "same glossy performance-night stage",
+                "wardrobe_anchor": "stable bright stage outfit silhouette",
+                "no_competing_subjects": True,
+                "time_band_anchor": "same night time band",
+            },
+        },
+    )
+
+    assert out["reference_mode"] == "use_performance_anchor_still"
+    assert out["reference_source_shot_id"] == "S010"
+    assert out["identity_lock_strength"] == "performance_anchor"
+
+
+
+def test_render_item_defaults_later_performance_shot_to_performance_anchor_mode_without_explicit_source():
+    out = build_render_item(
+        {},
+        "bright idol-pop performance night on the same city stage",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S012",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_hold",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_front_lights",
+            "start_sec": 12.0,
+            "duration_sec": 4.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead performer",
+                "world_anchor": "same glossy performance-night stage",
+            },
+        },
+    )
+
+    assert out["reference_mode"] == "use_performance_anchor_still"
+    assert out["reference_source_shot_id"] == ""
+    assert out["identity_lock_strength"] == "performance_anchor"
+
+
+
+def test_render_item_assigns_performance_pose_upgrade_delta_for_performance_anchor_followups():
+    out = build_render_item(
+        {},
+        "bright idol-pop performance night on the same city stage",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S011",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_hold",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_front_lights",
+            "start_sec": 10.0,
+            "duration_sec": 4.0,
+            "reference_source_shot_id": "S010",
+            "identity_lock_strength": "performance_anchor",
+            "continuity_contract": {
+                "protagonist_anchor": "same lead performer",
+                "world_anchor": "same glossy performance-night stage",
+            },
+        },
+    )
+
+    assert out["edit_variation_scope"] == "performance_pose_upgrade"
+    assert out["minimum_visual_delta"] == "pose_or_camera_change_required"
+
+
+
+def test_render_item_assigns_bridge_reframe_delta_for_bridge_anchor_followups():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S020",
+            "render_mode": "ia2v",
+            "shot_role": "bridge_escape",
+            "section_type": "bridge",
+            "section_name": "Bridge",
+            "visual_mode": "bridge_close_gloss",
+            "start_sec": 12.0,
+            "duration_sec": 4.0,
+            "reference_source_shot_id": "S001",
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+            },
+        },
+    )
+
+    assert out["edit_variation_scope"] == "bridge_reframe"
+    assert out["minimum_visual_delta"] == "lighting_or_framing_change_required"
+
+
+
+def test_render_item_assigns_framing_only_delta_for_general_continuity_followups():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S003",
+            "render_mode": "ia2v",
+            "shot_role": "verse_detail",
+            "section_type": "verse",
+            "section_name": "Verse 1",
+            "visual_mode": "hero_medium",
+            "start_sec": 4.0,
+            "duration_sec": 3.0,
+            "reference_source_shot_id": "S001",
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+            },
+        },
+    )
+
+    assert out["edit_variation_scope"] == "framing_only"
+    assert out["minimum_visual_delta"] == "camera_distance_or_angle_change_required"
+
+
+
+def test_render_item_keeps_split_chorus_release_shot_on_general_anchor_path():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S013",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_hold",
+            "coverage_role": "connective",
+            "workflow_intent": "section_default",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "neon_release",
+            "framing_intent": "release_wide",
+            "start_sec": 14.0,
+            "duration_sec": 4.0,
+            "reference_source_shot_id": "S001",
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+            },
+        },
+    )
+
+    assert out["reference_mode"] == "use_anchor_still"
+    assert out["identity_lock_strength"] == "high"
+    assert out["edit_variation_scope"] == "framing_only"

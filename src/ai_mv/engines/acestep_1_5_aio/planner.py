@@ -973,6 +973,7 @@ def _polish_lyrics_sections(config: dict, plan: dict, outline: dict, blocks: lis
             "Make the Japanese feel more naturally singable and better fitted to the section's bar length and breathing. "
             "Prefer lines that feel more lived-in, specific, and memorable over safe generic phrasing. "
             "Replace explanation with stronger lyric detail where possible, but keep the section easy to sing in time. "
+            + _section_specific_polish_constraints(label)
         )
         refreshed[idx] = _generate_lyrics_block_with_note(
             config,
@@ -1025,6 +1026,28 @@ def _lyrics_rewrite_targets_prompt(plan: dict, blocks: list[dict]) -> str:
         + "Sections: "
         + " || ".join(rendered)
     )
+
+
+
+def _section_specific_polish_constraints(label: str) -> str:
+    normalized = str(label or "").strip()
+    if normalized in {"Pre-Chorus", "Pre-Chorus 2"}:
+        return (
+            "Pre-Chorus should stay tighter than the Chorus. "
+            "Do not let it open broader than the Chorus payoff. "
+            "Keep the lines shorter on average and pointed toward lift rather than release. "
+        )
+    if normalized in {"Chorus", "Chorus 2"}:
+        return (
+            "Chorus should open more clearly than the Pre-Chorus. "
+            "Keep it hook-first, broader in release, and easier to remember. "
+        )
+    if normalized == "Final Chorus":
+        return "Final Chorus should feel like the strongest payoff and resolution, not just a repeat of the first Chorus. "
+    if normalized == "Bridge":
+        return "Bridge must stay brief, turning, and compressed so the final return lands harder. "
+    return ""
+
 
 
 def _lyrics_rewrite_targets_schema(allowed_labels: list[str]) -> dict:

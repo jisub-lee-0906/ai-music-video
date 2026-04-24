@@ -20,8 +20,15 @@ def run_audio_reroll_preflight(
     rid = run_id or ""
     lock = acquire_lock("audio-reroll-preflight")
     try:
-        resolved_concept_text = str(concept_text or "").strip() or _latest_success_concept_text(resolved_scope)
+        explicit_concept_text = str(concept_text or "").strip()
+        latest_success = _latest_success_defaults(resolved_scope) if not explicit_concept_text else {"concept_text": explicit_concept_text, "default_style_name": ""}
+        resolved_concept_text = explicit_concept_text or latest_success["concept_text"]
         cfg = _load_prepared_config(resolved_concept_text)
+        planning = cfg.get("planning") if isinstance(cfg.get("planning"), dict) else {}
+        cfg["planning"] = dict(planning)
+        default_style_name = str(latest_success.get("default_style_name", "")).strip()
+        if default_style_name and not str(cfg["planning"].get("default_style_name", "")).strip():
+            cfg["planning"]["default_style_name"] = default_style_name
         review = cfg.get("review") if isinstance(cfg.get("review"), dict) else {}
         cfg["review"] = dict(review)
         cfg["review"]["audio_review_rubric_path"] = normalized_rubric_path
@@ -42,10 +49,12 @@ def run_audio_reroll_preflight(
 
 
 
-def _latest_success_concept_text(scope: str) -> str:
+def _latest_success_defaults(scope: str) -> dict:
     manifest = read_json(latest_success_file("manifest.json", scope))
     input_block = manifest.get("input") if isinstance(manifest.get("input"), dict) else {}
     concept_text = str(input_block.get("concept_text", "")).strip()
     if not concept_text:
         raise RuntimeError(f"latest_success manifest missing input.concept_text for scope={scope}")
-    return concept_text
+    plan_block = manifest.get("plan") if isinstance(manifest.get("plan"), dict) else {}
+    default_style_name = str(plan_block.get("style_lane", "")).strip()
+    return {"concept_text": concept_text, "default_style_name": default_style_name}

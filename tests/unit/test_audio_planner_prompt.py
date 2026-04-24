@@ -131,6 +131,24 @@ def test_audio_lyrics_draft_prompt_surfaces_retry_feedback_for_korean_lyrics_fai
     assert "Do not output any English-only lyric lines." in prompt
 
 
+
+def test_audio_lyrics_draft_prompt_includes_exact_ordered_header_template_for_bridge_runs():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "role": "setup", "change": "establish", "line_count": 4},
+            {"section": "pre_chorus", "label": "Pre-Chorus", "role": "tighten", "change": "build", "line_count": 3},
+            {"section": "chorus", "label": "Chorus", "role": "release", "change": "open", "line_count": 4},
+            {"section": "verse_2", "label": "Verse 2", "role": "develop", "change": "shift", "line_count": 4},
+            {"section": "bridge", "label": "Bridge", "role": "turn", "change": "reframe", "line_count": 2},
+            {"section": "chorus", "label": "Final Chorus", "role": "resolve", "change": "payoff", "line_count": 5},
+        ]
+    }
+    prompt = audio_planner._audio_lyrics_draft_prompt(_prompt_plan(language="en"), outline)
+    assert "Output this exact header sequence once, in this exact order:" in prompt
+    assert "[Verse 1]\n[Pre-Chorus]\n[Chorus]\n[Verse 2]\n[Bridge]\n[Final Chorus]" in prompt
+    assert "Do not rename or merge headers; keep [Bridge] exactly as [Bridge]." in prompt
+
+
 def test_hook_scoring_prefers_world_anchored_korean_hook_over_generic_english():
     plan = _prompt_plan(hook_english_fragments=["all night", "call my name"])
     korean = {"fragment": "새벽 너머", "language_mode": "primary_only", "placement": "chorus"}
@@ -797,6 +815,45 @@ def test_polish_lyrics_sections_can_handle_artist_style_targets(monkeypatch):
     assert rewritten == ["Final Chorus"]
     assert out[0]["lines"] == ["젖은 밤을 걷고", "이름을 지워"]
     assert out[1]["lines"] == ["남은 불빛 끝에서", "이제 난 내 이름으로 가"]
+
+
+
+def test_polish_lyrics_sections_reinforces_pre_chorus_vs_chorus_contrast_when_rewriting_pre_chorus(monkeypatch):
+    outline = {
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "style": "restraint", "line_count": 2},
+            {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "line_count": 3},
+            {"section": "chorus", "label": "Chorus", "style": "release", "line_count": 4},
+        ]
+    }
+    blocks = [
+        {"section": "verse_1", "label": "Verse 1", "style": "restraint", "lines": ["젖은 밤을 걷고", "숨을 고른다"]},
+        {"section": "pre_chorus", "label": "Pre-Chorus", "style": "tighten", "lines": ["조금 더 가까이 가", "말들이 길어져 가", "밤이 천천히 열린다"]},
+        {"section": "chorus", "label": "Chorus", "style": "release", "lines": ["지금 너를 불러", "더 크게 열어", "밤 끝까지 가", "심장이 뛴다"]},
+    ]
+    monkeypatch.setattr(
+        audio_planner,
+        "_plan_lyrics_rewrite_targets_with_llm",
+        lambda _config, _plan, _blocks: [{"label": "Pre-Chorus", "reason": "tighten bar-fit and sharpen the lift into chorus"}],
+    )
+    seen = {}
+
+    def _rewrite(_config, _plan, _outline, completed, block, revision_note):
+        seen["label"] = str(block.get("label", "")).strip()
+        seen["revision_note"] = revision_note
+        return {
+            "section": str(block.get("section", "")).strip(),
+            "label": str(block.get("label", "")).strip(),
+            "style": str(block.get("style", "")).strip(),
+            "lines": ["조금 더 가까이", "숨이 더 짧아져", "바로 문을 열어"],
+        }
+
+    monkeypatch.setattr(audio_planner, "_generate_lyrics_block_with_note", _rewrite)
+    out = audio_planner._polish_lyrics_sections({}, _prompt_plan(language="en"), outline, blocks)
+    assert seen["label"] == "Pre-Chorus"
+    assert "Pre-Chorus should stay tighter than the Chorus" in seen["revision_note"]
+    assert "Do not let it open broader than the Chorus payoff" in seen["revision_note"]
+    assert out[1]["lines"] == ["조금 더 가까이", "숨이 더 짧아져", "바로 문을 열어"]
 
 
 def test_normalize_and_validate_keeps_llm_generated_bpm_and_keyscale(monkeypatch):

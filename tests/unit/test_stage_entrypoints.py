@@ -1112,6 +1112,212 @@ def test_render_stills_can_explicitly_reuse_prior_still_as_reference(monkeypatch
     assert calls[0]["reference_image"] == "D:/renders/older-S001.png"
 
 
+
+def test_render_stills_reuse_prior_still_does_not_fallback_to_other_anchor_when_same_shot_prior_is_missing(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-reference-explicit-missing",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S001"}],
+            "render_plan": [{"shot_id": "S001", "prompt_seed": "city pop girl by the sea", "reference_mode": "reuse_prior_still"}],
+            "still_results": [{"shot_id": "S999", "image": "D:/renders/other-anchor.png", "reference_mode": "anchor_source"}],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert "reference_image" not in calls[0]
+
+
+
+def test_render_stills_uses_first_generated_anchor_still_for_later_continuity_shots(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-anchor-reference",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [
+                {"shot_id": "S001", "visual_mode": "street_establishing"},
+                {"shot_id": "S002", "visual_mode": "hero_medium"},
+                {"shot_id": "S003", "visual_mode": "connective_medium"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman under wet neon",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman", "world_anchor": "same wet neon boulevard"},
+                },
+                {
+                    "shot_id": "S002",
+                    "still_prompt_text": "same lead woman closer to camera",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman", "world_anchor": "same wet neon boulevard"},
+                },
+                {
+                    "shot_id": "S003",
+                    "still_prompt_text": "same lead woman turning into side light",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman", "world_anchor": "same wet neon boulevard"},
+                },
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert "reference_image" not in calls[0]
+    assert calls[1]["reference_image"] == "D:/renders/S001.png"
+    assert calls[2]["reference_image"] == "D:/renders/S001.png"
+
+
+
+def test_render_stills_uses_generated_performance_anchor_source_for_later_performance_shot(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-performance-anchor-reference",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [
+                {"shot_id": "S010", "visual_mode": "chorus_performance"},
+                {"shot_id": "S011", "visual_mode": "chorus_front_lights"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S010",
+                    "still_prompt_text": "same lead performer on the same glossy performance-night stage",
+                    "reference_mode": "performance_anchor_source",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+                {
+                    "shot_id": "S011",
+                    "still_prompt_text": "same lead performer under chorus front lights on the same glossy performance-night stage",
+                    "reference_mode": "use_performance_anchor_still",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert "reference_image" not in calls[0]
+    assert calls[1]["reference_image"] == "D:/renders/S010.png"
+
+
+
+def test_render_stills_prefers_generated_performance_anchor_over_earlier_intro_anchor(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-performance-anchor-priority",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [
+                {"shot_id": "S001", "visual_mode": "street_establishing"},
+                {"shot_id": "S010", "visual_mode": "chorus_performance"},
+                {"shot_id": "S011", "visual_mode": "chorus_front_lights"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman under wet neon",
+                    "reference_mode": "anchor_source",
+                    "reference_source_shot_id": "S001",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman", "world_anchor": "same wet neon boulevard"},
+                },
+                {
+                    "shot_id": "S010",
+                    "still_prompt_text": "same lead performer on the same glossy performance-night stage",
+                    "reference_mode": "performance_anchor_source",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+                {
+                    "shot_id": "S011",
+                    "still_prompt_text": "same lead performer under chorus front lights on the same glossy performance-night stage",
+                    "reference_mode": "use_performance_anchor_still",
+                    "reference_source_shot_id": "",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert calls[2]["reference_image"] == "D:/renders/S010.png"
+
+
+
+def test_render_stills_does_not_fallback_to_intro_anchor_when_performance_anchor_is_missing(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-performance-anchor-missing",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [
+                {"shot_id": "S001", "visual_mode": "street_establishing"},
+                {"shot_id": "S011", "visual_mode": "chorus_front_lights"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman under wet neon",
+                    "reference_mode": "anchor_source",
+                    "reference_source_shot_id": "S001",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman", "world_anchor": "same wet neon boulevard"},
+                },
+                {
+                    "shot_id": "S011",
+                    "still_prompt_text": "same lead performer under chorus front lights on the same glossy performance-night stage",
+                    "reference_mode": "use_performance_anchor_still",
+                    "reference_source_shot_id": "",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert "reference_image" not in calls[1]
+
+
 def test_render_stills_adds_single_keyframe_constraints_to_prompt(monkeypatch):
     calls = []
 

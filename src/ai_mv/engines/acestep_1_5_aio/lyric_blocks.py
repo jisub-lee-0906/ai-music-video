@@ -99,6 +99,7 @@ def _audio_lyrics_block_system_prompt(plan: dict, block: dict) -> str:
 
 def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
     sections = []
+    ordered_headers: list[str] = []
     for block in outline.get("lyrics_blocks", []):
         if not isinstance(block, dict):
             continue
@@ -108,6 +109,7 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         change = str(block.get("change", "")).strip()
         if not label:
             continue
+        ordered_headers.append(f"[{label}]")
         summary = f"[{label}]={line_count} lines"
         bars = _section_bar_count(plan, block)
         if bars > 0:
@@ -120,6 +122,7 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
                 details.append(f"change:{change}")
             summary += " (" + "; ".join(details) + ")"
         sections.append(summary)
+    header_template = "\n".join(ordered_headers)
     return (
         _audio_lyrics_rules(plan)
         + _audio_retry_clause(plan)
@@ -139,6 +142,10 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         + "Do not invent random nouns just to fake atmosphere. "
         + "Output bracketed section headers and lyric lines only. "
         + "Do not add [end], notes, numbering, or any text outside the song. "
+        + "Output this exact header sequence once, in this exact order:\n"
+        + header_template
+        + "\n"
+        + "Do not rename or merge headers; keep [Bridge] exactly as [Bridge]. "
         + "Locked outline: "
         + ", ".join(sections)
         + ". "

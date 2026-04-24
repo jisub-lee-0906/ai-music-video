@@ -25,6 +25,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
     prior_stills = [row for row in stage_input.payload.get("still_results", []) if isinstance(row, dict)]
     render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan}
     prior_still_map = {str(row.get("shot_id", "")).strip(): row for row in prior_stills}
+    generated_still_map: dict[str, dict] = {}
     material_map = {str(row.get("material_id", "")).strip(): row for row in material_plan if str(row.get("material_id", "")).strip()}
     still_results = []
     for shot in shot_plan:
@@ -35,6 +36,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         base_prompt_text = _still_prompt_text(render_item)
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
+        anchor_reference_image = _anchor_reference_image(render_item, generated_still_map, prior_still_map)
         render_count = _render_count(render_item)
         candidate_score_rows = render_item.get("still_candidate_scores") if isinstance(render_item.get("still_candidate_scores"), list) else []
         candidate_results: list[dict] = []
@@ -51,6 +53,8 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
                 item["seed"] = seed + retry
             if previous_image and str(render_item.get("reference_mode", "")).strip() == "reuse_prior_still":
                 item["reference_image"] = previous_image
+            elif anchor_reference_image:
+                item["reference_image"] = anchor_reference_image
             image_path = run_flux2_still(
                 stage_input.config,
                 item,
@@ -83,9 +87,13 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
                 "selection_policy": selection_policy,
                 "prompt_seed": str(render_item.get("prompt_seed", "")).strip(),
                 "prompt_text": prompt_text,
+                "reference_mode": str(render_item.get("reference_mode", "")).strip(),
+                "reference_source_shot_id": str(render_item.get("reference_source_shot_id", "")).strip(),
+                "identity_lock_strength": str(render_item.get("identity_lock_strength", "")).strip(),
                 "status": "done",
             }
         )
+        generated_still_map[shot_id] = still_results[-1]
     return StageOutput(
         "render_stills",
         "done",
@@ -183,6 +191,49 @@ def _render_count(render_item: dict) -> int:
     except Exception:
         return 1
     return max(1, render_count)
+
+
+
+def _anchor_reference_image(render_item: dict, generated_still_map: dict[str, dict], prior_still_map: dict[str, dict]) -> str:
+    if not isinstance(render_item, dict):
+        return ""
+    reference_mode = str(render_item.get("reference_mode", "")).strip().lower()
+    if reference_mode == "reuse_prior_still":
+        return ""
+    if reference_mode == "":
+        continuity_contract = render_item.get("continuity_contract") if isinstance(render_item.get("continuity_contract"), dict) else {}
+        has_continuity_anchor = bool(
+            str(continuity_contract.get("protagonist_anchor", "")).strip()
+            or str(continuity_contract.get("world_anchor", "")).strip()
+        )
+        if not has_continuity_anchor:
+            return ""
+        for still_map in (generated_still_map, prior_still_map):
+            for row in still_map.values():
+                image = str(row.get("image", "")).strip() if isinstance(row, dict) else ""
+                if image:
+                    return image
+        return ""
+    if reference_mode in {"use_anchor_still", "use_performance_anchor_still"}:
+        reference_shot_id = str(render_item.get("reference_source_shot_id", "")).strip()
+        if reference_shot_id:
+            for still_map in (generated_still_map, prior_still_map):
+                image = str(still_map.get(reference_shot_id, {}).get("image", "")).strip()
+                if image:
+                    return image
+        preferred_source_mode = "performance_anchor_source" if reference_mode == "use_performance_anchor_still" else "anchor_source"
+        for still_map in (generated_still_map, prior_still_map):
+            candidates = list(still_map.values()) if isinstance(still_map, dict) else []
+            for row in reversed(candidates):
+                if not isinstance(row, dict):
+                    continue
+                row_mode = str(row.get("reference_mode", "")).strip().lower()
+                image = str(row.get("image", "")).strip()
+                if image and row_mode == preferred_source_mode:
+                    return image
+        if reference_mode == "use_anchor_still":
+            return ""
+    return ""
 
 
 
