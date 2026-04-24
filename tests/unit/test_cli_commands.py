@@ -60,6 +60,30 @@ def test_dispatch_routes_review_packet_command(monkeypatch):
 
 
 
+def test_dispatch_routes_audio_review_packet_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "ai_mv.cli.commands.run_audio_review_packet",
+        lambda music_file, output_dir, sections_json, audio_plan_json: calls.append((music_file, output_dir, sections_json, audio_plan_json)) or 0,
+    )
+
+    rc = dispatch(
+        "audio-review-packet",
+        music_file="renders/music.mp3",
+        output_dir=".analysis/audio-review",
+        sections_json='[{"name":"chorus","start_sec":4.0,"end_sec":12.0}]',
+        audio_plan_json='{"genre_description":"idol pop"}',
+    )
+
+    assert rc == 0
+    assert calls == [(
+        "renders/music.mp3",
+        ".analysis/audio-review",
+        '[{"name":"chorus","start_sec":4.0,"end_sec":12.0}]',
+        '{"genre_description":"idol pop"}',
+    )]
+
+
 def test_dispatch_routes_validate_latest_command(monkeypatch):
     calls = []
     monkeypatch.setattr(

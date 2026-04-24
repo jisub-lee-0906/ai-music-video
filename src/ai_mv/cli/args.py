@@ -37,6 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
     review_packet.add_argument("--sample-count", dest="sample_count", type=int, default=6)
     review_packet.add_argument("--shot-id", dest="shot_ids", action="append", default=[])
 
+    audio_review_packet = sub.add_parser("audio-review-packet")
+    audio_review_packet.add_argument("--music-file", dest="music_file", required=True)
+    audio_review_packet.add_argument("--output-dir", dest="output_dir", required=True)
+    audio_review_packet.add_argument("--sections-json", dest="sections_json", default="[]")
+    audio_review_packet.add_argument("--audio-plan-json", dest="audio_plan_json", default="{}")
+
     validate_latest = sub.add_parser("validate-latest")
     validate_latest.add_argument("--output-dir", dest="output_dir", required=True)
     validate_latest.add_argument("--sample-count", dest="sample_count", type=int, default=8)

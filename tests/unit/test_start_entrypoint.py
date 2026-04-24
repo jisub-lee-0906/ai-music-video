@@ -160,3 +160,30 @@ def test_run_review_packet_writes_manifest_and_supporting_files(monkeypatch, tmp
     assert str(output_dir / "contact-sheet.png") in out
     assert str(output_dir / "contact-sheet.json") in out
 
+
+def test_run_audio_review_packet_writes_manifest_and_supporting_files(monkeypatch, tmp_path, capsys):
+    output_dir = tmp_path / "audio-review"
+    monkeypatch.setattr(
+        "ai_mv.entrypoints.audio_review_packet.write_audio_review_packet",
+        lambda **_kwargs: {
+            "manifest_path": output_dir / "audio-review-packet.json",
+            "rubric_path": output_dir / "audio-review-rubric.json",
+            "reviewer_notes_path": output_dir / "audio-review-notes.md",
+        },
+    )
+
+    from ai_mv.entrypoints.audio_review_packet import run_audio_review_packet
+
+    rc = run_audio_review_packet(
+        music_file=str(tmp_path / "music.mp3"),
+        output_dir=str(output_dir),
+        sections_json='[{"name":"chorus","start_sec":4.0,"end_sec":12.0}]',
+        audio_plan_json='{"genre_description":"idol pop"}',
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert str(output_dir / "audio-review-packet.json") in out
+    assert str(output_dir / "audio-review-rubric.json") in out
+    assert str(output_dir / "audio-review-notes.md") in out
+

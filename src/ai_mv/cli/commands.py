@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ai_mv.entrypoints.audio_review_packet import run_audio_review_packet
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.entrypoints.extract_frames import run_extract_frames
 from ai_mv.entrypoints.preflight import run_preflight_entry
@@ -25,6 +26,8 @@ def dispatch(command: str, **kwargs: str) -> int:
         return run_quality_findings_template(kwargs.get("shot_ids", []), kwargs["output"])
     if command == "review-packet":
         return run_review_packet(kwargs["video"], kwargs["output_dir"], kwargs.get("kind", "clip"), int(kwargs.get("sample_count", 6) or 6), kwargs.get("shot_ids", []))
+    if command == "audio-review-packet":
+        return run_audio_review_packet(kwargs["music_file"], kwargs["output_dir"], kwargs.get("sections_json", "[]"), kwargs.get("audio_plan_json", "{}"))
     if command == "validate-latest":
         return run_validate_latest(kwargs["output_dir"], int(kwargs.get("sample_count", 8) or 8), kwargs.get("shot_ids", []))
     raise ValueError(f"Unsupported command: {command}")
