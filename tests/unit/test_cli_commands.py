@@ -108,6 +108,30 @@ def test_dispatch_routes_audio_reroll_preflight_command(monkeypatch):
     )]
 
 
+def test_dispatch_routes_audio_reroll_start_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "ai_mv.cli.commands.run_audio_reroll_start",
+        lambda rubric_path, run_id, concept_text, scope: calls.append((rubric_path, run_id, concept_text, scope)) or 0,
+    )
+
+    rc = dispatch(
+        "audio-reroll-start",
+        rubric_path=".analysis/audio-review-rubric-reviewed.json",
+        run_id="reroll-start-123",
+        concept_text=None,
+        scope="run",
+    )
+
+    assert rc == 0
+    assert calls == [(
+        ".analysis/audio-review-rubric-reviewed.json",
+        "reroll-start-123",
+        None,
+        "run",
+    )]
+
+
 def test_dispatch_routes_validate_latest_command(monkeypatch):
     calls = []
     monkeypatch.setattr(

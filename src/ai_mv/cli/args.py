@@ -49,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     audio_reroll_preflight.add_argument("--concept-text", dest="concept_text", default=None)
     audio_reroll_preflight.add_argument("--scope", choices=("run", "preflight"), default="run")
 
+    audio_reroll_start = sub.add_parser("audio-reroll-start")
+    audio_reroll_start.add_argument("--rubric-path", dest="rubric_path", required=True)
+    audio_reroll_start.add_argument("--run-id", dest="run_id", default=None)
+    audio_reroll_start.add_argument("--concept-text", dest="concept_text", default=None)
+    audio_reroll_start.add_argument("--scope", choices=("run", "preflight"), default="run")
+
     validate_latest = sub.add_parser("validate-latest")
     validate_latest.add_argument("--output-dir", dest="output_dir", required=True)
     validate_latest.add_argument("--sample-count", dest="sample_count", type=int, default=8)

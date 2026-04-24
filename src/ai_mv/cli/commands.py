@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.entrypoints.audio_reroll import run_audio_reroll_preflight
+from ai_mv.entrypoints.audio_reroll_start import run_audio_reroll_start
 from ai_mv.entrypoints.audio_review_packet import run_audio_review_packet
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.entrypoints.extract_frames import run_extract_frames
@@ -31,6 +32,8 @@ def dispatch(command: str, **kwargs: str) -> int:
         return run_audio_review_packet(kwargs["music_file"], kwargs["output_dir"], kwargs.get("sections_json", "[]"), kwargs.get("audio_plan_json", "{}"))
     if command == "audio-reroll-preflight":
         return run_audio_reroll_preflight(kwargs["rubric_path"], kwargs.get("run_id"), kwargs.get("concept_text"), kwargs.get("scope", "run"))
+    if command == "audio-reroll-start":
+        return run_audio_reroll_start(kwargs["rubric_path"], kwargs.get("run_id"), kwargs.get("concept_text"), kwargs.get("scope", "run"))
     if command == "validate-latest":
         return run_validate_latest(kwargs["output_dir"], int(kwargs.get("sample_count", 8) or 8), kwargs.get("shot_ids", []))
     raise ValueError(f"Unsupported command: {command}")
