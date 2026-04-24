@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.review.audio_review import load_audio_review_summary
 from ai_mv.core.review.models import build_review_report, build_shot_quality_scores
 from ai_mv.core.review.policy import audio_video_drift_sec, file_exists, shot_asset_status
 from ai_mv.core.review.rerender_policy import rerender_reasons, rerender_targets
@@ -55,6 +56,7 @@ def run_review_stage(stage_input: StageInput, *, duration_fn=ffprobe_duration) -
         quality_findings=quality_findings,
     )
     review_inputs = stage_input.payload.get("review_inputs") if isinstance(stage_input.payload, dict) else None
+    audio_review_summary = load_audio_review_summary(review_inputs.get("audio_review_rubric_path")) if isinstance(review_inputs, dict) else {}
     report = build_review_report(
         planned_shot_ids=planned_shot_ids,
         still_results=still_results,
@@ -80,6 +82,7 @@ def run_review_stage(stage_input: StageInput, *, duration_fn=ffprobe_duration) -
         snap_unit_by_shot=review_inputs.get("snap_unit_by_shot", {}) if isinstance(review_inputs, dict) else {},
         trimmed_coverage_by_shot=review_inputs.get("trimmed_coverage_by_shot", {}) if isinstance(review_inputs, dict) else {},
         assembly_revision=review_inputs.get("assembly_revision", {}) if isinstance(review_inputs, dict) else {},
+        audio_review_summary=audio_review_summary,
     )
     return StageOutput("review", "done", {"review_report": report}, [])
 

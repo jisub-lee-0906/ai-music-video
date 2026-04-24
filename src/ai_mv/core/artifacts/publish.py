@@ -46,6 +46,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     summary_fields = derive_summary_fields(payload)
     review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
     review_scores = review_report.get("scores") if isinstance(review_report.get("scores"), dict) else {}
+    audio_review_summary = review_report.get("audio_review_summary") if isinstance(review_report.get("audio_review_summary"), dict) else {}
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -66,6 +67,10 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "technical_completion_score": float(review_scores.get("technical_completion", 0.0) or 0.0),
         "material_quality_score": float(review_scores.get("material_quality", 0.0) or 0.0),
         "final_mv_quality_score": float(review_scores.get("final_mv_quality", 0.0) or 0.0),
+        "audio_review_status": str(audio_review_summary.get("status", "")).strip(),
+        "audio_review_weighted_score": float(audio_review_summary.get("weighted_score", 0.0) or 0.0),
+        "audio_review_recommended_next_action": str(audio_review_summary.get("recommended_next_action", "")).strip(),
+        "audio_review_reason_codes": [str(value).strip() for value in audio_review_summary.get("reason_codes", []) if str(value).strip()] if isinstance(audio_review_summary.get("reason_codes"), list) else [],
         "rerender_target_count": len(review_report.get("rerender_targets", [])),
         "rerender_escalation_status": str(rerender_escalation.get("status", "")).strip(),
         "rerender_escalation_shot_count": int(rerender_escalation.get("shot_count", 0) or 0),

@@ -47,11 +47,7 @@ def write_manifest(state: dict, payload: dict) -> None:
             "assembly_plan": dict(payload.get("assembly_plan", {})),
             "review_inputs": dict(payload.get("review_inputs", {})),
         },
-        "review": {
-            "review_report": dict(payload.get("review_report", {})),
-            "review_packet_manifest": str(escalation_artifacts.get("review_packet_manifest", "")).strip(),
-            "rerender_escalation": _manifest_rerender_escalation(rerender_escalation),
-        },
+        "review": _manifest_review_section(payload, escalation_artifacts, rerender_escalation),
         "artifacts": {
             "scope": scope,
         },
@@ -75,6 +71,21 @@ def _manifest_rerender_escalation(rerender_escalation: dict) -> dict:
         "unique_section_ids": dedupe_preserve_order(section_ids),
     }
     return out if any(out.values()) else {}
+
+
+
+def _manifest_review_section(payload: dict, escalation_artifacts: dict, rerender_escalation: dict) -> dict:
+    review_report = dict(payload.get("review_report", {}))
+    out = {
+        "review_report": review_report,
+        "review_packet_manifest": str(escalation_artifacts.get("review_packet_manifest", "")).strip(),
+        "rerender_escalation": _manifest_rerender_escalation(rerender_escalation),
+    }
+    audio_review_summary = review_report.get("audio_review_summary") if isinstance(review_report.get("audio_review_summary"), dict) else {}
+    if audio_review_summary:
+        out["audio_review_summary"] = dict(audio_review_summary)
+    return out
+
 
 
 def _manifest_section_plan(payload: dict, audio_map: dict) -> list[dict]:
