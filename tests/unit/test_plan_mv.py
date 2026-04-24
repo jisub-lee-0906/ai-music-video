@@ -322,6 +322,8 @@ def test_plan_mv_uses_idol_pop_relation_contracts_that_do_not_revert_to_lonely_b
     assert "dark outerwear silhouette" not in first_shot["protagonist_anchor"]
     assert "rain-slick neon boulevard world" not in first_shot["world_anchor"]
     assert first_shot["continuity_contract"]["wardrobe_anchor"] == "stable bright stage outfit silhouette"
+    assert chorus_shot["framing_intent"] == "performance_medium"
+    assert chorus_shot["workflow_intent"] == "audio_reactive_candidate"
     assert first_shot["shot_relation_contract"]["same_block_vs_new_block"] == "stage-ready city baseline"
     assert first_shot["shot_relation_contract"]["emotional_delta"] == "establish bright performance-night baseline"
     assert chorus_shot["shot_relation_contract"]["emotional_delta"] == "open into crowd-ready hook lift without losing world continuity"

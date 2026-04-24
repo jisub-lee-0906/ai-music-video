@@ -6,7 +6,7 @@ def build_shot_intent(*, section_type: str, shot_role: str, visual_mode: str) ->
     role = str(shot_role or "").strip().lower()
     visual = str(visual_mode or "").strip().lower()
 
-    if visual == "chorus_performance":
+    if visual in {"chorus_performance", "chorus_front_lights"}:
         return {
             "edit_role": "hook",
             "coverage_role": "anchor",
