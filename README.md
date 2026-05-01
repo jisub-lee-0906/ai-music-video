@@ -63,7 +63,7 @@ ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis
 ai-mv review-packet --video <final_video_path_from_manifest> --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002
 # packet now includes review-packet.json, review-findings.json, review-notes.md, and contact-sheet.json
 ai-mv validate-latest --output-dir .analysis/latest-validation --sample-count 8
-# validate-latest reads artifacts/latest_success/manifest.json, extracts final frames, builds a review packet, and writes validation-summary.json
+# validate-latest reads artifacts/latest_success/manifest.json, extracts final frames, builds a review packet, and writes validation-summary.json with run_summary review severity such as `review_severity_drift`, `review_severity_coverage`, `review_severity_visual_quality`, and `review_severity_assembly_quality`, plus `review_signal_buckets` and `review_signal_bucket_failed_checks` for compact failed-check triage
 ```
 
 ## Artifact contract
@@ -92,6 +92,9 @@ Artifact schema notes:
 - the current canonical schema version is `ai_mv_schema_v2`
 - `manifest.json` is the canonical source for structured pipeline outputs
 - `run_summary.json` is the compact operational summary for quick inspection and downstream automation
+- `run_summary.json` preserves review severity both as `review_severity` and as shallow fields for status dashboards: `review_severity_drift`, `review_severity_coverage`, `review_severity_visual_quality`, and `review_severity_assembly_quality`
+- `run_summary.json` also preserves compact evidence-category triage via `review_signal_buckets` and `review_signal_bucket_failed_checks`
+- use those severity and signal-bucket fields to distinguish visual artifact risk, assembly/editing risk, and failed-check evidence category without opening the full review report
 
 Important:
 - the final video file itself is not mirrored into `artifacts/latest/` or `artifacts/latest_success/`
@@ -123,6 +126,12 @@ Notes:
 - the wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
 - they expect ComfyUI input/output under `/mnt/c/Users/Desktop/Documents/ComfyUI/`
 - `start-wsl.sh` runs the real generation pipeline and will create outputs / consume time
+- the default runtime is now shared-Comfy-safe: `ai-mv start` will not interrupt an in-flight Krita job or clear the shared ComfyUI queue unless you explicitly opt in
+- if the ComfyUI queue is already busy (for example because Krita is rendering), `ai-mv start` fails fast instead of killing the other job; rerun after the queue is empty
+- the WSL wrappers now guard against duplicate Windows ComfyUI backends on ports such as `8000` and `8001`; run `./scripts/check-shared-comfy-wsl.sh` if the frontend appears to show a different queue/history than ai-music-video
+- for Krita + Blender + ai-music-video sharing, keep one canonical backend on `8000`; see `docs/shared-comfyui.md`
+- if you intentionally want ai-music-video to take exclusive control of ComfyUI for a run, set `AI_MV_INTERRUPT_COMFY_BEFORE_START=1` and `AI_MV_CLEAR_COMFY_QUEUE_BEFORE_START=1`
+- when Windows ComfyUI is bound to `0.0.0.0:8000` for WSL access and you still want ComfyUI-Manager installs for Krita, keep Manager `network_mode=personal_cloud` rather than `public`
 - do not treat `ia2v`, `flf2v`, perfect identity consistency, or precise sync as first-run pass criteria
 
 ## Tests

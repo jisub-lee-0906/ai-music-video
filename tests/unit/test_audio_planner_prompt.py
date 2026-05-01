@@ -50,10 +50,12 @@ def test_audio_prompt_is_compact_and_keeps_core_contract():
     assert "genre_description is the future [tags] block" in prompt
     assert "core instruments, arrangement energy, and vocal character" in prompt
     assert "Choose a songform that fits a modern short-form song around two and a half to three minutes" in prompt
+    assert "Respect these minimum line counts" in prompt
+    assert "Pre-Chorus>= 3" in prompt
     assert "Prefer a strong beginning-middle-turn-resolution arc" in prompt
     assert "Keep Intro instrumental." in prompt
     assert "director_brief_intent" not in prompt
-    assert len(prompt) < 3200
+    assert len(prompt) < 3400
 
 
 def test_audio_prompt_uses_flattened_profile_fields():
@@ -95,7 +97,60 @@ def test_audio_prompt_surfaces_retry_feedback_for_pre_chorus_vs_chorus_contrast_
     )
     assert "Rewrite attempt 2." in prompt
     assert "Pre-Chorus lines must stay shorter and tighter than Chorus lines." in prompt
+    assert "Keep Pre-Chorus average visible length at least a few characters below Chorus average." in prompt
+    assert "If the contrast is at risk, shorten Pre-Chorus and make Chorus a little broader instead of opening Pre-Chorus." in prompt
     assert "Make Chorus lines more open and hook-led than Pre-Chorus." in prompt
+
+
+
+def test_audio_prompt_surfaces_retry_feedback_for_section_role_underdelivery():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            language="ko",
+            audio_retry_attempt=1,
+            audio_retry_feedback="audio lyrics quality mismatch: Pre-Chorus underdelivers its section role",
+        )
+    )
+    assert "Rewrite attempt 2." in prompt
+    assert "Keep every required section at its locked line count; do not shorten or omit required lines." in prompt
+    assert "Pre-Chorus must contain at least three compact build-up lyric lines." in prompt
+
+
+
+def test_audio_prompt_requires_final_chorus_minimum_matching_its_extended_bar_budget():
+    prompt = audio_planner._audio_prompt(_prompt_plan())
+
+    assert "Final Chorus<= 5" in prompt
+    assert "Final Chorus>= 5" in prompt
+
+
+
+def test_audio_retry_feedback_for_final_chorus_underuse_demands_full_extended_return():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            audio_retry_attempt=1,
+            audio_retry_feedback="audio lyrics quality mismatch: Final Chorus underuses its extended bar space",
+        )
+    )
+
+    assert "Final Chorus has the extended bar lane; write five lyric lines for it." in prompt
+    assert "Do not shorten Final Chorus to a four-line ordinary chorus." in prompt
+
+
+
+def test_audio_outline_rejects_pre_chorus_below_section_role_minimum():
+    plan = _prompt_plan()
+    outline = {
+        "bpm": 108,
+        "lyrics_blocks": [
+            {"section": "verse_1", "label": "Verse 1", "role": "set", "change": "enter", "line_count": 4},
+            {"section": "pre_chorus", "label": "Pre-Chorus", "role": "build", "change": "tighten", "line_count": 2},
+            {"section": "chorus", "label": "Chorus", "role": "release", "change": "open", "line_count": 4},
+        ],
+    }
+
+    with pytest.raises(RuntimeError, match="line_count underdelivers section role for Pre-Chorus"):
+        audio_planner._validate_outline_line_budgets(plan, outline)
 
 
 
@@ -108,7 +163,26 @@ def test_audio_lyrics_draft_prompt_explicitly_demands_tighter_pre_chorus_than_ch
     }
     prompt = audio_planner._audio_lyrics_draft_prompt(_prompt_plan(language="en"), outline)
     assert "Pre-Chorus lines should stay shorter on average than Chorus lines." in prompt
+    assert "Keep Pre-Chorus average visible length safely below Chorus average; do not write long sentence-shaped Pre-Chorus lines." in prompt
     assert "Let Chorus carry the broader release phrasing and the more open hook." in prompt
+
+
+
+def test_audio_lyrics_block_prompt_makes_pre_chorus_margin_operational():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "pre_chorus", "label": "Pre-Chorus", "role": "tighten", "change": "build", "line_count": 3},
+            {"section": "chorus", "label": "Chorus", "role": "release", "change": "open", "line_count": 4},
+        ]
+    }
+    prompt = audio_planner._audio_lyrics_block_prompt(
+        _prompt_plan(language="en", section_bars={"pre_chorus": 8, "chorus": 8}),
+        outline,
+        [],
+        outline["lyrics_blocks"][0],
+    )
+    assert "Keep this Pre-Chorus visibly shorter per line than the Chorus target." in prompt
+    assert "Avoid long sentence-shaped build-up lines here." in prompt
 
 
 

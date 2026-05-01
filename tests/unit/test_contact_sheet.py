@@ -1,4 +1,4 @@
-from ai_mv.analysis.contact_sheet import build_contact_sheet_manifest
+from ai_mv.analysis.contact_sheet import build_contact_sheet_manifest, write_contact_sheet_image
 
 
 def test_build_contact_sheet_manifest_assigns_grid_positions(tmp_path):
@@ -53,6 +53,9 @@ def test_build_contact_sheet_manifest_includes_escalation_context_when_provided(
             "shot_ids": ["S003", "S007"],
             "material_ids": ["MAT_003", "MAT_007"],
             "section_ids": ["SEC_003", "SEC_007"],
+            "reference_modes": ["use_performance_anchor_still"],
+            "anchor_source_shot_ids": [],
+            "followup_shot_ids": ["S007"],
         },
     )
 
@@ -63,6 +66,9 @@ def test_build_contact_sheet_manifest_includes_escalation_context_when_provided(
         "shot_ids": ["S003", "S007"],
         "material_ids": ["MAT_003", "MAT_007"],
         "section_ids": ["SEC_003", "SEC_007"],
+        "reference_modes": ["use_performance_anchor_still"],
+        "anchor_source_shot_ids": [],
+        "followup_shot_ids": ["S007"],
     }
 
 
@@ -85,3 +91,40 @@ def test_build_contact_sheet_manifest_preserves_material_and_section_only_escala
         "material_ids": ["MAT_003"],
         "section_ids": ["SEC_003"],
     }
+
+
+def test_write_contact_sheet_image_tiles_existing_frames(tmp_path, monkeypatch):
+    frame_paths = []
+    for index in range(3):
+        frame = tmp_path / f"frame_{index}.png"
+        frame.write_bytes(b"fake-png")
+        frame_paths.append(frame)
+
+    captured = {}
+
+    monkeypatch.setattr("ai_mv.analysis.contact_sheet.shutil.which", lambda name: "/usr/bin/ffmpeg" if name == "ffmpeg" else None)
+
+    def _fake_run(cmd, check=False, capture_output=True, text=True):
+        captured["cmd"] = cmd
+        output_path = tmp_path / "contact-sheet.png"
+        output_path.write_bytes(b"sheet")
+
+        class Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return Result()
+
+    written = write_contact_sheet_image(
+        frame_paths=frame_paths,
+        output_image_path=tmp_path / "contact-sheet.png",
+        columns=2,
+        rows=2,
+        run_fn=_fake_run,
+    )
+
+    assert written == tmp_path / "contact-sheet.png"
+    assert written.read_bytes() == b"sheet"
+    assert captured["cmd"][0] == "/usr/bin/ffmpeg"
+    assert any("tile=2x2" in arg for arg in captured["cmd"])

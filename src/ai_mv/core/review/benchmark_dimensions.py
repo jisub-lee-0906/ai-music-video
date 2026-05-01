@@ -29,6 +29,7 @@ _REASON_TO_DIMENSIONS = {
     "panel_layout": ("composition",),
     "collage_layout": ("composition", "aesthetics"),
     "split_screen": ("composition", "aesthetics"),
+    "repetitive_safe_editing": ("temporal_coherence", "motion_quality"),
 }
 
 

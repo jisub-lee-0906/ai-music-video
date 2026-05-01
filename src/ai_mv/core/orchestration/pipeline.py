@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ai_mv.core.artifacts.publish import write_pipeline_artifacts
+from ai_mv.core.artifacts.summary_fields import _assembly_revision_summary
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.stage_runs import run_result_stage
@@ -121,6 +122,11 @@ def _apply_rerender_canonical_updates(payload: dict) -> None:
     rerender_final_video = str(payload.get("rerender_final_video", "")).strip()
     if rerender_final_video:
         payload["final_video"] = rerender_final_video
+    review_report = payload.get("review_report")
+    if isinstance(review_report, dict):
+        assembly_revision_summary = _assembly_revision_summary(payload)
+        if assembly_revision_summary:
+            review_report["assembly_revision_summary"] = assembly_revision_summary
 
 
 

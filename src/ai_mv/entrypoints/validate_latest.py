@@ -26,7 +26,8 @@ def run_validate_latest(
     resolved_output_dir = Path(output_dir)
     frames_dir = resolved_output_dir / "final-frames"
     packet_dir = resolved_output_dir / "review-packet"
-    normalized_shot_ids = [str(value).strip() for value in (shot_ids or []) if str(value).strip()]
+    normalized_shot_ids = _normalize_shot_ids(shot_ids or []) or _manifest_render_plan_shot_ids(manifest)
+    production_policy_by_shot = _manifest_render_plan_production_policy_by_shot(manifest, normalized_shot_ids)
     song = manifest.get("song") if isinstance(manifest.get("song"), dict) else {}
     music_file = str(song.get("master_audio", "")).strip()
     section_map = song.get("section_map") if isinstance(song.get("section_map"), dict) else {}
@@ -43,6 +44,7 @@ def run_validate_latest(
         kind="final",
         sample_count=int(sample_count or 8),
         shot_ids=normalized_shot_ids,
+        escalation_context={"production_policy_by_shot": production_policy_by_shot} if production_policy_by_shot else None,
     )
     audio_review_dir = resolved_output_dir / "audio-review"
     written_audio_review = write_audio_review_packet(
@@ -55,11 +57,37 @@ def run_validate_latest(
         "rubric_path": audio_review_dir / "audio-review-rubric.json",
         "reviewer_notes_path": audio_review_dir / "audio-review-notes.md",
     }
+    review_severity = run_summary.get("review_severity") if isinstance(run_summary.get("review_severity"), dict) else {}
+    review_signal_buckets_raw = run_summary.get("review_signal_buckets") if isinstance(run_summary.get("review_signal_buckets"), dict) else {}
+    review_signal_buckets = {
+        str(bucket_name).strip(): {
+            "passed": bool(bucket.get("passed", False)),
+            "failed_checks": [str(value).strip() for value in bucket.get("failed_checks", []) if str(value).strip()]
+            if isinstance(bucket.get("failed_checks"), list) else [],
+        }
+        for bucket_name, bucket in review_signal_buckets_raw.items()
+        if str(bucket_name).strip() and isinstance(bucket, dict)
+    }
+    review_signal_bucket_failed_checks = [
+        str(value).strip()
+        for value in run_summary.get("review_signal_bucket_failed_checks", [])
+        if str(value).strip()
+    ] if isinstance(run_summary.get("review_signal_bucket_failed_checks"), list) else []
     summary = {
         "run_id": str(manifest.get("run_id", "")).strip() or str(run_summary.get("run_id", "")).strip(),
         "scope": str(scope).strip() or "run",
         "manifest_path": str(manifest_path),
         "run_summary_path": str(run_summary_path),
+        "overall_status": str(run_summary.get("overall_status", "")).strip(),
+        "publishability_tier": str(run_summary.get("publishability_tier", "")).strip(),
+        "recommended_next_action": str(run_summary.get("recommended_next_action", "")).strip(),
+        "review_severity": {str(key).strip(): str(value).strip() for key, value in review_severity.items() if str(key).strip()},
+        "review_severity_drift": str(run_summary.get("review_severity_drift", "")).strip(),
+        "review_severity_coverage": str(run_summary.get("review_severity_coverage", "")).strip(),
+        "review_severity_visual_quality": str(run_summary.get("review_severity_visual_quality", "")).strip(),
+        "review_severity_assembly_quality": str(run_summary.get("review_severity_assembly_quality", "")).strip(),
+        "review_signal_buckets": review_signal_buckets,
+        "review_signal_bucket_failed_checks": review_signal_bucket_failed_checks,
         "final_video": final_video,
         "frames_dir": str(frames_dir),
         "frames_written": [str(Path(path)) for path in written_frames],
@@ -84,3 +112,45 @@ def run_validate_latest(
     print(written_audio_review["manifest_path"])
     print(summary_path)
     return 0
+
+
+def _normalize_shot_ids(shot_ids: list[str] | tuple[str, ...]) -> list[str]:
+    normalized: list[str] = []
+    for shot_id in shot_ids if isinstance(shot_ids, (list, tuple)) else []:
+        value = str(shot_id or "").strip()
+        if value and value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
+def _manifest_render_plan_production_policy_by_shot(manifest: dict, shot_ids: list[str]) -> dict[str, dict]:
+    allowed = set(_normalize_shot_ids(shot_ids))
+    plan = manifest.get("plan") if isinstance(manifest, dict) and isinstance(manifest.get("plan"), dict) else {}
+    render_plan = plan.get("render_plan") if isinstance(plan.get("render_plan"), list) else []
+    out: dict[str, dict] = {}
+    for row in render_plan:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        if not shot_id or shot_id in out or (allowed and shot_id not in allowed):
+            continue
+        policy = row.get("production_policy") if isinstance(row.get("production_policy"), dict) else {}
+        if not policy:
+            policy = {
+                key: row.get(key)
+                for key in ("candidate_role", "ia2v_risk_class", "anchor_reference_arm", "recommended_duration_sec")
+                if row.get(key) not in (None, "", {})
+            }
+        if policy:
+            out[shot_id] = dict(policy)
+    return out
+
+
+def _manifest_render_plan_shot_ids(manifest: dict) -> list[str]:
+    plan = manifest.get("plan") if isinstance(manifest, dict) and isinstance(manifest.get("plan"), dict) else {}
+    render_plan = plan.get("render_plan") if isinstance(plan.get("render_plan"), list) else []
+    return _normalize_shot_ids([
+        row.get("shot_id", "")
+        for row in render_plan
+        if isinstance(row, dict)
+    ])

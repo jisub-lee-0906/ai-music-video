@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 
 from ai_mv.core.artifacts import paths as artifact_paths
 from ai_mv.core.artifacts.publish import write_pipeline_artifacts
@@ -10,6 +11,39 @@ def test_artifact_schema_module_exposes_canonical_schema_version():
 
     assert schema_module.ARTIFACT_SCHEMA_VERSION == "ai_mv_schema_v2"
     assert schema_module.artifact_schema_version() == "ai_mv_schema_v2"
+
+
+
+def test_readme_documents_run_summary_review_severity_contract():
+    readme = Path(__file__).resolve().parents[2] / "README.md"
+    lines = readme.read_text(encoding="utf-8").splitlines()
+    run_summary_notes = [line for line in lines if "run_summary.json" in line]
+    joined_notes = "\n".join(run_summary_notes)
+
+    assert "`run_summary.json` is the compact operational summary" in joined_notes
+    assert "`review_severity`" in joined_notes
+    assert "`review_severity_drift`" in joined_notes
+    assert "`review_severity_coverage`" in joined_notes
+    assert "`review_severity_visual_quality`" in joined_notes
+    assert "`review_severity_assembly_quality`" in joined_notes
+    assert "`review_signal_buckets`" in joined_notes
+    assert "`review_signal_bucket_failed_checks`" in joined_notes
+
+
+
+def test_readme_documents_validate_latest_review_severity_handoff():
+    readme = Path(__file__).resolve().parents[2] / "README.md"
+    lines = readme.read_text(encoding="utf-8").splitlines()
+    validate_latest_notes = [line for line in lines if "validate-latest" in line]
+
+    assert any("validation-summary.json" in line for line in validate_latest_notes)
+    assert any("review severity" in line for line in validate_latest_notes)
+    assert any("review_signal_buckets" in line for line in validate_latest_notes)
+    assert any("review_signal_bucket_failed_checks" in line for line in validate_latest_notes)
+    assert any("`review_severity_drift`" in line for line in validate_latest_notes)
+    assert any("`review_severity_coverage`" in line for line in validate_latest_notes)
+    assert any("`review_severity_visual_quality`" in line for line in validate_latest_notes)
+    assert any("`review_severity_assembly_quality`" in line for line in validate_latest_notes)
 
 
 

@@ -42,6 +42,90 @@ def test_plan_mv_builds_creative_direction_payload():
     assert first_material["mode_hint"]
 
 
+def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights, missed train, unresolved goodbye turning into quiet resolve",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    anchor_package = out["anchor_package"]
+    assert anchor_package["strategy"] == "character_card_plus_world_anchor_then_reference_variants"
+    assert [anchor["anchor_type"] for anchor in anchor_package["anchors"]] == [
+        "character_full_body",
+        "character_upper_body_identity",
+        "world_character_anchor",
+    ]
+    full_body = anchor_package["anchors"][0]
+    assert full_body["material_class"] == "character_reference_anchor"
+    assert "single clean full-body identity reference card" in full_body["prompt_text"]
+    assert "pure white seamless background" in full_body["prompt_text"]
+    assert "No street" in full_body["prompt_text"]
+    upper_body = anchor_package["anchors"][1]
+    assert "upper-body character reference image" in upper_body["prompt_text"]
+    assert "clear face visibility" in upper_body["prompt_text"]
+    world_anchor = anchor_package["anchors"][2]
+    assert world_anchor["material_class"] == "world_reference_anchor"
+    assert "Using the same woman as the character reference" in world_anchor["prompt_text"]
+    assert "rainy neon" in world_anchor["prompt_text"]
+    assert anchor_package["variant_policy"]["important_story_functions"] == ["release", "payoff"]
+    assert anchor_package["variant_policy"]["candidates_per_important_shot"] >= 2
+
+
+def test_plan_mv_builds_director_treatment_and_threads_story_beats_into_shots_and_materials():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights, missed train, unresolved goodbye turning into quiet resolve",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    treatment = out["director_treatment"]
+    assert treatment["story_logline"]
+    assert treatment["protagonist_arc"]["start_state"]
+    assert treatment["protagonist_arc"]["end_state"]
+    assert len(treatment["story_beats"]) == len(out["section_plan"])
+    assert treatment["story_beats"][0]["story_function"] == "wound_setup"
+    assert any(beat["story_function"] == "release" for beat in treatment["story_beats"])
+    assert treatment["story_beats"][-1]["story_function"] == "payoff"
+    assert treatment["story_beats"][-1]["payoff_requirement"]
+    assert any("Final shot must show a decision" in rule for rule in treatment["anti_repetition_rules"])
+
+    beat_by_section = {beat["section_id"]: beat for beat in treatment["story_beats"]}
+    for shot in out["shot_plan"]:
+        beat = beat_by_section[shot["section_id"]]
+        assert shot["story_beat_id"] == beat["beat_id"]
+        assert shot["story_function"] == beat["story_function"]
+        assert shot["visual_event"] == beat["visual_event"]
+        assert shot["emotional_state"] == beat["emotional_state"]
+
+    payoff_materials = [row for row in out["material_plan"] if row["story_function"] == "payoff"]
+    assert payoff_materials
+    assert all(row["role"] == "ending_resolution_still" for row in payoff_materials)
+    payoff_render = next(item for item in out["render_plan"] if item["shot_id"] == payoff_materials[0]["shot_id"])
+    assert "story function: payoff" in payoff_render["clip_positive_prompt"]
+    assert "payoff requirement:" in payoff_render["clip_positive_prompt"]
+
+
 def test_plan_mv_uses_audio_sections_and_stays_within_m1_bounds():
     payload = {
         "concept_text": "Japanese 80s city pop night drive, neon coast, bittersweet summer romance",
@@ -186,6 +270,51 @@ def test_plan_mv_uses_allowed_connective_family_for_bridge_sections():
     assert bridge_shots
     assert all(shot["visual_mode"] in BRIDGE_CONNECTIVE_FAMILIES for shot in bridge_shots)
     assert all(shot["framing_intent"] == "connective_medium" for shot in bridge_shots)
+
+
+def test_plan_mv_caps_hero_face_policy_overuse_in_short_fresh_sequences():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "citypop"}},
+        {
+            "concept_text": "late-night city walk under wet neon lights with one protagonist moving through the same boulevard world",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "label": "Intro", "start_sec": 0.0, "end_sec": 2.06},
+                    {"name": "verse_1", "label": "Verse 1", "start_sec": 2.06, "end_sec": 4.305},
+                    {"name": "pre_chorus", "label": "Pre-Chorus", "start_sec": 4.305, "end_sec": 6.536},
+                    {"name": "chorus", "label": "Chorus", "start_sec": 6.536, "end_sec": 8.796},
+                    {"name": "verse_2", "label": "Verse 2", "start_sec": 8.796, "end_sec": 11.019},
+                    {"name": "bridge", "label": "Bridge", "start_sec": 11.019, "end_sec": 12.156},
+                    {"name": "chorus", "label": "Final Chorus", "start_sec": 12.156, "end_sec": 16.478},
+                    {"name": "outro", "label": "Outro", "start_sec": 16.478, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    roles = [item["production_policy"]["candidate_role"] for item in out["render_plan"]]
+    assert roles.count("hero_face_performance") <= 3
+    assert any(role in {"symbolic_insert", "world_bridge"} for role in roles[2:5])
+    diversified_items = [
+        item
+        for item in out["render_plan"]
+        if "sequence_role_diversity" in item["production_policy"].get("safety_rules", [])
+    ]
+    assert diversified_items
+    diversified = diversified_items[0]
+    assert "sequence diversity" in diversified["still_prompt_text"]
+    assert "environment-led" in diversified["still_prompt_text"] or "symbolic insert" in diversified["still_prompt_text"]
+    assert "sequence diversity" in diversified["clip_positive_prompt"]
+
+    world_bridge_items = [
+        item
+        for item in out["render_plan"]
+        if item["production_policy"]["candidate_role"] == "world_bridge"
+    ]
+    assert world_bridge_items
+    assert all("role diversity world bridge" in item["still_prompt_text"] for item in world_bridge_items)
+    assert all("avoid repeated centered front hero street walk" in item["still_prompt_text"] for item in world_bridge_items)
 
 
 def test_plan_mv_builds_rich_render_prompts():
@@ -488,10 +617,76 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
         "clip_prompt_seed",
         "clip_positive_prompt",
         "edit_intent",
+        "reference_mode",
+        "reference_source_shot_id",
+        "identity_lock_strength",
+        "edit_variation_scope",
+        "minimum_visual_delta",
+        "production_policy",
+        "candidate_role",
+        "ia2v_risk_class",
+        "anchor_reference_arm",
+        "recommended_duration_sec",
         "still_a",
         "audio_segment",
     }
     assert all(set(item) == expected_keys for item in out["render_plan"])
+
+
+
+def test_plan_mv_keeps_anchor_source_prompts_free_of_followup_delta_language():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    anchor_sources = [item for item in out["render_plan"] if item["reference_mode"] in {"anchor_source", "performance_anchor_source"}]
+
+    assert anchor_sources
+    assert all("change camera distance or viewing angle from the anchor frame" not in item["still_prompt_text"] for item in anchor_sources)
+    assert all("preserve face shape from the anchor still" not in item["still_prompt_text"] for item in anchor_sources)
+
+
+
+def test_plan_mv_keeps_followup_reference_prompts_explicitly_delta_aware():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "bright idol-pop performance night on the same city stage",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    performance_followups = [item for item in out["render_plan"] if item["reference_mode"] == "use_performance_anchor_still"]
+    general_followups = [item for item in out["render_plan"] if item["reference_mode"] == "use_anchor_still"]
+
+    assert performance_followups
+    assert all(item["edit_variation_scope"] == "performance_pose_upgrade" for item in performance_followups)
+    assert all("preserve face shape from the anchor still" in item["still_prompt_text"] for item in performance_followups)
+    assert all("avoid near-duplicate framing" in item["still_prompt_text"] for item in performance_followups)
+
+    assert general_followups
+    assert all(item["edit_variation_scope"] in {"framing_only", "bridge_reframe"} for item in general_followups)
+    assert any("change camera distance or viewing angle from the anchor frame" in item["still_prompt_text"] for item in general_followups if item["edit_variation_scope"] == "framing_only")
 
 
 def test_plan_mv_does_not_drop_tail_when_shot_count_exceeds_m1_max():

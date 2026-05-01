@@ -11,6 +11,7 @@ def build_quality_signals(
     config: dict,
     rerender_reasons: dict[str, list[str]] | None = None,
     assembly_quality_summary: dict[str, object] | None = None,
+    sync_repair_summary: dict[str, object] | None = None,
 ) -> dict:
     total = len(planned_shot_ids)
     still_done = sum(1 for shot_id in planned_shot_ids if still_status.get(shot_id, False))
@@ -53,6 +54,7 @@ def build_quality_signals(
 
     reason_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
     assembly = assembly_quality_summary if isinstance(assembly_quality_summary, dict) else {}
+    sync_repair = sync_repair_summary if isinstance(sync_repair_summary, dict) else {}
     all_reasons = {reason for reasons in reason_map.values() if isinstance(reasons, list) for reason in reasons}
     visual_continuity_preserved = not bool(all_reasons & {"continuity_break", "identity_drift"})
     terminal_frames_clean = "terminal_frame_corruption" not in all_reasons
@@ -61,12 +63,15 @@ def build_quality_signals(
     subject_match_preserved = not bool(all_reasons & {"weak_subject_match", "unrelated_scene_intrusion"})
     environment_match_preserved = not bool(all_reasons & {"weak_environment_match", "unrelated_scene_intrusion"})
     motion_source_safe = "motion_fragile_frame" not in all_reasons
+    high_risk_interaction_without_backup = "high_risk_interaction_without_backup" not in all_reasons
+    red_risk_clip_held_too_long = "red_risk_clip_held_too_long" not in all_reasons
     scene_intrusion_absent = "unrelated_scene_intrusion" not in all_reasons
     panel_layout_absent = "panel_layout" not in all_reasons
     collage_layout_absent = "collage_layout" not in all_reasons
     split_screen_absent = "split_screen" not in all_reasons
-    character_payoff_present = "weak_character_payoff" not in all_reasons
-    background_dominance_within_threshold = "background_dominant_composition" not in all_reasons
+    character_payoff_present = not bool(all_reasons & {"weak_character_payoff", "final_payoff_missing", "chorus_release_missing"})
+    background_dominance_within_threshold = not bool(all_reasons & {"background_dominant_composition", "final_payoff_missing"})
+    sync_clone_tail_within_threshold = not bool(sync_repair.get("clone_tail_excessive", False)) and "excessive_sync_clone_tail" not in all_reasons
 
     visual_issue_count = sum(
         1
@@ -79,6 +84,8 @@ def build_quality_signals(
             "identity_drift",
             "weak_subject_match",
             "weak_environment_match",
+            "high_risk_interaction_without_backup",
+            "red_risk_clip_held_too_long",
             "motion_fragile_frame",
             "unrelated_scene_intrusion",
             "panel_layout",
@@ -86,6 +93,9 @@ def build_quality_signals(
             "split_screen",
             "weak_character_payoff",
             "background_dominant_composition",
+            "chorus_release_missing",
+            "final_payoff_missing",
+            "excessive_sync_clone_tail",
         }
     )
     visual_quality_severity = "low"
@@ -101,14 +111,33 @@ def build_quality_signals(
         and subject_match_preserved
         and environment_match_preserved
         and scene_intrusion_absent
+        and panel_layout_absent
+        and collage_layout_absent
+        and split_screen_absent
     )
     style_constraints_respected = final_video_exists and overlay_intrusion_absent and duplicate_subject_absent
     chorus_emphasis_within_threshold = bool(assembly.get("chorus_emphasis_within_threshold", True))
     slideshow_risk_within_threshold = bool(assembly.get("slideshow_risk_within_threshold", True))
+    safe_editing_within_threshold = bool(assembly.get("safe_editing_within_threshold", True)) and "repetitive_safe_editing" not in all_reasons
+    assembly_issue_count = sum(
+        1
+        for passed in (
+            chorus_emphasis_within_threshold,
+            slideshow_risk_within_threshold,
+            safe_editing_within_threshold,
+            sync_clone_tail_within_threshold,
+        )
+        if not passed
+    )
+    assembly_quality_severity = "low"
+    if assembly_issue_count >= 2:
+        assembly_quality_severity = "high"
+    elif assembly_issue_count == 1:
+        assembly_quality_severity = "medium"
 
     non_blocking_checks = {
-        "camera_restraint": final_video_exists,
-        "memorable_shot": clip_done > 0,
+        "camera_restraint": final_video_exists and slideshow_risk_within_threshold and safe_editing_within_threshold,
+        "memorable_shot": clip_done > 0 and character_payoff_present and background_dominance_within_threshold,
         "style_identity": style_identity,
         "mood_consistency": (
             final_video_exists
@@ -118,6 +147,7 @@ def build_quality_signals(
             and scene_intrusion_absent
             and chorus_emphasis_within_threshold
             and slideshow_risk_within_threshold
+            and safe_editing_within_threshold
             and character_payoff_present
             and background_dominance_within_threshold
         ),
@@ -159,6 +189,8 @@ def build_quality_signals(
         "overlay_intrusion_absent": overlay_intrusion_absent,
         "subject_match_preserved": subject_match_preserved,
         "environment_match_preserved": environment_match_preserved,
+        "high_risk_interaction_without_backup": high_risk_interaction_without_backup,
+        "red_risk_clip_held_too_long": red_risk_clip_held_too_long,
         "motion_source_safe": motion_source_safe,
         "scene_intrusion_absent": scene_intrusion_absent,
         "panel_layout_absent": panel_layout_absent,
@@ -166,6 +198,10 @@ def build_quality_signals(
         "split_screen_absent": split_screen_absent,
         "character_payoff_present": character_payoff_present,
         "background_dominance_within_threshold": background_dominance_within_threshold,
+        "chorus_emphasis_within_threshold": chorus_emphasis_within_threshold,
+        "slideshow_risk_within_threshold": slideshow_risk_within_threshold,
+        "safe_editing_within_threshold": safe_editing_within_threshold,
+        "sync_clone_tail_within_threshold": sync_clone_tail_within_threshold,
     }
     return {
         "still_done": still_done,
@@ -175,6 +211,7 @@ def build_quality_signals(
             "drift": drift_severity,
             "coverage": coverage_severity,
             "visual_quality": visual_quality_severity,
+            "assembly_quality": assembly_quality_severity,
         },
         "scores": {
             "overall": overall_score,

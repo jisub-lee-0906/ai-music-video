@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
+from ai_mv.core.planning.anchor_package import build_anchor_package
 from ai_mv.core.planning.creative_direction import build_creative_direction
+from ai_mv.core.planning.director_treatment import build_director_treatment
 from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.core.planning.sections import normalized_sections
 from ai_mv.core.planning.shot_plan import build_shot_plan
@@ -32,16 +34,31 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
         sections=sections,
         continuity_mode=continuity_mode,
     )
+    director_treatment = build_director_treatment(
+        concept_text=concept_text,
+        style_name=style_lane,
+        sections=sections,
+    )
+    anchor_package = build_anchor_package(
+        concept_text=concept_text,
+        style_name=style_lane,
+        creative_direction=creative_direction,
+    )
     shot_plan = build_shot_plan(config, sections, style_name=style_lane)
     _thread_continuity_anchor_bundle(shot_plan, creative_direction)
+    _thread_director_story_beats(shot_plan, director_treatment)
     _thread_shot_relation_contracts(shot_plan, style_name=style_lane)
     material_plan = build_material_plan(style_lane, shot_plan)
     render_plan = [build_render_item(config, concept_text, style_lane, style_bible, shot) for shot in shot_plan]
+    _apply_sequence_role_diversity(render_plan)
+    _repair_role_diversity_prompt_contracts(render_plan)
     return {
         "style_lane": style_lane,
         "style_resolution": style_resolution,
         "style_bible": style_bible,
         "creative_direction": creative_direction,
+        "director_treatment": director_treatment,
+        "anchor_package": anchor_package,
         "section_plan": sections,
         "shot_plan": shot_plan,
         "material_plan": material_plan,
@@ -60,6 +77,128 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     }
 
 
+def _apply_sequence_role_diversity(render_plan: list[dict]) -> None:
+    if len(render_plan) < 5:
+        return
+    hero_count = 0
+    recent_roles: list[str] = []
+    for item in render_plan:
+        policy = item.get("production_policy") if isinstance(item, dict) else None
+        if not isinstance(policy, dict):
+            recent_roles.append("")
+            continue
+        role = str(policy.get("candidate_role", "")).strip()
+        if role != "hero_face_performance":
+            recent_roles.append(role)
+            continue
+        should_diversify = hero_count >= 3 or recent_roles[-2:] == ["hero_face_performance", "hero_face_performance"]
+        if should_diversify:
+            _set_render_item_candidate_role(item, _sequence_diversity_role_for_item(item))
+            recent_roles.append(str(item.get("production_policy", {}).get("candidate_role", "")).strip())
+            continue
+        hero_count += 1
+        recent_roles.append(role)
+
+
+def _repair_role_diversity_prompt_contracts(render_plan: list[dict]) -> None:
+    for item in render_plan:
+        if not isinstance(item, dict):
+            continue
+        policy = item.get("production_policy")
+        if not isinstance(policy, dict):
+            continue
+        role = str(policy.get("candidate_role", "")).strip()
+        if role == "world_bridge":
+            _append_role_prompt_contract(
+                item,
+                still_clause="role diversity world bridge: environment-led wide, profile, rear, over-shoulder, reflection, or small-figure composition; changed camera distance and spatial reset; avoid repeated centered front hero street walk",
+                clip_clause="role diversity world bridge motion: environment-led drift, lateral pass, walking-away continuity, or reflection movement; avoid another centered hero walk/performance hold",
+            )
+        elif role == "symbolic_insert":
+            _append_role_prompt_contract(
+                item,
+                still_clause="role diversity symbolic insert: readable cutaway detail such as reflection, signage, hand, object, rain texture, or light motif; avoid repeated centered front hero street walk",
+                clip_clause="role diversity symbolic insert motion: short cutaway with subtle reflection, light, hand, object, or rain movement; avoid hero walk/performance hold",
+            )
+
+
+def _append_role_prompt_contract(item: dict, *, still_clause: str, clip_clause: str) -> None:
+    for key in ("prompt_seed", "prompt_draft", "still_prompt_text"):
+        item[key] = _append_prompt_clause(str(item.get(key, "")).strip(), still_clause)
+    item["clip_positive_prompt"] = _append_prompt_clause(str(item.get("clip_positive_prompt", "")).strip(), clip_clause)
+
+
+def _sequence_diversity_role_for_item(item: dict) -> str:
+    text = " ".join(
+        str(item.get(key, ""))
+        for key in (
+            "section_id",
+            "material_id",
+            "prompt_seed",
+            "prompt_draft",
+            "still_prompt_text",
+            "clip_positive_prompt",
+        )
+    ).replace("_", " ").lower()
+    if any(token in text for token in ("final", "outro", "payoff", "bridge", "world", "wide", "small figure", "skyline")):
+        return "world_bridge"
+    return "symbolic_insert"
+
+
+def _set_render_item_candidate_role(item: dict, role: str) -> None:
+    policy = dict(item.get("production_policy", {}))
+    policy["candidate_role"] = role
+    policy["anchor_reference_arm"] = {
+        "world_bridge": "F_FULLBODY_UPPER_WORLD",
+        "symbolic_insert": "A_FULLBODY_ONLY",
+    }.get(role, policy.get("anchor_reference_arm", "D_FULLBODY_UPPER"))
+    policy["ia2v_risk_class"] = "yellow" if role == "symbolic_insert" else "green"
+    policy["recommended_duration_sec"] = {"min": 0.3, "max": 0.8} if role == "symbolic_insert" else {"min": 0.8, "max": 2.0}
+    safety_rules = list(policy.get("safety_rules", []))
+    if "sequence_role_diversity" not in safety_rules:
+        safety_rules.append("sequence_role_diversity")
+    policy["safety_rules"] = safety_rules
+    review_focus = list(policy.get("review_focus", []))
+    if role == "world_bridge":
+        review_focus.extend(token for token in ("world_continuity", "silhouette_readability") if token not in review_focus)
+    if role == "symbolic_insert":
+        review_focus.extend(token for token in ("symbolic_readability", "insert_duration_control") if token not in review_focus)
+    policy["review_focus"] = review_focus
+    item["production_policy"] = policy
+    item["candidate_role"] = role
+    item["anchor_reference_arm"] = policy["anchor_reference_arm"]
+    item["ia2v_risk_class"] = policy["ia2v_risk_class"]
+    item["recommended_duration_sec"] = policy["recommended_duration_sec"]
+    _repair_sequence_diversity_prompts(item, role)
+
+
+def _repair_sequence_diversity_prompts(item: dict, role: str) -> None:
+    still_clause, clip_clause = _sequence_diversity_prompt_clauses(role)
+    for key in ("prompt_seed", "prompt_draft", "still_prompt_text"):
+        item[key] = _append_prompt_clause(str(item.get(key, "")).strip(), still_clause)
+    item["clip_positive_prompt"] = _append_prompt_clause(str(item.get("clip_positive_prompt", "")).strip(), clip_clause)
+
+
+def _sequence_diversity_prompt_clauses(role: str) -> tuple[str, str]:
+    if role == "symbolic_insert":
+        return (
+            "sequence diversity symbolic insert: cut away from hero performance into a readable object, reflection, light motif, hand detail, or wet street texture; keep the same world continuity but avoid another centered street-performance portrait",
+            "sequence diversity symbolic insert motion: short held insert with subtle light/reflection movement; no new hero performance pose; preserve continuity as an editorial breaker",
+        )
+    return (
+        "sequence diversity world bridge: environment-led wide or over-shoulder frame with boulevard depth, smaller anchored figure, changed camera distance, and clear spatial reset; avoid another centered front street-performance pose",
+        "sequence diversity world bridge motion: gentle environment-led camera drift or walking-away continuity beat; emphasize spatial reset, wet neon reflections, and changed camera distance rather than another hero performance hold",
+    )
+
+
+def _append_prompt_clause(text: str, clause: str) -> str:
+    if clause in text:
+        return text
+    if not text:
+        return clause
+    return f"{text}, {clause}"
+
+
 def build_material_plan(style_name: str, shot_plan: list[dict]) -> list[dict]:
     material_plan: list[dict] = []
     for idx, shot in enumerate(shot_plan, start=1):
@@ -67,11 +206,16 @@ def build_material_plan(style_name: str, shot_plan: list[dict]) -> list[dict]:
         material_plan.append(
             {
                 "material_id": f"MAT_{idx:03d}",
+                "shot_id": str(shot.get("shot_id", "")).strip(),
                 "section_id": str(shot.get("section_id", "")).strip(),
                 "role": role,
                 "style_lane": style_name,
                 "mode_hint": _mode_hint_for_shot(shot),
                 "shot_intent": str(shot.get("shot_role", "")).strip(),
+                "story_beat_id": str(shot.get("story_beat_id", "")).strip(),
+                "story_function": str(shot.get("story_function", "")).strip(),
+                "visual_event": str(shot.get("visual_event", "")).strip(),
+                "emotional_state": str(shot.get("emotional_state", "")).strip(),
                 "target_aspect": "1280x720",
                 "needs_front_readability": role == "performance_source",
                 "continuity_constraints": {
@@ -88,6 +232,11 @@ def build_material_plan(style_name: str, shot_plan: list[dict]) -> list[dict]:
 def _material_role_for_shot(shot: dict) -> str:
     workflow_intent = str(shot.get("workflow_intent", "")).strip()
     section_type = str(shot.get("section_type", "")).strip()
+    story_function = str(shot.get("story_function", "")).strip()
+    if story_function == "payoff":
+        return "ending_resolution_still"
+    if story_function == "release":
+        return "chorus_release_still"
     if workflow_intent == "audio_reactive_candidate" or section_type == "chorus":
         return "performance_source"
     if workflow_intent == "bridge_candidate" or section_type == "bridge":
@@ -128,6 +277,27 @@ def _thread_continuity_anchor_bundle(shot_plan: list[dict], creative_direction: 
             "time_band_anchor": "same night time band",
         }
 
+
+
+def _thread_director_story_beats(shot_plan: list[dict], director_treatment: dict) -> None:
+    beats = director_treatment.get("story_beats", []) if isinstance(director_treatment, dict) else []
+    beat_by_section = {
+        str(beat.get("section_id", "")).strip(): beat
+        for beat in beats
+        if isinstance(beat, dict) and str(beat.get("section_id", "")).strip()
+    }
+    for shot in shot_plan:
+        if not isinstance(shot, dict):
+            continue
+        beat = beat_by_section.get(str(shot.get("section_id", "")).strip())
+        if not isinstance(beat, dict):
+            continue
+        shot["story_beat_id"] = str(beat.get("beat_id", "")).strip()
+        shot["story_function"] = str(beat.get("story_function", "")).strip()
+        shot["visual_event"] = str(beat.get("visual_event", "")).strip()
+        shot["emotional_state"] = str(beat.get("emotional_state", "")).strip()
+        shot["required_change_from_previous"] = str(beat.get("required_change_from_previous", "")).strip()
+        shot["payoff_requirement"] = str(beat.get("payoff_requirement", "")).strip()
 
 
 def _thread_shot_relation_contracts(shot_plan: list[dict], *, style_name: str = "") -> None:

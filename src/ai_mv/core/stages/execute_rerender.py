@@ -8,12 +8,14 @@ from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_syn
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
 from ai_mv.utils.path_utils import resolve_generated_file
+from ai_mv.utils.time_utils import ffprobe_duration
 
 
 REVIEW_ACTIONS_REQUIRING_SYNC_REPAIR = {"repair_audio_video_sync"}
 ASSEMBLY_REVIEW_ACTIONS = {
     "revise_assembly_weights_before_clip_rerender",
     "revise_transition_selection",
+    "revise_assembly_coverage_before_sync_pad",
 }
 
 
@@ -39,7 +41,7 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
         payload = stage_inputs.get(stage_name)
         if stage_name == "review" and isinstance(payload, dict):
             result = _run_review_action(stage_input, payload)
-            for key in ("final_video", "music_file", "review_inputs", "review_action", "assembly_revision_result"):
+            for key in ("final_video", "music_file", "review_inputs", "review_action", "assembly_revision_result", "sync_repair_summary"):
                 value = result.payload.get(key)
                 if value:
                     passthrough_payload[key] = value
@@ -121,6 +123,7 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
             target_shots=target_shots,
             target_material_ids=target_material_ids,
             target_section_ids=target_section_ids,
+            coverage_extension_sec=_clone_tail_extension_sec(stage_payload.get("sync_repair_summary")),
         )
         revised_review_inputs = {
             "cadence_profile_by_shot": {shot_id: str(values.get("cadence_profile", "")).strip() for shot_id, values in revisions_by_shot.items() if str(values.get("cadence_profile", "")).strip()},
@@ -170,7 +173,7 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
             "status": "applied",
             "target": "assembly",
             "output_final_video": rendered_final_video or str(stage_payload.get("final_video", "")).strip(),
-            "revision_focus": "weights" if recommended_action == "revise_assembly_weights_before_clip_rerender" else "transitions",
+            "revision_focus": _assembly_revision_focus(recommended_action),
             "target_shots": target_shots,
             "target_material_ids": target_material_ids,
             "target_section_ids": target_section_ids,
@@ -179,6 +182,22 @@ def _run_review_action(stage_input: StageInput, payload: dict) -> StageOutput:
         passthrough_payload["assembly_plan"] = revised_assembly_plan
     passthrough_payload["review_action"] = recommended_action or "review_failed_checks"
     return StageOutput("review_action", "done", passthrough_payload, action_artifacts)
+
+
+
+def _assembly_revision_focus(recommended_action: str) -> str:
+    if recommended_action == "revise_assembly_weights_before_clip_rerender":
+        return "weights"
+    if recommended_action == "revise_assembly_coverage_before_sync_pad":
+        return "coverage"
+    return "transitions"
+
+
+
+def _clone_tail_extension_sec(sync_repair_summary: object) -> float:
+    if not isinstance(sync_repair_summary, dict) or not sync_repair_summary.get("clone_tail_excessive"):
+        return 0.0
+    return _safe_positive_float(sync_repair_summary.get("clone_tail_sec")) or 0.0
 
 
 
@@ -208,16 +227,10 @@ def _render_revised_assembly(
             clip_row = clip_map.get(normalized_shot_id)
             if not clip_row:
                 continue
-            segment: dict[str, object] = {
-                "shot_id": normalized_shot_id,
-                "path": Path(resolve_generated_file(config, str(clip_row.get("video", "")).strip(), {".mp4", ".mov", ".mkv", ".webm"}, "video")),
-            }
+            resolved_clip_path = Path(resolve_generated_file(config, str(clip_row.get("video", "")).strip(), {".mp4", ".mov", ".mkv", ".webm"}, "video"))
             revised = revisions_by_shot.get(normalized_shot_id) if isinstance(revisions_by_shot.get(normalized_shot_id), dict) else {}
             trimmed_coverage_sec = _safe_positive_float(revised.get("trimmed_coverage_sec"))
-            if trimmed_coverage_sec is not None:
-                segment["trim_start_sec"] = 0.0
-                segment["trim_end_sec"] = trimmed_coverage_sec
-            clips.append(segment)
+            clips.extend(_revised_clip_segments(normalized_shot_id, resolved_clip_path, trimmed_coverage_sec))
     if not clips:
         return {"final_video": final_video, "artifacts": []}
     resolved_audio = Path(resolve_generated_file(config, music_file, {".wav", ".mp3", ".flac", ".m4a"}, "audio"))
@@ -226,6 +239,31 @@ def _render_revised_assembly(
     if not ok:
         raise RuntimeError("ffmpeg assemble failed")
     return {"final_video": str(resolved_final_video), "artifacts": [str(resolved_final_video)]}
+
+
+
+def _revised_clip_segments(shot_id: str, clip_path: Path, trimmed_coverage_sec: float | None) -> list[dict[str, object]]:
+    if trimmed_coverage_sec is None:
+        return [{"shot_id": shot_id, "path": clip_path}]
+    clip_duration_sec = _safe_positive_float(ffprobe_duration(clip_path))
+    if clip_duration_sec is None:
+        return [{"shot_id": shot_id, "path": clip_path, "trim_start_sec": 0.0, "trim_end_sec": trimmed_coverage_sec}]
+    segments: list[dict[str, object]] = []
+    remaining = trimmed_coverage_sec
+    while remaining > 0.001:
+        segment_duration = min(remaining, clip_duration_sec)
+        segments.append(
+            {
+                "shot_id": shot_id,
+                "path": clip_path,
+                "trim_start_sec": 0.0,
+                "trim_end_sec": round(segment_duration, 3),
+            }
+        )
+        remaining = round(remaining - segment_duration, 6)
+        if len(segments) >= 32:
+            break
+    return segments
 
 
 

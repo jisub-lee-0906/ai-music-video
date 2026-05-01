@@ -4,6 +4,7 @@ from ai_mv.core.artifacts.paths import latest_file, latest_success_file, run_fil
 from ai_mv.core.artifacts.provenance import dedupe_preserve_order, normalized_text_list
 from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.core.artifacts.success_policy import latest_success_eligible
+from ai_mv.core.artifacts.summary_fields import _assembly_revision_summary
 from ai_mv.core.planning.sections import normalized_sections
 from ai_mv.utils.json_utils import write_json
 
@@ -46,6 +47,7 @@ def write_manifest(state: dict, payload: dict) -> None:
             "final_video": str(payload.get("final_video", "")),
             "assembly_plan": dict(payload.get("assembly_plan", {})),
             "review_inputs": dict(payload.get("review_inputs", {})),
+            "assembly_revision": _manifest_assembly_revision(payload),
         },
         "review": _manifest_review_section(payload, escalation_artifacts, rerender_escalation),
         "artifacts": {
@@ -56,6 +58,25 @@ def write_manifest(state: dict, payload: dict) -> None:
     write_json(latest_file("manifest.json", scope), out)
     if latest_success_eligible(state, payload):
         write_json(latest_success_file("manifest.json", scope), out)
+
+
+def _manifest_assembly_revision(payload: dict) -> dict:
+    summary = _assembly_revision_summary(payload)
+    if not summary:
+        return {}
+    revision_result = payload.get("assembly_revision_result") if isinstance(payload.get("assembly_revision_result"), dict) else {}
+    out = {
+        "present": bool(summary.get("present", False)),
+        "action": str(summary.get("action", "")).strip(),
+        "status": str(revision_result.get("status", "")).strip(),
+        "target": str(summary.get("target", "")).strip(),
+        "final_video": str(summary.get("final_video", "")).strip(),
+        "target_shots": normalized_text_list(summary.get("target_shots")),
+        "target_material_ids": normalized_text_list(summary.get("target_material_ids")),
+        "target_section_ids": normalized_text_list(summary.get("target_section_ids")),
+    }
+    return out if any(value for key, value in out.items() if key != "present") else {}
+
 
 
 def _manifest_rerender_escalation(rerender_escalation: dict) -> dict:

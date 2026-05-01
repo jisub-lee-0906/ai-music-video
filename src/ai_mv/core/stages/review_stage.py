@@ -81,8 +81,12 @@ def run_review_stage(stage_input: StageInput, *, duration_fn=ffprobe_duration) -
         cadence_profile_by_shot=review_inputs.get("cadence_profile_by_shot", {}) if isinstance(review_inputs, dict) else {},
         snap_unit_by_shot=review_inputs.get("snap_unit_by_shot", {}) if isinstance(review_inputs, dict) else {},
         trimmed_coverage_by_shot=review_inputs.get("trimmed_coverage_by_shot", {}) if isinstance(review_inputs, dict) else {},
+        production_policy_by_shot=review_inputs.get("production_policy_by_shot", {}) if isinstance(review_inputs, dict) else {},
         assembly_revision=review_inputs.get("assembly_revision", {}) if isinstance(review_inputs, dict) else {},
         audio_review_summary=audio_review_summary,
+        sync_repair_summary=stage_input.payload.get("sync_repair_summary") if isinstance(stage_input.payload.get("sync_repair_summary"), dict) else {},
+        assembly_plan=stage_input.payload.get("assembly_plan") if isinstance(stage_input.payload.get("assembly_plan"), dict) else {},
+        review_inputs=review_inputs if isinstance(review_inputs, dict) else {},
     )
     return StageOutput("review", "done", {"review_report": report}, [])
 

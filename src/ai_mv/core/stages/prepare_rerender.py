@@ -6,7 +6,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 _STAGE_SCHEMA = {
     "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
-    "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids", "assembly_plan", "review_inputs"),
+    "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids", "assembly_plan", "review_inputs", "sync_repair_summary"),
 }
 
 
@@ -81,7 +81,7 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
         elif isinstance(value, dict) and not target.get(key):
             target[key] = dict(value)
         return
-    if key in {"assembly_plan", "review_inputs"}:
+    if key in {"assembly_plan", "review_inputs", "sync_repair_summary"}:
         if isinstance(value, dict) and not isinstance(target.get(key), dict):
             target[key] = dict(value)
         elif isinstance(value, dict) and not target.get(key):

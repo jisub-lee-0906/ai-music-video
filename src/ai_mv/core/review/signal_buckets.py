@@ -11,6 +11,7 @@ _MEASURABLE_DETERMINISTIC_CHECKS = (
 )
 
 _HEURISTIC_PROXY_CHECKS = (
+    "style_constraints_respected",
     "terminal_frames_clean",
     "visual_continuity_preserved",
     "duplicate_subject_absent",
@@ -24,6 +25,10 @@ _HEURISTIC_PROXY_CHECKS = (
     "split_screen_absent",
     "character_payoff_present",
     "background_dominance_within_threshold",
+    "chorus_emphasis_within_threshold",
+    "slideshow_risk_within_threshold",
+    "safe_editing_within_threshold",
+    "sync_clone_tail_within_threshold",
     "camera_restraint",
     "memorable_shot",
 )

@@ -51,6 +51,7 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
         review_report.get("rerender_plan") if isinstance(review_report.get("rerender_plan"), list) else [],
         review_report.get("rerender_execution_payloads") if isinstance(review_report.get("rerender_execution_payloads"), list) else [],
     )
+    reference_summary = _reference_summary(summary_by_shot)
     material_ids = sorted(
         {
             str(row.get("material_id", "")).strip()
@@ -78,6 +79,9 @@ def run_rerender_escalation(stage_input: StageInput) -> StageOutput:
             "shot_ids": shot_ids,
             "material_ids": material_ids,
             "section_ids": section_ids,
+            "reference_modes": reference_summary["reference_modes"],
+            "anchor_source_shot_ids": reference_summary["anchor_source_shot_ids"],
+            "followup_shot_ids": reference_summary["followup_shot_ids"],
         },
     )
     report = {
@@ -158,7 +162,18 @@ def _summary_by_shot(
         ]
         plan_item = plan_by_shot.get(shot_id, {})
         provenance = provenance_by_shot.get(shot_id, {})
-        note = f"Inspect shot {shot_id} in the review packet artifacts"
+        reference_context = {
+            "reference_mode": str(provenance.get("reference_mode", "")).strip(),
+            "reference_source_shot_id": str(provenance.get("reference_source_shot_id", "")).strip(),
+            "identity_lock_strength": str(provenance.get("identity_lock_strength", "")).strip(),
+            "edit_variation_scope": str(provenance.get("edit_variation_scope", "")).strip(),
+            "minimum_visual_delta": str(provenance.get("minimum_visual_delta", "")).strip(),
+        }
+        reference_summary_label = _reference_summary_label(reference_context)
+        note = f"Inspect shot {shot_id}"
+        if reference_summary_label:
+            note += f" ({reference_summary_label})"
+        note += " in the review packet artifacts"
         if reason_codes:
             note += f" (reasons: {', '.join(reason_codes)})"
         rows.append(
@@ -170,11 +185,60 @@ def _summary_by_shot(
                 "priority_score": int(plan_item.get("priority_score", 0) or 0),
                 "recommended_action": str(plan_item.get("recommended_action", "")).strip(),
                 "rerender_prescription": dict(plan_item.get("rerender_prescription", {})) if isinstance(plan_item.get("rerender_prescription"), dict) else {},
+                "reference_context": reference_context,
+                "reference_summary_label": reference_summary_label,
                 "packet_artifacts": dict(artifacts),
                 "reviewer_note": note,
             }
         )
     return rows
+
+
+def _reference_summary(summary_by_shot: list[dict[str, object]]) -> dict[str, list[str]]:
+    reference_modes = sorted(
+        {
+            str(reference_context.get("reference_mode", "")).strip()
+            for row in summary_by_shot
+            if isinstance(row, dict)
+            for reference_context in [row.get("reference_context") if isinstance(row.get("reference_context"), dict) else {}]
+            if str(reference_context.get("reference_mode", "")).strip()
+        }
+    )
+    anchor_source_shot_ids = [
+        str(row.get("shot_id", "")).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict)
+        and str(row.get("shot_id", "")).strip()
+        and str((row.get("reference_context") if isinstance(row.get("reference_context"), dict) else {}).get("reference_mode", "")).strip().endswith("_source")
+    ]
+    followup_shot_ids = [
+        str(row.get("shot_id", "")).strip()
+        for row in summary_by_shot
+        if isinstance(row, dict)
+        and str(row.get("shot_id", "")).strip()
+        and str((row.get("reference_context") if isinstance(row.get("reference_context"), dict) else {}).get("reference_mode", "")).strip().startswith("use_")
+    ]
+    return {
+        "reference_modes": reference_modes,
+        "anchor_source_shot_ids": anchor_source_shot_ids,
+        "followup_shot_ids": followup_shot_ids,
+    }
+
+
+def _reference_summary_label(reference_context: dict[str, object]) -> str:
+    if not isinstance(reference_context, dict):
+        return ""
+    reference_mode = str(reference_context.get("reference_mode", "")).strip()
+    reference_source_shot_id = str(reference_context.get("reference_source_shot_id", "")).strip()
+    if reference_mode == "use_performance_anchor_still" and reference_source_shot_id:
+        return f"performance follow-up from {reference_source_shot_id}"
+    if reference_mode == "use_anchor_still" and reference_source_shot_id:
+        return f"follow-up from {reference_source_shot_id}"
+    if reference_mode == "performance_anchor_source":
+        return "performance anchor source baseline"
+    if reference_mode == "anchor_source":
+        return "anchor source baseline"
+    return ""
 
 
 def _provenance_by_shot(rerender_execution_payloads: list[dict[str, object]]) -> dict[str, dict[str, str]]:
@@ -189,11 +253,30 @@ def _provenance_by_shot(rerender_execution_payloads: list[dict[str, object]]) ->
         material_id = ""
         section_id = ""
         review_payload = stage_payloads.get("review") if isinstance(stage_payloads.get("review"), dict) else {}
+        reference_context = item.get("reference_context") if isinstance(item.get("reference_context"), dict) else {}
         if isinstance(review_payload, dict):
-            review_target_materials = review_payload.get("target_material_ids") if isinstance(review_payload.get("target_material_ids"), list) else []
-            review_target_sections = review_payload.get("target_section_ids") if isinstance(review_payload.get("target_section_ids"), list) else []
-            material_id = next((str(value).strip() for value in review_target_materials if str(value).strip()), "")
-            section_id = next((str(value).strip() for value in review_target_sections if str(value).strip()), "")
+            review_target_shots = [str(value).strip() for value in review_payload.get("target_shots", []) if str(value).strip()] if isinstance(review_payload.get("target_shots"), list) else []
+            review_target_materials = [str(value).strip() for value in review_payload.get("target_material_ids", []) if str(value).strip()] if isinstance(review_payload.get("target_material_ids"), list) else []
+            review_target_sections = [str(value).strip() for value in review_payload.get("target_section_ids", []) if str(value).strip()] if isinstance(review_payload.get("target_section_ids"), list) else []
+            if review_target_shots:
+                for index, target_shot_id in enumerate(review_target_shots):
+                    out[target_shot_id] = {
+                        "material_id": review_target_materials[index] if index < len(review_target_materials) else "",
+                        "section_id": review_target_sections[index] if index < len(review_target_sections) else "",
+                        "reference_mode": str(reference_context.get("reference_mode", "")).strip(),
+                        "reference_source_shot_id": str(reference_context.get("reference_source_shot_id", "")).strip(),
+                        "identity_lock_strength": str(reference_context.get("identity_lock_strength", "")).strip(),
+                        "edit_variation_scope": str(reference_context.get("edit_variation_scope", "")).strip(),
+                        "minimum_visual_delta": str(reference_context.get("minimum_visual_delta", "")).strip(),
+                    }
+            if shot_id in out:
+                material_id = str(out[shot_id].get("material_id", "")).strip()
+                section_id = str(out[shot_id].get("section_id", "")).strip()
+            else:
+                material_id = review_target_materials[0] if review_target_materials else ""
+                section_id = review_target_sections[0] if review_target_sections else ""
+            if not reference_context:
+                reference_context = review_payload.get("reference_context") if isinstance(review_payload.get("reference_context"), dict) else {}
         if not material_id or not section_id:
             for stage_name in ("clips", "stills"):
                 stage_payload = stage_payloads.get(stage_name) if isinstance(stage_payloads.get(stage_name), dict) else {}
@@ -219,10 +302,17 @@ def _provenance_by_shot(rerender_execution_payloads: list[dict[str, object]]) ->
                         or shot_row.get("section_id")
                         or ""
                     ).strip()
+                if not reference_context and isinstance(render_row, dict):
+                    reference_context = render_row
                 if material_id and section_id:
                     break
         out[shot_id] = {
             "material_id": material_id,
             "section_id": section_id,
+            "reference_mode": str(reference_context.get("reference_mode", "")).strip(),
+            "reference_source_shot_id": str(reference_context.get("reference_source_shot_id", "")).strip(),
+            "identity_lock_strength": str(reference_context.get("identity_lock_strength", "")).strip(),
+            "edit_variation_scope": str(reference_context.get("edit_variation_scope", "")).strip(),
+            "minimum_visual_delta": str(reference_context.get("minimum_visual_delta", "")).strip(),
         }
     return out

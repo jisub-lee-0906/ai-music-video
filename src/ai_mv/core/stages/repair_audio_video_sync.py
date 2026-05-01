@@ -10,6 +10,7 @@ from ai_mv.utils.time_utils import ffprobe_duration
 
 _VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".webm"}
 _AUDIO_EXTS = {".wav", ".mp3", ".flac", ".m4a"}
+_EXCESSIVE_CLONE_TAIL_RATIO = 0.25
 
 
 def run_repair_audio_video_sync(stage_input: StageInput) -> StageOutput:
@@ -37,15 +38,40 @@ def run_repair_audio_video_sync(stage_input: StageInput) -> StageOutput:
     repaired_video = final_video.with_name(f"{final_video.stem}_synced{final_video.suffix}")
     if not _repair_sync(final_video, music_file, repaired_video, video_duration=video_duration, audio_duration=audio_duration):
         return StageOutput("repair_audio_video_sync", "done", {"final_video": str(final_video), "music_file": str(music_file)}, [])
+    sync_repair_summary = _sync_repair_summary(video_duration=video_duration, audio_duration=audio_duration)
     return StageOutput(
         "repair_audio_video_sync",
         "done",
         {
             "final_video": str(repaired_video),
             "music_file": str(music_file),
+            "sync_repair_summary": sync_repair_summary,
         },
         [str(repaired_video)],
     )
+
+
+
+def _sync_repair_summary(*, video_duration: float, audio_duration: float) -> dict:
+    output_duration = max(audio_duration, 0.001)
+    clone_tail_sec = max(audio_duration - video_duration, 0.0)
+    clone_tail_ratio = clone_tail_sec / output_duration if output_duration > 0 else 0.0
+    if clone_tail_sec > 0:
+        repair_strategy = "clone_tail_pad"
+    elif video_duration > audio_duration:
+        repair_strategy = "trim_to_audio"
+    else:
+        repair_strategy = "remux_to_audio"
+    return {
+        "input_video_duration_sec": round(video_duration, 3),
+        "audio_duration_sec": round(audio_duration, 3),
+        "output_duration_sec": round(output_duration, 3),
+        "clone_tail_sec": round(clone_tail_sec, 3),
+        "clone_tail_ratio": round(clone_tail_ratio, 3),
+        "clone_tail_excessive": clone_tail_ratio > _EXCESSIVE_CLONE_TAIL_RATIO,
+        "repair_strategy": repair_strategy,
+    }
+
 
 
 def _repair_sync(final_video: Path, music_file: Path, output_video: Path, *, video_duration: float, audio_duration: float) -> bool:

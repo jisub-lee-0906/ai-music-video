@@ -25,10 +25,13 @@ _ISOLATED_ASSET_QUALITY_CHECKS = (
 _FINAL_MV_PUBLISHABILITY_CHECKS = (
     "visual_continuity_preserved",
     "mood_consistency",
+    "high_risk_interaction_without_backup",
+    "red_risk_clip_held_too_long",
     "motion_source_safe",
     "chorus_emphasis_within_threshold",
     "slideshow_risk_within_threshold",
     "safe_editing_within_threshold",
+    "sync_clone_tail_within_threshold",
     "character_payoff_present",
     "background_dominance_within_threshold",
 )
@@ -51,10 +54,13 @@ _GUIDANCE_BY_CHECK = {
     "split_screen_absent": "rerender split-screen keyframes as one continuous shot",
     "visual_continuity_preserved": "rerender continuity-break shots and preserve identity across adjacent shots",
     "mood_consistency": "rerender mood-drift shots to match the song section and neighboring shots",
+    "high_risk_interaction_without_backup": "generate a symbolic insert or face-reaction backup before relying on red-risk interaction payoff shots",
     "motion_source_safe": "rerender motion-fragile shots with safer keyframes and simpler motion sources",
+    "red_risk_clip_held_too_long": "shorten red-risk IA2V interaction/payoff clips to the production-policy duration cap or replace with safer backup inserts",
     "chorus_emphasis_within_threshold": "revise assembly weights so chorus reads stronger than verse before clip rerender",
     "slideshow_risk_within_threshold": "revise transition selection and clip ordering before rerendering clips",
     "safe_editing_within_threshold": "revise assembly pattern selection and cut density to avoid repetitive safe edits before rerendering clips",
+    "sync_clone_tail_within_threshold": "extend assembly coverage before sync repair so final duration is not dominated by cloned tail padding",
     "character_payoff_present": "rerender weak-payoff shots so the character reads as the emotional center instead of background mood",
     "background_dominance_within_threshold": "rerender background-dominant shots with stronger subject scale and foreground payoff",
 }
@@ -81,6 +87,9 @@ _ISOLATED_PRIORITY = (
 )
 
 _FINAL_PRIORITY = (
+    ("high_risk_interaction_without_backup", "rerender_high_risk_backup_alternatives"),
+    ("red_risk_clip_held_too_long", "revise_transition_selection"),
+    ("sync_clone_tail_within_threshold", "revise_assembly_coverage_before_sync_pad"),
     ("chorus_emphasis_within_threshold", "revise_assembly_weights_before_clip_rerender"),
     ("slideshow_risk_within_threshold", "revise_transition_selection"),
     ("safe_editing_within_threshold", "revise_transition_selection"),
@@ -90,6 +99,25 @@ _FINAL_PRIORITY = (
     ("motion_source_safe", "rerender_motion_fragile_shots_with_safer_keyframes"),
     ("mood_consistency", "rerender_mood_drift_shots"),
 )
+
+_EXECUTABLE_REVIEW_ACTIONS = {
+    "repair_audio_video_sync",
+    "revise_assembly_weights_before_clip_rerender",
+    "revise_transition_selection",
+    "revise_assembly_coverage_before_sync_pad",
+    "rerender_high_risk_backup_alternatives",
+}
+
+
+def _execution_mode(stage_focus: str | None, recommended_action: str | None) -> str:
+    normalized_stage = str(stage_focus or "").strip()
+    normalized_action = str(recommended_action or "").strip()
+    if normalized_stage in {"stills", "clips", "stills_then_clips"}:
+        return "automatic"
+    if normalized_stage == "review" and normalized_action in _EXECUTABLE_REVIEW_ACTIONS:
+        return "automatic"
+    return "manual_only"
+
 
 _BUCKET_REASON_CODES = {
     "technical_completion": {
@@ -111,13 +139,19 @@ _BUCKET_REASON_CODES = {
         "split_screen",
     },
     "final_mv_publishability": {
+        "high_risk_interaction_without_backup",
+        "red_risk_clip_held_too_long",
         "continuity_break",
         "identity_drift",
         "motion_fragile_frame",
         "chorus_not_stronger_than_verse",
         "arbitrary_transitions",
+        "repetitive_safe_editing",
         "weak_character_payoff",
         "background_dominant_composition",
+        "chorus_release_missing",
+        "final_payoff_missing",
+        "excessive_sync_clone_tail",
     },
 }
 
@@ -212,32 +246,51 @@ def build_final_review_summary(
 
 
 
-def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
+def classify_rerender_target(reason_codes: list[str], rerender_context: dict[str, object] | None = None) -> dict[str, object]:
     normalized_reasons = [str(reason).strip() for reason in reason_codes if str(reason).strip()]
     normalized_reason_set = {reason for reason in normalized_reasons if reason}
+    effective_context = rerender_context if isinstance(rerender_context, dict) else {}
+    if "high_risk_interaction_without_backup" in normalized_reason_set:
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "rerender_high_risk_backup_alternatives",
+            "rerender_prescription": _rerender_prescription("rerender_high_risk_backup_alternatives", normalized_reasons, effective_context),
+        }
+    if "red_risk_clip_held_too_long" in normalized_reason_set:
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "revise_transition_selection",
+            "rerender_prescription": _rerender_prescription("revise_transition_selection", normalized_reasons, effective_context),
+        }
+    if "excessive_sync_clone_tail" in normalized_reason_set:
+        return {
+            "bucket": "final_mv_publishability",
+            "recommended_action": "revise_assembly_coverage_before_sync_pad",
+            "rerender_prescription": _rerender_prescription("revise_assembly_coverage_before_sync_pad", normalized_reasons, effective_context),
+        }
     if {"continuity_break", "identity_drift"}.issubset(normalized_reason_set):
         return {
             "bucket": "final_mv_publishability",
             "recommended_action": "rerender_continuity_break_shots",
-            "rerender_prescription": _rerender_prescription("rerender_continuity_break_shots", normalized_reasons),
+            "rerender_prescription": _rerender_prescription("rerender_continuity_break_shots", normalized_reasons, effective_context),
         }
-    if "weak_character_payoff" in normalized_reason_set or "background_dominant_composition" in normalized_reason_set:
+    if normalized_reason_set & {"weak_character_payoff", "background_dominant_composition", "chorus_release_missing", "final_payoff_missing"}:
         return {
             "bucket": "final_mv_publishability",
             "recommended_action": "rerender_character_payoff_shots",
-            "rerender_prescription": _rerender_prescription("rerender_character_payoff_shots", normalized_reasons),
+            "rerender_prescription": _rerender_prescription("rerender_character_payoff_shots", normalized_reasons, effective_context),
         }
     if "chorus_not_stronger_than_verse" in normalized_reason_set:
         return {
             "bucket": "final_mv_publishability",
             "recommended_action": "revise_assembly_weights_before_clip_rerender",
-            "rerender_prescription": _rerender_prescription("revise_assembly_weights_before_clip_rerender", normalized_reasons),
+            "rerender_prescription": _rerender_prescription("revise_assembly_weights_before_clip_rerender", normalized_reasons, effective_context),
         }
-    if "arbitrary_transitions" in normalized_reason_set:
+    if "arbitrary_transitions" in normalized_reason_set or "repetitive_safe_editing" in normalized_reason_set:
         return {
             "bucket": "final_mv_publishability",
             "recommended_action": "revise_transition_selection",
-            "rerender_prescription": _rerender_prescription("revise_transition_selection", normalized_reasons),
+            "rerender_prescription": _rerender_prescription("revise_transition_selection", normalized_reasons, effective_context),
         }
     for bucket_name, reason_to_action in (
         (
@@ -267,6 +320,9 @@ def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
         (
             "final_mv_publishability",
             {
+                "high_risk_interaction_without_backup": "rerender_high_risk_backup_alternatives",
+                "red_risk_clip_held_too_long": "revise_transition_selection",
+                "excessive_sync_clone_tail": "revise_assembly_coverage_before_sync_pad",
                 "continuity_break": "rerender_continuity_break_shots",
                 "motion_fragile_frame": "rerender_motion_fragile_shots_with_safer_keyframes",
                 "identity_drift": "rerender_continuity_break_shots",
@@ -278,12 +334,12 @@ def classify_rerender_target(reason_codes: list[str]) -> dict[str, object]:
                 return {
                     "bucket": bucket_name,
                     "recommended_action": action_name,
-                    "rerender_prescription": _rerender_prescription(action_name, normalized_reasons),
+                    "rerender_prescription": _rerender_prescription(action_name, normalized_reasons, effective_context),
                 }
     return {
         "bucket": "unclassified",
         "recommended_action": "review_failed_checks",
-        "rerender_prescription": _rerender_prescription("review_failed_checks", normalized_reasons),
+        "rerender_prescription": _rerender_prescription("review_failed_checks", normalized_reasons, effective_context),
     }
 
 
@@ -310,13 +366,34 @@ def _summary(
         if value is False:
             failures.append(check_name)
     next_action = _next_action(failures, action_priority)
+    if bucket_name == "final_mv_publishability" and _has_treatment_payoff_reasons(rerender_reasons) and any(
+        check_name in failures for check_name in ("character_payoff_present", "background_dominance_within_threshold")
+    ):
+        next_action = "rerender_character_payoff_shots"
+    rerender_bundle = _rerender_bundle(
+        bucket_name,
+        next_action,
+        rerender_reasons,
+        rerender_context_by_shot=rerender_context_by_shot,
+    )
+    target_shots = rerender_bundle.get("target_shots") if isinstance(rerender_bundle, dict) else []
+    primary_target_shot = str(target_shots[0]).strip() if isinstance(target_shots, list) and target_shots else ""
+    rerender_prescription = _rerender_prescription(
+        next_action,
+        rerender_bundle.get("reason_codes") if isinstance(rerender_bundle, dict) else None,
+        (rerender_context_by_shot or {}).get(primary_target_shot),
+    )
     return {
         "passed": not failures,
         field_name: failures,
         "next_action": next_action,
+        "execution_mode": _execution_mode(
+            rerender_prescription.get("stage_focus"),
+            next_action,
+        ),
         "rerender_guidance": [_GUIDANCE_BY_CHECK[check_name] for check_name in failures if check_name in _GUIDANCE_BY_CHECK],
-        "rerender_bundle": _rerender_bundle(bucket_name, next_action, rerender_reasons, rerender_context_by_shot=rerender_context_by_shot),
-        "rerender_prescription": _rerender_prescription(next_action),
+        "rerender_bundle": rerender_bundle,
+        "rerender_prescription": rerender_prescription,
     }
 
 
@@ -328,6 +405,17 @@ def _next_action(failures: list[str], action_priority: tuple[tuple[str, str], ..
         if check_name in failures:
             return action_name
     return "review_failed_checks"
+
+
+
+def _has_treatment_payoff_reasons(rerender_reasons: dict[str, list[str]]) -> bool:
+    for reasons in rerender_reasons.values() if isinstance(rerender_reasons, dict) else []:
+        if not isinstance(reasons, list):
+            continue
+        normalized = {str(reason).strip() for reason in reasons if str(reason).strip()}
+        if normalized & {"chorus_release_missing", "final_payoff_missing"}:
+            return True
+    return False
 
 
 
@@ -441,6 +529,14 @@ def _build_rerender_context_by_shot(
         out[shot_id] = {
             "material_id": material_id,
             "section_id": section_id,
+            "reference_mode": str(render_row.get("reference_mode", "") or "").strip(),
+            "identity_lock_strength": str(render_row.get("identity_lock_strength", "") or "").strip(),
+            "edit_variation_scope": str(render_row.get("edit_variation_scope", "") or "").strip(),
+            "minimum_visual_delta": str(render_row.get("minimum_visual_delta", "") or "").strip(),
+            "reference_source_shot_id": str(render_row.get("reference_source_shot_id", "") or "").strip(),
+            "candidate_role": str((render_row.get("production_policy") if isinstance(render_row.get("production_policy"), dict) else {}).get("candidate_role", "") or render_row.get("candidate_role", "") or "").strip(),
+            "ia2v_risk_class": str((render_row.get("production_policy") if isinstance(render_row.get("production_policy"), dict) else {}).get("ia2v_risk_class", "") or render_row.get("ia2v_risk_class", "") or "").strip(),
+            "anchor_reference_arm": str((render_row.get("production_policy") if isinstance(render_row.get("production_policy"), dict) else {}).get("anchor_reference_arm", "") or render_row.get("anchor_reference_arm", "") or "").strip(),
         }
     return out
 
@@ -474,7 +570,11 @@ def _int_like(value: object) -> int | None:
 
 
 
-def _rerender_prescription(action_name: str, reason_codes: list[str] | None = None) -> dict[str, object]:
+def _rerender_prescription(
+    action_name: str,
+    reason_codes: list[str] | None = None,
+    rerender_context: dict[str, object] | None = None,
+) -> dict[str, object]:
     prescriptions = {
         "no_action": {
             "stage_focus": None,
@@ -518,6 +618,12 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "strengthen_character_payoff_and_subject_scale",
         },
+        "repair_audio_video_sync": {
+            "stage_focus": "review",
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "repair_audio_video_sync",
+        },
         "revise_assembly_weights_before_clip_rerender": {
             "stage_focus": "review",
             "workflow_focus": None,
@@ -530,6 +636,18 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
             "prompt_contract_focus": [],
             "fix_strategy": "revise_transition_selection",
         },
+        "revise_assembly_coverage_before_sync_pad": {
+            "stage_focus": "review",
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "revise_assembly_coverage_before_sync_pad",
+        },
+        "rerender_high_risk_backup_alternatives": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "generate_symbolic_or_face_reaction_backup",
+        },
     }
     prescription = dict(prescriptions.get(action_name, {
         "stage_focus": "review",
@@ -538,7 +656,10 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
         "fix_strategy": "inspect_review_failures_manually",
     }))
     normalized_reasons = {str(reason).strip() for reason in reason_codes or [] if str(reason).strip()}
-    if action_name == "rerender_weak_shots_with_prompt_tightening" and (
+    effective_context = rerender_context if isinstance(rerender_context, dict) else {}
+    if action_name == "rerender_character_payoff_shots" and normalized_reasons & {"chorus_release_missing", "final_payoff_missing"}:
+        prescription["fix_strategy"] = "strengthen_story_payoff_and_chorus_release"
+    elif action_name == "rerender_weak_shots_with_prompt_tightening" and (
         "weak_environment_match" in normalized_reasons or "unrelated_scene_intrusion" in normalized_reasons
     ):
         prescription["fix_strategy"] = "tighten_subject_and_world_anchors"
@@ -548,13 +669,33 @@ def _rerender_prescription(action_name: str, reason_codes: list[str] | None = No
         prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
         prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     elif action_name == "rerender_weak_shots_with_prompt_tightening" and "weak_subject_match" in normalized_reasons:
-        prescription["fix_strategy"] = "tighten_subject_identity_anchors"
+        if _is_reference_followup_context(effective_context):
+            prescription["stage_focus"] = "stills_then_clips"
+            prescription["workflow_focus"] = ["flux2_image", "ia2v"]
+            prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
+            prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
+        else:
+            prescription["fix_strategy"] = "tighten_subject_identity_anchors"
     elif action_name == "rerender_continuity_break_shots" and {"continuity_break", "identity_drift"}.issubset(normalized_reasons):
         prescription["stage_focus"] = "stills_then_clips"
         prescription["workflow_focus"] = ["flux2_image", "ia2v"]
         prescription["prompt_contract_focus"] = ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"]
         prescription["fix_strategy"] = "tighten_identity_continuity_anchors"
     return prescription
+
+
+
+def _is_reference_followup_context(rerender_context: dict[str, object] | None) -> bool:
+    if not isinstance(rerender_context, dict):
+        return False
+    reference_mode = str(rerender_context.get("reference_mode", "")).strip()
+    identity_lock_strength = str(rerender_context.get("identity_lock_strength", "")).strip()
+    edit_variation_scope = str(rerender_context.get("edit_variation_scope", "")).strip()
+    return (
+        reference_mode in {"use_anchor_still", "use_performance_anchor_still"}
+        or identity_lock_strength in {"anchor", "performance_anchor"}
+        or edit_variation_scope in {"framing_only", "bridge_reframe", "performance_pose_upgrade"}
+    )
 
 
 

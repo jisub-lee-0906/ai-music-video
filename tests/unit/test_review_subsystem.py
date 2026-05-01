@@ -66,6 +66,72 @@ def test_quality_signals_builds_blocking_and_non_blocking_checks():
     assert signals["blocking_checks"]["style_constraints_respected"] is True
 
 
+
+def test_quality_signals_treat_unsafe_assembly_editing_as_camera_restraint_failure():
+    signals = build_quality_signals(
+        planned_shot_ids=["S001", "S002"],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "slideshow_risk_within_threshold": False,
+            "safe_editing_within_threshold": False,
+        },
+    )
+
+    assert signals["non_blocking_checks"]["camera_restraint"] is False
+
+
+
+def test_quality_signals_treat_unsafe_assembly_editing_as_mood_consistency_failure():
+    signals = build_quality_signals(
+        planned_shot_ids=["S001", "S002"],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+            "safe_editing_within_threshold": False,
+        },
+    )
+
+    assert signals["non_blocking_checks"]["mood_consistency"] is False
+
+
+
+def test_quality_signals_treat_weak_character_payoff_as_memorable_shot_failure():
+    signals = build_quality_signals(
+        planned_shot_ids=["S001", "S002"],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        rerender_reasons={"S002": ["weak_character_payoff"]},
+    )
+
+    assert signals["non_blocking_checks"]["memorable_shot"] is False
+
+
+def test_quality_signals_treat_panelized_keyframes_as_style_identity_failure():
+    signals = build_quality_signals(
+        planned_shot_ids=["S001", "S002"],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        rerender_reasons={"S002": ["panel_layout"]},
+    )
+
+    assert signals["non_blocking_checks"]["style_identity"] is False
+
+
 def test_rerender_reasons_explain_missing_assets():
     reasons = rerender_reasons(
         ["S001", "S002", "S003"],
@@ -372,6 +438,51 @@ def test_review_models_keep_legacy_assembly_summary_when_only_cadence_metadata_i
 
 
 
+def test_review_models_penalize_candidate_role_repetition_even_when_cadence_is_varied():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002", "S003", "S004"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}, {"shot_id": "S004"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}, {"shot_id": "S003"}, {"shot_id": "S004"}],
+        still_status={"S001": True, "S002": True, "S003": True, "S004": True},
+        clip_status={"S001": True, "S002": True, "S003": True, "S004": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        edit_intent_by_shot={
+            "S001": {"edit_priority": "high", "section_emphasis": "chorus_push", "transition_in": "accent_in", "transition_out": "accent_out"},
+            "S002": {"edit_priority": "medium", "section_emphasis": "sequence_support", "transition_in": "hold_in", "transition_out": "cut_out"},
+            "S003": {"edit_priority": "medium", "section_emphasis": "bridge_contrast", "transition_in": "glide_in", "transition_out": "handoff_out"},
+            "S004": {"edit_priority": "medium", "section_emphasis": "release_fade", "transition_in": "hold_in", "transition_out": "fade_out"},
+        },
+        render_count_by_shot={"S001": 3, "S002": 1, "S003": 2, "S004": 2},
+        render_priority_by_shot={"S001": 0.9, "S002": 0.62, "S003": 0.78, "S004": 0.74},
+        render_planning_by_shot={
+            "S001": {"mode_importance_score": 1.0, "section_emphasis_score": 1.0},
+            "S002": {"mode_importance_score": 0.68, "section_emphasis_score": 0.6},
+            "S003": {"mode_importance_score": 0.85, "section_emphasis_score": 0.78},
+            "S004": {"mode_importance_score": 0.82, "section_emphasis_score": 0.72},
+        },
+        cadence_profile_by_shot={"S001": "hook_dense", "S002": "support_hold", "S003": "bridge_pivot", "S004": "release_tail"},
+        snap_unit_by_shot={"S001": "bar", "S002": "beat", "S003": "free", "S004": "bar"},
+        trimmed_coverage_by_shot={"S001": 2.0, "S002": 4.2, "S003": 2.8, "S004": 3.6},
+        production_policy_by_shot={
+            "S001": {"candidate_role": "hero_face_performance"},
+            "S002": {"candidate_role": "hero_face_performance"},
+            "S003": {"candidate_role": "hero_face_performance"},
+            "S004": {"candidate_role": "hero_face_performance"},
+        },
+    )
+
+    assert report["assembly_quality_summary"]["candidate_role_variety_score"] == 0.25
+    assert report["assembly_quality_summary"]["candidate_role_adjacent_repetition_score"] == 1.0
+    assert report["assembly_quality_summary"]["repetitive_edit_risk_score"] >= 0.75
+    assert report["assembly_quality_summary"]["safe_editing_within_threshold"] is False
+    assert report["publishability_summary"]["final_mv_publishability"]["next_action"] == "revise_transition_selection"
+
+
+
 def test_review_models_reward_varied_cadence_and_snap_patterns_in_assembly_quality_summary():
     report = build_review_report(
         planned_shot_ids=["S001", "S002", "S003", "S004"],
@@ -485,9 +596,47 @@ def test_review_models_include_review_signal_buckets():
     assert buckets["measurable_deterministic"]["passed"] is True
     assert buckets["measurable_deterministic"]["failed_checks"] == []
     assert buckets["heuristic_proxy"]["passed"] is False
-    assert buckets["heuristic_proxy"]["failed_checks"] == ["terminal_frames_clean", "visual_continuity_preserved", "duplicate_subject_absent"]
+    assert buckets["heuristic_proxy"]["failed_checks"] == [
+        "style_constraints_respected",
+        "terminal_frames_clean",
+        "visual_continuity_preserved",
+        "duplicate_subject_absent",
+    ]
     assert buckets["model_judged"]["passed"] is False
     assert buckets["model_judged"]["failed_checks"] == ["style_identity", "mood_consistency"]
+
+
+def test_review_models_bucket_multiple_assembly_failures_as_high_heuristic_evidence():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        clip_results=[{"shot_id": "S001"}, {"shot_id": "S002"}],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        assembly_quality_summary={
+            "chorus_emphasis_within_threshold": False,
+            "slideshow_risk_within_threshold": False,
+            "safe_editing_within_threshold": False,
+        },
+    )
+
+    assert report["severity"]["assembly_quality"] == "high"
+    assert report["blocking_checks"]["chorus_emphasis_within_threshold"] is False
+    assert report["blocking_checks"]["slideshow_risk_within_threshold"] is False
+    assert report["blocking_checks"]["safe_editing_within_threshold"] is False
+    assert report["review_signal_buckets"]["heuristic_proxy"]["failed_checks"] == [
+        "chorus_emphasis_within_threshold",
+        "slideshow_risk_within_threshold",
+        "safe_editing_within_threshold",
+        "camera_restraint",
+    ]
+    assert report["review_signal_buckets"]["model_judged"]["failed_checks"] == ["mood_consistency"]
+
 
 
 def test_review_models_include_publishability_summary_levels():
@@ -544,6 +693,7 @@ def test_review_models_include_publishability_summary_levels():
     assert summary["final_mv_publishability"]["passed"] is False
     assert summary["final_mv_publishability"]["failed_checks"] == ["visual_continuity_preserved", "mood_consistency"]
     assert summary["final_mv_publishability"]["next_action"] == "rerender_continuity_break_shots"
+    assert summary["final_mv_publishability"]["execution_mode"] == "manual_only"
     assert summary["final_mv_publishability"]["rerender_guidance"] == [
         "rerender continuity-break shots and preserve identity across adjacent shots",
         "rerender mood-drift shots to match the song section and neighboring shots",
@@ -708,6 +858,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
         "priority_score": report["rerender_priority_scores"]["S003"],
         "bucket": "isolated_asset_quality",
         "recommended_action": "rerender_scene_intrusion_shots",
+        "execution_mode": "automatic",
         "rerender_prescription": {
             "stage_focus": "stills",
             "workflow_focus": ["flux2_image"],
@@ -753,6 +904,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S003",
             "recommended_action": "rerender_scene_intrusion_shots",
             "rerender_stage": "stills",
+            "execution_mode": "automatic",
             "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "tighten_subject_and_world_anchors",
@@ -769,6 +921,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S001",
             "recommended_action": "rerender_panelized_keyframes",
             "rerender_stage": "stills",
+            "execution_mode": "automatic",
             "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "enforce_single_frame_keyframe_composition",
@@ -785,6 +938,7 @@ def test_review_models_build_rerender_plan_payload_and_execution_payloads():
             "shot_id": "S002",
             "recommended_action": "rerender_motion_fragile_shots_with_safer_keyframes",
             "rerender_stage": "stills_then_clips",
+            "execution_mode": "automatic",
             "workflow_focus": ["flux2_image", "ia2v"],
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
             "fix_strategy": "replace_fragile_keyframes_before_clip_rerender",
@@ -887,6 +1041,92 @@ def test_classify_rerender_target_uses_subject_identity_fix_strategy_for_subject
 
 
 
+def test_classify_rerender_target_upgrades_followup_subject_match_failures_to_continuity_repair():
+    classification = classify_rerender_target(
+        ["weak_subject_match"],
+        rerender_context={
+            "reference_mode": "use_performance_anchor_still",
+            "identity_lock_strength": "performance_anchor",
+            "edit_variation_scope": "performance_pose_upgrade",
+        },
+    )
+
+    assert classification == {
+        "bucket": "isolated_asset_quality",
+        "recommended_action": "rerender_weak_shots_with_prompt_tightening",
+        "rerender_prescription": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "tighten_identity_continuity_anchors",
+        },
+    }
+
+
+
+def test_review_models_upgrade_followup_subject_match_rerenders_to_continuity_repair_execution_payloads():
+    report = build_review_report(
+        planned_shot_ids=["S007"],
+        still_results=[{"shot_id": "S007", "image": "still.png", "material_id": "MAT_007", "section_id": "SEC_007"}],
+        clip_results=[{"shot_id": "S007", "video": "clip.mp4", "material_id": "MAT_007", "section_id": "SEC_007"}],
+        still_status={"S007": True},
+        clip_status={"S007": True},
+        final_video_exists=True,
+        rerender_targets=["S007"],
+        rerender_reasons={"S007": ["weak_subject_match"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007", "render_mode": "ia2v"}],
+        material_plan=[{"material_id": "MAT_007", "section_id": "SEC_007"}],
+        render_plan=[
+            {
+                "shot_id": "S007",
+                "material_id": "MAT_007",
+                "section_id": "SEC_007",
+                "render_mode": "ia2v",
+                "still_prompt_text": "heroine singing under neon rain",
+                "clip_prompt_seed": "heroine singing under neon rain with expressive motion",
+                "clip_positive_prompt": "heroine singing under neon rain with expressive motion, cinematic lighting",
+                "reference_mode": "use_performance_anchor_still",
+                "reference_source_shot_id": "S006",
+                "identity_lock_strength": "performance_anchor",
+                "edit_variation_scope": "performance_pose_upgrade",
+                "minimum_visual_delta": "facial_expression_shift",
+            }
+        ],
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+    )
+
+    assert report["publishability_summary"]["isolated_asset_quality"]["next_action"] == "rerender_weak_shots_with_prompt_tightening"
+    assert report["publishability_summary"]["isolated_asset_quality"]["execution_mode"] == "automatic"
+    assert report["publishability_summary"]["isolated_asset_quality"]["rerender_prescription"] == {
+        "stage_focus": "stills_then_clips",
+        "workflow_focus": ["flux2_image", "ia2v"],
+        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+        "fix_strategy": "tighten_identity_continuity_anchors",
+    }
+    assert report["rerender_plan"] == [
+        {
+            "shot_id": "S007",
+            "reason_codes": ["weak_subject_match"],
+            "priority_score": 4,
+            "bucket": "isolated_asset_quality",
+            "recommended_action": "rerender_weak_shots_with_prompt_tightening",
+            "execution_mode": "automatic",
+            "rerender_prescription": {
+                "stage_focus": "stills_then_clips",
+                "workflow_focus": ["flux2_image", "ia2v"],
+                "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+                "fix_strategy": "tighten_identity_continuity_anchors",
+            },
+        }
+    ]
+    assert report["rerender_execution_payloads"][0]["rerender_stage"] == "stills_then_clips"
+    assert report["rerender_execution_payloads"][0]["fix_strategy"] == "tighten_identity_continuity_anchors"
+
+
+
 def test_classify_rerender_target_uses_identity_continuity_fix_strategy_for_identity_drift():
     classification = classify_rerender_target(["identity_drift"])
 
@@ -961,6 +1201,7 @@ def test_review_models_route_manual_payoff_findings_to_final_mv_publishability_s
     assert report["review_signal_buckets"]["heuristic_proxy"]["failed_checks"] == [
         "character_payoff_present",
         "background_dominance_within_threshold",
+        "memorable_shot",
     ]
     assert report["publishability_summary"]["isolated_asset_quality"]["passed"] is True
     assert report["publishability_summary"]["isolated_asset_quality"]["next_action"] == "no_action"
@@ -984,6 +1225,40 @@ def test_review_models_route_manual_payoff_findings_to_final_mv_publishability_s
         "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
         "fix_strategy": "strengthen_character_payoff_and_subject_scale",
     }
+
+
+
+def test_review_models_surface_manual_only_execution_mode_for_continuity_break_rerender_plan():
+    report = build_review_report(
+        planned_shot_ids=["S006"],
+        still_results=[{"shot_id": "S006", "image": "still.png"}],
+        clip_results=[{"shot_id": "S006", "video": "clip.mp4"}],
+        still_status={"S006": True},
+        clip_status={"S006": True},
+        final_video_exists=True,
+        rerender_targets=["S006"],
+        rerender_reasons={"S006": ["continuity_break"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+    )
+
+    assert report["rerender_plan"] == [
+        {
+            "shot_id": "S006",
+            "reason_codes": ["continuity_break"],
+            "priority_score": report["rerender_priority_scores"]["S006"],
+            "bucket": "final_mv_publishability",
+            "recommended_action": "rerender_continuity_break_shots",
+            "execution_mode": "manual_only",
+            "rerender_prescription": {
+                "stage_focus": "review",
+                "workflow_focus": None,
+                "prompt_contract_focus": [],
+                "fix_strategy": "inspect_review_failures_manually",
+            },
+        }
+    ]
+    assert report["rerender_execution_payloads"][0]["execution_mode"] == "manual_only"
 
 
 
@@ -1037,6 +1312,7 @@ def test_review_models_preserve_prompt_repair_contract_in_character_payoff_execu
             "shot_id": "S006",
             "recommended_action": "rerender_character_payoff_shots",
             "rerender_stage": "stills_then_clips",
+            "execution_mode": "automatic",
             "workflow_focus": ["flux2_image", "ia2v"],
             "fix_strategy": "strengthen_character_payoff_and_subject_scale",
             "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
@@ -1357,9 +1633,10 @@ def test_review_models_build_review_stage_execution_payload_for_audio_sync_repai
             "shot_id": "S001",
             "recommended_action": "repair_audio_video_sync",
             "rerender_stage": "review",
+            "execution_mode": "automatic",
             "workflow_focus": None,
             "prompt_contract_focus": [],
-            "fix_strategy": "inspect_review_failures_manually",
+            "fix_strategy": "repair_audio_video_sync",
             "stage_payloads": {
                 "review": {
                     "final_video": "final.mp4",
@@ -1372,6 +1649,135 @@ def test_review_models_build_review_stage_execution_payload_for_audio_sync_repai
             },
         }
     ]
+
+
+
+def test_review_models_route_excessive_sync_clone_tail_to_assembly_coverage_revision():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[
+            {"shot_id": "S001", "image": "still-1.png", "material_id": "MAT_001", "section_id": "SEC_A"},
+            {"shot_id": "S002", "image": "still-2.png", "material_id": "MAT_002", "section_id": "SEC_B"},
+        ],
+        clip_results=[
+            {"shot_id": "S001", "video": "clip-1.mp4", "material_id": "MAT_001", "section_id": "SEC_A"},
+            {"shot_id": "S002", "video": "clip-2.mp4", "material_id": "MAT_002", "section_id": "SEC_B"},
+        ],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+        assembly_plan={"section_edits": [{"section_id": "SEC_A", "selected_clip_ids": ["S001"]}]},
+        review_inputs={
+            "clip_results": [
+                {"shot_id": "S001", "video": "clip-1.mp4"},
+                {"shot_id": "S002", "video": "clip-2.mp4"},
+            ],
+            "trimmed_coverage_by_shot": {"S001": 4.0, "S002": 4.0},
+        },
+        sync_repair_summary={
+            "repair_strategy": "clone_tail_pad",
+            "output_duration_sec": 18.0,
+            "clone_tail_sec": 8.782,
+            "clone_tail_ratio": 0.487,
+            "clone_tail_excessive": True,
+        },
+    )
+
+    assert report["blocking_checks"]["sync_clone_tail_within_threshold"] is False
+    assert report["rerender_targets"] == ["S001", "S002"]
+    assert report["rerender_reasons"] == {
+        "S001": ["excessive_sync_clone_tail"],
+        "S002": ["excessive_sync_clone_tail"],
+    }
+    summary = report["publishability_summary"]["final_mv_publishability"]
+    assert summary["failed_checks"] == ["sync_clone_tail_within_threshold"]
+    assert summary["next_action"] == "revise_assembly_coverage_before_sync_pad"
+    assert summary["execution_mode"] == "automatic"
+    assert summary["rerender_guidance"] == [
+        "extend assembly coverage before sync repair so final duration is not dominated by cloned tail padding"
+    ]
+    assert summary["rerender_bundle"] == {
+        "action": "revise_assembly_coverage_before_sync_pad",
+        "target_shots": ["S001", "S002"],
+        "target_material_ids": ["MAT_001", "MAT_002"],
+        "target_section_ids": ["SEC_A", "SEC_B"],
+        "reason_codes": ["excessive_sync_clone_tail"],
+    }
+    assert summary["rerender_prescription"] == {
+        "stage_focus": "review",
+        "workflow_focus": None,
+        "prompt_contract_focus": [],
+        "fix_strategy": "revise_assembly_coverage_before_sync_pad",
+    }
+    assert report["rerender_execution_payloads"][0]["stage_payloads"]["review"] == {
+        "final_video": "final.mp4",
+        "music_file": "song.mp3",
+        "recommended_action": "revise_assembly_coverage_before_sync_pad",
+        "target_shots": ["S001", "S002"],
+        "target_material_ids": ["MAT_001", "MAT_002"],
+        "target_section_ids": ["SEC_A", "SEC_B"],
+        "assembly_plan": {"section_edits": [{"section_id": "SEC_A", "selected_clip_ids": ["S001"]}]},
+        "review_inputs": {
+            "clip_results": [
+                {"shot_id": "S001", "video": "clip-1.mp4"},
+                {"shot_id": "S002", "video": "clip-2.mp4"},
+            ],
+            "trimmed_coverage_by_shot": {"S001": 4.0, "S002": 4.0},
+        },
+        "sync_repair_summary": {
+            "repair_strategy": "clone_tail_pad",
+            "output_duration_sec": 18.0,
+            "clone_tail_sec": 8.782,
+            "clone_tail_ratio": 0.487,
+            "clone_tail_excessive": True,
+        },
+    }
+
+
+
+def test_review_models_prioritize_sync_clone_tail_over_safe_editing_summary_action():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S002"],
+        still_results=[
+            {"shot_id": "S001", "image": "still-1.png", "material_id": "MAT_001", "section_id": "SEC_A"},
+            {"shot_id": "S002", "image": "still-2.png", "material_id": "MAT_002", "section_id": "SEC_B"},
+        ],
+        clip_results=[
+            {"shot_id": "S001", "video": "clip-1.mp4", "material_id": "MAT_001", "section_id": "SEC_A"},
+            {"shot_id": "S002", "video": "clip-2.mp4", "material_id": "MAT_002", "section_id": "SEC_B"},
+        ],
+        still_status={"S001": True, "S002": True},
+        clip_status={"S001": True, "S002": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+        assembly_quality_summary={"safe_editing_within_threshold": False},
+        sync_repair_summary={
+            "repair_strategy": "clone_tail_pad",
+            "output_duration_sec": 18.0,
+            "clone_tail_sec": 7.747,
+            "clone_tail_ratio": 0.43,
+            "clone_tail_excessive": True,
+        },
+    )
+
+    final_summary = report["publishability_summary"]["final_mv_publishability"]
+    assert "safe_editing_within_threshold" in final_summary["failed_checks"]
+    assert "sync_clone_tail_within_threshold" in final_summary["failed_checks"]
+    assert final_summary["next_action"] == "revise_assembly_coverage_before_sync_pad"
+    assert report["recommended_next_action"] == "revise_assembly_coverage_before_sync_pad"
+    assert report["rerender_execution_payloads"][0]["stage_payloads"]["review"]["recommended_action"] == "revise_assembly_coverage_before_sync_pad"
+
 
 
 def test_classify_rerender_target_prioritizes_missing_assets_before_audio_sync_repair():
@@ -1393,6 +1799,258 @@ def test_classify_rerender_target_routes_assembly_failures_before_clip_rerender(
         "prompt_contract_focus": [],
         "fix_strategy": "revise_assembly_weights_before_clip_rerender",
     }
+
+
+
+def test_review_models_route_manual_safe_editing_findings_to_automatic_transition_revision():
+    report = build_review_report(
+        planned_shot_ids=["S001"],
+        still_results=[{"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_001"}],
+        clip_results=[{"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_001"}],
+        still_status={"S001": True},
+        clip_status={"S001": True},
+        final_video_exists=True,
+        rerender_targets=["S001"],
+        rerender_reasons={"S001": ["repetitive_safe_editing"]},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+    )
+
+    assert report["blocking_checks"]["safe_editing_within_threshold"] is False
+    assert report["non_blocking_checks"]["camera_restraint"] is False
+    assert report["non_blocking_checks"]["mood_consistency"] is False
+    assert report["review_signal_buckets"]["heuristic_proxy"]["failed_checks"] == [
+        "safe_editing_within_threshold",
+        "camera_restraint",
+    ]
+    assert report["review_signal_buckets"]["model_judged"]["failed_checks"] == ["mood_consistency"]
+    assert report["severity"]["assembly_quality"] == "medium"
+
+    summary = report["publishability_summary"]["final_mv_publishability"]
+    assert summary["failed_checks"] == ["mood_consistency", "safe_editing_within_threshold"]
+    assert summary["next_action"] == "revise_transition_selection"
+    assert summary["execution_mode"] == "automatic"
+    assert summary["rerender_bundle"] == {
+        "action": "revise_transition_selection",
+        "target_shots": ["S001"],
+        "target_material_ids": ["MAT_001"],
+        "target_section_ids": ["SEC_001"],
+        "reason_codes": ["repetitive_safe_editing"],
+    }
+    assert summary["rerender_prescription"] == {
+        "stage_focus": "review",
+        "workflow_focus": None,
+        "prompt_contract_focus": [],
+        "fix_strategy": "revise_transition_selection",
+    }
+    assert report["rerender_plan"] == [
+        {
+            "shot_id": "S001",
+            "reason_codes": ["repetitive_safe_editing"],
+            "priority_score": 3,
+            "bucket": "final_mv_publishability",
+            "recommended_action": "revise_transition_selection",
+            "execution_mode": "automatic",
+            "rerender_prescription": {
+                "stage_focus": "review",
+                "workflow_focus": None,
+                "prompt_contract_focus": [],
+                "fix_strategy": "revise_transition_selection",
+            },
+        }
+    ]
+    assert report["rerender_execution_payloads"][0]["stage_payloads"]["review"] == {
+        "final_video": "final.mp4",
+        "music_file": "song.mp3",
+        "recommended_action": "revise_transition_selection",
+        "target_shots": ["S001"],
+        "target_material_ids": ["MAT_001"],
+        "target_section_ids": ["SEC_001"],
+    }
+
+
+
+def test_review_models_route_red_risk_policy_duration_overrun_to_transition_revision():
+    report = build_review_report(
+        planned_shot_ids=["S001"],
+        still_results=[{"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_CHORUS"}],
+        clip_results=[{"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_CHORUS"}],
+        still_status={"S001": True},
+        clip_status={"S001": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        render_plan=[
+            {
+                "shot_id": "S001",
+                "material_id": "MAT_001",
+                "section_id": "SEC_CHORUS",
+                "production_policy": {
+                    "candidate_role": "high_risk_interaction_payoff",
+                    "ia2v_risk_class": "red",
+                    "anchor_reference_arm": "D_FULLBODY_UPPER",
+                    "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                },
+            }
+        ],
+        production_policy_by_shot={
+            "S001": {
+                "candidate_role": "high_risk_interaction_payoff",
+                "ia2v_risk_class": "red",
+                "anchor_reference_arm": "D_FULLBODY_UPPER",
+                "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+            }
+        },
+        trimmed_coverage_by_shot={"S001": 1.4},
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+    )
+
+    assert report["rerender_targets"] == ["S001"]
+    assert report["rerender_reasons"] == {"S001": ["red_risk_clip_held_too_long"]}
+    assert report["blocking_checks"]["red_risk_clip_held_too_long"] is False
+    summary = report["publishability_summary"]["final_mv_publishability"]
+    assert summary["failed_checks"] == ["red_risk_clip_held_too_long"]
+    assert summary["next_action"] == "revise_transition_selection"
+    assert summary["rerender_guidance"] == [
+        "shorten red-risk IA2V interaction/payoff clips to the production-policy duration cap or replace with safer backup inserts"
+    ]
+    assert summary["rerender_bundle"] == {
+        "action": "revise_transition_selection",
+        "target_shots": ["S001"],
+        "target_material_ids": ["MAT_001"],
+        "target_section_ids": ["SEC_CHORUS"],
+        "reason_codes": ["red_risk_clip_held_too_long"],
+    }
+    assert report["rerender_plan"][0]["recommended_action"] == "revise_transition_selection"
+    assert report["rerender_execution_payloads"][0]["stage_payloads"]["review"] == {
+        "final_video": "final.mp4",
+        "music_file": "song.mp3",
+        "recommended_action": "revise_transition_selection",
+        "target_shots": ["S001"],
+        "target_material_ids": ["MAT_001"],
+        "target_section_ids": ["SEC_CHORUS"],
+    }
+
+
+
+def test_review_models_require_backup_for_high_risk_interaction_payoff():
+    report = build_review_report(
+        planned_shot_ids=["S_PAYOFF"],
+        still_results=[{"shot_id": "S_PAYOFF", "material_id": "MAT_PAYOFF", "section_id": "SEC_FINAL"}],
+        clip_results=[{"shot_id": "S_PAYOFF", "material_id": "MAT_PAYOFF", "section_id": "SEC_FINAL"}],
+        still_status={"S_PAYOFF": True},
+        clip_status={"S_PAYOFF": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        render_plan=[
+            {
+                "shot_id": "S_PAYOFF",
+                "material_id": "MAT_PAYOFF",
+                "section_id": "SEC_FINAL",
+                "production_policy": {
+                    "candidate_role": "high_risk_interaction_payoff",
+                    "ia2v_risk_class": "red",
+                    "anchor_reference_arm": "D_FULLBODY_UPPER",
+                    "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                    "safety_rules": [
+                        "hover_or_reaction_alternative_required",
+                        "generate_symbolic_insert_backup",
+                        "candidate_alternative_required",
+                    ],
+                },
+            }
+        ],
+        production_policy_by_shot={
+            "S_PAYOFF": {
+                "candidate_role": "high_risk_interaction_payoff",
+                "ia2v_risk_class": "red",
+                "anchor_reference_arm": "D_FULLBODY_UPPER",
+                "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                "safety_rules": [
+                    "hover_or_reaction_alternative_required",
+                    "generate_symbolic_insert_backup",
+                    "candidate_alternative_required",
+                ],
+            }
+        },
+        trimmed_coverage_by_shot={"S_PAYOFF": 0.5},
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+    )
+
+    assert report["rerender_targets"] == ["S_PAYOFF"]
+    assert report["rerender_reasons"] == {"S_PAYOFF": ["high_risk_interaction_without_backup"]}
+    assert report["blocking_checks"]["high_risk_interaction_without_backup"] is False
+    summary = report["publishability_summary"]["final_mv_publishability"]
+    assert summary["failed_checks"] == ["high_risk_interaction_without_backup"]
+    assert summary["next_action"] == "rerender_high_risk_backup_alternatives"
+    assert summary["rerender_guidance"] == [
+        "generate a symbolic insert or face-reaction backup before relying on red-risk interaction payoff shots"
+    ]
+    assert report["rerender_plan"][0]["recommended_action"] == "rerender_high_risk_backup_alternatives"
+    assert report["rerender_plan"][0]["rerender_prescription"] == {
+        "stage_focus": "stills_then_clips",
+        "workflow_focus": ["flux2_image", "ia2v"],
+        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+        "fix_strategy": "generate_symbolic_or_face_reaction_backup",
+    }
+
+
+
+def test_review_models_accept_high_risk_interaction_when_safe_backup_exists():
+    report = build_review_report(
+        planned_shot_ids=["S_PAYOFF", "S_BACKUP"],
+        still_results=[
+            {"shot_id": "S_PAYOFF", "material_id": "MAT_PAYOFF", "section_id": "SEC_FINAL"},
+            {"shot_id": "S_BACKUP", "material_id": "MAT_BACKUP", "section_id": "SEC_FINAL"},
+        ],
+        clip_results=[
+            {"shot_id": "S_PAYOFF", "material_id": "MAT_PAYOFF", "section_id": "SEC_FINAL"},
+            {"shot_id": "S_BACKUP", "material_id": "MAT_BACKUP", "section_id": "SEC_FINAL"},
+        ],
+        still_status={"S_PAYOFF": True, "S_BACKUP": True},
+        clip_status={"S_PAYOFF": True, "S_BACKUP": True},
+        final_video_exists=True,
+        rerender_targets=[],
+        rerender_reasons={},
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        render_plan=[
+            {
+                "shot_id": "S_PAYOFF",
+                "material_id": "MAT_PAYOFF",
+                "section_id": "SEC_FINAL",
+                "production_policy": {
+                    "candidate_role": "high_risk_interaction_payoff",
+                    "ia2v_risk_class": "red",
+                    "safety_rules": ["generate_symbolic_insert_backup", "candidate_alternative_required"],
+                },
+            },
+            {
+                "shot_id": "S_BACKUP",
+                "material_id": "MAT_BACKUP",
+                "section_id": "SEC_FINAL",
+                "production_policy": {
+                    "candidate_role": "symbolic_insert",
+                    "ia2v_risk_class": "yellow",
+                    "safety_rules": ["single_scene_integrity_required"],
+                },
+            },
+        ],
+        trimmed_coverage_by_shot={"S_PAYOFF": 0.5},
+    )
+
+    assert report["rerender_targets"] == []
+    assert "high_risk_interaction_without_backup" not in report["blocking_checks"] or report["blocking_checks"]["high_risk_interaction_without_backup"] is True
+    assert report["status"] == "done"
 
 
 
@@ -1673,6 +2331,7 @@ def test_review_models_surface_panelized_keyframe_findings():
         "split_screen_absent",
     ]
     assert report["publishability_summary"]["isolated_asset_quality"]["failed_checks"] == [
+        "style_identity",
         "panel_layout_absent",
         "collage_layout_absent",
         "split_screen_absent",
@@ -1695,3 +2354,189 @@ def test_review_models_surface_panelized_keyframe_findings():
         "prompt_contract_focus": ["still_prompt_text"],
         "fix_strategy": "enforce_single_frame_keyframe_composition",
     }
+
+
+
+def test_build_review_report_routes_assembly_publishability_action_into_execution_payloads():
+    report = build_review_report(
+        planned_shot_ids=["S001", "S005", "S006"],
+        still_results=[
+            {"shot_id": "S001", "image": "S001.png", "material_id": "MAT_001", "section_id": "SEC_001"},
+            {"shot_id": "S005", "image": "S005.png", "material_id": "MAT_005", "section_id": "SEC_005"},
+            {"shot_id": "S006", "image": "S006.png", "material_id": "MAT_006", "section_id": "SEC_006"},
+        ],
+        clip_results=[
+            {"shot_id": "S001", "video": "S001.mp4", "material_id": "MAT_001", "section_id": "SEC_001"},
+            {"shot_id": "S005", "video": "S005.mp4", "material_id": "MAT_005", "section_id": "SEC_005"},
+            {"shot_id": "S006", "video": "S006.mp4", "material_id": "MAT_006", "section_id": "SEC_006"},
+        ],
+        still_status={"S001": True, "S005": True, "S006": True},
+        clip_status={"S001": True, "S005": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S005", "S006", "S001"],
+        rerender_reasons={
+            "S005": ["repetitive_safe_editing", "weak_character_payoff"],
+            "S006": ["repetitive_safe_editing", "weak_character_payoff"],
+            "S001": ["repetitive_safe_editing"],
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[
+            {"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_001", "render_mode": "ia2v"},
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "render_mode": "ia2v"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "ia2v"},
+        ],
+        material_plan=[
+            {"material_id": "MAT_001", "section_id": "SEC_001"},
+            {"material_id": "MAT_005", "section_id": "SEC_005"},
+            {"material_id": "MAT_006", "section_id": "SEC_006"},
+        ],
+        render_plan=[
+            {"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_001", "render_mode": "ia2v"},
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "render_mode": "ia2v"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "render_mode": "ia2v"},
+        ],
+        music_file="song.mp3",
+        final_video_path="final.mp4",
+        assembly_quality_summary={
+            "chorus_emphasis_within_threshold": False,
+            "slideshow_risk_within_threshold": True,
+            "safe_editing_within_threshold": False,
+        },
+    )
+
+    assert report["recommended_next_action"] == "revise_assembly_weights_before_clip_rerender"
+    assert report["rerender_execution_payloads"] == [
+        {
+            "shot_id": "S005",
+            "recommended_action": "revise_assembly_weights_before_clip_rerender",
+            "rerender_stage": "review",
+            "execution_mode": "automatic",
+            "workflow_focus": None,
+            "prompt_contract_focus": [],
+            "fix_strategy": "revise_assembly_weights_before_clip_rerender",
+            "stage_payloads": {
+                "review": {
+                    "final_video": "final.mp4",
+                    "music_file": "song.mp3",
+                    "recommended_action": "revise_assembly_weights_before_clip_rerender",
+                    "target_shots": ["S005", "S006", "S001"],
+                    "target_material_ids": ["MAT_005", "MAT_006", "MAT_001"],
+                    "target_section_ids": ["SEC_005", "SEC_006", "SEC_001"],
+                }
+            },
+        }
+    ]
+
+
+def test_classify_rerender_target_routes_treatment_payoff_and_chorus_failures_to_material_rerender():
+    payoff = classify_rerender_target(["final_payoff_missing"])
+    chorus = classify_rerender_target(["chorus_release_missing"])
+
+    assert payoff == {
+        "bucket": "final_mv_publishability",
+        "recommended_action": "rerender_character_payoff_shots",
+        "rerender_prescription": {
+            "stage_focus": "stills_then_clips",
+            "workflow_focus": ["flux2_image", "ia2v"],
+            "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+            "fix_strategy": "strengthen_story_payoff_and_chorus_release",
+        },
+    }
+    assert chorus == payoff
+
+
+def test_review_models_prioritize_treatment_payoff_rerender_over_assembly_weight_revision():
+    report = build_review_report(
+        planned_shot_ids=["S005", "S006"],
+        still_results=[{"shot_id": "S005"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S005"}, {"shot_id": "S006"}],
+        still_status={"S005": True, "S006": True},
+        clip_status={"S005": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S005", "S006"],
+        rerender_reasons={
+            "S005": ["chorus_release_missing"],
+            "S006": ["final_payoff_missing"],
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "story_function": "release"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "story_function": "payoff"},
+        ],
+        material_plan=[
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "story_function": "release"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "story_function": "payoff"},
+        ],
+        render_plan=[
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "story_function": "release"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "story_function": "payoff"},
+        ],
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.41,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": False,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    final_summary = report["publishability_summary"]["final_mv_publishability"]
+    assert final_summary["next_action"] == "rerender_character_payoff_shots"
+    assert final_summary["execution_mode"] == "automatic"
+    assert final_summary["rerender_prescription"] == {
+        "stage_focus": "stills_then_clips",
+        "workflow_focus": ["flux2_image", "ia2v"],
+        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+        "fix_strategy": "strengthen_story_payoff_and_chorus_release",
+    }
+
+
+
+def test_review_models_surface_treatment_payoff_findings_as_character_payoff_failures():
+    report = build_review_report(
+        planned_shot_ids=["S005", "S006"],
+        still_results=[{"shot_id": "S005"}, {"shot_id": "S006"}],
+        clip_results=[{"shot_id": "S005"}, {"shot_id": "S006"}],
+        still_status={"S005": True, "S006": True},
+        clip_status={"S005": True, "S006": True},
+        final_video_exists=True,
+        rerender_targets=["S005", "S006"],
+        rerender_reasons={
+            "S005": ["chorus_release_missing"],
+            "S006": ["final_payoff_missing"],
+        },
+        audio_video_drift_sec=0.0,
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        shot_plan=[
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "story_function": "release"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "story_function": "payoff"},
+        ],
+        material_plan=[
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "story_function": "release"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "story_function": "payoff"},
+        ],
+        render_plan=[
+            {"shot_id": "S005", "material_id": "MAT_005", "section_id": "SEC_005", "story_function": "release"},
+            {"shot_id": "S006", "material_id": "MAT_006", "section_id": "SEC_006", "story_function": "payoff"},
+        ],
+        assembly_quality_summary={
+            "chorus_emphasis_score": 0.84,
+            "slideshow_risk_score": 0.22,
+            "transition_intentionality_score": 0.74,
+            "chorus_emphasis_within_threshold": True,
+            "slideshow_risk_within_threshold": True,
+        },
+    )
+
+    assert report["blocking_checks"]["character_payoff_present"] is False
+    assert report["publishability_summary"]["final_mv_publishability"]["next_action"] == "rerender_character_payoff_shots"
+    assert report["publishability_summary"]["final_mv_publishability"]["rerender_bundle"] == {
+        "action": "rerender_character_payoff_shots",
+        "target_shots": ["S005", "S006"],
+        "target_material_ids": ["MAT_005", "MAT_006"],
+        "target_section_ids": ["SEC_005", "SEC_006"],
+        "reason_codes": ["chorus_release_missing", "final_payoff_missing"],
+    }
+    assert report["rerender_execution_payloads"][0]["fix_strategy"] == "strengthen_story_payoff_and_chorus_release"

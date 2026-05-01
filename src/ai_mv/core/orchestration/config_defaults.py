@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -39,8 +40,8 @@ DEFAULT_CONFIG: dict = {
     "runtime": {
         "template_hash_lock": False,
         "template_hashes": {},
-        "interrupt_comfy_before_start": True,
-        "clear_comfy_queue_before_start": True,
+        "interrupt_comfy_before_start": False,
+        "clear_comfy_queue_before_start": False,
     },
     "review": {
         "max_rerender_targets": 3,
@@ -60,6 +61,7 @@ DEFAULT_CONFIG: dict = {
 def default_config() -> dict:
     cfg = _clone(DEFAULT_CONFIG)
     cfg["integrations"]["comfyui_base_url"] = _default_comfyui_base_url()
+    _apply_runtime_env_overrides(cfg)
     return cfg
 
 
@@ -68,6 +70,7 @@ def apply_defaults(config: dict) -> None:
     integrations = config.get("integrations")
     if isinstance(integrations, dict) and not str(integrations.get("comfyui_base_url") or "").strip():
         integrations["comfyui_base_url"] = _default_comfyui_base_url()
+    _apply_runtime_env_overrides(config)
 
 
 def _deep_fill(target: dict, defaults: dict) -> None:
@@ -85,6 +88,31 @@ def _clone(value):
     if isinstance(value, list):
         return [_clone(v) for v in value]
     return value
+
+
+def _apply_runtime_env_overrides(config: dict) -> None:
+    runtime = config.get("runtime")
+    if not isinstance(runtime, dict):
+        return
+    runtime["interrupt_comfy_before_start"] = _env_bool(
+        "AI_MV_INTERRUPT_COMFY_BEFORE_START",
+        bool(runtime.get("interrupt_comfy_before_start", False)),
+    )
+    runtime["clear_comfy_queue_before_start"] = _env_bool(
+        "AI_MV_CLEAR_COMFY_QUEUE_BEFORE_START",
+        bool(runtime.get("clear_comfy_queue_before_start", False)),
+    )
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = str(os.getenv(name) or "").strip().lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 def _default_comfyui_base_url() -> str:

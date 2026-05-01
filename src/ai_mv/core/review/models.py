@@ -3,10 +3,23 @@ from __future__ import annotations
 import math
 
 from ai_mv.core.review.benchmark_dimensions import summarize_benchmark_dimensions
-from ai_mv.core.review.publishability import build_final_review_summary, classify_rerender_target, summarize_publishability
+from ai_mv.core.review.publishability import (
+    _build_rerender_context_by_shot,
+    build_final_review_summary,
+    classify_rerender_target,
+    summarize_publishability,
+)
 from ai_mv.core.review.quality_signals import build_quality_signals
 from ai_mv.core.review.rerender_policy import rerender_priority_score
 from ai_mv.core.review.signal_buckets import summarize_review_signal_buckets
+
+
+_EXECUTABLE_REVIEW_ACTIONS = {
+    "repair_audio_video_sync",
+    "revise_assembly_weights_before_clip_rerender",
+    "revise_transition_selection",
+    "revise_assembly_coverage_before_sync_pad",
+}
 
 
 
@@ -31,9 +44,15 @@ def build_shot_quality_scores(
 
 
 
-def build_rerender_plan(*, rerender_targets: list[str], rerender_reasons: dict[str, list[str]]) -> list[dict[str, object]]:
+def build_rerender_plan(
+    *,
+    rerender_targets: list[str],
+    rerender_reasons: dict[str, list[str]],
+    rerender_context_by_shot: dict[str, dict[str, object]] | None = None,
+) -> list[dict[str, object]]:
     plan: list[dict[str, object]] = []
     reasons_map = rerender_reasons if isinstance(rerender_reasons, dict) else {}
+    context_map = rerender_context_by_shot if isinstance(rerender_context_by_shot, dict) else {}
     for shot_id in rerender_targets:
         normalized_shot_id = str(shot_id or "").strip()
         if not normalized_shot_id:
@@ -45,7 +64,7 @@ def build_rerender_plan(*, rerender_targets: list[str], rerender_reasons: dict[s
         ]
         if not reason_codes:
             continue
-        classification = classify_rerender_target(reason_codes)
+        classification = classify_rerender_target(reason_codes, rerender_context=context_map.get(normalized_shot_id))
         plan.append(
             {
                 "shot_id": normalized_shot_id,
@@ -53,6 +72,10 @@ def build_rerender_plan(*, rerender_targets: list[str], rerender_reasons: dict[s
                 "priority_score": rerender_priority_score(reason_codes),
                 "bucket": classification["bucket"],
                 "recommended_action": classification["recommended_action"],
+                "execution_mode": _execution_mode(
+                    str((classification["rerender_prescription"] or {}).get("stage_focus", "")),
+                    str(classification["recommended_action"]),
+                ),
                 "rerender_prescription": classification["rerender_prescription"],
             }
         )
@@ -81,6 +104,58 @@ def build_rerender_payload(rerender_plan: list[dict[str, object]]) -> list[dict[
 
 
 
+def _summary_review_stage_rerender_payload(
+    publishability_summary: dict[str, object],
+    *,
+    sync_repair_summary: dict[str, object] | None = None,
+) -> list[dict[str, object]]:
+    final_summary = publishability_summary.get("final_mv_publishability") if isinstance(publishability_summary, dict) else None
+    if not isinstance(final_summary, dict):
+        return []
+    action = str(final_summary.get("next_action", "")).strip()
+    if not action or action == "no_action":
+        return []
+    prescription = final_summary.get("rerender_prescription") if isinstance(final_summary.get("rerender_prescription"), dict) else {}
+    if str(prescription.get("stage_focus", "")).strip() != "review":
+        return []
+    if str(final_summary.get("execution_mode", "")).strip() != "automatic":
+        return []
+    bundle = final_summary.get("rerender_bundle") if isinstance(final_summary.get("rerender_bundle"), dict) else {}
+    target_shots = _string_list(bundle.get("target_shots"))
+    if not target_shots:
+        return []
+    payload = {
+        "shot_id": target_shots[0],
+        "quality_findings": _string_list(bundle.get("reason_codes")),
+        "rerender_stage": "review",
+        "workflow_focus": list(prescription.get("workflow_focus") or []) if isinstance(prescription.get("workflow_focus"), list) else prescription.get("workflow_focus"),
+        "prompt_contract_focus": list(prescription.get("prompt_contract_focus") or []) if isinstance(prescription.get("prompt_contract_focus"), list) else [],
+        "recommended_action": action,
+        "fix_strategy": prescription.get("fix_strategy"),
+        "target_shots": target_shots,
+        "target_material_ids": _string_list(bundle.get("target_material_ids")),
+        "target_section_ids": _string_list(bundle.get("target_section_ids")),
+    }
+    if isinstance(sync_repair_summary, dict) and sync_repair_summary:
+        payload["sync_repair_summary"] = dict(sync_repair_summary)
+    return [payload]
+
+
+
+def _string_list(values: object) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    return [str(value).strip() for value in values if str(value).strip()]
+
+
+
+ASSEMBLY_REVIEW_ACTIONS = {
+    "revise_assembly_weights_before_clip_rerender",
+    "revise_transition_selection",
+    "revise_assembly_coverage_before_sync_pad",
+}
+
+
 def build_rerender_execution_payloads(
     *,
     rerender_payload: list[dict[str, object]],
@@ -91,6 +166,8 @@ def build_rerender_execution_payloads(
     style_bible: dict | None,
     music_file: str,
     final_video_path: str = "",
+    assembly_plan: dict | None = None,
+    review_inputs: dict | None = None,
 ) -> list[dict[str, object]]:
     shot_map = {str(row.get("shot_id", "")).strip(): row for row in shot_plan if isinstance(row, dict)}
     material_map = {str(row.get("material_id", "")).strip(): row for row in material_plan if isinstance(row, dict)}
@@ -145,27 +222,43 @@ def build_rerender_execution_payloads(
                 "music_file": normalized_music_file,
             }
         if stage_focus == "review":
-            review_material_id = str((render_row or {}).get("material_id", "") or (shot_row or {}).get("material_id", "")).strip()
+            still_row = still_map.get(shot_id) or {}
+            review_material_id = str(
+                (render_row or {}).get("material_id", "")
+                or (shot_row or {}).get("material_id", "")
+                or still_row.get("material_id", "")
+            ).strip()
             review_material_row = material_map.get(review_material_id) or {}
             review_section_id = str(
                 (render_row or {}).get("section_id", "")
                 or (shot_row or {}).get("section_id", "")
+                or still_row.get("section_id", "")
                 or review_material_row.get("section_id", "")
                 or ""
             ).strip()
-            stage_payloads["review"] = {
+            review_payload = {
                 "final_video": normalized_final_video,
                 "music_file": normalized_music_file,
                 "recommended_action": str(item.get("recommended_action", "")).strip(),
-                "target_shots": [shot_id],
-                "target_material_ids": [review_material_id] if review_material_id else [],
-                "target_section_ids": [review_section_id] if review_section_id else [],
+                "target_shots": _string_list(item.get("target_shots")) or [shot_id],
+                "target_material_ids": _string_list(item.get("target_material_ids")) or ([review_material_id] if review_material_id else []),
+                "target_section_ids": _string_list(item.get("target_section_ids")) or ([review_section_id] if review_section_id else []),
             }
+            if review_payload["recommended_action"] in ASSEMBLY_REVIEW_ACTIONS:
+                if isinstance(assembly_plan, dict) and assembly_plan:
+                    review_payload["assembly_plan"] = dict(assembly_plan)
+                if isinstance(review_inputs, dict) and review_inputs:
+                    review_payload["review_inputs"] = dict(review_inputs)
+            sync_summary = item.get("sync_repair_summary")
+            if isinstance(sync_summary, dict) and sync_summary:
+                review_payload["sync_repair_summary"] = dict(sync_summary)
+            stage_payloads["review"] = review_payload
         execution_payloads.append(
             {
                 "shot_id": shot_id,
                 "recommended_action": str(item.get("recommended_action", "")).strip(),
                 "rerender_stage": stage_focus,
+                "execution_mode": _execution_mode(stage_focus, str(item.get("recommended_action", "")).strip()),
                 "workflow_focus": list(item.get("workflow_focus") or []) if isinstance(item.get("workflow_focus"), list) else item.get("workflow_focus"),
                 "prompt_contract_focus": list(item.get("prompt_contract_focus") or []) if isinstance(item.get("prompt_contract_focus"), list) else [],
                 "fix_strategy": str(item.get("fix_strategy", "")).strip(),
@@ -173,6 +266,17 @@ def build_rerender_execution_payloads(
             }
         )
     return execution_payloads
+
+
+
+def _execution_mode(stage_focus: str, recommended_action: str) -> str:
+    normalized_stage = str(stage_focus or "").strip()
+    normalized_action = str(recommended_action or "").strip()
+    if normalized_stage in {"stills", "clips", "stills_then_clips"}:
+        return "automatic"
+    if normalized_stage == "review" and normalized_action in _EXECUTABLE_REVIEW_ACTIONS:
+        return "automatic"
+    return "manual_only"
 
 
 
@@ -230,6 +334,7 @@ def summarize_assembly_quality(
     cadence_profile_by_shot: dict[str, str] | None = None,
     snap_unit_by_shot: dict[str, str] | None = None,
     trimmed_coverage_by_shot: dict[str, float] | None = None,
+    production_policy_by_shot: dict[str, dict] | None = None,
 ) -> dict:
     edit_data = edit_intent_by_shot if isinstance(edit_intent_by_shot, dict) else {}
     render_counts = render_count_by_shot if isinstance(render_count_by_shot, dict) else {}
@@ -238,6 +343,7 @@ def summarize_assembly_quality(
     cadence_data = cadence_profile_by_shot if isinstance(cadence_profile_by_shot, dict) else {}
     snap_data = snap_unit_by_shot if isinstance(snap_unit_by_shot, dict) else {}
     trimmed_data = trimmed_coverage_by_shot if isinstance(trimmed_coverage_by_shot, dict) else {}
+    production_policy = production_policy_by_shot if isinstance(production_policy_by_shot, dict) else {}
 
     normalized_planned_shot_ids = {str(shot_id).strip() for shot_id in planned_shot_ids if str(shot_id or "").strip()}
     normalized_edit_data = {
@@ -322,13 +428,37 @@ def summarize_assembly_quality(
     snap_units = [str(snap_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids if str(snap_data.get(shot_id, "")).strip()]
     has_full_cadence_metadata = bool(valid_shot_ids) and all(str(cadence_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids)
     has_full_snap_metadata = bool(valid_shot_ids) and all(str(snap_data.get(shot_id, "")).strip() for shot_id in valid_shot_ids)
+    candidate_roles = [
+        str((production_policy.get(shot_id) or {}).get("candidate_role", "")).strip()
+        if isinstance(production_policy.get(shot_id), dict)
+        else ""
+        for shot_id in valid_shot_ids
+    ]
+    has_full_candidate_role_metadata = bool(valid_shot_ids) and all(candidate_roles)
     has_repetition_metadata = has_full_cadence_metadata and has_full_snap_metadata
     cadence_variety_score = round(min(1.0, _safe_divide(len(set(cadence_profiles)), 4.0)), 2) if has_full_cadence_metadata else 0.0
     snap_variety_score = round(min(1.0, _safe_divide(len(set(snap_units)), 3.0)), 2) if has_full_snap_metadata else 0.0
+    candidate_role_variety_score = round(min(1.0, _safe_divide(len(set(candidate_roles)), 4.0)), 2) if has_full_candidate_role_metadata else 0.0
     cadence_dominance = _dominant_share(cadence_profiles) if has_full_cadence_metadata else 0.0
     snap_dominance = _dominant_share(snap_units) if has_full_snap_metadata else 0.0
+    candidate_role_dominance = _dominant_share(candidate_roles) if has_full_candidate_role_metadata else 0.0
+    candidate_role_adjacent_repetition_score = 0.0
+    if has_full_candidate_role_metadata and len(candidate_roles) > 1:
+        adjacent_repetitions = sum(1 for left, right in zip(candidate_roles, candidate_roles[1:]) if left == right)
+        candidate_role_adjacent_repetition_score = round(_safe_divide(adjacent_repetitions, len(candidate_roles) - 1), 2)
+    candidate_role_repetition_risk = 0.0
+    if has_full_candidate_role_metadata:
+        candidate_role_repetition_risk = round(
+            min(
+                1.0,
+                (0.45 * candidate_role_dominance)
+                + (0.35 * candidate_role_adjacent_repetition_score)
+                + (0.20 * (1.0 - candidate_role_variety_score)),
+            ),
+            2,
+        )
     if has_repetition_metadata:
-        repetitive_edit_risk_score = round(
+        cadence_snap_repetition_risk = round(
             min(
                 1.0,
                 (0.5 * cadence_dominance)
@@ -338,6 +468,7 @@ def summarize_assembly_quality(
             ),
             2,
         )
+        repetitive_edit_risk_score = max(cadence_snap_repetition_risk, candidate_role_repetition_risk)
         slideshow_risk_score = round(
             min(
                 1.0,
@@ -376,6 +507,14 @@ def summarize_assembly_quality(
                 "safe_editing_within_threshold": safe_editing_within_threshold,
             }
         )
+    if has_full_candidate_role_metadata:
+        out.update(
+            {
+                "candidate_role_variety_score": candidate_role_variety_score,
+                "candidate_role_dominance_score": round(candidate_role_dominance, 2),
+                "candidate_role_adjacent_repetition_score": candidate_role_adjacent_repetition_score,
+            }
+        )
     return out
 
 
@@ -405,9 +544,13 @@ def build_review_report(
     cadence_profile_by_shot: dict[str, str] | None = None,
     snap_unit_by_shot: dict[str, str] | None = None,
     trimmed_coverage_by_shot: dict[str, float] | None = None,
+    production_policy_by_shot: dict[str, dict] | None = None,
     assembly_quality_summary: dict[str, object] | None = None,
     assembly_revision: dict[str, object] | None = None,
     audio_review_summary: dict[str, object] | None = None,
+    sync_repair_summary: dict[str, object] | None = None,
+    assembly_plan: dict[str, object] | None = None,
+    review_inputs: dict[str, object] | None = None,
 ) -> dict:
     computed_assembly_quality_summary = summarize_assembly_quality(
         planned_shot_ids=planned_shot_ids,
@@ -418,6 +561,7 @@ def build_review_report(
         cadence_profile_by_shot=cadence_profile_by_shot,
         snap_unit_by_shot=snap_unit_by_shot,
         trimmed_coverage_by_shot=trimmed_coverage_by_shot,
+        production_policy_by_shot=production_policy_by_shot,
     )
     has_assembly_metadata = (
         isinstance(edit_intent_by_shot, dict)
@@ -434,6 +578,18 @@ def build_review_report(
         if isinstance(assembly_quality_summary, dict)
         else (computed_assembly_quality_summary if has_assembly_metadata else None)
     )
+    effective_rerender_reasons = _merge_policy_rerender_reasons(
+        rerender_reasons,
+        production_policy_by_shot=production_policy_by_shot,
+        render_plan=render_plan or [],
+        trimmed_coverage_by_shot=trimmed_coverage_by_shot,
+    )
+    effective_rerender_reasons = _merge_sync_repair_rerender_reasons(
+        effective_rerender_reasons,
+        planned_shot_ids=planned_shot_ids,
+        sync_repair_summary=sync_repair_summary,
+    )
+    effective_rerender_targets = _merge_rerender_targets(rerender_targets, effective_rerender_reasons)
     signals = build_quality_signals(
         planned_shot_ids=planned_shot_ids,
         still_status=still_status,
@@ -441,21 +597,22 @@ def build_review_report(
         final_video_exists=final_video_exists,
         audio_video_drift_sec=audio_video_drift_sec,
         config=config,
-        rerender_reasons=rerender_reasons,
+        rerender_reasons=effective_rerender_reasons,
         assembly_quality_summary=effective_assembly_quality_summary,
+        sync_repair_summary=sync_repair_summary,
     )
     blocking_checks = signals["blocking_checks"]
     non_blocking_checks = signals["non_blocking_checks"]
     still_done = int(signals["still_done"])
     clip_done = int(signals["clip_done"])
-    priority_scores = {shot_id: rerender_priority_score(reasons) for shot_id, reasons in rerender_reasons.items()}
+    priority_scores = {shot_id: rerender_priority_score(reasons) for shot_id, reasons in effective_rerender_reasons.items()}
     shot_scores = build_shot_quality_scores(
         planned_shot_ids=planned_shot_ids,
         still_status=still_status,
         clip_status=clip_status,
-        rerender_reasons=rerender_reasons,
+        rerender_reasons=effective_rerender_reasons,
     )
-    benchmark_dimensions = summarize_benchmark_dimensions(rerender_reasons)
+    benchmark_dimensions = summarize_benchmark_dimensions(effective_rerender_reasons)
     review_signal_buckets = summarize_review_signal_buckets(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
@@ -463,8 +620,15 @@ def build_review_report(
     publishability_summary = summarize_publishability(
         blocking_checks=blocking_checks,
         non_blocking_checks=non_blocking_checks,
-        rerender_reasons=rerender_reasons,
+        rerender_reasons=effective_rerender_reasons,
         assembly_quality_summary=effective_assembly_quality_summary,
+        shot_plan=shot_plan or [],
+        material_plan=material_plan or [],
+        render_plan=render_plan or [],
+        still_results=still_results,
+        clip_results=clip_results,
+    )
+    rerender_context_by_shot = _build_rerender_context_by_shot(
         shot_plan=shot_plan or [],
         material_plan=material_plan or [],
         render_plan=render_plan or [],
@@ -479,12 +643,17 @@ def build_review_report(
         assembly_quality_summary=effective_assembly_quality_summary,
     )
     rerender_plan = build_rerender_plan(
-        rerender_targets=rerender_targets,
-        rerender_reasons=rerender_reasons,
+        rerender_targets=effective_rerender_targets,
+        rerender_reasons=effective_rerender_reasons,
+        rerender_context_by_shot=rerender_context_by_shot,
     )
     rerender_payload = build_rerender_payload(rerender_plan)
+    execution_rerender_payload = _summary_review_stage_rerender_payload(
+        publishability_summary,
+        sync_repair_summary=sync_repair_summary,
+    ) or rerender_payload
     rerender_execution_payloads = build_rerender_execution_payloads(
-        rerender_payload=rerender_payload,
+        rerender_payload=execution_rerender_payload,
         shot_plan=shot_plan or [],
         material_plan=material_plan or [],
         render_plan=render_plan or [],
@@ -492,6 +661,8 @@ def build_review_report(
         style_bible=style_bible,
         music_file=music_file,
         final_video_path=final_video_path,
+        assembly_plan=assembly_plan,
+        review_inputs=review_inputs,
     )
     edit_intent_summary = summarize_edit_intent(edit_intent_by_shot)
     mv_intent_checks = build_mv_intent_checks(edit_intent_summary)
@@ -511,7 +682,7 @@ def build_review_report(
             overall_status = "needs_audio_revision"
             publishability_tier = "needs_audio_revision"
     return {
-        "status": "done" if all(blocking_checks.values()) and not rerender_targets else "needs_rerender",
+        "status": "done" if all(blocking_checks.values()) and not effective_rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
         "planned_counts": {
             "shots": len(planned_shot_ids),
@@ -533,8 +704,8 @@ def build_review_report(
         },
         "blocking_checks": blocking_checks,
         "non_blocking_checks": non_blocking_checks,
-        "rerender_targets": rerender_targets,
-        "rerender_reasons": rerender_reasons,
+        "rerender_targets": effective_rerender_targets,
+        "rerender_reasons": effective_rerender_reasons,
         "rerender_priority_scores": priority_scores,
         "rerender_plan": rerender_plan,
         "rerender_payload": rerender_payload,
@@ -552,6 +723,134 @@ def build_review_report(
         "audio_review_summary": normalized_audio_review_summary,
         "audio_reroll_prescription": audio_reroll_prescription,
     }
+
+
+
+def _merge_sync_repair_rerender_reasons(
+    rerender_reasons: dict[str, list[str]],
+    *,
+    planned_shot_ids: list[str],
+    sync_repair_summary: dict[str, object] | None,
+) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {shot_id: list(reasons) for shot_id, reasons in rerender_reasons.items()}
+    summary = sync_repair_summary if isinstance(sync_repair_summary, dict) else {}
+    if not bool(summary.get("clone_tail_excessive", False)):
+        return out
+    target_shot_ids = [str(shot_id).strip() for shot_id in planned_shot_ids if str(shot_id).strip()]
+    for shot_id in target_shot_ids:
+        reasons = out.setdefault(shot_id, [])
+        if "excessive_sync_clone_tail" not in reasons:
+            reasons.append("excessive_sync_clone_tail")
+    return out
+
+
+
+def _merge_policy_rerender_reasons(
+    rerender_reasons: dict[str, list[str]] | None,
+    *,
+    production_policy_by_shot: dict[str, dict] | None,
+    render_plan: list[dict] | None,
+    trimmed_coverage_by_shot: dict[str, float] | None,
+) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {
+        str(shot_id).strip(): [str(reason).strip() for reason in reasons if str(reason).strip()]
+        for shot_id, reasons in (rerender_reasons or {}).items()
+        if str(shot_id or "").strip() and isinstance(reasons, list)
+    }
+    policy_map = _production_policy_map(production_policy_by_shot, render_plan)
+    trimmed_map = trimmed_coverage_by_shot if isinstance(trimmed_coverage_by_shot, dict) else {}
+    backup_shot_ids = _high_risk_backup_shot_ids(render_plan)
+    for shot_id, policy in policy_map.items():
+        if not _is_red_risk_policy(policy):
+            continue
+        max_duration = _recommended_duration_max(policy)
+        trimmed_coverage = _float(trimmed_map.get(shot_id), 0.0)
+        if max_duration > 0.0 and trimmed_coverage > max_duration + 0.05:
+            reasons = out.setdefault(shot_id, [])
+            if "red_risk_clip_held_too_long" not in reasons:
+                reasons.append("red_risk_clip_held_too_long")
+        if _requires_high_risk_backup(policy) and shot_id not in backup_shot_ids:
+            reasons = out.setdefault(shot_id, [])
+            if "high_risk_interaction_without_backup" not in reasons:
+                reasons.append("high_risk_interaction_without_backup")
+    return out
+
+
+
+def _merge_rerender_targets(rerender_targets: list[str] | None, rerender_reasons: dict[str, list[str]]) -> list[str]:
+    out: list[str] = []
+    for shot_id in rerender_targets if isinstance(rerender_targets, list) else []:
+        normalized = str(shot_id or "").strip()
+        if normalized and normalized not in out:
+            out.append(normalized)
+    for shot_id, reasons in rerender_reasons.items():
+        normalized = str(shot_id or "").strip()
+        if normalized and reasons and normalized not in out:
+            out.append(normalized)
+    return out
+
+
+
+def _production_policy_map(production_policy_by_shot: dict[str, dict] | None, render_plan: list[dict] | None) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for row in render_plan if isinstance(render_plan, list) else []:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        policy = row.get("production_policy") if isinstance(row.get("production_policy"), dict) else {}
+        if shot_id and policy:
+            out[shot_id] = dict(policy)
+    for shot_id, policy in (production_policy_by_shot or {}).items() if isinstance(production_policy_by_shot, dict) else []:
+        normalized = str(shot_id or "").strip()
+        if normalized and isinstance(policy, dict):
+            out[normalized] = dict(policy)
+    return out
+
+
+
+def _is_red_risk_policy(policy: dict[str, object]) -> bool:
+    return str(policy.get("ia2v_risk_class", "")).strip() == "red"
+
+
+
+def _requires_high_risk_backup(policy: dict[str, object]) -> bool:
+    if str(policy.get("candidate_role", "")).strip() != "high_risk_interaction_payoff":
+        return False
+    rules = {str(rule).strip() for rule in policy.get("safety_rules", []) if str(rule).strip()} if isinstance(policy.get("safety_rules"), list) else set()
+    return bool(rules & {"generate_symbolic_insert_backup", "hover_or_reaction_alternative_required", "candidate_alternative_required"})
+
+
+
+def _high_risk_backup_shot_ids(render_plan: list[dict] | None) -> set[str]:
+    section_ids_with_backup: set[str] = set()
+    high_risk_by_shot: dict[str, str] = {}
+    for row in render_plan if isinstance(render_plan, list) else []:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        section_id = str(row.get("section_id", "")).strip()
+        policy = row.get("production_policy") if isinstance(row.get("production_policy"), dict) else row
+        role = str(policy.get("candidate_role", "")).strip() if isinstance(policy, dict) else ""
+        risk = str(policy.get("ia2v_risk_class", "")).strip() if isinstance(policy, dict) else ""
+        if shot_id and section_id and role == "high_risk_interaction_payoff" and risk == "red":
+            high_risk_by_shot[shot_id] = section_id
+        elif section_id and _is_high_risk_backup_role(role, risk):
+            section_ids_with_backup.add(section_id)
+    return {shot_id for shot_id, section_id in high_risk_by_shot.items() if section_id in section_ids_with_backup}
+
+
+
+def _is_high_risk_backup_role(candidate_role: str, risk: str) -> bool:
+    role = str(candidate_role or "").strip()
+    if role in {"symbolic_insert", "hero_face_performance", "world_bridge", "character_medium"}:
+        return True
+    return role.endswith("backup") and str(risk or "").strip() != "red"
+
+
+
+def _recommended_duration_max(policy: dict[str, object]) -> float:
+    duration = policy.get("recommended_duration_sec") if isinstance(policy.get("recommended_duration_sec"), dict) else {}
+    return _float(duration.get("max") if isinstance(duration, dict) else None, 0.0)
 
 
 

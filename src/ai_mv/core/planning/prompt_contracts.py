@@ -8,10 +8,14 @@ def build_still_prompt_text(
     prompt_polish: str,
     variation_profile: dict | None = None,
     shot_relation_contract: dict | None = None,
+    reference_policy: dict | None = None,
+    variation_delta_contract: dict | None = None,
 ) -> str:
     base = str(prompt_polish or prompt_draft or prompt_seed).strip()
     variation = variation_profile if isinstance(variation_profile, dict) else {}
     relation = shot_relation_contract if isinstance(shot_relation_contract, dict) else {}
+    reference = reference_policy if isinstance(reference_policy, dict) else {}
+    variation_delta = variation_delta_contract if isinstance(variation_delta_contract, dict) else {}
     return _join_prompt_tokens(
         [
             base,
@@ -20,6 +24,8 @@ def build_still_prompt_text(
             _section_emphasis_variant_token(str(variation.get("section_emphasis_variant", "")).strip()),
             str(relation.get("camera_distance_progression", "")).strip(),
             str(relation.get("same_block_vs_new_block", "")).strip(),
+            _reference_identity_token(reference),
+            _reference_delta_token(variation_delta),
         ]
     )
 
@@ -67,11 +73,35 @@ def build_clip_positive_prompt(
             _continuity_identity_token(str(variation.get("continuity_variant", "")).strip()),
             _framing_camera_token(framing_variant),
             _environment_motion_token(str(variation.get("environment_variant", "")).strip()),
+            _story_function_token(shot),
+            _visual_event_token(shot),
+            _payoff_requirement_token(shot),
             str(relation.get("same_block_vs_new_block", "")).strip(),
             str(relation.get("emotional_delta", "")).strip(),
         ]
     )
 
+
+
+def _story_function_token(shot: dict) -> str:
+    story_function = str(shot.get("story_function", "")).strip()
+    if not story_function:
+        return ""
+    return f"story function: {story_function}"
+
+
+def _visual_event_token(shot: dict) -> str:
+    visual_event = str(shot.get("visual_event", "")).strip()
+    if not visual_event:
+        return ""
+    return f"story visual event: {visual_event}"
+
+
+def _payoff_requirement_token(shot: dict) -> str:
+    payoff_requirement = str(shot.get("payoff_requirement", "")).strip()
+    if not payoff_requirement:
+        return ""
+    return f"payoff requirement: {payoff_requirement}"
 
 
 def _join_prompt_tokens(parts: list[str]) -> str:
@@ -120,6 +150,38 @@ def _section_emphasis_variant_token(variant: str) -> str:
         "observational_flow": "observational flow emphasis",
         "ambient_progression": "ambient progression emphasis",
     }.get(variant, "sequence-support still emphasis")
+
+
+
+def _reference_identity_token(reference_policy: dict) -> str:
+    reference_mode = str(reference_policy.get("reference_mode", "")).strip().lower() if isinstance(reference_policy, dict) else ""
+    identity_lock = str(reference_policy.get("identity_lock_strength", "")).strip().lower() if isinstance(reference_policy, dict) else ""
+    if reference_mode == "performance_anchor_source" or identity_lock == "performance_anchor":
+        return (
+            "front-facing performance-ready face visibility, same lead performer identity, stable bright stage outfit silhouette, "
+            "same glossy performance-night stage, one clear solo performer only, upper-body or full-body readability, no ambiguous secondary silhouettes"
+        )
+    if reference_mode in {"anchor_source", "use_anchor_still"} or identity_lock in {"anchor", "high"}:
+        return "preserve the same lead identity, stable outfit silhouette, same world anchor"
+    return ""
+
+
+
+def _reference_delta_token(variation_delta_contract: dict) -> str:
+    scope = str(variation_delta_contract.get("edit_variation_scope", "")).strip().lower() if isinstance(variation_delta_contract, dict) else ""
+    minimum_delta = str(variation_delta_contract.get("minimum_visual_delta", "")).strip().lower() if isinstance(variation_delta_contract, dict) else ""
+    if scope == "performance_pose_upgrade" or minimum_delta == "pose_or_camera_change_required":
+        return (
+            "preserve face shape from the anchor still, change pose silhouette or camera distance from the anchor frame, "
+            "avoid near-duplicate framing, avoid straight-on duplicate stance, change arm line or torso angle from the anchor frame, "
+            "shift lighting emphasis for the follow-up frame, choose either a tighter upper-body frame or a wider full-body frame than the anchor, "
+            "show a visible weight shift or one-step stance change, prefer side-rim or backlight emphasis instead of repeating the anchor lighting setup"
+        )
+    if scope == "bridge_reframe" or minimum_delta == "lighting_or_framing_change_required":
+        return "preserve the same identity, but change lighting emphasis or framing from the anchor frame"
+    if scope == "framing_only" or minimum_delta == "camera_distance_or_angle_change_required":
+        return "preserve the same identity, but change camera distance or viewing angle from the anchor frame"
+    return ""
 
 
 

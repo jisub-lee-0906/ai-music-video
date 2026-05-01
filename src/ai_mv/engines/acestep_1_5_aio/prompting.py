@@ -114,7 +114,23 @@ def _audio_line_budget_rules(plan: dict) -> str:
         "Outro",
     ]
     pairs = [f"{label}<= {int(budgets[label])}" for label in ordered if label in budgets]
-    return "Respect these maximum line counts: " + ", ".join(pairs) + ". Prefer fewer stronger lines. "
+    minimums = {
+        "Verse 1": 4,
+        "Verse 2": 4,
+        "Pre-Chorus": 3,
+        "Pre-Chorus 2": 3,
+        "Chorus": 4,
+        "Chorus 2": 4,
+        "Final Chorus": 4,
+        "Bridge": 2,
+    }
+    if int(budgets.get("Final Chorus", 0) or 0) >= 5:
+        minimums["Final Chorus"] = 5
+    min_pairs = [f"{label}>= {minimums[label]}" for label in ordered if label in minimums and label in budgets]
+    text = "Respect these maximum line counts: " + ", ".join(pairs) + ". "
+    if min_pairs:
+        text += "Respect these minimum line counts for any included required section: " + ", ".join(min_pairs) + ". "
+    return text + "Prefer fewer stronger lines, but never below a required section minimum. "
 
 
 def _language_style_rules(plan: dict) -> str:
@@ -219,9 +235,27 @@ def _audio_retry_clause(plan: dict) -> str:
     elif "pre-chorus phrasing is too broad compared with chorus" in lowered:
         clause += (
             "Pre-Chorus lines must stay shorter and tighter than Chorus lines. "
+            "Keep Pre-Chorus average visible length at least a few characters below Chorus average. "
             "Use more breath-led setup phrasing in Pre-Chorus and reserve broader release language for Chorus. "
+            "If the contrast is at risk, shorten Pre-Chorus and make Chorus a little broader instead of opening Pre-Chorus. "
             "Make Chorus lines more open and hook-led than Pre-Chorus. "
         )
+    elif "final chorus underuses its extended bar space" in lowered:
+        clause += (
+            "Final Chorus has the extended bar lane; write five lyric lines for it. "
+            "Do not shorten Final Chorus to a four-line ordinary chorus. "
+            "Use the extra line for resolution or a stronger final payoff rather than repetition. "
+        )
+    elif "underdelivers its section role" in lowered:
+        clause += "Keep every required section at its locked line count; do not shorten or omit required lines. "
+        if "pre-chorus" in lowered:
+            clause += "Pre-Chorus must contain at least three compact build-up lyric lines. "
+        if "verse" in lowered:
+            clause += "Verse sections must contain at least four concrete story-detail lyric lines. "
+        if "chorus" in lowered:
+            clause += "Chorus sections must contain at least four hook-led release lyric lines. "
+        if "bridge" in lowered:
+            clause += "Bridge must contain at least two brief reframing lyric lines. "
     return clause
 
 

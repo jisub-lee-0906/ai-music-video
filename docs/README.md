@@ -11,10 +11,16 @@
    - 공개 CLI 사용법
    - artifact contract
    - WSL 사용 가이드
-2. `docs/sample-config.yaml`
+2. `docs/shared-comfyui.md`
+   - Krita/Blender/ai-music-video가 Windows ComfyUI 하나를 공유하는 운영 기준
+   - 중복 backend(예: 8000 + 8001) 진단과 WSL wrapper guard 설명
+3. `docs/quality-findings.md`
+   - manual frame/MV review에서 사용할 known quality finding code 목록
+   - `ai-mv quality-findings-template` scaffold와 동기화되어야 하는 reviewer-facing guide
+4. `docs/sample-config.yaml`
    - 샘플 override 설정
    - canonical default 자체는 아니며 실제 default truth는 코드에 있다
-3. `docs/plans/2026-04-23-ai-mv-completion-roadmap.md`
+5. `docs/plans/2026-04-23-ai-mv-completion-roadmap.md`
    - 현재 남은 병목과 우선 실행 순서
    - 현재 작업 재개 시 기준 계획서
 

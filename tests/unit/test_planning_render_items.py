@@ -595,6 +595,34 @@ def test_render_item_marks_sequence_opener_as_anchor_still_source():
 
 
 
+def test_render_item_keeps_general_anchor_source_still_prompt_free_of_followup_delta_language():
+    out = build_render_item(
+        {},
+        "late-night city pop walk under wet neon lights",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S001",
+            "render_mode": "ia2v",
+            "shot_role": "intro_anchor",
+            "section_type": "intro",
+            "section_name": "Intro",
+            "visual_mode": "street_establishing",
+            "start_sec": 0.0,
+            "duration_sec": 3.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead woman",
+                "world_anchor": "same wet neon boulevard",
+                "wardrobe_anchor": "stable dark outerwear silhouette",
+            },
+        },
+    )
+
+    assert "preserve the same lead identity" in out["still_prompt_text"]
+    assert "change camera distance or viewing angle from the anchor frame" not in out["still_prompt_text"]
+
+
+
 def test_render_item_routes_later_continuity_shot_to_anchor_reference():
     out = build_render_item(
         {},
@@ -686,6 +714,39 @@ def test_render_item_marks_performance_opener_as_performance_anchor_source():
     assert out["reference_mode"] == "performance_anchor_source"
     assert out["reference_source_shot_id"] == "S010"
     assert out["identity_lock_strength"] == "performance_anchor"
+
+
+
+def test_render_item_keeps_performance_anchor_source_still_prompt_free_of_followup_delta_language():
+    out = build_render_item(
+        {},
+        "bright idol-pop performance night on the same city stage",
+        "citypop",
+        get_citypop_bible(),
+        {
+            "shot_id": "S010",
+            "render_mode": "ia2v",
+            "shot_role": "chorus_arrive",
+            "coverage_role": "anchor",
+            "workflow_intent": "audio_reactive_candidate",
+            "section_type": "chorus",
+            "section_name": "Chorus",
+            "visual_mode": "chorus_performance",
+            "framing_intent": "performance_medium",
+            "start_sec": 8.0,
+            "duration_sec": 4.0,
+            "continuity_contract": {
+                "protagonist_anchor": "same lead performer",
+                "world_anchor": "same glossy performance-night stage",
+                "wardrobe_anchor": "stable bright stage outfit silhouette",
+            },
+        },
+    )
+
+    assert "front-facing performance-ready face visibility" in out["still_prompt_text"]
+    assert "same lead performer identity" in out["still_prompt_text"]
+    assert "preserve face shape from the anchor still" not in out["still_prompt_text"]
+    assert "avoid near-duplicate framing" not in out["still_prompt_text"]
 
 
 

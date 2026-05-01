@@ -65,8 +65,8 @@ def _prepare_comfy_queue(cfg: dict) -> None:
     base_url = str(integrations.get("comfyui_base_url", "")).strip()
     if not base_url:
         return
-    interrupt_before = bool(runtime.get("interrupt_comfy_before_start", True))
-    clear_before = bool(runtime.get("clear_comfy_queue_before_start", True))
+    interrupt_before = bool(runtime.get("interrupt_comfy_before_start", False))
+    clear_before = bool(runtime.get("clear_comfy_queue_before_start", False))
     if interrupt_before:
         interrupt_comfy(base_url)
     if clear_before:

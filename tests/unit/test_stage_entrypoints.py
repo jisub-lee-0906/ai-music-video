@@ -6,6 +6,7 @@ from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.stages.assemble_mv import run_assemble_mv, _assembly_clip_segments
 from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
+from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
 from ai_mv.core.stages.repair_rerender_prompts import run_repair_rerender_prompts
 from ai_mv.core.stages.render_clips import _clip_prompt_text, run_render_clips
 from ai_mv.core.stages.render_stills import _single_keyframe_prompt_text, _still_prompt_text, run_render_stills
@@ -229,6 +230,82 @@ def test_assemble_mv_orders_clip_mux_and_timing_from_shot_plan(monkeypatch, tmp_
     assert out.payload["assembly_plan"]["timing_map"]["SEC_002"]["sequence_index"] == 1
 
 
+def test_assemble_mv_interleaves_candidate_roles_within_section_to_avoid_repetition(monkeypatch, tmp_path):
+    mux_calls = {}
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-role-diverse.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.ffprobe_duration", lambda _path: 4.0)
+
+    def _fake_run_ffmpeg_mux(clips, *_args, **_kwargs):
+        mux_calls["shot_ids"] = [item["shot_id"] for item in clips]
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
+
+    for name in ("hero1.mp4", "hero2.mp4", "world.mp4", "song.wav"):
+        (tmp_path / name).write_text("x", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-assemble-role-diverse",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_CHORUS"},
+                {"shot_id": "S002", "section_id": "SEC_CHORUS"},
+                {"shot_id": "S003", "section_id": "SEC_CHORUS"},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": "hero1.mp4", "section_id": "SEC_CHORUS"},
+                {"shot_id": "S002", "video": "hero2.mp4", "section_id": "SEC_CHORUS"},
+                {"shot_id": "S003", "video": "world.mp4", "section_id": "SEC_CHORUS"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_CHORUS",
+                    "edit_intent": {"target_clip_sec": 1.0},
+                    "production_policy": {
+                        "candidate_role": "hero_face_performance",
+                        "ia2v_risk_class": "green",
+                        "anchor_reference_arm": "B_UPPER_ONLY",
+                    },
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_CHORUS",
+                    "edit_intent": {"target_clip_sec": 1.0},
+                    "production_policy": {
+                        "candidate_role": "hero_face_performance",
+                        "ia2v_risk_class": "green",
+                        "anchor_reference_arm": "B_UPPER_ONLY",
+                    },
+                },
+                {
+                    "shot_id": "S003",
+                    "section_id": "SEC_CHORUS",
+                    "edit_intent": {"target_clip_sec": 1.0},
+                    "production_policy": {
+                        "candidate_role": "world_bridge",
+                        "ia2v_risk_class": "green",
+                        "anchor_reference_arm": "F_FULLBODY_UPPER_WORLD",
+                    },
+                },
+            ],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    assert mux_calls["shot_ids"] == ["S001", "S003", "S002"]
+    section = out.payload["assembly_plan"]["section_edits"][0]
+    assert section["selected_clip_ids"] == ["S001", "S003", "S002"]
+    assert section["candidate_roles"] == ["hero_face_performance", "world_bridge"]
+    assert section["anchor_reference_arms"] == ["B_UPPER_ONLY", "F_FULLBODY_UPPER_WORLD"]
+
+
+
 def test_assemble_mv_uses_edit_intent_to_build_trimmed_clip_segments(monkeypatch, tmp_path):
     clip1 = tmp_path / "clip1.mp4"
     clip2 = tmp_path / "clip2.mp4"
@@ -275,6 +352,83 @@ def test_assemble_mv_uses_edit_intent_to_build_trimmed_clip_segments(monkeypatch
     assert segments[0]["trim_end_sec"] == 3.5
     assert segments[1]["trim_start_sec"] == 3.0
     assert segments[1]["trim_end_sec"] == 5.0
+
+
+
+def test_assemble_mv_caps_high_risk_interaction_payoff_to_policy_duration(monkeypatch, tmp_path):
+    clip1 = tmp_path / "clip1.mp4"
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
+
+    segments = _assembly_clip_segments(
+        {},
+        {
+            "clip_results": [{"shot_id": "S_PAYOFF", "video": str(clip1), "section_id": "SEC_FINAL"}],
+            "render_plan": [
+                {
+                    "shot_id": "S_PAYOFF",
+                    "section_id": "SEC_FINAL",
+                    "edit_intent": {"section_emphasis": "chorus_push", "target_clip_sec": 4.0},
+                    "production_policy": {
+                        "candidate_role": "high_risk_interaction_payoff",
+                        "ia2v_risk_class": "red",
+                        "anchor_reference_arm": "D_FULLBODY_UPPER",
+                        "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                    },
+                }
+            ],
+        },
+        duration_by_shot={"S_PAYOFF": 4.0},
+    )
+
+    assert segments[0]["trim_start_sec"] == 1.65
+    assert segments[0]["trim_end_sec"] == 2.35
+    assert segments[0]["trimmed_coverage_sec"] == 0.7
+    assert segments[0]["candidate_role"] == "high_risk_interaction_payoff"
+    assert segments[0]["ia2v_risk_class"] == "red"
+    assert segments[0]["anchor_reference_arm"] == "D_FULLBODY_UPPER"
+
+
+
+def test_assemble_mv_surfaces_production_policy_in_review_inputs_and_assembly_plan(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-policy.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.ffprobe_duration", lambda _path: 4.0)
+
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    out = run_assemble_mv(
+        StageInput(
+            run_id="run-assemble-policy-context",
+            config={},
+            payload={
+                "music_file": "song.wav",
+                "clip_results": [{"shot_id": "S_PAYOFF", "video": "clip1.mp4", "section_id": "SEC_FINAL"}],
+                "render_plan": [
+                    {
+                        "shot_id": "S_PAYOFF",
+                        "section_id": "SEC_FINAL",
+                        "edit_intent": {"section_emphasis": "chorus_push", "target_clip_sec": 4.0},
+                        "production_policy": {
+                            "candidate_role": "high_risk_interaction_payoff",
+                            "ia2v_risk_class": "red",
+                            "anchor_reference_arm": "D_FULLBODY_UPPER",
+                            "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                        },
+                    }
+                ],
+            },
+        )
+    )
+
+    assert out.payload["review_inputs"]["production_policy_by_shot"]["S_PAYOFF"]["ia2v_risk_class"] == "red"
+    section = out.payload["assembly_plan"]["section_edit_map"]["SEC_FINAL"]
+    timing = out.payload["assembly_plan"]["timing_map"]["SEC_FINAL"]
+    assert section["ia2v_risk_class"] == "red"
+    assert section["candidate_roles"] == ["high_risk_interaction_payoff"]
+    assert timing["ia2v_risk_class"] == "red"
+    assert timing["candidate_roles"] == ["high_risk_interaction_payoff"]
 
 
 
@@ -1135,6 +1289,61 @@ def test_render_stills_reuse_prior_still_does_not_fallback_to_other_anchor_when_
 
     assert "reference_image" not in calls[0]
 
+
+
+def test_render_stills_generates_white_background_flux_tti_anchor_before_reference_keyframes(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-anchor-package",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
+                        "anchor_type": "character_full_body",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "single clean full-body identity reference card, pure white seamless background, no street",
+                    }
+                ],
+                "variant_policy": {"workflow_target": "image_flux2_reference_image"},
+            },
+            "shot_plan": [{"shot_id": "S001", "visual_mode": "hero_medium"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman in a rainy neon street keyframe",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman", "world_anchor": "same rainy neon street"},
+                }
+            ],
+        },
+    )
+
+    out = run_render_stills(stage_input)
+
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_FULL_BODY", "S001"]
+    assert calls[0]["workflow_target"] == "image_flux2_text_to_image"
+    assert "pure white seamless background" in calls[0]["positive_prompt"]
+    assert "reference_image" not in calls[0]
+    assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png"
+    assert out.payload["anchor_results"] == [
+        {
+            "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
+            "anchor_type": "character_full_body",
+            "material_class": "character_reference_anchor",
+            "workflow_target": "image_flux2_text_to_image",
+            "image": "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png",
+            "prompt_text": "single clean full-body identity reference card, pure white seamless background, no street",
+            "status": "done",
+        }
+    ]
 
 
 def test_render_stills_uses_first_generated_anchor_still_for_later_continuity_shots(monkeypatch):
@@ -2030,6 +2239,54 @@ def test_review_outputs_marks_missing_assets_for_rerender():
     assert out.payload["review_report"]["blocking_checks"]["all_clips_rendered"] is False
 
 
+def test_review_outputs_marks_policy_red_risk_duration_overrun_for_rerender(monkeypatch):
+    monkeypatch.setattr("ai_mv.core.stages.review_stage.file_exists", lambda _path: True)
+    monkeypatch.setattr("ai_mv.core.review.policy.file_exists", lambda _path: True)
+    monkeypatch.setattr("ai_mv.core.stages.review_outputs.ffprobe_duration", lambda _path: 10.0)
+    stage_input = StageInput(
+        run_id="run-policy-risk",
+        config={"review": {"max_audio_video_drift_sec": 0.5}},
+        payload={
+            "final_video": "D:/renders/final.mp4",
+            "music_file": "D:/renders/song.mp3",
+            "shot_plan": [{"shot_id": "S001", "material_id": "MAT_001", "section_id": "SEC_CHORUS"}],
+            "material_plan": [{"material_id": "MAT_001", "section_id": "SEC_CHORUS"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "material_id": "MAT_001",
+                    "section_id": "SEC_CHORUS",
+                    "production_policy": {
+                        "candidate_role": "high_risk_interaction_payoff",
+                        "ia2v_risk_class": "red",
+                        "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                    },
+                }
+            ],
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png", "status": "done"}],
+            "clip_results": [{"shot_id": "S001", "video": "D:/renders/S001.mp4", "status": "done"}],
+            "review_inputs": {
+                "production_policy_by_shot": {
+                    "S001": {
+                        "candidate_role": "high_risk_interaction_payoff",
+                        "ia2v_risk_class": "red",
+                        "recommended_duration_sec": {"min": 0.3, "max": 0.7},
+                    }
+                },
+                "trimmed_coverage_by_shot": {"S001": 1.4},
+            },
+        },
+    )
+
+    out = run_review_outputs(stage_input)
+
+    report = out.payload["review_report"]
+    assert report["status"] == "needs_rerender"
+    assert report["rerender_reasons"] == {"S001": ["red_risk_clip_held_too_long"]}
+    assert report["publishability_summary"]["final_mv_publishability"]["next_action"] == "revise_transition_selection"
+
+
+
 def test_review_outputs_counts_latest_success_per_shot(monkeypatch):
     existing = {"D:/renders/final.mp4", "D:/renders/S001_retry.png", "D:/renders/S001_retry.mp4"}
 
@@ -2191,6 +2448,7 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
                 "priority_score": out.payload["review_report"]["rerender_priority_scores"]["S006"],
                 "bucket": "isolated_asset_quality",
                 "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
+                "execution_mode": "automatic",
                 "rerender_prescription": {
                     "stage_focus": "clips",
                     "workflow_focus": ["ia2v"],
@@ -2215,6 +2473,7 @@ def test_review_outputs_honors_explicit_quality_findings(monkeypatch):
                 "shot_id": "S006",
                 "recommended_action": "rerender_clips_with_terminal_frame_cleanup",
                 "rerender_stage": "clips",
+                "execution_mode": "automatic",
                 "workflow_focus": ["ia2v"],
                 "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
                 "fix_strategy": "shorter_motion_and_clean_terminal_frames",
@@ -2712,6 +2971,50 @@ def test_prepare_rerender_preserves_review_recommended_action_from_report_payloa
 
 
 
+def test_prepare_rerender_preserves_review_sync_repair_summary_for_coverage_revision():
+    stage_input = StageInput(
+        run_id="run-rerender-review-stage-sync-summary",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S001",
+                        "recommended_action": "revise_assembly_coverage_before_sync_pad",
+                        "rerender_stage": "review",
+                        "stage_payloads": {
+                            "review": {
+                                "final_video": "final.mp4",
+                                "music_file": "song.mp3",
+                                "recommended_action": "revise_assembly_coverage_before_sync_pad",
+                                "target_shots": ["S001"],
+                                "target_material_ids": ["MAT_001"],
+                                "target_section_ids": ["SEC_001"],
+                                "sync_repair_summary": {
+                                    "repair_strategy": "clone_tail_pad",
+                                    "clone_tail_sec": 9.253,
+                                    "clone_tail_ratio": 0.513,
+                                    "clone_tail_excessive": True,
+                                },
+                            }
+                        },
+                    }
+                ]
+            }
+        },
+    )
+
+    out = run_prepare_rerender(stage_input)
+
+    assert out.payload["rerender_stage_inputs"]["review"]["sync_repair_summary"] == {
+        "repair_strategy": "clone_tail_pad",
+        "clone_tail_sec": 9.253,
+        "clone_tail_ratio": 0.513,
+        "clone_tail_excessive": True,
+    }
+
+
+
 def test_prepare_rerender_merges_review_target_provenance_across_multiple_payloads():
     stage_input = StageInput(
         run_id="run-rerender-review-stage-merge-targets",
@@ -2860,6 +3163,44 @@ def test_execute_rerender_validates_stills_inputs_before_running(monkeypatch):
         )
 
     assert called == []
+
+
+
+def test_repair_audio_video_sync_reports_excessive_clone_tail(monkeypatch, tmp_path):
+    final_video = tmp_path / "mv.mp4"
+    music_file = tmp_path / "song.mp3"
+    final_video.write_text("video", encoding="utf-8")
+    music_file.write_text("audio", encoding="utf-8")
+    calls = []
+
+    def _fake_repair_sync(final_video_path, music_file_path, output_video_path, *, video_duration, audio_duration):
+        calls.append((final_video_path, music_file_path, output_video_path, video_duration, audio_duration))
+        output_video_path.write_text("synced", encoding="utf-8")
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.repair_audio_video_sync.resolve_generated_file", lambda _config, path, *_args: str(path))
+    monkeypatch.setattr("ai_mv.core.stages.repair_audio_video_sync.ffprobe_duration", lambda path: 9.0 if Path(path).name == "mv.mp4" else 18.0)
+    monkeypatch.setattr("ai_mv.core.stages.repair_audio_video_sync._repair_sync", _fake_repair_sync)
+
+    out = run_repair_audio_video_sync(
+        StageInput(
+            run_id="run-sync-clone-tail",
+            config={},
+            payload={"final_video": str(final_video), "music_file": str(music_file)},
+        )
+    )
+
+    assert out.payload["final_video"].endswith("mv_synced.mp4")
+    assert out.payload["sync_repair_summary"] == {
+        "input_video_duration_sec": 9.0,
+        "audio_duration_sec": 18.0,
+        "output_duration_sec": 18.0,
+        "clone_tail_sec": 9.0,
+        "clone_tail_ratio": 0.5,
+        "clone_tail_excessive": True,
+        "repair_strategy": "clone_tail_pad",
+    }
+    assert calls
 
 
 
@@ -3151,6 +3492,158 @@ def test_execute_rerender_applies_weight_revision_to_assembly_metadata(monkeypat
     }
     assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["section_edit_map"]["SEC_001"]["editorial_weight"] == "high"
     assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["timing_map"]["SEC_001"]["trimmed_coverage_sec"] == 3.2
+
+
+
+def test_execute_rerender_uses_clone_tail_summary_to_extend_assembly_coverage(monkeypatch):
+    assembly_calls = []
+
+    def _fake_render_revised_assembly(*, config, run_id, music_file, final_video, review_inputs, revised_assembly_plan, revisions_by_shot):
+        assembly_calls.append(
+            {
+                "review_inputs": review_inputs,
+                "revised_assembly_plan": revised_assembly_plan,
+                "revisions_by_shot": revisions_by_shot,
+            }
+        )
+        return {"final_video": "final-coverage-revised.mp4", "artifacts": ["final-coverage-revised.mp4"]}
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender._render_revised_assembly", _fake_render_revised_assembly)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-exec-coverage-review",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["review"],
+                "rerender_stage_inputs": {
+                    "review": {
+                        "final_video": "final.mp4",
+                        "music_file": "song.mp3",
+                        "recommended_action": "revise_assembly_coverage_before_sync_pad",
+                        "sync_repair_summary": {"clone_tail_sec": 8.0, "clone_tail_excessive": True},
+                        "assembly_plan": {
+                            "section_edit_map": {
+                                "SEC_001": {
+                                    "section_id": "SEC_001",
+                                    "selected_clip_ids": ["S001"],
+                                    "selected_material_ids": ["MAT_001"],
+                                    "transition_in": "cut_in",
+                                    "transition_out": "cut_out",
+                                    "snap_unit": "free",
+                                    "cadence_profile": "support_hold",
+                                    "trimmed_coverage_sec": 4.0,
+                                }
+                            },
+                            "transition_map": {"SEC_001": {"transition_in": "cut_in", "transition_out": "cut_out"}},
+                            "timing_map": {"SEC_001": {"selected_clip_ids": ["S001"], "snap_unit": "free", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}},
+                            "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001"], "transition_in": "cut_in", "transition_out": "cut_out", "snap_unit": "free", "cadence_profile": "support_hold", "trimmed_coverage_sec": 4.0}],
+                        },
+                        "review_inputs": {
+                            "clip_results": [{"shot_id": "S001", "video": "clip1.mp4", "section_id": "SEC_001", "material_id": "MAT_001"}],
+                            "edit_intent_by_shot": {"S001": {"section_emphasis": "sequence_support"}},
+                            "trimmed_coverage_by_shot": {"S001": 4.0},
+                        },
+                        "target_shots": ["S001"],
+                        "target_material_ids": ["MAT_001"],
+                        "target_section_ids": ["SEC_001"],
+                    }
+                },
+            },
+        )
+    )
+
+    assert out.payload["review_action"] == "revise_assembly_coverage_before_sync_pad"
+    assert out.payload["final_video"] == "final-coverage-revised.mp4"
+    revised_inputs = out.payload["review_inputs"]["assembly_revision"]["revised_review_inputs"]
+    assert revised_inputs["trimmed_coverage_by_shot"] == {"S001": 12.0}
+    assert assembly_calls[0]["revisions_by_shot"]["S001"]["trimmed_coverage_sec"] == 12.0
+    assert out.payload["assembly_revision_result"]["revised_assembly_plan"]["timing_map"]["SEC_001"]["trimmed_coverage_sec"] == 12.0
+
+
+
+def test_apply_assembly_coverage_revision_distributes_clone_tail_extension_across_targeted_sections():
+    from ai_mv.core.stages.assemble_mv import apply_assembly_revision
+
+    revised_plan, revisions_by_shot = apply_assembly_revision(
+        {
+            "section_edit_map": {
+                "SEC_001": {"section_id": "SEC_001", "selected_clip_ids": ["S001"], "trimmed_coverage_sec": 4.0},
+                "SEC_002": {"section_id": "SEC_002", "selected_clip_ids": ["S002"], "trimmed_coverage_sec": 2.0},
+            },
+            "timing_map": {
+                "SEC_001": {"trimmed_coverage_sec": 4.0},
+                "SEC_002": {"trimmed_coverage_sec": 2.0},
+            },
+            "transition_map": {"SEC_001": {}, "SEC_002": {}},
+            "section_edits": [
+                {"section_id": "SEC_001", "selected_clip_ids": ["S001"], "trimmed_coverage_sec": 4.0},
+                {"section_id": "SEC_002", "selected_clip_ids": ["S002"], "trimmed_coverage_sec": 2.0},
+            ],
+        },
+        action="revise_assembly_coverage_before_sync_pad",
+        target_shots=["S001", "S002"],
+        coverage_extension_sec=6.0,
+    )
+
+    assert revised_plan["timing_map"]["SEC_001"]["trimmed_coverage_sec"] == 7.0
+    assert revised_plan["timing_map"]["SEC_002"]["trimmed_coverage_sec"] == 5.0
+    assert revisions_by_shot["S001"]["trimmed_coverage_sec"] == 7.0
+    assert revisions_by_shot["S002"]["trimmed_coverage_sec"] == 5.0
+
+
+
+def test_render_revised_assembly_repeats_clip_segments_when_coverage_revision_exceeds_media_duration(monkeypatch, tmp_path):
+    from ai_mv.core.stages import execute_rerender as execute_rerender_module
+
+    mux_calls = []
+
+    def _fake_resolve(_config, path, *_args):
+        return str(tmp_path / Path(path).name)
+
+    def _fake_duration(path):
+        return {"clip-a.mp4": 4.0, "clip-b.mp4": 3.0, "song.mp3": 18.0}.get(Path(path).name, 0.0)
+
+    def _fake_mux(clips, audio, out, config):
+        mux_calls.append({"clips": clips, "audio": audio, "out": out, "config": config})
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.resolve_generated_file", _fake_resolve)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.ffprobe_duration", _fake_duration)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_ffmpeg_mux", _fake_mux)
+    for name in ("clip-a.mp4", "clip-b.mp4", "song.mp3"):
+        (tmp_path / name).write_text(name, encoding="utf-8")
+
+    result = execute_rerender_module._render_revised_assembly(
+        config={"video": {"target": "640x360@24"}},
+        run_id="run-coverage-render-repeat",
+        music_file="song.mp3",
+        final_video=str(tmp_path / "final.mp4"),
+        review_inputs={
+            "clip_results": [
+                {"shot_id": "S001", "video": "clip-a.mp4"},
+                {"shot_id": "S002", "video": "clip-b.mp4"},
+            ]
+        },
+        revised_assembly_plan={
+            "section_edits": [
+                {"section_id": "SEC_001", "selected_clip_ids": ["S001"]},
+                {"section_id": "SEC_002", "selected_clip_ids": ["S002"]},
+            ]
+        },
+        revisions_by_shot={
+            "S001": {"trimmed_coverage_sec": 6.0},
+            "S002": {"trimmed_coverage_sec": 1.5},
+        },
+    )
+
+    assert result["final_video"] == str(tmp_path / "final.mp4")
+    segments = mux_calls[0]["clips"]
+    assert [(segment["shot_id"], segment["trim_start_sec"], segment["trim_end_sec"]) for segment in segments] == [
+        ("S001", 0.0, 4.0),
+        ("S001", 0.0, 2.0),
+        ("S002", 0.0, 1.5),
+    ]
 
 
 
@@ -3891,8 +4384,8 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
                     "render_plan": [
                         {"shot_id": "S001", "still_prompt_text": "neon portrait"},
                         {"shot_id": "S002", "still_prompt_text": "night street singer"},
-                        {"shot_id": "S004", "still_prompt_text": "rooftop heroine close-up"},
-                        {"shot_id": "S005", "still_prompt_text": "subway reflection heroine"},
+                        {"shot_id": "S004", "still_prompt_text": "rooftop heroine close-up", "reference_mode": "anchor_source", "edit_variation_scope": "none"},
+                        {"shot_id": "S005", "still_prompt_text": "subway reflection heroine", "reference_mode": "use_performance_anchor_still", "edit_variation_scope": "performance_pose_upgrade"},
                         {"shot_id": "S006", "still_prompt_text": "wide neon bridge at dusk"},
                     ],
                 },
@@ -3929,7 +4422,10 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
     assert still_rows[0]["still_prompt_text"] == "neon portrait, single cinematic keyframe, one uninterrupted composition, no panel layout, no collage, no split screen"
     assert still_rows[1]["still_prompt_text"] == "night street singer, same protagonist, same environment, locked world details, no unrelated scene intrusion"
     assert still_rows[2]["still_prompt_text"] == "rooftop heroine close-up, same protagonist, locked identity details, no identity drift, no duplicate subject"
-    assert still_rows[3]["still_prompt_text"] == "subway reflection heroine, same protagonist, continuity-locked identity details, match adjacent shots, no identity drift, preserve neighboring-shot continuity"
+    assert "match adjacent shots" not in still_rows[2]["still_prompt_text"]
+    assert "preserve neighboring-shot continuity" not in still_rows[2]["still_prompt_text"]
+    assert "preserve face shape from the anchor still" not in still_rows[2]["still_prompt_text"]
+    assert still_rows[3]["still_prompt_text"] == "subway reflection heroine, same protagonist, continuity-locked identity details, match adjacent shots, no identity drift, preserve neighboring-shot continuity, preserve face shape from the anchor still, avoid near-duplicate framing"
     assert still_rows[4]["still_prompt_text"] == "wide neon bridge at dusk, same protagonist, stronger character payoff, subject-led composition, larger foreground subject, no background-dominant framing"
     assert clip_rows[0]["clip_prompt_seed"] == "camera drift forward, clean terminal frame, restrained motion range"
     assert clip_rows[0]["clip_positive_prompt"] == "camera drift forward, clean terminal frame, restrained motion range, shorter motion beat, clean exit frame, no abrupt pose change"
@@ -3938,6 +4434,62 @@ def test_repair_rerender_prompts_applies_fix_strategies_to_stage_inputs():
     assert clip_rows[2]["clip_prompt_seed"] == "slow bridge walk, same protagonist, stronger character payoff, larger foreground subject"
     assert clip_rows[2]["clip_positive_prompt"] == "slow bridge walk, dreamy city lights, cinematic atmosphere, same protagonist, stronger character payoff, subject-led composition, larger foreground subject, no background-dominant framing"
 
+
+
+def test_repair_rerender_prompts_strengthens_story_payoff_and_chorus_release_contracts():
+    stage_input = StageInput(
+        run_id="run-rerender-story-repair",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S005",
+                        "recommended_action": "rerender_character_payoff_shots",
+                        "rerender_stage": "stills_then_clips",
+                        "fix_strategy": "strengthen_story_payoff_and_chorus_release",
+                        "prompt_contract_focus": ["still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"],
+                        "stage_payloads": {},
+                    }
+                ]
+            },
+            "rerender_stage_inputs": {
+                "stills": {
+                    "render_plan": [
+                        {
+                            "shot_id": "S005",
+                            "still_prompt_text": "neon chorus wide shot",
+                            "story_function": "release",
+                            "payoff_requirement": "the hook must read as a visible emotional turn",
+                        }
+                    ]
+                },
+                "clips": {
+                    "render_plan": [
+                        {
+                            "shot_id": "S005",
+                            "clip_prompt_seed": "chorus walk under signs",
+                            "clip_positive_prompt": "chorus walk under signs, steady camera",
+                            "story_function": "release",
+                            "payoff_requirement": "the hook must read as a visible emotional turn",
+                        }
+                    ]
+                },
+            },
+        },
+    )
+
+    out = run_repair_rerender_prompts(stage_input)
+
+    still_prompt = out.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]["still_prompt_text"]
+    clip_seed = out.payload["rerender_stage_inputs"]["clips"]["render_plan"][0]["clip_prompt_seed"]
+    clip_positive = out.payload["rerender_stage_inputs"]["clips"]["render_plan"][0]["clip_positive_prompt"]
+    assert "visible emotional turn" in still_prompt
+    assert "chorus release lift" in still_prompt
+    assert "not another safe mood-only shot" in still_prompt
+    assert "visible emotional turn" in clip_seed
+    assert "chorus release lift" in clip_positive
+    assert "clear story beat fulfillment" in clip_positive
 
 
 def test_repair_rerender_prompts_leaves_inputs_unchanged_when_no_execution_payloads_exist():
@@ -4187,7 +4739,19 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
                             "stage_payloads": {
                                 "clips": {
                                     "shot_plan": [{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007"}],
-                                    "render_plan": [{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007", "render_mode": "ia2v"}],
+                                    "render_plan": [
+                                        {
+                                            "shot_id": "S007",
+                                            "material_id": "MAT_007",
+                                            "section_id": "SEC_007",
+                                            "render_mode": "ia2v",
+                                            "reference_mode": "use_performance_anchor_still",
+                                            "reference_source_shot_id": "S006",
+                                            "identity_lock_strength": "performance_anchor",
+                                            "edit_variation_scope": "performance_pose_upgrade",
+                                            "minimum_visual_delta": "facial_expression_shift",
+                                        }
+                                    ],
                                     "still_results": [{"shot_id": "S007", "material_id": "MAT_007", "section_id": "SEC_007", "image": "still-7.png"}],
                                     "music_file": "song.mp3",
                                 }
@@ -4244,6 +4808,14 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
                 "prompt_contract_focus": [],
                 "fix_strategy": "inspect_review_failures_manually",
             },
+            "reference_context": {
+                "reference_mode": "",
+                "reference_source_shot_id": "",
+                "identity_lock_strength": "",
+                "edit_variation_scope": "",
+                "minimum_visual_delta": "",
+            },
+            "reference_summary_label": "",
             "packet_artifacts": report["artifacts"],
             "reviewer_note": "Inspect shot S003 in the review packet artifacts (reasons: continuity_break, identity_drift)",
         },
@@ -4260,8 +4832,16 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
                 "prompt_contract_focus": ["clip_prompt_seed", "clip_positive_prompt"],
                 "fix_strategy": "shorter_motion_and_clean_terminal_frames",
             },
+            "reference_context": {
+                "reference_mode": "use_performance_anchor_still",
+                "reference_source_shot_id": "S006",
+                "identity_lock_strength": "performance_anchor",
+                "edit_variation_scope": "performance_pose_upgrade",
+                "minimum_visual_delta": "facial_expression_shift",
+            },
+            "reference_summary_label": "performance follow-up from S006",
             "packet_artifacts": report["artifacts"],
-            "reviewer_note": "Inspect shot S007 in the review packet artifacts (reasons: terminal_frame_corruption)",
+            "reviewer_note": "Inspect shot S007 (performance follow-up from S006) in the review packet artifacts (reasons: terminal_frame_corruption)",
         },
     ]
     assert report["video_path"] == "D:/renders/final.mp4"
@@ -4285,6 +4865,9 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         "shot_ids": ["S003", "S007"],
         "material_ids": ["MAT_003", "MAT_007"],
         "section_ids": ["SEC_003", "SEC_007"],
+        "reference_modes": ["use_performance_anchor_still"],
+        "anchor_source_shot_ids": [],
+        "followup_shot_ids": ["S007"],
     }
     assert out.artifacts == [
         report["review_packet_manifest_path"],
@@ -4293,6 +4876,73 @@ def test_rerender_escalation_builds_manual_review_packet_request(monkeypatch):
         report["contact_sheet_image_path"],
         report["contact_sheet_manifest_path"],
     ]
+
+
+
+def test_rerender_escalation_maps_batched_review_targets_to_their_own_provenance(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        "ai_mv.core.stages.rerender_escalation.write_review_packet",
+        lambda **kwargs: (
+            captured.update(kwargs) or {
+                "manifest_path": kwargs["output_dir"] / "review-packet.json",
+                "quality_findings_path": kwargs["output_dir"] / "review-findings.json",
+                "reviewer_notes_path": kwargs["output_dir"] / "review-notes.md",
+                "contact_sheet_image_path": kwargs["output_dir"] / "contact-sheet.png",
+                "contact_sheet_manifest_path": kwargs["output_dir"] / "contact-sheet.json",
+            }
+        ),
+    )
+
+    out = run_rerender_escalation(
+        StageInput(
+            run_id="run-rerender-escalate-batched-review-targets",
+            config={},
+            payload={
+                "final_video": "D:/renders/final.mp4",
+                "review_report": {
+                    "rerender_targets": ["S001", "S002", "S003"],
+                    "rerender_reasons": {
+                        "S001": ["excessive_sync_clone_tail"],
+                        "S002": ["excessive_sync_clone_tail"],
+                        "S003": ["excessive_sync_clone_tail"],
+                    },
+                    "rerender_execution_payloads": [
+                        {
+                            "shot_id": "S001",
+                            "recommended_action": "revise_assembly_coverage_before_sync_pad",
+                            "rerender_stage": "review",
+                            "stage_payloads": {
+                                "review": {
+                                    "target_shots": ["S001", "S002", "S003"],
+                                    "target_material_ids": ["MAT_001", "MAT_002", "MAT_003"],
+                                    "target_section_ids": ["SEC_001", "SEC_002", "SEC_003"],
+                                }
+                            },
+                        }
+                    ],
+                    "rerender_plan": [
+                        {"shot_id": "S001", "priority_score": 4, "recommended_action": "revise_assembly_coverage_before_sync_pad"},
+                        {"shot_id": "S002", "priority_score": 4, "recommended_action": "revise_assembly_coverage_before_sync_pad"},
+                        {"shot_id": "S003", "priority_score": 4, "recommended_action": "revise_assembly_coverage_before_sync_pad"},
+                    ],
+                },
+                "rerender_outcome": {"attempted": True, "resolved": False, "exhausted": True},
+            },
+        )
+    )
+
+    report = out.payload["rerender_escalation"]
+    assert report["material_ids"] == ["MAT_001", "MAT_002", "MAT_003"]
+    assert report["section_ids"] == ["SEC_001", "SEC_002", "SEC_003"]
+    assert [(row["shot_id"], row["material_id"], row["section_id"]) for row in report["summary_by_shot"]] == [
+        ("S001", "MAT_001", "SEC_001"),
+        ("S002", "MAT_002", "SEC_002"),
+        ("S003", "MAT_003", "SEC_003"),
+    ]
+    assert report["reviewer_summary"] == "Manual review required for 3 shots across 3 materials and 3 sections: S001, S002, S003"
+    assert captured["escalation_context"]["material_ids"] == ["MAT_001", "MAT_002", "MAT_003"]
+    assert captured["escalation_context"]["section_ids"] == ["SEC_001", "SEC_002", "SEC_003"]
 
 
 

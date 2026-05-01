@@ -133,6 +133,7 @@ def _audio_lyrics_draft_prompt(plan: dict, outline: dict) -> str:
         + "Respect the locked bar sizes of each section so the phrasing feels like it actually fits the form instead of floating free from it. "
         + "Let early sections establish the state, middle sections develop or tighten it, and later sections release or resolve it. "
         + "Pre-Chorus lines should stay shorter on average than Chorus lines. "
+        + "Keep Pre-Chorus average visible length safely below Chorus average; do not write long sentence-shaped Pre-Chorus lines. "
         + "Let Chorus carry the broader release phrasing and the more open hook. "
         + "Make Verse 2 change perspective, cost, or direction instead of restating Verse 1. "
         + "Make Bridge compress or reframe so the final return lands harder. A 4-bar bridge must feel brief and turning, not explanatory. "
@@ -239,7 +240,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
     rules = {
         "Intro": "Intro should be empty or a very short setup. ",
         "Verse 1": "Verse 1 should establish the state with concrete details. ",
-        "Pre-Chorus": "Pre-Chorus should tighten anticipation without spending the hook and should feel tighter than the Chorus. ",
+        "Pre-Chorus": "Pre-Chorus should tighten anticipation without spending the hook and should feel tighter than the Chorus. Keep this Pre-Chorus visibly shorter per line than the Chorus target. Avoid long sentence-shaped build-up lines here. ",
         "Chorus": "Chorus should deliver the clearest hook and first release, opening wider than the Pre-Chorus. ",
         "Verse 2": "Verse 2 must add change, cost, or contradiction. ",
         "Pre-Chorus 2": "Pre-Chorus 2 should escalate rather than repeat Pre-Chorus and should still stay tighter than the Chorus return. ",

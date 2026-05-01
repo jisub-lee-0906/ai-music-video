@@ -85,6 +85,7 @@ def test_review_stage_builds_material_aware_rerender_execution_payloads(monkeypa
             "shot_id": "S001",
             "recommended_action": "rerender_panelized_keyframes",
             "rerender_stage": "stills",
+            "execution_mode": "automatic",
             "workflow_focus": ["flux2_image"],
             "prompt_contract_focus": ["still_prompt_text"],
             "fix_strategy": "enforce_single_frame_keyframe_composition",

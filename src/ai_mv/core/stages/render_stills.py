@@ -27,6 +27,8 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
     prior_still_map = {str(row.get("shot_id", "")).strip(): row for row in prior_stills}
     generated_still_map: dict[str, dict] = {}
     material_map = {str(row.get("material_id", "")).strip(): row for row in material_plan if str(row.get("material_id", "")).strip()}
+    anchor_results = _render_anchor_package(stage_input)
+    anchor_still_map = {str(row.get("anchor_id", "")).strip(): row for row in anchor_results if str(row.get("anchor_id", "")).strip()}
     still_results = []
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
@@ -36,7 +38,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         base_prompt_text = _still_prompt_text(render_item)
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
-        anchor_reference_image = _anchor_reference_image(render_item, generated_still_map, prior_still_map)
+        anchor_reference_image = _anchor_reference_image(render_item, generated_still_map, prior_still_map, anchor_still_map)
         render_count = _render_count(render_item)
         candidate_score_rows = render_item.get("still_candidate_scores") if isinstance(render_item.get("still_candidate_scores"), list) else []
         candidate_results: list[dict] = []
@@ -99,13 +101,70 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         "done",
         {
             "still_results": still_results,
+            "anchor_results": anchor_results,
             "workflow_inputs": {
                 **dict(stage_input.payload.get("workflow_inputs", {})),
-                "stills": {"count": len(still_results)},
+                "stills": {"count": len(still_results), "anchor_count": len(anchor_results)},
             },
         },
         [],
     )
+
+
+def _render_anchor_package(stage_input: StageInput) -> list[dict]:
+    anchor_package = stage_input.payload.get("anchor_package")
+    if not isinstance(anchor_package, dict):
+        return []
+    anchors = [row for row in anchor_package.get("anchors", []) if isinstance(row, dict)]
+    anchor_results: list[dict] = []
+    anchor_image_by_id: dict[str, str] = {}
+    for anchor in anchors:
+        anchor_id = str(anchor.get("anchor_id", "")).strip()
+        prompt_text = str(anchor.get("prompt_text", "")).strip()
+        if not anchor_id or not prompt_text:
+            continue
+        item = {
+            "shot_id": anchor_id,
+            "positive_prompt": prompt_text,
+            "filename_prefix": still_prefix(stage_input.run_id, anchor_id),
+            "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),
+            "retry": 0,
+            "workflow_target": str(anchor.get("workflow_target", "")).strip(),
+        }
+        reference_image = _anchor_package_reference_image(anchor, anchor_image_by_id)
+        if reference_image:
+            item["reference_image"] = reference_image
+        image_path = run_flux2_still(stage_input.config, item)
+        anchor_image_by_id[anchor_id] = image_path
+        anchor_results.append(
+            {
+                "anchor_id": anchor_id,
+                "anchor_type": str(anchor.get("anchor_type", "")).strip(),
+                "material_class": str(anchor.get("material_class", "")).strip(),
+                "workflow_target": str(anchor.get("workflow_target", "")).strip(),
+                "image": image_path,
+                "prompt_text": prompt_text,
+                "status": "done",
+            }
+        )
+    return anchor_results
+
+
+
+def _anchor_package_reference_image(anchor: dict, anchor_image_by_id: dict[str, str]) -> str:
+    workflow_target = str(anchor.get("workflow_target", "")).strip().lower()
+    if workflow_target not in {"image_flux2_reference_image", "image_flux2", "flux2_reference_image"}:
+        return ""
+    reference_anchor_ids = [str(value).strip() for value in anchor.get("reference_anchor_ids", []) if str(value).strip()] if isinstance(anchor.get("reference_anchor_ids"), list) else []
+    for anchor_id in reference_anchor_ids:
+        image = str(anchor_image_by_id.get(anchor_id, "")).strip()
+        if image:
+            return image
+    for image in anchor_image_by_id.values():
+        if str(image).strip():
+            return str(image).strip()
+    return ""
+
 
 
 def _still_prompt_text(render_item: dict) -> str:
@@ -194,7 +253,12 @@ def _render_count(render_item: dict) -> int:
 
 
 
-def _anchor_reference_image(render_item: dict, generated_still_map: dict[str, dict], prior_still_map: dict[str, dict]) -> str:
+def _anchor_reference_image(
+    render_item: dict,
+    generated_still_map: dict[str, dict],
+    prior_still_map: dict[str, dict],
+    anchor_still_map: dict[str, dict] | None = None,
+) -> str:
     if not isinstance(render_item, dict):
         return ""
     reference_mode = str(render_item.get("reference_mode", "")).strip().lower()
@@ -208,6 +272,9 @@ def _anchor_reference_image(render_item: dict, generated_still_map: dict[str, di
         )
         if not has_continuity_anchor:
             return ""
+        anchor_reference = _first_anchor_package_image(anchor_still_map)
+        if anchor_reference:
+            return anchor_reference
         for still_map in (generated_still_map, prior_still_map):
             for row in still_map.values():
                 image = str(row.get("image", "")).strip() if isinstance(row, dict) else ""
@@ -232,7 +299,23 @@ def _anchor_reference_image(render_item: dict, generated_still_map: dict[str, di
                 if image and row_mode == preferred_source_mode:
                     return image
         if reference_mode == "use_anchor_still":
+            anchor_reference = _first_anchor_package_image(anchor_still_map)
+            if anchor_reference:
+                return anchor_reference
             return ""
+    return ""
+
+
+
+def _first_anchor_package_image(anchor_still_map: dict[str, dict] | None) -> str:
+    if not isinstance(anchor_still_map, dict):
+        return ""
+    for row in anchor_still_map.values():
+        if not isinstance(row, dict):
+            continue
+        image = str(row.get("image", "")).strip()
+        if image:
+            return image
     return ""
 
 

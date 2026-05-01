@@ -34,6 +34,7 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         "render_count_by_shot": _render_count_by_shot(stage_input.payload),
         "render_priority_by_shot": _render_priority_by_shot(stage_input.payload),
         "render_planning_by_shot": _render_planning_by_shot(stage_input.payload),
+        "production_policy_by_shot": _production_policy_by_shot(stage_input.payload),
         "cadence_profile_by_shot": _clip_segment_value_by_shot(clip_segments, "cadence_profile"),
         "snap_unit_by_shot": _clip_segment_value_by_shot(clip_segments, "snap_unit"),
         "trimmed_coverage_by_shot": _clip_segment_float_by_shot(clip_segments, "trimmed_coverage_sec"),
@@ -97,11 +98,12 @@ def _review_audio_review_rubric_path(config: object) -> str:
 
 
 def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[str, float] | None = None) -> list[dict]:
-    clip_rows = _resolve_clip_results(config, _ordered_clip_rows(payload))
     render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
+    render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
+    production_policy_by_shot = _production_policy_by_render_rows(render_rows)
+    clip_rows = _resolve_clip_results(config, _policy_interleaved_clip_rows(_ordered_clip_rows(payload), production_policy_by_shot))
     shot_plan = payload.get("shot_plan") if isinstance(payload, dict) else None
     audio_map = payload.get("audio_map") if isinstance(payload, dict) else None
-    render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
     shot_plan_by_shot = {
         str(row.get("shot_id", "")).strip(): row
         for row in shot_plan
@@ -117,8 +119,9 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
     for row in clip_rows:
         shot_id = str(row.get("shot_id", "")).strip()
         edit_intent = edit_intent_by_shot.get(shot_id, {})
+        production_policy = production_policy_by_shot.get(shot_id, {})
         clip_duration = float(durations.get(shot_id) or ffprobe_duration(row["path"]))
-        target_clip_sec = _safe_float(edit_intent.get("target_clip_sec"), 0.0)
+        target_clip_sec = _policy_capped_target_clip_sec(edit_intent, production_policy)
         trim_start_sec, trim_end_sec = _trim_window_for_clip(clip_duration, target_clip_sec, edit_intent)
         trim_start_sec, trim_end_sec, snap_unit = _snap_trim_window_to_audio_timing(
             trim_start_sec,
@@ -137,10 +140,34 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
                 "trimmed_coverage_sec": trimmed_coverage_sec,
                 "snap_unit": snap_unit,
                 "cadence_profile": _cadence_profile(edit_intent),
+                **_production_policy_segment_fields(production_policy),
             }
         )
     return out
 
+
+
+def _policy_capped_target_clip_sec(edit_intent: dict, production_policy: dict) -> float:
+    target = _safe_float(edit_intent.get("target_clip_sec"), 0.0)
+    duration_policy = production_policy.get("recommended_duration_sec") if isinstance(production_policy, dict) else None
+    max_duration = _safe_float(duration_policy.get("max") if isinstance(duration_policy, dict) else None, 0.0)
+    if target > 0.0 and max_duration > 0.0:
+        return min(target, max_duration)
+    return target
+
+
+def _production_policy_segment_fields(production_policy: dict) -> dict[str, object]:
+    if not isinstance(production_policy, dict) or not production_policy:
+        return {}
+    fields: dict[str, object] = {"production_policy": dict(production_policy)}
+    for key in ("candidate_role", "ia2v_risk_class", "anchor_reference_arm"):
+        value = str(production_policy.get(key, "")).strip()
+        if value:
+            fields[key] = value
+    duration_policy = production_policy.get("recommended_duration_sec")
+    if isinstance(duration_policy, dict):
+        fields["recommended_duration_sec"] = dict(duration_policy)
+    return fields
 
 
 def _trim_window_for_clip(clip_duration: float, target_clip_sec: float, edit_intent: dict) -> tuple[float | None, float | None]:
@@ -345,6 +372,75 @@ def _ordered_clip_rows(payload: dict) -> list[dict]:
 
 
 
+def _policy_interleaved_clip_rows(clip_rows: list[dict], production_policy_by_shot: dict[str, dict]) -> list[dict]:
+    if not clip_rows or not isinstance(production_policy_by_shot, dict):
+        return clip_rows
+    out: list[dict] = []
+    group: list[dict] = []
+    current_section = ""
+    for row in clip_rows:
+        section_id = str(row.get("section_id", "")).strip()
+        if group and section_id != current_section:
+            out.extend(_interleave_section_clip_rows(group, production_policy_by_shot))
+            group = []
+        group.append(row)
+        current_section = section_id
+    if group:
+        out.extend(_interleave_section_clip_rows(group, production_policy_by_shot))
+    return out
+
+
+
+def _interleave_section_clip_rows(section_rows: list[dict], production_policy_by_shot: dict[str, dict]) -> list[dict]:
+    if len(section_rows) < 3:
+        return section_rows
+    remaining = list(section_rows)
+    ordered: list[dict] = []
+    while remaining:
+        previous_role = _candidate_role_for_clip_row(ordered[-1], production_policy_by_shot) if ordered else ""
+        next_index = 0
+        if previous_role:
+            replacement_index = _first_non_repeating_policy_index(remaining, previous_role, production_policy_by_shot)
+            if replacement_index is not None:
+                next_index = replacement_index
+        ordered.append(remaining.pop(next_index))
+    return ordered
+
+
+
+def _first_non_repeating_policy_index(
+    rows: list[dict],
+    previous_role: str,
+    production_policy_by_shot: dict[str, dict],
+) -> int | None:
+    candidates: list[tuple[int, int]] = []
+    for index, row in enumerate(rows):
+        role = _candidate_role_for_clip_row(row, production_policy_by_shot)
+        if role and role != previous_role:
+            candidates.append((_risk_rank_for_clip_row(row, production_policy_by_shot), index))
+    if not candidates:
+        return None
+    return sorted(candidates)[0][1]
+
+
+
+def _candidate_role_for_clip_row(row: dict, production_policy_by_shot: dict[str, dict]) -> str:
+    shot_id = str(row.get("shot_id", "")).strip()
+    policy = production_policy_by_shot.get(shot_id) if isinstance(production_policy_by_shot, dict) else None
+    if not isinstance(policy, dict):
+        return ""
+    return str(policy.get("candidate_role", "")).strip()
+
+
+
+def _risk_rank_for_clip_row(row: dict, production_policy_by_shot: dict[str, dict]) -> int:
+    shot_id = str(row.get("shot_id", "")).strip()
+    policy = production_policy_by_shot.get(shot_id) if isinstance(production_policy_by_shot, dict) else None
+    risk = str(policy.get("ia2v_risk_class", "green")).strip() if isinstance(policy, dict) else "green"
+    return {"green": 0, "yellow": 1, "red": 2}.get(risk, 0)
+
+
+
 def _edit_intent_by_shot(payload: dict) -> dict[str, dict]:
     render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
     if not isinstance(render_plan, list):
@@ -417,6 +513,32 @@ def _render_planning_by_shot(payload: dict) -> dict[str, dict]:
 
 
 
+def _production_policy_by_shot(payload: dict) -> dict[str, dict]:
+    render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
+    render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
+    return _production_policy_by_render_rows(render_rows)
+
+
+def _production_policy_by_render_rows(render_rows: list[dict]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for row in render_rows:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        if not shot_id:
+            continue
+        policy = row.get("production_policy") if isinstance(row.get("production_policy"), dict) else {}
+        if not policy:
+            policy = {
+                key: row.get(key)
+                for key in ("candidate_role", "ia2v_risk_class", "anchor_reference_arm", "recommended_duration_sec")
+                if row.get(key) not in (None, "", {})
+            }
+        if policy:
+            out[shot_id] = dict(policy)
+    return out
+
+
 def _clip_segment_value_by_shot(clip_segments: list[dict], key: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for row in clip_segments if isinstance(clip_segments, list) else []:
@@ -448,8 +570,9 @@ def _clip_segment_float_by_shot(clip_segments: list[dict], key: str) -> dict[str
 def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> dict:
     clip_results = payload.get("clip_results") if isinstance(payload, dict) else None
     render_plan = payload.get("render_plan") if isinstance(payload, dict) else None
-    clip_rows = [dict(row) for row in clip_segments if isinstance(row, dict)] if isinstance(clip_segments, list) else _ordered_clip_rows(payload)
     render_rows = [row for row in render_plan if isinstance(row, dict)] if isinstance(render_plan, list) else []
+    production_policy_by_shot = _production_policy_by_render_rows(render_rows)
+    clip_rows = [dict(row) for row in clip_segments if isinstance(row, dict)] if isinstance(clip_segments, list) else _policy_interleaved_clip_rows(_ordered_clip_rows(payload), production_policy_by_shot)
     edit_intent_by_shot = {
         str(row.get("shot_id", "")).strip(): dict(row.get("edit_intent", {}))
         for row in render_rows
@@ -486,6 +609,9 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
         trimmed_coverage_sec = _safe_float(row.get("trimmed_coverage_sec"), coverage_sec)
         snap_unit = str(row.get("snap_unit", "")).strip() or "free"
         cadence_profile = str(row.get("cadence_profile", "")).strip() or _cadence_profile(edit_intent)
+        candidate_role = str(row.get("candidate_role", "")).strip()
+        ia2v_risk_class = str(row.get("ia2v_risk_class", "")).strip()
+        anchor_reference_arm = str(row.get("anchor_reference_arm", "")).strip()
         existing = section_edit_map.get(section_id)
         if existing:
             existing["selected_clip_ids"].append(shot_id)
@@ -499,6 +625,9 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
             existing["trim_end_sec"] = None
             existing["snap_unit"] = _combine_snap_units(str(existing.get("snap_unit", "free")), snap_unit)
             existing["cadence_profile"] = _combine_cadence_profiles(str(existing.get("cadence_profile", "support_hold")), cadence_profile)
+            _append_unique(existing.setdefault("candidate_roles", []), candidate_role)
+            _append_unique(existing.setdefault("anchor_reference_arms", []), anchor_reference_arm)
+            existing["ia2v_risk_class"] = _combine_risk_classes(str(existing.get("ia2v_risk_class", "green")), ia2v_risk_class)
         else:
             existing = {
                 "section_id": section_id,
@@ -513,6 +642,9 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
                 "trim_end_sec": trim_end_sec,
                 "snap_unit": snap_unit,
                 "cadence_profile": cadence_profile,
+                "candidate_roles": [candidate_role] if candidate_role else [],
+                "anchor_reference_arms": [anchor_reference_arm] if anchor_reference_arm else [],
+                "ia2v_risk_class": ia2v_risk_class or "green",
             }
             section_edits.append(existing)
             section_edit_map[section_id] = existing
@@ -525,6 +657,9 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
                 "trim_end_sec": trim_end_sec,
                 "snap_unit": snap_unit,
                 "cadence_profile": cadence_profile,
+                "candidate_roles": [candidate_role] if candidate_role else [],
+                "anchor_reference_arms": [anchor_reference_arm] if anchor_reference_arm else [],
+                "ia2v_risk_class": ia2v_risk_class or "green",
             }
         transition_map[section_id] = {
             "transition_in": str(existing.get("transition_in", "hard_cut")),
@@ -539,6 +674,9 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
             "trim_end_sec": existing.get("trim_end_sec"),
             "snap_unit": str(existing.get("snap_unit", "free")),
             "cadence_profile": str(existing.get("cadence_profile", "support_hold")),
+            "candidate_roles": list(existing.get("candidate_roles", [])) if isinstance(existing.get("candidate_roles"), list) else [],
+            "anchor_reference_arms": list(existing.get("anchor_reference_arms", [])) if isinstance(existing.get("anchor_reference_arms"), list) else [],
+            "ia2v_risk_class": str(existing.get("ia2v_risk_class", "green")),
         }
         used_ids.append(shot_id)
     rejected_clip_map = {
@@ -553,6 +691,19 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
         "timing_map": timing_map,
         "rejected_clip_map": rejected_clip_map,
     }
+
+
+def _append_unique(values: list, value: object) -> None:
+    normalized = str(value or "").strip()
+    if normalized and normalized not in values:
+        values.append(normalized)
+
+
+def _combine_risk_classes(left: str, right: str) -> str:
+    rank = {"green": 0, "yellow": 1, "red": 2}
+    normalized_left = str(left or "green").strip() or "green"
+    normalized_right = str(right or "green").strip() or "green"
+    return normalized_left if rank.get(normalized_left, 0) >= rank.get(normalized_right, 0) else normalized_right
 
 
 def _higher_priority_weight(left: str, right: str) -> str:
@@ -592,6 +743,7 @@ def apply_assembly_revision(
     target_shots: list[str] | None = None,
     target_material_ids: list[str] | None = None,
     target_section_ids: list[str] | None = None,
+    coverage_extension_sec: float = 0.0,
 ) -> tuple[dict, dict[str, dict[str, object]]]:
     plan = copy.deepcopy(assembly_plan) if isinstance(assembly_plan, dict) else {}
     section_edit_map = plan.get("section_edit_map") if isinstance(plan.get("section_edit_map"), dict) else {}
@@ -602,6 +754,22 @@ def apply_assembly_revision(
     targeted_materials = {str(value).strip() for value in target_material_ids or [] if str(value).strip()}
     targeted_sections = {str(value).strip() for value in target_section_ids or [] if str(value).strip()}
     revisions_by_shot: dict[str, dict[str, object]] = {}
+    targeted_section_ids = [
+        str(section_id).strip()
+        for section_id, section_row in section_edit_map.items()
+        if isinstance(section_row, dict)
+        and _section_is_targeted(
+            str(section_id).strip(),
+            [str(value).strip() for value in section_row.get("selected_clip_ids", []) if str(value).strip()] if isinstance(section_row.get("selected_clip_ids"), list) else [],
+            [str(value).strip() for value in section_row.get("selected_material_ids", []) if str(value).strip()] if isinstance(section_row.get("selected_material_ids"), list) else [],
+            targeted_sections,
+            targeted_shots,
+            targeted_materials,
+        )
+    ]
+    coverage_extension_per_section = coverage_extension_sec
+    if action == "revise_assembly_coverage_before_sync_pad" and coverage_extension_sec > 0.0 and len(targeted_section_ids) > 1:
+        coverage_extension_per_section = coverage_extension_sec / len(targeted_section_ids)
 
     for section_id, section_row in section_edit_map.items():
         if not isinstance(section_row, dict):
@@ -617,6 +785,8 @@ def apply_assembly_revision(
             _apply_weight_revision(section_row, timing_row)
         elif action == "revise_transition_selection":
             _apply_transition_revision(section_row, timing_row, transition_row)
+        elif action == "revise_assembly_coverage_before_sync_pad":
+            _apply_coverage_revision(section_row, timing_row, transition_row, coverage_extension_sec=coverage_extension_per_section)
         transition_map[normalized_section_id] = {
             "transition_in": str(section_row.get("transition_in", transition_row.get("transition_in", "cut_in"))).strip() or "cut_in",
             "transition_out": str(section_row.get("transition_out", transition_row.get("transition_out", "cut_out"))).strip() or "cut_out",
@@ -693,3 +863,20 @@ def _apply_transition_revision(section_row: dict, timing_row: dict, transition_r
     timing_row["snap_unit"] = "beat"
     transition_row["transition_in"] = "glide_in"
     transition_row["transition_out"] = "handoff_out"
+
+
+
+def _apply_coverage_revision(section_row: dict, timing_row: dict, transition_row: dict, *, coverage_extension_sec: float = 0.0) -> None:
+    section_row["transition_in"] = "coverage_handoff_in"
+    section_row["transition_out"] = "coverage_handoff_out"
+    section_row["cadence_profile"] = "coverage_extend"
+    section_row["snap_unit"] = "beat"
+    base_trimmed = _safe_float(timing_row.get("trimmed_coverage_sec", section_row.get("trimmed_coverage_sec", 0.0)), 0.0)
+    extension = max(0.0, float(coverage_extension_sec or 0.0))
+    revised_trimmed = round(max(base_trimmed * 1.25, base_trimmed + extension), 3) if base_trimmed > 0.0 else round(extension, 3)
+    section_row["trimmed_coverage_sec"] = revised_trimmed
+    timing_row["trimmed_coverage_sec"] = revised_trimmed
+    timing_row["cadence_profile"] = "coverage_extend"
+    timing_row["snap_unit"] = "beat"
+    transition_row["transition_in"] = "coverage_handoff_in"
+    transition_row["transition_out"] = "coverage_handoff_out"

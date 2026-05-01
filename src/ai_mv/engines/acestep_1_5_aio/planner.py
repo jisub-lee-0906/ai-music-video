@@ -445,9 +445,25 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
             if label in budgets and line_count != 0:
                 raise RuntimeError(f"line_count must stay instrumental for {label}: {line_count} > 0")
             continue
+        min_lines = _outline_section_role_minimum(label)
+        if min_lines > 0 and line_count < min_lines:
+            raise RuntimeError(f"line_count underdelivers section role for {label}: {line_count} < {min_lines}")
         if line_count > max_lines:
             raise RuntimeError(f"line_count too dense for {label}: {line_count} > {max_lines}")
     _validate_short_form_songform(plan, outline)
+
+
+def _outline_section_role_minimum(label: str) -> int:
+    return {
+        "Verse 1": 4,
+        "Verse 2": 4,
+        "Pre-Chorus": 3,
+        "Pre-Chorus 2": 3,
+        "Chorus": 4,
+        "Chorus 2": 4,
+        "Final Chorus": 4,
+        "Bridge": 2,
+    }.get(str(label).strip(), 0)
 
 
 def _validate_short_form_songform(plan: dict, outline: dict) -> None:
