@@ -196,6 +196,16 @@ def _pose_anchor_bank(protagonist_anchor: str, wardrobe_anchor: str) -> list[dic
             "intended_shot_functions": ["payoff", "final_payoff", "resolve"],
             "pose_instruction": "a resolved front-facing medium hero pose with calm confidence and readable face identity",
         },
+        {
+            "anchor_id": "ANCHOR_POSE_MICROPHONE_PERFORMANCE",
+            "pose_family": "microphone_performance",
+            "framing": "medium",
+            "camera_angle": "front_three_quarter",
+            "subject_position": "center",
+            "intended_shot_functions": ["performance", "microphone", "singing", "chorus"],
+            "pose_instruction": "a medium performance pose holding a simple handheld microphone near the mouth, singing posture, shoulders and hands visible, face readable",
+            "allowed_props": ["handheld_microphone"],
+        },
     ]
     return [_pose_anchor_spec(spec, protagonist_anchor, wardrobe_anchor) for spec in specs]
 
@@ -216,19 +226,27 @@ def _pose_anchor_spec(spec: dict, protagonist_anchor: str, wardrobe_anchor: str)
         "camera_angle": spec["camera_angle"],
         "subject_position": spec["subject_position"],
         "intended_shot_functions": list(spec["intended_shot_functions"]),
+        "allowed_props": list(spec.get("allowed_props", [])) if isinstance(spec.get("allowed_props"), list) else [],
         "avoid_for": ["unrelated_character", "new_wardrobe", "multi_person_scene"],
         "prompt_style": "white_background_pose_variant_from_upper_body_identity",
-        "prompt_text": _pose_anchor_prompt(protagonist_anchor, wardrobe_anchor, str(spec["pose_instruction"])),
+        "prompt_text": _pose_anchor_prompt(
+            protagonist_anchor,
+            wardrobe_anchor,
+            str(spec["pose_instruction"]),
+            allow_microphone="handheld_microphone" in spec.get("allowed_props", []),
+        ),
     }
 
 
-def _pose_anchor_prompt(protagonist_anchor: str, wardrobe_anchor: str, pose_instruction: str) -> str:
+def _pose_anchor_prompt(protagonist_anchor: str, wardrobe_anchor: str, pose_instruction: str, *, allow_microphone: bool = False) -> str:
+    forbidden_props = "no umbrella, no chair" if allow_microphone else "no umbrella, no microphone, no chair"
+    prop_contract = " Allow exactly one simple handheld microphone as the only prop." if allow_microphone else ""
     return (
         "Using the upper-body identity reference as the only face and wardrobe source, create a white-background pose reference variant. "
         f"Depict {protagonist_anchor} with the same face identity, same short black bob haircut with straight bangs, and {wardrobe_anchor}. "
-        f"Pose and framing: {pose_instruction}. "
+        f"Pose and framing: {pose_instruction}.{prop_contract} "
         "Keep a pure white seamless background and soft even studio lighting. This is a character pose card, not a story scene. "
-        "No street, no room, no city, no scenery, no umbrella, no microphone, no chair, no text, no logo, no second person, "
+        f"No street, no room, no city, no scenery, {forbidden_props}, no text, no logo, no second person, "
         "no duplicate body, no collage, no split screen, no frame insert, no decorative background, no wardrobe change."
     )
 

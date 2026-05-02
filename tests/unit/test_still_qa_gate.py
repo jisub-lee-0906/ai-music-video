@@ -145,6 +145,34 @@ def test_render_clips_allows_still_that_passes_qa_gate(monkeypatch):
     assert out.payload["clip_results"][0]["status"] == "done"
 
 
+def test_render_clips_allows_microphone_action_with_microphone_pose_anchor(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-still-qa-microphone-match",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload=_base_clip_payload(
+            {
+                "prompt_text": "same young woman singing into a handheld microphone, one uninterrupted composition",
+                "selected_pose_anchor_id": "ANCHOR_POSE_MICROPHONE_PERFORMANCE",
+                "pose_anchor_selection": {"pose_family": "microphone_performance", "intended_shot_functions": ["performance", "microphone"]},
+            },
+            render_item={"selected_pose_anchor_id": "ANCHOR_POSE_MICROPHONE_PERFORMANCE"},
+            shot={"visual_mode": "chorus_microphone_performance", "story_function": "performance"},
+        ),
+    )
+
+    out = run_render_clips(stage_input)
+
+    assert len(calls) == 1
+    assert out.payload["clip_results"][0]["status"] == "done"
+
+
 def test_render_stills_publishes_still_qa_failure_metadata_for_clone_risk_prompt(monkeypatch):
     def _fake_run_flux2_still(_config, item):
         return f"D:/renders/{item['shot_id']}.png"

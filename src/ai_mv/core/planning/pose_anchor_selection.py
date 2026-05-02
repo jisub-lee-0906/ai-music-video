@@ -46,12 +46,21 @@ POSE_ANCHOR_CATALOG: dict[str, dict] = {
         "required_subject_position": "center",
         "reason": "payoff shots need a resolved front-facing hero anchor distinct from generic close-up",
     },
+    "ANCHOR_POSE_MICROPHONE_PERFORMANCE": {
+        "pose_family": "microphone_performance",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "reason": "microphone performance shots need a prop/action-matched pose card before IA2V",
+    },
 }
 
 
 def build_pose_anchor_selection(shot: dict) -> dict:
     text = _shot_text(shot)
     story_function = str(shot.get("story_function", "")).strip().lower()
+    if _has_microphone_action(text) or story_function == "performance" and "microphone" in text:
+        return _selection("ANCHOR_POSE_MICROPHONE_PERFORMANCE")
     if story_function == "payoff" or _has_any_word(text, ("payoff", "final", "resolve", "resolved")):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT")
     if _has_any_word(text, ("walk", "walking", "side", "movement")) or "forward motion" in text or story_function in {"search", "release"} and "close" not in text:
@@ -82,6 +91,10 @@ def _selection(anchor_id: str) -> dict:
 
 def _has_any_word(text: str, words: tuple[str, ...]) -> bool:
     return any(re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", text) for word in words)
+
+
+def _has_microphone_action(text: str) -> bool:
+    return any(marker in text for marker in ("microphone", "mic stand", "handheld mic", "singing into a mic"))
 
 
 def _shot_text(shot: dict) -> str:

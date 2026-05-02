@@ -25,6 +25,12 @@ def test_anchor_package_builds_white_background_pose_bank_from_single_tti_identi
     assert "ANCHOR_POSE_FULL_BODY_STANDING" in pose_ids
     assert "ANCHOR_POSE_WALKING_SIDE" in pose_ids
     assert "ANCHOR_POSE_PROFILE_EMOTIONAL" in pose_ids
+    assert "ANCHOR_POSE_MICROPHONE_PERFORMANCE" in pose_ids
+    microphone_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_MICROPHONE_PERFORMANCE")
+    assert microphone_anchor["pose_family"] == "microphone_performance"
+    assert "performance" in microphone_anchor["intended_shot_functions"]
+    assert "microphone" in microphone_anchor["prompt_text"].lower()
+    assert "no microphone" not in microphone_anchor["prompt_text"].lower()
 
     for anchor in pose_bank:
         assert anchor["anchor_role"] == "pose_variant"
@@ -90,13 +96,29 @@ def test_render_item_selects_distinct_pose_anchors_from_story_and_shot_needs():
             "story_function": "payoff",
         },
     )
+    microphone = build_render_item(
+        {},
+        concept,
+        "citypop",
+        style_bible,
+        {
+            **base,
+            "shot_id": "S004",
+            "shot_role": "chorus microphone performance",
+            "visual_mode": "microphone_performance_medium",
+            "story_function": "performance",
+            "story_contract": {"protagonist_action": "singing into a handheld microphone"},
+        },
+    )
 
     assert hero["selected_pose_anchor_id"] == "ANCHOR_POSE_HERO_CLOSEUP"
     assert hero["pose_anchor_selection"]["required_framing"] in {"close", "medium_close"}
     assert walking["selected_pose_anchor_id"] == "ANCHOR_POSE_WALKING_SIDE"
     assert walking["pose_anchor_selection"]["required_camera_angle"] == "side"
     assert payoff["selected_pose_anchor_id"] == "ANCHOR_POSE_FINAL_PAYOFF_FRONT"
-    assert len({hero["selected_pose_anchor_id"], walking["selected_pose_anchor_id"], payoff["selected_pose_anchor_id"]}) == 3
+    assert microphone["selected_pose_anchor_id"] == "ANCHOR_POSE_MICROPHONE_PERFORMANCE"
+    assert microphone["pose_anchor_selection"]["required_pose_family"] == "microphone_performance"
+    assert len({hero["selected_pose_anchor_id"], walking["selected_pose_anchor_id"], payoff["selected_pose_anchor_id"], microphone["selected_pose_anchor_id"]}) == 4
 
 
 def test_pose_anchor_selection_does_not_treat_unresolved_text_as_final_payoff():
