@@ -1,21 +1,31 @@
 # ai-mv
 
-`ai-mv` is a Python 3.11 CLI for generating complete music videos from a single `concept_text` input using local ComfyUI workflows, music generation, and automated review.
+`ai-mv` is a Python 3.11 CLI for concept-text-first music-video generation using local ComfyUI workflows, ACE-Step music generation, Flux still generation, IA2V video generation, assembly, and review artifacts.
 
-## Product direction
+## Current product canon
 
-The project is evolving toward:
-- multi-style music video generation, not a citypop-only tool
-- a concept-text-first UX
-- final-MV quality as the main success metric
-- strong ComfyUI/workflow orchestration
-- review and rerender loops that improve weak outputs
+The current product target is simple on the outside and strict inside:
 
-The external UX is intentionally simple even though the internal planning and workflow routing are more complex.
+1. User enters one `concept_text`.
+2. The pipeline generates or maps music and timing sections.
+3. Planning builds a story contract, shot plan, render plan, and production policy.
+4. Flux TTI upper-body identity anchor is generated once on a clean white background.
+5. Flux reference pose/action anchor bank is generated from that identity anchor.
+6. Shot keyframes use the selected pose/action anchor as the primary reference.
+7. IA2V-only video generation turns approved stills into clips.
+8. Assembly publishes transition metadata, raw coverage status, and bridge-shot repair needs.
+9. Review/rerender artifacts identify drift, coverage, visual-quality, and assembly-quality risks.
+
+Important boundaries:
+- Flux TTI is for the first upper-body identity anchor, not for every character pose.
+- Flux reference is for full-body, pose/action anchors, and shot keyframes.
+- IA2V is the only current video-generation path.
+- World/environment anchors are continuity support only; they must not replace the identity anchor path.
+- A generated final file is not treated as publish-ready unless review evidence supports it.
 
 ## Current pipeline
 
-The current pipeline runs these high-level stages:
+The runtime stage order is:
 
 1. `audio`
 2. `plan`
@@ -23,48 +33,72 @@ The current pipeline runs these high-level stages:
 4. `clips`
 5. `assemble`
 6. `review`
+7. conditional `rerender` / `escalation`
 
 In practice this means:
 - derive music direction from `concept_text`
 - generate music and timing structure
-- build a visual plan
-- render stills and clips through ComfyUI workflows
-- assemble a final MV
-- review the output and identify rerender targets
+- build section, story, shot, material, and render plans
+- render identity/pose anchors and shot stills through Flux workflows
+- block risky stills before IA2V when still QA detects clone or second-person ambiguity
+- render IA2V clips from stills and music timing
+- assemble a final MV candidate
+- publish review and repair evidence before claiming quality
+
+## Implementation status
+
+Implemented:
+- concept-text CLI entrypoint
+- ACE-Step audio stage
+- story/section/shot planning
+- Flux identity anchor and Flux reference pose/action anchor routing
+- selected pose anchor reference routing for keyframes
+- IA2V clip generation from stills
+- still QA gate before IA2V
+- assembly plan with `transition_pairs`
+- assembly plan with `coverage_summary`
+- artifact publication through `manifest.json` and `run_summary.json`
+- validation/review packet utilities
+
+Still in progress before a reliable one-prompt 3-minute MV product:
+- bridge-shot planning from `transition_pairs.needs_bridge`
+- automatic raw-coverage repair before sync padding
+- IA2V handle generation and best trim-window selection
+- frame-level transition scoring between adjacent clips
+- stronger visual identity/clone detection on real artifacts
+- full-run rerender budgeting and quality gates
 
 ## Requirements
 
 - Python `>=3.11`
 - local ComfyUI reachable from this environment
-- Codex CLI installed and logged in
 - `ffmpeg` and `ffprobe` on `PATH`
 - workflow JSON templates in `workflows/`
+- ACE-Step, Flux, and IA2V ComfyUI dependencies installed in the shared ComfyUI backend
 
 Default integration values live in `src/ai_mv/core/orchestration/config_defaults.py`.
 
 ## Install
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e .[dev]
 ```
 
-## Commands
+## Main commands
 
-```powershell
+```bash
 ai-mv doctor
 ai-mv preflight --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv start --concept-text "dreamy synthwave night drive with lonely neon romance"
 ai-mv status --run-id 20260406-215500
-# read final_video from artifacts/latest_success/manifest.json, then pass that path here
-ai-mv extract-frames --video <final_video_path_from_manifest> --output-dir .analysis/final-review --kind final --sample-count 8
-ai-mv quality-findings-template --shot-id S001 --shot-id S002 --output .analysis/review-findings.json
-ai-mv review-packet --video <final_video_path_from_manifest> --output-dir .analysis/final-review-packet --kind final --sample-count 8 --shot-id S001 --shot-id S002
-# packet now includes review-packet.json, review-findings.json, review-notes.md, and contact-sheet.json
 ai-mv validate-latest --output-dir .analysis/latest-validation --sample-count 8
-# validate-latest reads artifacts/latest_success/manifest.json, extracts final frames, builds a review packet, and writes validation-summary.json with run_summary review severity such as `review_severity_drift`, `review_severity_coverage`, `review_severity_visual_quality`, and `review_severity_assembly_quality`, plus `review_signal_buckets` and `review_signal_bucket_failed_checks` for compact failed-check triage
 ```
+
+`validate-latest` reads `artifacts/latest_success/manifest.json`, extracts final frames, builds review artifacts, and writes `validation-summary.json` with review severity fields including `review_severity_drift`, `review_severity_coverage`, `review_severity_visual_quality`, and `review_severity_assembly_quality`, plus `review_signal_buckets` and `review_signal_bucket_failed_checks` for compact failed-check triage.
+
+Additional review/audio commands may exist for internal debugging, but the user-facing path should stay centered on `start`, `status`, and `validate-latest`.
 
 ## Artifact contract
 
@@ -101,20 +135,16 @@ Important:
 - instead, read `final_video` from `artifacts/latest/manifest.json` or `artifacts/latest_success/manifest.json`
 - `manifest.json` also records canonical sections such as `input`, `song`, `plan`, `stills`, `clips`, `assembly`, `review`, and `artifacts`
 
-## WSL Usage
+## WSL usage
 
-If you run the repo from WSL while ComfyUI stays on Windows, the core CLI now auto-detects the WSL gateway, default mounted ComfyUI input/output directories, and a local Codex binary when those integrations are still blank or Windows-oriented in config. The wrapper scripts remain the easiest smoke-run path because they also enable the short smoke envelope, but they are now convenience wrappers rather than the only safe way to launch the CLI.
+When WSL drives a Windows-hosted ComfyUI backend, use the shared backend under:
 
-### Recommended WSL entrypoints
+```text
+C:\Users\Desktop\Documents\ComfyUI\
+/mnt/c/Users/Desktop/Documents/ComfyUI/
+```
 
-For the shortest first-run path, keep using:
-- concept-text driven run only
-- target music duration: 15–20 seconds
-- ia2v-centered canonical path enabled
-- `planning.enable_flf2v=false` unless explicitly testing bridge transitions
-- still generation + ia2v clip generation on the canonical four-workflow stack
-- `./scripts/preflight-wsl.sh` and `./scripts/start-wsl.sh` should be treated as wrappers around the same canonical ia2v-centered runtime
-- add `--full-run` only when you intentionally want the longer path
+Recommended wrapper commands:
 
 ```bash
 ./scripts/doctor-wsl.sh
@@ -123,19 +153,15 @@ For the shortest first-run path, keep using:
 ```
 
 Notes:
-- the wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
-- they expect ComfyUI input/output under `/mnt/c/Users/Desktop/Documents/ComfyUI/`
+- wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
+- wrappers expect ComfyUI input/output under `/mnt/c/Users/Desktop/Documents/ComfyUI/`
 - `start-wsl.sh` runs the real generation pipeline and will create outputs / consume time
-- the default runtime is now shared-Comfy-safe: `ai-mv start` will not interrupt an in-flight Krita job or clear the shared ComfyUI queue unless you explicitly opt in
-- if the ComfyUI queue is already busy (for example because Krita is rendering), `ai-mv start` fails fast instead of killing the other job; rerun after the queue is empty
-- the WSL wrappers now guard against duplicate Windows ComfyUI backends on ports such as `8000` and `8001`; run `./scripts/check-shared-comfy-wsl.sh` if the frontend appears to show a different queue/history than ai-music-video
-- for Krita + Blender + ai-music-video sharing, keep one canonical backend on `8000`; see `docs/shared-comfyui.md`
-- if you intentionally want ai-music-video to take exclusive control of ComfyUI for a run, set `AI_MV_INTERRUPT_COMFY_BEFORE_START=1` and `AI_MV_CLEAR_COMFY_QUEUE_BEFORE_START=1`
-- when Windows ComfyUI is bound to `0.0.0.0:8000` for WSL access and you still want ComfyUI-Manager installs for Krita, keep Manager `network_mode=personal_cloud` rather than `public`
-- do not treat `ia2v`, `flf2v`, perfect identity consistency, or precise sync as first-run pass criteria
+- the default runtime is shared-Comfy-safe and should not interrupt Krita/Blender jobs unless explicit runtime flags opt in
+- for Krita + Blender + ai-music-video sharing, keep one canonical backend on port `8000`; see `docs/shared-comfyui.md`
 
 ## Tests
 
-```powershell
-pytest
+```bash
+source .venv/bin/activate
+pytest -q
 ```

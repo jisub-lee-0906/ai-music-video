@@ -4,6 +4,27 @@ from ai_mv.core.artifacts.manifest import write_manifest
 from ai_mv.core.artifacts.schema import artifact_schema_version
 
 
+def test_readme_declares_current_flux_anchor_ia2v_canon_without_removed_video_workflows():
+    readme = Path("README.md").read_text(encoding="utf-8")
+    lowered = readme.lower()
+
+    assert "flux tti upper-body identity anchor" in lowered
+    assert "flux reference pose/action anchor bank" in lowered
+    assert "ia2v-only video generation" in lowered
+    assert "bridge-shot repair" in lowered
+    assert "flf2v" not in lowered
+
+
+def test_docs_guide_only_points_to_current_truth_surfaces():
+    docs_guide = Path("docs/README.md").read_text(encoding="utf-8")
+
+    assert "Current source of truth" in docs_guide
+    assert "docs/plans/" not in docs_guide
+    assert "docs/analysis/" not in docs_guide
+    assert "docs/archive/" not in docs_guide
+    assert "historical docs" not in docs_guide.lower()
+
+
 
 def test_readme_artifact_contract_matches_current_public_manifest_schema(monkeypatch):
     readme = Path("README.md").read_text(encoding="utf-8")
