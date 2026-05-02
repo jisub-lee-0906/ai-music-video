@@ -759,6 +759,48 @@ def test_assembly_plan_marks_insufficient_raw_coverage_before_sync_padding():
     assert summary["required_min_raw_coverage_sec"] == 17.1
     assert summary["coverage_deficit_sec"] == 8.1
     assert summary["recommended_action"] == "revise_assembly_coverage_before_sync_pad"
+    repair_plan = plan["coverage_repair_plan"]
+    assert repair_plan["status"] == "repair_required"
+    assert repair_plan["total_required_extension_sec"] == 8.1
+    assert repair_plan["recommended_stage_sequence"] == ["stills", "clips", "assemble"]
+    assert repair_plan["repair_shots"] == [
+        {
+            "shot_id": "COV_REPAIR_001",
+            "section_id": "SEC_001",
+            "repair_type": "coverage_bridge_shot",
+            "target_duration_sec": 3.0,
+            "placement": "after_section",
+            "after_shot_id": "S001",
+            "before_shot_id": "S002",
+            "reason_codes": ["raw_coverage_deficit", "transition_bridge_candidate"],
+            "render_mode": "ia2v",
+            "source": "assembly_coverage_repair",
+        },
+        {
+            "shot_id": "COV_REPAIR_002",
+            "section_id": "SEC_002",
+            "repair_type": "coverage_extension_shot",
+            "target_duration_sec": 3.0,
+            "placement": "after_section",
+            "after_shot_id": "S002",
+            "before_shot_id": "",
+            "reason_codes": ["raw_coverage_deficit"],
+            "render_mode": "ia2v",
+            "source": "assembly_coverage_repair",
+        },
+        {
+            "shot_id": "COV_REPAIR_003",
+            "section_id": "SEC_002",
+            "repair_type": "coverage_extension_shot",
+            "target_duration_sec": 2.1,
+            "placement": "after_section",
+            "after_shot_id": "S002",
+            "before_shot_id": "",
+            "reason_codes": ["raw_coverage_deficit"],
+            "render_mode": "ia2v",
+            "source": "assembly_coverage_repair",
+        },
+    ]
 
 
 def test_assemble_mv_blocks_mux_when_raw_coverage_is_insufficient_before_sync_padding(monkeypatch, tmp_path):

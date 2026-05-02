@@ -692,15 +692,114 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
         for row in clip_rows
         if str(row.get("shot_id", "")).strip() and str(row.get("shot_id", "")).strip() not in used_ids
     }
+    transition_pairs = _transition_pairs_for_clip_sequence(clip_rows)
+    coverage_summary = _assembly_coverage_summary(payload, section_edits)
     return {
         "section_edits": section_edits,
         "section_edit_map": section_edit_map,
         "transition_map": transition_map,
         "timing_map": timing_map,
-        "transition_pairs": _transition_pairs_for_clip_sequence(clip_rows),
-        "coverage_summary": _assembly_coverage_summary(payload, section_edits),
+        "transition_pairs": transition_pairs,
+        "coverage_summary": coverage_summary,
+        "coverage_repair_plan": _coverage_repair_plan(coverage_summary, section_edits, transition_pairs),
         "rejected_clip_map": rejected_clip_map,
     }
+
+
+def _coverage_repair_plan(coverage_summary: dict, section_edits: list[dict], transition_pairs: list[dict]) -> dict:
+    if str(coverage_summary.get("status", "")).strip() != "insufficient_raw_coverage":
+        return {
+            "status": "not_required",
+            "total_required_extension_sec": 0.0,
+            "recommended_stage_sequence": [],
+            "repair_shots": [],
+        }
+    deficit = round(max(0.0, _safe_float(coverage_summary.get("coverage_deficit_sec"), 0.0)), 3)
+    if deficit <= 0.0:
+        return {
+            "status": "not_required",
+            "total_required_extension_sec": 0.0,
+            "recommended_stage_sequence": [],
+            "repair_shots": [],
+        }
+    return {
+        "status": "repair_required",
+        "total_required_extension_sec": deficit,
+        "recommended_stage_sequence": ["stills", "clips", "assemble"],
+        "repair_shots": _coverage_repair_shots(deficit, section_edits, transition_pairs),
+    }
+
+
+def _coverage_repair_shots(deficit_sec: float, section_edits: list[dict], transition_pairs: list[dict]) -> list[dict]:
+    shots: list[dict] = []
+    remaining = round(max(0.0, float(deficit_sec or 0.0)), 3)
+    if remaining <= 0.0:
+        return shots
+    ordered_sections = [row for row in section_edits if isinstance(row, dict)]
+    first_pair = next((pair for pair in transition_pairs if isinstance(pair, dict)), {})
+    if first_pair:
+        duration = min(3.0, remaining)
+        shots.append(
+            _coverage_repair_shot(
+                index=1,
+                section_id=str(first_pair.get("from_section_id", "")).strip() or _section_id_at(ordered_sections, 0),
+                repair_type="coverage_bridge_shot",
+                target_duration_sec=duration,
+                after_shot_id=str(first_pair.get("from_shot_id", "")).strip(),
+                before_shot_id=str(first_pair.get("to_shot_id", "")).strip(),
+                reason_codes=["raw_coverage_deficit", "transition_bridge_candidate"],
+            )
+        )
+        remaining = round(remaining - duration, 3)
+    while remaining > 0.001:
+        duration = min(3.0, remaining)
+        section = ordered_sections[min(len(shots), max(0, len(ordered_sections) - 1))] if ordered_sections else {}
+        selected_clip_ids = section.get("selected_clip_ids") if isinstance(section.get("selected_clip_ids"), list) else []
+        after_shot_id = str(selected_clip_ids[-1]).strip() if selected_clip_ids else ""
+        shots.append(
+            _coverage_repair_shot(
+                index=len(shots) + 1,
+                section_id=str(section.get("section_id", "")).strip(),
+                repair_type="coverage_extension_shot",
+                target_duration_sec=duration,
+                after_shot_id=after_shot_id,
+                before_shot_id="",
+                reason_codes=["raw_coverage_deficit"],
+            )
+        )
+        remaining = round(remaining - duration, 3)
+    return shots
+
+
+def _coverage_repair_shot(
+    *,
+    index: int,
+    section_id: str,
+    repair_type: str,
+    target_duration_sec: float,
+    after_shot_id: str,
+    before_shot_id: str,
+    reason_codes: list[str],
+) -> dict:
+    return {
+        "shot_id": f"COV_REPAIR_{index:03d}",
+        "section_id": section_id,
+        "repair_type": repair_type,
+        "target_duration_sec": round(float(target_duration_sec or 0.0), 3),
+        "placement": "after_section",
+        "after_shot_id": after_shot_id,
+        "before_shot_id": before_shot_id,
+        "reason_codes": reason_codes,
+        "render_mode": "ia2v",
+        "source": "assembly_coverage_repair",
+    }
+
+
+def _section_id_at(section_edits: list[dict], index: int) -> str:
+    if not section_edits:
+        return ""
+    row = section_edits[min(max(index, 0), len(section_edits) - 1)]
+    return str(row.get("section_id", "")).strip() if isinstance(row, dict) else ""
 
 
 def _transition_pairs_for_clip_sequence(clip_rows: list[dict]) -> list[dict]:
