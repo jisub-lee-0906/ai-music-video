@@ -2944,6 +2944,99 @@ def test_prepare_rerender_returns_empty_stage_inputs_when_review_has_no_targets(
     }
 
 
+def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_inputs():
+    out = run_prepare_rerender(
+        StageInput(
+            run_id="run-prepare-coverage-repair",
+            config={},
+            payload={
+                "music_file": "song.wav",
+                "style_bible": {"visual_style": "story-specific live action"},
+                "assembly_plan": {
+                    "coverage_repair_plan": {
+                        "status": "repair_required",
+                        "repair_shots": [
+                            {
+                                "shot_id": "COV_REPAIR_001",
+                                "section_id": "SEC_001",
+                                "repair_type": "coverage_bridge_shot",
+                                "target_duration_sec": 3.0,
+                                "after_shot_id": "S001",
+                                "before_shot_id": "S002",
+                                "reason_codes": ["raw_coverage_deficit", "transition_bridge_candidate"],
+                                "render_mode": "ia2v",
+                                "source": "assembly_coverage_repair",
+                            }
+                        ],
+                    }
+                },
+            },
+        )
+    )
+
+    assert out.payload["rerender_target_ids"] == ["COV_REPAIR_001"]
+    assert out.payload["rerender_stage_sequence"] == ["stills", "clips"]
+    stills = out.payload["rerender_stage_inputs"]["stills"]
+    clips = out.payload["rerender_stage_inputs"]["clips"]
+    assert stills == {
+        "shot_plan": [
+            {
+                "shot_id": "COV_REPAIR_001",
+                "section_id": "SEC_001",
+                "material_id": "COV_REPAIR_MAT_001",
+                "render_mode": "ia2v",
+                "duration_sec": 3.0,
+                "source": "assembly_coverage_repair",
+                "after_shot_id": "S001",
+                "before_shot_id": "S002",
+            }
+        ],
+        "material_plan": [
+            {
+                "material_id": "COV_REPAIR_MAT_001",
+                "section_id": "SEC_001",
+                "source": "assembly_coverage_repair",
+                "repair_type": "coverage_bridge_shot",
+            }
+        ],
+        "style_bible": {"visual_style": "story-specific live action"},
+        "render_plan": [
+            {
+                "shot_id": "COV_REPAIR_001",
+                "section_id": "SEC_001",
+                "material_id": "COV_REPAIR_MAT_001",
+                "render_mode": "ia2v",
+                "source": "assembly_coverage_repair",
+                "repair_type": "coverage_bridge_shot",
+                "reference_mode": "selected_pose_anchor",
+                "target_clip_sec": 3.0,
+                "edit_intent": {
+                    "target_clip_sec": 3.0,
+                    "edit_priority": "high",
+                    "section_emphasis": "coverage_repair",
+                    "transition_in": "coverage_handoff_in",
+                    "transition_out": "coverage_handoff_out",
+                },
+                "prompt_seed": "coverage bridge shot between S001 and S002; preserve story continuity without introducing a second person",
+                "clip_prompt_seed": "coverage bridge motion between S001 and S002; clean single-subject motion, no clone, no duplicate body",
+                "coverage_repair": {
+                    "after_shot_id": "S001",
+                    "before_shot_id": "S002",
+                    "reason_codes": ["raw_coverage_deficit", "transition_bridge_candidate"],
+                },
+            }
+        ],
+        "still_results": [],
+    }
+    assert clips == {
+        "shot_plan": stills["shot_plan"],
+        "render_plan": stills["render_plan"],
+        "still_results": [],
+        "music_file": "song.wav",
+    }
+    validate_stage_input("stills", stills)
+
+
 def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
     out = run_prepare_rerender(
         StageInput(

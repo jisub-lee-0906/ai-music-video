@@ -38,6 +38,8 @@ def run_prepare_rerender(stage_input: StageInput) -> StageOutput:
         if isinstance(stage_input.payload.get("review_inputs"), dict):
             review_target["review_inputs"] = _merge_nested_context(review_target.get("review_inputs"), stage_input.payload.get("review_inputs"))
 
+    _merge_coverage_repair_stage_inputs(stage_input.payload, stage_inputs, target_ids)
+
     return StageOutput(
         "prepare_rerender",
         "done",
@@ -49,6 +51,105 @@ def run_prepare_rerender(stage_input: StageInput) -> StageOutput:
         [],
     )
 
+
+def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, dict[str, object]], target_ids: list[str]) -> None:
+    assembly_plan = payload.get("assembly_plan") if isinstance(payload.get("assembly_plan"), dict) else {}
+    repair_plan = assembly_plan.get("coverage_repair_plan") if isinstance(assembly_plan.get("coverage_repair_plan"), dict) else {}
+    if str(repair_plan.get("status", "")).strip() != "repair_required":
+        return
+    repair_shots = [row for row in repair_plan.get("repair_shots", []) if isinstance(row, dict)] if isinstance(repair_plan.get("repair_shots"), list) else []
+    if not repair_shots:
+        return
+    stills = stage_inputs.setdefault("stills", _empty_stage_payload("stills"))
+    clips = stage_inputs.setdefault("clips", _empty_stage_payload("clips"))
+    style_bible = payload.get("style_bible") if isinstance(payload.get("style_bible"), dict) else {}
+    if style_bible:
+        _merge_stage_field(stills, "style_bible", style_bible)
+    music_file = str(payload.get("music_file", "")).strip()
+    if music_file:
+        _merge_stage_field(clips, "music_file", music_file)
+    for index, repair_shot in enumerate(repair_shots, start=1):
+        shot_id = str(repair_shot.get("shot_id", "")).strip()
+        if not shot_id:
+            continue
+        if shot_id not in target_ids:
+            target_ids.append(shot_id)
+        material_id = f"COV_REPAIR_MAT_{index:03d}"
+        section_id = str(repair_shot.get("section_id", "")).strip()
+        target_duration = _safe_float(repair_shot.get("target_duration_sec"), 0.0)
+        after_shot_id = str(repair_shot.get("after_shot_id", "")).strip()
+        before_shot_id = str(repair_shot.get("before_shot_id", "")).strip()
+        render_mode = str(repair_shot.get("render_mode", "ia2v")).strip() or "ia2v"
+        repair_type = str(repair_shot.get("repair_type", "coverage_extension_shot")).strip() or "coverage_extension_shot"
+        reason_codes = [str(value).strip() for value in repair_shot.get("reason_codes", []) if str(value).strip()] if isinstance(repair_shot.get("reason_codes"), list) else []
+        shot_row = {
+            "shot_id": shot_id,
+            "section_id": section_id,
+            "material_id": material_id,
+            "render_mode": render_mode,
+            "duration_sec": target_duration,
+            "source": "assembly_coverage_repair",
+            "after_shot_id": after_shot_id,
+            "before_shot_id": before_shot_id,
+        }
+        material_row = {
+            "material_id": material_id,
+            "section_id": section_id,
+            "source": "assembly_coverage_repair",
+            "repair_type": repair_type,
+        }
+        render_row = {
+            "shot_id": shot_id,
+            "section_id": section_id,
+            "material_id": material_id,
+            "render_mode": render_mode,
+            "source": "assembly_coverage_repair",
+            "repair_type": repair_type,
+            "reference_mode": "selected_pose_anchor",
+            "target_clip_sec": target_duration,
+            "edit_intent": {
+                "target_clip_sec": target_duration,
+                "edit_priority": "high",
+                "section_emphasis": "coverage_repair",
+                "transition_in": "coverage_handoff_in",
+                "transition_out": "coverage_handoff_out",
+            },
+            "prompt_seed": _coverage_repair_prompt_seed(repair_type, after_shot_id, before_shot_id),
+            "clip_prompt_seed": _coverage_repair_clip_prompt_seed(repair_type, after_shot_id, before_shot_id),
+            "coverage_repair": {
+                "after_shot_id": after_shot_id,
+                "before_shot_id": before_shot_id,
+                "reason_codes": reason_codes,
+            },
+        }
+        _merge_stage_field(stills, "shot_plan", [shot_row])
+        _merge_stage_field(stills, "material_plan", [material_row])
+        _merge_stage_field(stills, "render_plan", [render_row])
+        _merge_stage_field(clips, "shot_plan", [shot_row])
+        _merge_stage_field(clips, "render_plan", [render_row])
+
+
+def _coverage_repair_prompt_seed(repair_type: str, after_shot_id: str, before_shot_id: str) -> str:
+    if repair_type == "coverage_bridge_shot" and after_shot_id and before_shot_id:
+        return f"coverage bridge shot between {after_shot_id} and {before_shot_id}; preserve story continuity without introducing a second person"
+    if after_shot_id:
+        return f"coverage extension shot after {after_shot_id}; preserve story continuity without introducing a second person"
+    return "coverage extension shot; preserve story continuity without introducing a second person"
+
+
+def _coverage_repair_clip_prompt_seed(repair_type: str, after_shot_id: str, before_shot_id: str) -> str:
+    if repair_type == "coverage_bridge_shot" and after_shot_id and before_shot_id:
+        return f"coverage bridge motion between {after_shot_id} and {before_shot_id}; clean single-subject motion, no clone, no duplicate body"
+    if after_shot_id:
+        return f"coverage extension motion after {after_shot_id}; clean single-subject motion, no clone, no duplicate body"
+    return "coverage extension motion; clean single-subject motion, no clone, no duplicate body"
+
+
+def _safe_float(value: object, default: float) -> float:
+    try:
+        return round(float(value), 3)
+    except Exception:
+        return default
 
 
 def _empty_stage_payload(stage_name: str) -> dict[str, object]:
