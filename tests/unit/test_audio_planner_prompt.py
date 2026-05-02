@@ -153,6 +153,28 @@ def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
     assert "Do not add a third narrative payoff line" in prompt
 
 
+def test_audio_prompt_locks_hook_validation_outro_as_terminal_not_next_section_pickup():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            duration_min_sec=40,
+            duration_max_sec=45,
+            songform_mode="hook_validation",
+            songform_variants=[
+                [
+                    {"section": "intro", "label": "Intro"},
+                    {"section": "chorus", "label": "Chorus"},
+                    {"section": "outro", "label": "Outro"},
+                ]
+            ],
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 2, "Outro": 0},
+        )
+    )
+
+    assert "Outro must feel like a terminal ending, not a pickup into another section" in prompt
+    assert "Do not use a drum fill, riser, crash pickup, or unresolved transition gesture before [end]" in prompt
+    assert "Land on a final cadence or decaying chord before [end]" in prompt
+
+
 
 def test_audio_outline_minimums_do_not_exceed_short_validation_line_budgets():
     plan = _prompt_plan(
@@ -246,6 +268,26 @@ def test_audio_lyrics_block_prompt_makes_pre_chorus_margin_operational():
     )
     assert "Keep this Pre-Chorus visibly shorter per line than the Chorus target." in prompt
     assert "Avoid long sentence-shaped build-up lines here." in prompt
+
+
+def test_audio_lyrics_block_prompt_locks_outro_as_clean_cadence_not_drum_fill():
+    outline = {
+        "lyrics_blocks": [
+            {"section": "intro", "label": "Intro", "style": "open", "line_count": 0},
+            {"section": "chorus", "label": "Chorus", "style": "hook", "line_count": 2},
+            {"section": "outro", "label": "Outro", "style": "close", "line_count": 0},
+        ]
+    }
+    prompt = audio_planner._audio_lyrics_block_prompt(
+        _prompt_plan(language="en", songform_mode="hook_validation", section_bars={"intro": 4, "chorus": 8, "outro": 4}),
+        outline,
+        outline["lyrics_blocks"][:2],
+        outline["lyrics_blocks"][2],
+    )
+
+    assert "terminal cadence" in prompt
+    assert "Do not write it like a drum fill or pickup into the next section" in prompt
+    assert "zero lyric lines" in prompt
 
 
 

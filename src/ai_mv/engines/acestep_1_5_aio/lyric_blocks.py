@@ -28,7 +28,11 @@ def _bar_feel_clause(plan: dict, block: dict) -> str:
     if label == "Intro":
         return f"This Intro is locked to {bars} bars and should stay instrumental with zero lyric lines. "
     if label == "Outro":
-        return f"This Outro is locked to {bars} bars and should stay instrumental or near-silent with zero lyric lines. "
+        return (
+            f"This Outro is locked to {bars} bars and should stay instrumental or near-silent with zero lyric lines. "
+            "It must resolve as a terminal cadence, not a transition. "
+            "Do not write it like a drum fill or pickup into the next section; avoid risers, crash pickups, and unresolved build gestures. "
+        )
     if bars == 4 and label == "Bridge":
         return "This Bridge is only 4 bars, so it must feel brief, compressed, and turning. Use very short lines and no explanation. "
     if bars == 8 and label in {"Pre-Chorus", "Pre-Chorus 2"}:
@@ -246,7 +250,7 @@ def _current_block_constraints(completed: list[dict], block: dict) -> str:
         "Pre-Chorus 2": "Pre-Chorus 2 should escalate rather than repeat Pre-Chorus and should still stay tighter than the Chorus return. ",
         "Bridge": "Bridge should interrupt or reframe before the last return. ",
         "Final Chorus": "Final Chorus should feel like the answer and strongest payoff, using its extra space instead of repeating the first chorus shape. ",
-        "Outro": "Outro should be terminal and very short. ",
+        "Outro": "Outro should be terminal and very short. It must settle as a final cadence, not cue another section. No drum fill or pickup into the next section. ",
     }
     if label == "Chorus 2" and chorus:
         chorus_lines = "; ".join(str(line).strip() for line in chorus.get("lines", []) if str(line).strip())

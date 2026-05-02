@@ -69,6 +69,9 @@ def _audio_songform_rules(plan: dict) -> str:
             "Use exactly two Chorus lyric lines: line one should be the title-grade hook, line two should repeat or lightly vary that hook within the same melodic idea. "
             "Do not add a third narrative payoff line; late new story lines can make ACE-Step jump into a different chorus idea. "
             "Keep Intro and Outro short and mostly instrumental. "
+            "Outro must feel like a terminal ending, not a pickup into another section. "
+            "Do not use a drum fill, riser, crash pickup, or unresolved transition gesture before [end]. "
+            "Land on a final cadence or decaying chord before [end]. "
             "Make the first Chorus line feel title-worthy and instantly memorable. "
             "For each section, role should say what that section must do, and change should say what becomes different from the previous section. "
         )
