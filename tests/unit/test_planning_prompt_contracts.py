@@ -44,6 +44,9 @@ def test_still_prompt_contract_adds_performance_anchor_identity_and_stage_readab
     assert "one clear solo performer only" in prompt
     assert "upper-body or full-body readability" in prompt
     assert "no ambiguous secondary silhouettes" in prompt
+    assert "exact face fingerprint from the white-background identity anchor" in prompt
+    assert "no distant human silhouettes" in prompt
+    assert "no bystanders or second red-coated figure" in prompt
 
 
 
@@ -59,6 +62,7 @@ def test_still_prompt_contract_adds_required_delta_tokens_for_performance_follow
     )
 
     assert "preserve face shape from the anchor still" in prompt
+    assert "preserve exact face fingerprint from the anchor still" in prompt
     assert "change pose silhouette or camera distance from the anchor frame" in prompt
     assert "avoid near-duplicate framing" in prompt
     assert "avoid straight-on duplicate stance" in prompt

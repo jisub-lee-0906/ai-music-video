@@ -163,10 +163,15 @@ def _reference_identity_token(reference_policy: dict) -> str:
     if reference_mode == "performance_anchor_source" or identity_lock == "performance_anchor":
         return (
             "front-facing performance-ready face visibility, same lead performer identity, stable bright stage outfit silhouette, "
-            "same glossy performance-night stage, one clear solo performer only, upper-body or full-body readability, no ambiguous secondary silhouettes"
+            "exact face fingerprint from the white-background identity anchor, same glossy performance-night stage, "
+            "one clear solo performer only, upper-body or full-body readability, no ambiguous secondary silhouettes, "
+            "no distant human silhouettes, no bystanders or second red-coated figure"
         )
     if reference_mode in {"anchor_source", "use_anchor_still"} or identity_lock in {"anchor", "high"}:
-        return "preserve the same lead identity, stable outfit silhouette, same world anchor"
+        return (
+            "preserve the same lead identity, exact face fingerprint from the white-background identity anchor, "
+            "stable outfit silhouette, same world anchor, one clear protagonist only, no distant human silhouettes, no bystanders or second red-coated figure"
+        )
     return ""
 
 
@@ -176,10 +181,11 @@ def _reference_delta_token(variation_delta_contract: dict) -> str:
     minimum_delta = str(variation_delta_contract.get("minimum_visual_delta", "")).strip().lower() if isinstance(variation_delta_contract, dict) else ""
     if scope == "performance_pose_upgrade" or minimum_delta == "pose_or_camera_change_required":
         return (
-            "preserve face shape from the anchor still, change pose silhouette or camera distance from the anchor frame, "
+            "preserve face shape from the anchor still, preserve exact face fingerprint from the anchor still, change pose silhouette or camera distance from the anchor frame, "
             "avoid near-duplicate framing, avoid straight-on duplicate stance, change arm line or torso angle from the anchor frame, "
             "shift lighting emphasis for the follow-up frame, choose either a tighter upper-body frame or a wider full-body frame than the anchor, "
-            "show a visible weight shift or one-step stance change, prefer side-rim or backlight emphasis instead of repeating the anchor lighting setup"
+            "show a visible weight shift or one-step stance change, prefer side-rim or backlight emphasis instead of repeating the anchor lighting setup, "
+            "keep only one human subject and exclude distant human silhouettes"
         )
     if scope == "bridge_reframe" or minimum_delta == "lighting_or_framing_change_required":
         return "preserve the same identity, but change lighting emphasis or framing from the anchor frame"

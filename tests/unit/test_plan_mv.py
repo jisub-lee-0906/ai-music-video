@@ -71,11 +71,14 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     assert "reference_anchor_ids" not in upper_body
     assert "upper-body character reference image" in upper_body["prompt_text"]
     assert "clear face visibility" in upper_body["prompt_text"]
+    assert "face fingerprint" in upper_body["prompt_text"]
+    assert "no distant human silhouettes" in upper_body["prompt_text"]
     full_body = anchor_package["anchors"][1]
     assert full_body["material_class"] == "character_reference_anchor"
     assert full_body["workflow_target"] == "image_flux2_reference_image"
     assert full_body["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
     assert "same face identity from the upper-body reference" in full_body["prompt_text"]
+    assert "exact face fingerprint from the upper-body reference" in full_body["prompt_text"]
     assert "single clean full-body identity reference card" in full_body["prompt_text"]
     assert "pure white seamless background" in full_body["prompt_text"]
     assert "No street" in full_body["prompt_text"]
@@ -83,6 +86,9 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     assert world_anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"]
     assert world_anchor["material_class"] == "world_reference_anchor"
     assert "Using the same woman as the character reference" in world_anchor["prompt_text"]
+    assert "single visible protagonist only" in world_anchor["prompt_text"]
+    assert "no distant human silhouettes" in world_anchor["prompt_text"]
+    assert "no bystanders" in world_anchor["prompt_text"]
     assert "rainy neon" in world_anchor["prompt_text"]
     assert anchor_package["variant_policy"]["important_story_functions"] == ["release", "payoff"]
     assert anchor_package["variant_policy"]["candidates_per_important_shot"] >= 2

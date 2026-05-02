@@ -116,28 +116,28 @@ def _wardrobe_anchor(style_name: str) -> str:
 def _full_body_character_prompt(protagonist_anchor: str, wardrobe_anchor: str) -> str:
     return (
         f"Using the upper-body identity reference as the face source, make a single clean full-body identity reference card of {protagonist_anchor} on a pure white seamless background. "
-        f"Preserve the same face identity from the upper-body reference, same short black bob haircut with straight bangs, and {wardrobe_anchor}. "
+        f"Preserve the same face identity from the upper-body reference, exact face fingerprint from the upper-body reference, same short black bob haircut with straight bangs, and {wardrobe_anchor}. "
         "The character must be alone, centered, full body visible, face readable, outfit readable, soft studio lighting. "
         "No street, no room, no city, no scenery, no umbrella, no microphone, no chair, no text, no logo, no second person, "
-        "no duplicate body, no collage, no split screen, no frame insert, no decorative background."
+        "no distant human silhouettes, no bystanders, no duplicate body, no collage, no split screen, no frame insert, no decorative background."
     )
 
 
 def _upper_body_identity_prompt(protagonist_anchor: str, wardrobe_anchor: str) -> str:
     return (
         f"Create a clean upper-body character reference image of {protagonist_anchor} alone on a seamless pure white studio background. "
-        f"Frame her from the waist up, centered, with clear face visibility, short black bob haircut with straight bangs, gentle expressive eyes, and {wardrobe_anchor} clearly visible at the collar and shoulders. "
-        "Use soft even studio lighting and keep it as one continuous clean character card with no props, no scenery, no text, no logo, no collage, no split screen, and no extra people."
+        f"Frame her from the waist up, centered, with clear face visibility, stable face fingerprint, short black bob haircut with straight bangs, gentle expressive eyes, and {wardrobe_anchor} clearly visible at the collar and shoulders. "
+        "Use soft even studio lighting and keep it as one continuous clean character card with no props, no scenery, no text, no logo, no collage, no split screen, no distant human silhouettes, and no extra people."
     )
 
 
 def _world_character_prompt(protagonist_anchor: str, wardrobe_anchor: str, world_anchor: str) -> str:
     return (
         "Using the same woman as the character reference, create a single cinematic film still of her inside the music-video world. "
-        f"Preserve {protagonist_anchor}, short black bob haircut with straight bangs, face identity, and {wardrobe_anchor}. "
+        f"Preserve {protagonist_anchor}, exact face fingerprint from the white-background identity anchor, short black bob haircut with straight bangs, face identity, and {wardrobe_anchor}. "
         f"Place her in a {world_anchor}, with the character integrated naturally into the environment as the clear main subject. "
-        "Use a medium-wide motion-safe frame with readable face, readable outfit silhouette, coherent depth, and one continuous scene. "
-        "No text overlay, no collage, no split screen, no duplicate protagonist, and no extra main character."
+        "Use a medium-wide motion-safe frame with single visible protagonist only, readable face, readable outfit silhouette, coherent depth, and one continuous scene. "
+        "No text overlay, no collage, no split screen, no duplicate protagonist, no distant human silhouettes, no bystanders, and no extra main character."
     )
 
 def _pose_anchor_bank(protagonist_anchor: str, wardrobe_anchor: str) -> list[dict]:
@@ -289,10 +289,10 @@ def _pose_anchor_prompt(
     prop_contract = f" {' '.join(prop_contracts)}" if prop_contracts else ""
     return (
         "Using the upper-body identity reference as the only face and wardrobe source, create a white-background pose reference variant. "
-        f"Depict {protagonist_anchor} with the same face identity, same short black bob haircut with straight bangs, and {wardrobe_anchor}. "
+        f"Depict {protagonist_anchor} with the exact face fingerprint from the upper-body identity anchor, same face identity, same short black bob haircut with straight bangs, and {wardrobe_anchor}. "
         f"Pose and framing: {pose_instruction}.{prop_contract} "
         "Keep a pure white seamless background and soft even studio lighting. This is a character pose card, not a story scene. "
         f"No street, no room, no city, no scenery, {forbidden_props}, no text, no logo, no second person, "
-        "no duplicate body, no collage, no split screen, no frame insert, no decorative background, no wardrobe change."
+        "no distant human silhouettes, no bystanders, no duplicate body, no collage, no split screen, no frame insert, no decorative background, no wardrobe change."
     )
 

@@ -90,6 +90,31 @@ def test_render_clips_blocks_clone_risk_prompt_before_ia2v(monkeypatch):
     assert calls == []
 
 
+def test_render_clips_blocks_distant_human_silhouette_ambiguity_before_ia2v(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-still-qa-distant-silhouette-risk",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload=_base_clip_payload(
+            {
+                "prompt_text": "same young woman in red raincoat crossing frame with a distant human silhouette centered down the street",
+            }
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        run_render_clips(stage_input)
+
+    assert "distant_human_silhouette" in str(exc.value)
+    assert calls == []
+
+
 def test_render_clips_blocks_microphone_action_without_matching_pose_anchor(monkeypatch):
     calls = []
 
