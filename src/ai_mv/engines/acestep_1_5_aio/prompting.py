@@ -67,6 +67,8 @@ def _audio_songform_rules(plan: dict) -> str:
             "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take. "
             "Make this a chorus-only proof of genre, vocal, hook, and clean ending. "
             "Use exactly two Chorus lyric lines: line one should be the title-grade hook, line two should repeat or lightly vary that hook within the same melodic idea. "
+            "Keep both Chorus lines as one-breath phrases, six words or fewer, with simple open vowels. "
+            "Avoid cramming syllables, long clauses, stacked images, or fast internal rhyme into either Chorus line. "
             "Do not add a third narrative payoff line; late new story lines can make ACE-Step jump into a different chorus idea. "
             "Keep Intro and Outro short and mostly instrumental. "
             "Outro must feel like a terminal ending, not a pickup into another section. "

@@ -51,6 +51,10 @@ HOOK_VALIDATION_SECTION_BARS: dict[str, int] = {
     "outro": 4,
     "final_chorus_bonus": 0,
 }
+HOOK_VALIDATION_EXPANDED_SECTION_BARS: dict[str, int] = {
+    **HOOK_VALIDATION_SECTION_BARS,
+    "chorus": 12,
+}
 HOOK_VALIDATION_LINE_BUDGETS: dict[str, int] = {
     "Intro": 0,
     "Verse 1": 0,
@@ -279,7 +283,7 @@ def build_song_timing(
 
 def resolve_section_bars(audio: dict, *, songform_mode: str | None = None) -> dict[str, int]:
     raw = audio.get("section_bars", {}) if isinstance(audio, dict) else {}
-    base = HOOK_VALIDATION_SECTION_BARS if songform_mode == "hook_validation" else DEFAULT_SECTION_BARS
+    base = _default_section_bars_for_mode(audio, songform_mode=songform_mode)
     if raw in ("", None):
         return dict(base)
     if not isinstance(raw, dict):
@@ -291,6 +295,15 @@ def resolve_section_bars(audio: dict, *, songform_mode: str | None = None) -> di
             continue
         resolved[name] = _coerce_bar_multiple(value, label=f"audio.section_bars.{name}")
     return resolved
+
+
+def _default_section_bars_for_mode(audio: dict, *, songform_mode: str | None) -> dict[str, int]:
+    if songform_mode != "hook_validation":
+        return DEFAULT_SECTION_BARS
+    max_sec = _coerce_positive_int(audio.get("target_duration_max_sec"), default=0) if isinstance(audio, dict) else 0
+    if max_sec > 35:
+        return HOOK_VALIDATION_EXPANDED_SECTION_BARS
+    return HOOK_VALIDATION_SECTION_BARS
 
 
 def resolve_line_budgets(audio: dict, *, songform_mode: str | None = None) -> dict[str, int]:

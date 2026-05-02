@@ -151,7 +151,10 @@ def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
     assert "Chorus>= 2" in prompt
     assert "Use exactly two Chorus lyric lines" in prompt
     assert "Do not add a third narrative payoff line" in prompt
-
+    assert "one-breath phrases" in prompt
+    assert "six words or fewer" in prompt
+    assert "Avoid cramming syllables" in prompt
+    assert "Outro must feel like a terminal ending" in prompt
 
 def test_audio_prompt_locks_hook_validation_outro_as_terminal_not_next_section_pickup():
     prompt = audio_planner._audio_prompt(
