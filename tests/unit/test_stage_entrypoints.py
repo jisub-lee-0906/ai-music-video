@@ -3,7 +3,7 @@ from pathlib import Path
 from ai_mv.core.contracts.errors import StageFailure
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
-from ai_mv.core.stages.assemble_mv import run_assemble_mv, _assembly_clip_segments
+from ai_mv.core.stages.assemble_mv import run_assemble_mv, _assembly_clip_segments, _assembly_plan
 from ai_mv.core.stages.execute_rerender import run_execute_rerender
 from ai_mv.core.stages.prepare_rerender import run_prepare_rerender
 from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
@@ -665,6 +665,99 @@ def test_assemble_mv_marks_free_snap_when_audio_timing_is_missing(monkeypatch, t
     assert time1["snap_unit"] == "free"
     assert time1["trimmed_coverage_sec"] == 2.0
 
+
+
+def test_assembly_plan_publishes_transition_pairs_and_bridge_risk_metadata():
+    plan = _assembly_plan(
+        {
+            "audio_map": {"duration_sec": 6.0},
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 3.0},
+                {"shot_id": "S002", "section_id": "SEC_002", "start_sec": 3.0, "duration_sec": 3.0},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "edit_intent": {"transition_out": "accent_out", "target_clip_sec": 2.0},
+                    "production_policy": {"candidate_role": "hero_face_performance", "ia2v_risk_class": "yellow"},
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_002",
+                    "edit_intent": {"transition_in": "cut_in", "target_clip_sec": 2.0},
+                    "production_policy": {"candidate_role": "hero_face_performance", "ia2v_risk_class": "yellow"},
+                },
+            ],
+        },
+        clip_segments=[
+            {
+                "shot_id": "S001",
+                "section_id": "SEC_001",
+                "trim_start_sec": 0.5,
+                "trim_end_sec": 2.5,
+                "trimmed_coverage_sec": 2.0,
+                "snap_unit": "beat",
+                "cadence_profile": "hook_dense",
+                "candidate_role": "hero_face_performance",
+                "ia2v_risk_class": "yellow",
+            },
+            {
+                "shot_id": "S002",
+                "section_id": "SEC_002",
+                "trim_start_sec": 0.25,
+                "trim_end_sec": 2.25,
+                "trimmed_coverage_sec": 2.0,
+                "snap_unit": "beat",
+                "cadence_profile": "support_hold",
+                "candidate_role": "hero_face_performance",
+                "ia2v_risk_class": "yellow",
+            },
+        ],
+    )
+
+    assert plan["transition_pairs"] == [
+        {
+            "from_shot_id": "S001",
+            "to_shot_id": "S002",
+            "from_section_id": "SEC_001",
+            "to_section_id": "SEC_002",
+            "transition_type": "beat_cut",
+            "snap_unit": "beat",
+            "continuity_strategy": "bridge_recommended",
+            "needs_bridge": True,
+            "bridge_reason_codes": ["repeated_candidate_role", "elevated_ia2v_risk"],
+        }
+    ]
+
+
+def test_assembly_plan_marks_insufficient_raw_coverage_before_sync_padding():
+    plan = _assembly_plan(
+        {
+            "audio_map": {"duration_sec": 18.0},
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 9.0},
+                {"shot_id": "S002", "section_id": "SEC_002", "start_sec": 9.0, "duration_sec": 9.0},
+            ],
+            "render_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "edit_intent": {"target_clip_sec": 4.5}},
+                {"shot_id": "S002", "section_id": "SEC_002", "edit_intent": {"target_clip_sec": 4.5}},
+            ],
+        },
+        clip_segments=[
+            {"shot_id": "S001", "section_id": "SEC_001", "trimmed_coverage_sec": 4.5},
+            {"shot_id": "S002", "section_id": "SEC_002", "trimmed_coverage_sec": 4.5},
+        ],
+    )
+
+    summary = plan["coverage_summary"]
+    assert summary["audio_duration_sec"] == 18.0
+    assert summary["raw_assembly_coverage_sec"] == 9.0
+    assert summary["raw_coverage_ratio"] == 0.5
+    assert summary["status"] == "insufficient_raw_coverage"
+    assert summary["required_min_raw_coverage_sec"] == 17.1
+    assert summary["coverage_deficit_sec"] == 8.1
+    assert summary["recommended_action"] == "revise_assembly_coverage_before_sync_pad"
 
 
 def test_assembly_clip_segments_use_actual_clip_duration_when_target_exceeds_clip(monkeypatch, tmp_path):

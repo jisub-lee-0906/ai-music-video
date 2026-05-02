@@ -689,8 +689,106 @@ def _assembly_plan(payload: dict, clip_segments: list[dict] | None = None) -> di
         "section_edit_map": section_edit_map,
         "transition_map": transition_map,
         "timing_map": timing_map,
+        "transition_pairs": _transition_pairs_for_clip_sequence(clip_rows),
+        "coverage_summary": _assembly_coverage_summary(payload, section_edits),
         "rejected_clip_map": rejected_clip_map,
     }
+
+
+def _transition_pairs_for_clip_sequence(clip_rows: list[dict]) -> list[dict]:
+    pairs: list[dict] = []
+    rows = [row for row in clip_rows if isinstance(row, dict) and str(row.get("shot_id", "")).strip()]
+    for left, right in zip(rows, rows[1:]):
+        left_id = str(left.get("shot_id", "")).strip()
+        right_id = str(right.get("shot_id", "")).strip()
+        snap_unit = _combine_snap_units(str(left.get("snap_unit", "free")), str(right.get("snap_unit", "free")))
+        reason_codes = _bridge_reason_codes(left, right)
+        transition_type = _transition_type_for_pair(left, right, snap_unit)
+        needs_bridge = bool(reason_codes)
+        pairs.append(
+            {
+                "from_shot_id": left_id,
+                "to_shot_id": right_id,
+                "from_section_id": str(left.get("section_id", "")).strip(),
+                "to_section_id": str(right.get("section_id", "")).strip(),
+                "transition_type": transition_type,
+                "snap_unit": snap_unit,
+                "continuity_strategy": "bridge_recommended" if needs_bridge else "direct_cut_ok",
+                "needs_bridge": needs_bridge,
+                "bridge_reason_codes": reason_codes,
+            }
+        )
+    return pairs
+
+
+def _transition_type_for_pair(left: dict, right: dict, snap_unit: str) -> str:
+    left_out = str(left.get("transition_out", "")).strip()
+    right_in = str(right.get("transition_in", "")).strip()
+    left_cadence = str(left.get("cadence_profile", "")).strip()
+    right_cadence = str(right.get("cadence_profile", "")).strip()
+    if left_out in {"fade_out", "handoff_out"} or right_in in {"glide_in", "hold_in"}:
+        return "short_dissolve"
+    if snap_unit in {"beat", "bar"} or left_out in {"accent_out", "cut_out"} or right_in in {"accent_in", "cut_in"}:
+        return "beat_cut"
+    if "hook" in left_cadence or "hook" in right_cadence:
+        return "beat_cut"
+    return "hard_cut"
+
+
+def _bridge_reason_codes(left: dict, right: dict) -> list[str]:
+    reasons: list[str] = []
+    left_role = str(left.get("candidate_role", "")).strip()
+    right_role = str(right.get("candidate_role", "")).strip()
+    if left_role and right_role and left_role == right_role:
+        reasons.append("repeated_candidate_role")
+    if _risk_rank(str(left.get("ia2v_risk_class", "green"))) >= 1 or _risk_rank(str(right.get("ia2v_risk_class", "green"))) >= 1:
+        reasons.append("elevated_ia2v_risk")
+    return reasons
+
+
+def _risk_rank(value: str) -> int:
+    return {"green": 0, "yellow": 1, "red": 2}.get(str(value or "green").strip() or "green", 0)
+
+
+def _assembly_coverage_summary(payload: dict, section_edits: list[dict]) -> dict:
+    audio_duration = _audio_duration_for_assembly(payload)
+    raw_coverage = round(sum(_safe_float(row.get("trimmed_coverage_sec"), 0.0) for row in section_edits if isinstance(row, dict)), 3)
+    required_min = round(audio_duration * 0.95, 3) if audio_duration > 0.0 else 0.0
+    ratio = round(raw_coverage / audio_duration, 3) if audio_duration > 0.0 else 0.0
+    deficit = round(max(0.0, required_min - raw_coverage), 3)
+    status = "sufficient_raw_coverage" if audio_duration <= 0.0 or raw_coverage >= required_min else "insufficient_raw_coverage"
+    return {
+        "audio_duration_sec": round(audio_duration, 3),
+        "raw_assembly_coverage_sec": raw_coverage,
+        "raw_coverage_ratio": ratio,
+        "required_min_raw_coverage_sec": required_min,
+        "coverage_deficit_sec": deficit,
+        "status": status,
+        "recommended_action": "" if status == "sufficient_raw_coverage" else "revise_assembly_coverage_before_sync_pad",
+    }
+
+
+def _audio_duration_for_assembly(payload: dict) -> float:
+    audio_map = payload.get("audio_map") if isinstance(payload, dict) else None
+    if isinstance(audio_map, dict):
+        duration = _safe_float(audio_map.get("duration_sec"), 0.0)
+        if duration > 0.0:
+            return duration
+    shot_plan = payload.get("shot_plan") if isinstance(payload, dict) else None
+    if isinstance(shot_plan, list) and shot_plan:
+        end_times = []
+        total = 0.0
+        for row in shot_plan:
+            if not isinstance(row, dict):
+                continue
+            start = _safe_float(row.get("start_sec"), 0.0)
+            duration = _safe_float(row.get("duration_sec"), 0.0)
+            if duration > 0.0:
+                total += duration
+                end_times.append(start + duration)
+        if end_times:
+            return max(max(end_times), total)
+    return 0.0
 
 
 def _append_unique(values: list, value: object) -> None:
