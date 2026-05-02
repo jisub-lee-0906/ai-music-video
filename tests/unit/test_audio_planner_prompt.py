@@ -179,6 +179,31 @@ def test_audio_prompt_locks_hook_validation_outro_as_terminal_not_next_section_p
 
 
 
+def test_audio_prompt_locks_forty_five_second_hook_validation_to_early_peak_chorus_not_bridge():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            duration_min_sec=40,
+            duration_max_sec=45,
+            songform_mode="hook_validation",
+            section_bars={"intro": 2, "chorus": 16, "outro": 2, "final_chorus_bonus": 0},
+            songform_variants=[
+                [
+                    {"section": "intro", "label": "Intro"},
+                    {"section": "chorus", "label": "Chorus"},
+                    {"section": "outro", "label": "Outro"},
+                ]
+            ],
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 2, "Outro": 0},
+        )
+    )
+
+    assert "For forty-five-second hook validation, keep Intro to roughly the first five seconds" in prompt
+    assert "the Chorus vocal must enter early" in prompt
+    assert "Do not delay the real Chorus until the final third" in prompt
+    assert "Chorus must feel like the peak hook/release, not a Bridge or Outro" in prompt
+
+
+
 def test_audio_outline_minimums_do_not_exceed_short_validation_line_budgets():
     plan = _prompt_plan(
         duration_min_sec=25,

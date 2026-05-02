@@ -66,7 +66,8 @@ def _audio_songform_rules(plan: dict) -> str:
             + "Do not include Verse 1 or Pre-Chorus in a thirty-second validation take; ACE-Step often collapses them into the hook at this length. "
             "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take. "
             "Make this a chorus-only proof of genre, vocal, hook, and clean ending. "
-            "Use exactly two Chorus lyric lines: line one should be the title-grade hook, line two should repeat or lightly vary that hook within the same melodic idea. "
+            + _hook_validation_timing_rules(plan)
+            + "Use exactly two Chorus lyric lines: line one should be the title-grade hook, line two should repeat or lightly vary that hook within the same melodic idea. "
             "Keep both Chorus lines as one-breath phrases, six words or fewer, with simple open vowels. "
             "Avoid cramming syllables, long clauses, stacked images, or fast internal rhyme into either Chorus line. "
             "Do not add a third narrative payoff line; late new story lines can make ACE-Step jump into a different chorus idea. "
@@ -97,6 +98,24 @@ def _audio_songform_rules(plan: dict) -> str:
     if bool(ending.get("outro_required", False)):
         rules.append("If you include Outro, keep it very short and terminal. ")
     return "".join(rules)
+
+
+def _hook_validation_timing_rules(plan: dict) -> str:
+    bars = plan.get("section_bars", {}) if isinstance(plan.get("section_bars", {}), dict) else {}
+    intro_bars = int(bars.get("intro", 0) or 0)
+    chorus_bars = int(bars.get("chorus", 0) or 0)
+    outro_bars = int(bars.get("outro", 0) or 0)
+    max_sec = int(plan.get("duration_max_sec", 0) or 0)
+    if max_sec >= 40 and intro_bars <= 2 and chorus_bars >= 16 and outro_bars <= 2:
+        return (
+            "For forty-five-second hook validation, keep Intro to roughly the first five seconds; "
+            "the Chorus vocal must enter early, then carry the main body until the short terminal Outro. "
+            "Do not delay the real Chorus until the final third. "
+            "Chorus must feel like the peak hook/release, not a Bridge or Outro. "
+            "Keep the hook energy, drum groove, and chord lift aligned with the Chorus label from its first vocal entry. "
+        )
+    return ""
+
 
 
 def _songform_variant_clause(plan: dict) -> str:

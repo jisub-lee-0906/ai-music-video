@@ -41,11 +41,12 @@ def test_audio_policy_expands_forty_five_second_hook_validation_bars():
     out = audio_policy({"audio": {"target_duration_min_sec": 40, "target_duration_max_sec": 45}})
 
     assert out["songform_mode"] == "hook_validation"
-    assert out["section_bars"]["intro"] == 4
-    assert out["section_bars"]["chorus"] == 12
-    assert out["section_bars"]["outro"] == 4
-    assert "chorus 12" in out["bar_lane"]
-    assert "outro 4" in out["bar_lane"]
+    assert out["section_bars"]["intro"] == 2
+    assert out["section_bars"]["chorus"] == 16
+    assert out["section_bars"]["outro"] == 2
+    assert "intro 2" in out["bar_lane"]
+    assert "chorus 16" in out["bar_lane"]
+    assert "outro 2" in out["bar_lane"]
 
 
 def test_audio_policy_populates_default_ending_contract():

@@ -53,7 +53,9 @@ HOOK_VALIDATION_SECTION_BARS: dict[str, int] = {
 }
 HOOK_VALIDATION_EXPANDED_SECTION_BARS: dict[str, int] = {
     **HOOK_VALIDATION_SECTION_BARS,
-    "chorus": 12,
+    "intro": 2,
+    "chorus": 16,
+    "outro": 2,
 }
 HOOK_VALIDATION_LINE_BUDGETS: dict[str, int] = {
     "Intro": 0,
