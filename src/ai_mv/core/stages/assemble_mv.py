@@ -14,6 +14,8 @@ from ai_mv.utils.time_utils import ffprobe_duration
 
 def run_assemble_mv(stage_input: StageInput) -> StageOutput:
     clip_segments = _assembly_clip_segments(stage_input.config, stage_input.payload)
+    assembly_plan = _assembly_plan(stage_input.payload, clip_segments=clip_segments)
+    _assert_raw_coverage_ready_before_sync_padding(assembly_plan)
     audio = Path(
         resolve_generated_file(
             stage_input.config,
@@ -39,7 +41,6 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
         "snap_unit_by_shot": _clip_segment_value_by_shot(clip_segments, "snap_unit"),
         "trimmed_coverage_by_shot": _clip_segment_float_by_shot(clip_segments, "trimmed_coverage_sec"),
     }
-    assembly_plan = _assembly_plan(stage_input.payload, clip_segments=clip_segments)
     quality_findings_path = _review_quality_findings_path(stage_input.config)
     if quality_findings_path:
         review_inputs["quality_findings_path"] = quality_findings_path
@@ -83,6 +84,24 @@ def _review_quality_findings_path(config: object) -> str:
     if not isinstance(review_cfg, dict):
         return ""
     return str(review_cfg.get("quality_findings_path", "")).strip()
+
+
+def _assert_raw_coverage_ready_before_sync_padding(assembly_plan: dict) -> None:
+    summary = assembly_plan.get("coverage_summary") if isinstance(assembly_plan, dict) else None
+    if not isinstance(summary, dict):
+        return
+    if str(summary.get("status", "")).strip() != "insufficient_raw_coverage":
+        return
+    if str(summary.get("audio_duration_source", "")).strip() != "audio_map_duration_sec":
+        return
+    deficit = _safe_float(summary.get("coverage_deficit_sec"), 0.0)
+    raw_coverage = _safe_float(summary.get("raw_assembly_coverage_sec"), 0.0)
+    required_min = _safe_float(summary.get("required_min_raw_coverage_sec"), 0.0)
+    raise RuntimeError(
+        "insufficient raw assembly coverage before sync padding: "
+        f"raw={raw_coverage:.3f}s required_min={required_min:.3f}s deficit={deficit:.3f}s; "
+        "revise assembly coverage before mux/sync"
+    )
 
 
 
@@ -741,6 +760,7 @@ def _risk_rank(value: str) -> int:
 
 def _assembly_coverage_summary(payload: dict, section_edits: list[dict]) -> dict:
     audio_duration = _audio_duration_for_assembly(payload)
+    audio_duration_source = _audio_duration_source_for_assembly(payload)
     raw_coverage = round(sum(_safe_float(row.get("trimmed_coverage_sec"), 0.0) for row in section_edits if isinstance(row, dict)), 3)
     required_min = round(audio_duration * 0.95, 3) if audio_duration > 0.0 else 0.0
     ratio = round(raw_coverage / audio_duration, 3) if audio_duration > 0.0 else 0.0
@@ -748,6 +768,7 @@ def _assembly_coverage_summary(payload: dict, section_edits: list[dict]) -> dict
     status = "sufficient_raw_coverage" if audio_duration <= 0.0 or raw_coverage >= required_min else "insufficient_raw_coverage"
     return {
         "audio_duration_sec": round(audio_duration, 3),
+        "audio_duration_source": audio_duration_source,
         "raw_assembly_coverage_sec": raw_coverage,
         "raw_coverage_ratio": ratio,
         "required_min_raw_coverage_sec": required_min,
@@ -755,6 +776,16 @@ def _assembly_coverage_summary(payload: dict, section_edits: list[dict]) -> dict
         "status": status,
         "recommended_action": "" if status == "sufficient_raw_coverage" else "revise_assembly_coverage_before_sync_pad",
     }
+
+
+def _audio_duration_source_for_assembly(payload: dict) -> str:
+    audio_map = payload.get("audio_map") if isinstance(payload, dict) else None
+    if isinstance(audio_map, dict) and _safe_float(audio_map.get("duration_sec"), 0.0) > 0.0:
+        return "audio_map_duration_sec"
+    shot_plan = payload.get("shot_plan") if isinstance(payload, dict) else None
+    if isinstance(shot_plan, list) and shot_plan:
+        return "shot_plan_estimate"
+    return "unknown"
 
 
 def _audio_duration_for_assembly(payload: dict) -> float:

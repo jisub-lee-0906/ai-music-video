@@ -752,12 +752,57 @@ def test_assembly_plan_marks_insufficient_raw_coverage_before_sync_padding():
 
     summary = plan["coverage_summary"]
     assert summary["audio_duration_sec"] == 18.0
+    assert summary["audio_duration_source"] == "audio_map_duration_sec"
     assert summary["raw_assembly_coverage_sec"] == 9.0
     assert summary["raw_coverage_ratio"] == 0.5
     assert summary["status"] == "insufficient_raw_coverage"
     assert summary["required_min_raw_coverage_sec"] == 17.1
     assert summary["coverage_deficit_sec"] == 8.1
     assert summary["recommended_action"] == "revise_assembly_coverage_before_sync_pad"
+
+
+def test_assemble_mv_blocks_mux_when_raw_coverage_is_insufficient_before_sync_padding(monkeypatch, tmp_path):
+    import pytest
+
+    mux_calls = []
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv.mp4")
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.ffprobe_duration", lambda _path: 4.5)
+
+    def fake_mux(*args, **kwargs):
+        mux_calls.append((args, kwargs))
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", fake_mux)
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "clip2.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-insufficient-coverage-blocks-mux",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "audio_map": {"duration_sec": 18.0},
+            "shot_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "start_sec": 0.0, "duration_sec": 9.0},
+                {"shot_id": "S002", "section_id": "SEC_002", "start_sec": 9.0, "duration_sec": 9.0},
+            ],
+            "clip_results": [
+                {"shot_id": "S001", "video": "clip1.mp4", "material_id": "MAT_001", "section_id": "SEC_001"},
+                {"shot_id": "S002", "video": "clip2.mp4", "material_id": "MAT_002", "section_id": "SEC_002"},
+            ],
+            "render_plan": [
+                {"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001", "edit_intent": {"target_clip_sec": 4.5}},
+                {"shot_id": "S002", "section_id": "SEC_002", "material_id": "MAT_002", "edit_intent": {"target_clip_sec": 4.5}},
+            ],
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="insufficient raw assembly coverage before sync padding"):
+        run_assemble_mv(stage_input)
+
+    assert mux_calls == []
 
 
 def test_assembly_clip_segments_use_actual_clip_duration_when_target_exceeds_clip(monkeypatch, tmp_path):
