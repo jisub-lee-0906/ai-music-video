@@ -105,9 +105,6 @@ def _manifest_review_section(payload: dict, escalation_artifacts: dict, rerender
         "review_packet_manifest": str(escalation_artifacts.get("review_packet_manifest", "")).strip(),
         "rerender_escalation": _manifest_rerender_escalation(rerender_escalation),
     }
-    audio_review_summary = review_report.get("audio_review_summary") if isinstance(review_report.get("audio_review_summary"), dict) else {}
-    if audio_review_summary:
-        out["audio_review_summary"] = dict(audio_review_summary)
     return out
 
 

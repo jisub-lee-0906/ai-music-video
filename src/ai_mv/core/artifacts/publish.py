@@ -130,7 +130,6 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         for bucket in review_signal_buckets.values()
         for failed_check in bucket.get("failed_checks", [])
     )
-    audio_review_summary = review_report.get("audio_review_summary") if isinstance(review_report.get("audio_review_summary"), dict) else {}
     sync_repair_summary = payload.get("sync_repair_summary") if isinstance(payload.get("sync_repair_summary"), dict) else {}
     story_contract_summary = _story_contract_summary(payload.get("shot_plan"))
     summary = {
@@ -166,10 +165,6 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "review_severity_assembly_quality": str(review_severity.get("assembly_quality", "")).strip(),
         "review_signal_buckets": review_signal_buckets,
         "review_signal_bucket_failed_checks": review_signal_bucket_failed_checks,
-        "audio_review_status": str(audio_review_summary.get("status", "")).strip(),
-        "audio_review_weighted_score": float(audio_review_summary.get("weighted_score", 0.0) or 0.0),
-        "audio_review_recommended_next_action": str(audio_review_summary.get("recommended_next_action", "")).strip(),
-        "audio_review_reason_codes": [str(value).strip() for value in audio_review_summary.get("reason_codes", []) if str(value).strip()] if isinstance(audio_review_summary.get("reason_codes"), list) else [],
         "sync_repair_strategy": str(sync_repair_summary.get("repair_strategy", "")).strip(),
         "sync_repair_clone_tail_sec": float(sync_repair_summary.get("clone_tail_sec", 0.0) or 0.0),
         "sync_repair_clone_tail_ratio": float(sync_repair_summary.get("clone_tail_ratio", 0.0) or 0.0),

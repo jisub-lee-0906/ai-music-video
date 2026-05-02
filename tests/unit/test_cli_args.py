@@ -7,13 +7,10 @@ from ai_mv.core.workflow_names import FLUX2_KEYFRAME_WORKFLOW, FLUX2_STILL_WORKF
 
 
 
-def test_parser_has_clean_commands():
+def test_parser_exposes_only_canonical_public_commands():
     parser = build_parser()
-    names = parser._subparsers._group_actions[0].choices.keys()  # type: ignore[attr-defined]
-    assert "start" in names
-    assert "preflight" in names
-    assert "doctor" in names
-    assert "validate-latest" in names
+    names = set(parser._subparsers._group_actions[0].choices.keys())  # type: ignore[attr-defined]
+    assert names == {"start", "preflight", "doctor", "status", "validate-latest"}
 
 
 

@@ -66,14 +66,7 @@ def test_run_validate_latest_builds_artifact_centered_validation_packet(monkeypa
         "ai_mv.entrypoints.validate_latest.write_review_packet",
         _fake_write_review_packet,
     )
-    monkeypatch.setattr(
-        "ai_mv.entrypoints.validate_latest.write_audio_review_packet",
-        lambda **kwargs: {
-            "manifest_path": output_dir / "audio-review" / "audio-review-packet.json",
-            "rubric_path": output_dir / "audio-review" / "audio-review-rubric.json",
-            "reviewer_notes_path": output_dir / "audio-review" / "audio-review-notes.md",
-        },
-    )
+
     def _fake_write_json(path, data):
         summary_writes["path"] = path
         summary_writes["data"] = data
@@ -90,7 +83,6 @@ def test_run_validate_latest_builds_artifact_centered_validation_packet(monkeypa
     assert "run_id=run-success" in out
     assert str(output_dir / "final-frames") in out
     assert str(output_dir / "review-packet" / "review-packet.json") in out
-    assert str(output_dir / "audio-review" / "audio-review-packet.json") in out
     assert str(summary_writes["path"]).endswith("validation-summary.json")
     assert packet_calls["shot_ids"] == ["S001", "S002"]
     assert summary_writes["data"] == {
@@ -135,9 +127,6 @@ def test_run_validate_latest_builds_artifact_centered_validation_packet(monkeypa
         "review_notes": str(output_dir / "review-packet" / "review-notes.md"),
         "contact_sheet_image": str(output_dir / "review-packet" / "contact-sheet.png"),
         "contact_sheet_manifest": str(output_dir / "review-packet" / "contact-sheet.json"),
-        "audio_review_packet_manifest": str(output_dir / "audio-review" / "audio-review-packet.json"),
-        "audio_review_rubric": str(output_dir / "audio-review" / "audio-review-rubric.json"),
-        "audio_review_notes": str(output_dir / "audio-review" / "audio-review-notes.md"),
     }
 
 

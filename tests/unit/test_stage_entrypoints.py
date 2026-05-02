@@ -2336,42 +2336,6 @@ def test_assemble_mv_propagates_review_quality_findings_path_from_config(monkeyp
 
     assert out.payload["review_inputs"]["quality_findings_path"] == str(findings_path)
 
-
-def test_assemble_mv_propagates_audio_review_rubric_path_from_config(monkeypatch, tmp_path):
-    final_file = tmp_path / "ComfyUI" / "output" / "ai_mv" / "runs" / "run-3c" / "final" / "mv.mp4"
-    rubric_path = tmp_path / "manual-review" / "audio-review-rubric.json"
-
-    def _fake_final_video_path(_config, run_id, scope="run"):
-        assert run_id == "run-3c"
-        assert scope == "run"
-        final_file.parent.mkdir(parents=True, exist_ok=True)
-        return final_file
-
-    def _fake_resolve_generated_file(_config, ref, _exts, _label):
-        return Path(ref)
-
-    def _fake_run_ffmpeg_mux(clips, audio, out, _config):
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_bytes(b"video")
-        return True
-
-    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", _fake_final_video_path)
-    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", _fake_resolve_generated_file)
-    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", _fake_run_ffmpeg_mux)
-    stage_input = StageInput(
-        run_id="run-3c",
-        config={"review": {"audio_review_rubric_path": str(rubric_path)}},
-        payload={
-            "music_file": str(tmp_path / "music.mp3"),
-            "clip_results": [{"shot_id": "S001", "video": str(tmp_path / "clip.mp4")}],
-        },
-    )
-
-    out = run_assemble_mv(stage_input)
-
-    assert out.payload["review_inputs"]["audio_review_rubric_path"] == str(rubric_path)
-
-
 def test_review_outputs_marks_done_when_final_exists():
     final_path = Path("D:/renders/final.mp4")
     existing = {str(final_path), "D:/renders/S001.png", "D:/renders/S001.mp4"}

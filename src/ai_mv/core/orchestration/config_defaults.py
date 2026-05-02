@@ -46,7 +46,6 @@ DEFAULT_CONFIG: dict = {
     "review": {
         "max_rerender_targets": 3,
         "quality_findings_path": "",
-        "audio_review_rubric_path": "",
     },
     "planning": {
         "enable_ia2v": True,

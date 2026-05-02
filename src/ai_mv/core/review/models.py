@@ -547,7 +547,6 @@ def build_review_report(
     production_policy_by_shot: dict[str, dict] | None = None,
     assembly_quality_summary: dict[str, object] | None = None,
     assembly_revision: dict[str, object] | None = None,
-    audio_review_summary: dict[str, object] | None = None,
     sync_repair_summary: dict[str, object] | None = None,
     assembly_plan: dict[str, object] | None = None,
     review_inputs: dict[str, object] | None = None,
@@ -668,19 +667,9 @@ def build_review_report(
     mv_intent_checks = build_mv_intent_checks(edit_intent_summary)
     assembly_quality_summary = effective_assembly_quality_summary
     assembly_revision_summary = summarize_assembly_revision(assembly_revision)
-    normalized_audio_review_summary = dict(audio_review_summary) if isinstance(audio_review_summary, dict) else {}
-    audio_reroll_prescription = normalized_audio_review_summary.get("prescription") if isinstance(normalized_audio_review_summary.get("prescription"), dict) else {}
     overall_status = final_review_summary["overall_status"]
     publishability_tier = final_review_summary["publishability_tier"]
     recommended_next_action = final_review_summary["recommended_next_action"]
-    if normalized_audio_review_summary:
-        audio_next_action = str(normalized_audio_review_summary.get("recommended_next_action", "")).strip()
-        audio_score = _float(normalized_audio_review_summary.get("weighted_score"), 0.0)
-        if audio_next_action and audio_next_action != "publish":
-            recommended_next_action = audio_next_action
-        if audio_score > 0.0 and audio_score < 75.0:
-            overall_status = "needs_audio_revision"
-            publishability_tier = "needs_audio_revision"
     return {
         "status": "done" if all(blocking_checks.values()) and not effective_rerender_targets else "needs_rerender",
         "audio_video_drift_sec": audio_video_drift_sec,
@@ -720,8 +709,6 @@ def build_review_report(
         "mv_intent_checks": mv_intent_checks,
         "assembly_quality_summary": assembly_quality_summary,
         "assembly_revision_summary": assembly_revision_summary,
-        "audio_review_summary": normalized_audio_review_summary,
-        "audio_reroll_prescription": audio_reroll_prescription,
     }
 
 

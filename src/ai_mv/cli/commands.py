@@ -1,16 +1,7 @@
 from __future__ import annotations
 
-from ai_mv.entrypoints.audio_reroll import run_audio_reroll_preflight
-from ai_mv.entrypoints.audio_reroll_start import run_audio_reroll_start
-from ai_mv.entrypoints.audio_review_batch_score import run_audio_review_batch_score
-from ai_mv.entrypoints.audio_review_packet import run_audio_review_packet
-from ai_mv.entrypoints.audio_review_score import run_audio_review_score
-from ai_mv.entrypoints.audio_review_session import run_audio_review_session
 from ai_mv.entrypoints.doctor import run_doctor
-from ai_mv.entrypoints.extract_frames import run_extract_frames
 from ai_mv.entrypoints.preflight import run_preflight_entry
-from ai_mv.entrypoints.quality_findings_template import run_quality_findings_template
-from ai_mv.entrypoints.review_packet import run_review_packet
 from ai_mv.entrypoints.start import run_start
 from ai_mv.entrypoints.status import show_status
 from ai_mv.entrypoints.validate_latest import run_validate_latest
@@ -25,24 +16,6 @@ def dispatch(command: str, **kwargs: str) -> int:
         return run_preflight_entry(kwargs.get("run_id"), kwargs.get("concept_text"))
     if command == "status":
         return show_status(kwargs["run_id"])
-    if command == "extract-frames":
-        return run_extract_frames(kwargs["video"], kwargs["output_dir"], kwargs.get("kind", "clip"), int(kwargs.get("sample_count", 6) or 6))
-    if command == "quality-findings-template":
-        return run_quality_findings_template(kwargs.get("shot_ids", []), kwargs["output"])
-    if command == "review-packet":
-        return run_review_packet(kwargs["video"], kwargs["output_dir"], kwargs.get("kind", "clip"), int(kwargs.get("sample_count", 6) or 6), kwargs.get("shot_ids", []))
-    if command == "audio-review-packet":
-        return run_audio_review_packet(kwargs["music_file"], kwargs["output_dir"], kwargs.get("sections_json", "[]"), kwargs.get("audio_plan_json", "{}"))
-    if command == "audio-reroll-preflight":
-        return run_audio_reroll_preflight(kwargs["rubric_path"], kwargs.get("run_id"), kwargs.get("concept_text"), kwargs.get("scope", "run"))
-    if command == "audio-reroll-start":
-        return run_audio_reroll_start(kwargs["rubric_path"], kwargs.get("run_id"), kwargs.get("concept_text"), kwargs.get("scope", "run"))
-    if command == "audio-review-score":
-        return run_audio_review_score(kwargs["rubric_path"], kwargs["segment_id"], kwargs.get("scores_json", "{}"), kwargs.get("reason_codes_json", "[]"), kwargs.get("notes", ""), kwargs.get("verdict", ""), kwargs.get("next_action", ""))
-    if command == "audio-review-batch-score":
-        return run_audio_review_batch_score(kwargs["rubric_path"], kwargs.get("updates_json", "[]"), kwargs.get("verdict", ""), kwargs.get("next_action", ""))
-    if command == "audio-review-session":
-        return run_audio_review_session(kwargs["rubric_path"], kwargs.get("updates_json", "[]"), kwargs.get("verdict", ""), kwargs.get("next_action", ""), kwargs.get("reroll_mode", "none"), kwargs.get("run_id"), kwargs.get("concept_text"), kwargs.get("scope", "run"))
     if command == "validate-latest":
         return run_validate_latest(kwargs["output_dir"], int(kwargs.get("sample_count", 8) or 8), kwargs.get("shot_ids", []))
     raise ValueError(f"Unsupported command: {command}")

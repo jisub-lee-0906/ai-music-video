@@ -43,9 +43,6 @@ def run_assemble_mv(stage_input: StageInput) -> StageOutput:
     quality_findings_path = _review_quality_findings_path(stage_input.config)
     if quality_findings_path:
         review_inputs["quality_findings_path"] = quality_findings_path
-    audio_review_rubric_path = _review_audio_review_rubric_path(stage_input.config)
-    if audio_review_rubric_path:
-        review_inputs["audio_review_rubric_path"] = audio_review_rubric_path
     return StageOutput(
         "assemble_mv",
         "done",
@@ -86,14 +83,6 @@ def _review_quality_findings_path(config: object) -> str:
     if not isinstance(review_cfg, dict):
         return ""
     return str(review_cfg.get("quality_findings_path", "")).strip()
-
-
-
-def _review_audio_review_rubric_path(config: object) -> str:
-    review_cfg = config.get("review") if isinstance(config, dict) else None
-    if not isinstance(review_cfg, dict):
-        return ""
-    return str(review_cfg.get("audio_review_rubric_path", "")).strip()
 
 
 

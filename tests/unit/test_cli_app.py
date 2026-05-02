@@ -4,78 +4,14 @@ from ai_mv.cli import app
 from ai_mv.cli.args import build_parser
 
 
-def test_build_parser_supports_extract_frames_command():
+def test_build_parser_supports_start_command():
     parser = build_parser()
 
-    args = parser.parse_args(
-        [
-            "extract-frames",
-            "--video",
-            "renders/final.mp4",
-            "--output-dir",
-            ".analysis/run-1",
-            "--kind",
-            "final",
-            "--sample-count",
-            "8",
-        ]
-    )
+    args = parser.parse_args(["start", "--concept-text", "neon rain protagonist", "--run-id", "run-123"])
 
-    assert args.command == "extract-frames"
-    assert args.video == "renders/final.mp4"
-    assert args.output_dir == ".analysis/run-1"
-    assert args.kind == "final"
-    assert args.sample_count == 8
-
-
-def test_build_parser_supports_quality_findings_template_command():
-    parser = build_parser()
-
-    args = parser.parse_args(
-        [
-            "quality-findings-template",
-            "--shot-id",
-            "S001",
-            "--shot-id",
-            "S002",
-            "--output",
-            ".analysis/review-findings.json",
-        ]
-    )
-
-    assert args.command == "quality-findings-template"
-    assert args.shot_ids == ["S001", "S002"]
-    assert args.output == ".analysis/review-findings.json"
-
-
-def test_build_parser_supports_review_packet_command():
-    parser = build_parser()
-
-    args = parser.parse_args(
-        [
-            "review-packet",
-            "--video",
-            "renders/final.mp4",
-            "--output-dir",
-            ".analysis/run-1",
-            "--kind",
-            "final",
-            "--sample-count",
-            "8",
-            "--shot-id",
-            "S001",
-            "--shot-id",
-            "S002",
-        ]
-    )
-
-    assert args.command == "review-packet"
-    assert args.video == "renders/final.mp4"
-    assert args.output_dir == ".analysis/run-1"
-    assert args.kind == "final"
-    assert args.sample_count == 8
-    assert args.shot_ids == ["S001", "S002"]
-
+    assert args.command == "start"
+    assert args.concept_text == "neon rain protagonist"
+    assert args.run_id == "run-123"
 
 
 def test_build_parser_supports_validate_latest_command():
@@ -98,6 +34,17 @@ def test_build_parser_supports_validate_latest_command():
     assert args.sample_count == 8
     assert args.shot_ids == ["S001"]
 
+
+def test_build_parser_rejects_removed_debug_commands():
+    parser = build_parser()
+
+    try:
+        parser.parse_args(["review-packet", "--video", "renders/final.mp4"])
+        raised = False
+    except SystemExit:
+        raised = True
+
+    assert raised
 
 
 def test_main_handles_dispatch_error(monkeypatch, capsys):

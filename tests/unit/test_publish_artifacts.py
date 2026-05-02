@@ -408,12 +408,6 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
                     "final_video": "final.mp4",
                     "music_file": "music.mp3",
                 },
-                "audio_review_summary": {
-                    "status": "reviewed",
-                    "weighted_score": 46.0,
-                    "recommended_next_action": "regenerate_audio",
-                    "reason_codes": ["muddy_vocals", "weak_hook"],
-                },
             },
         },
         {},
@@ -457,10 +451,6 @@ def test_write_pipeline_artifacts_includes_schema_and_assembly_revision_in_run_s
         "camera_restraint",
         "mood_consistency",
     ]
-    assert captured["audio_review_status"] == "reviewed"
-    assert captured["audio_review_weighted_score"] == 46.0
-    assert captured["audio_review_recommended_next_action"] == "regenerate_audio"
-    assert captured["audio_review_reason_codes"] == ["muddy_vocals", "weak_hook"]
     assert captured["sync_repair_strategy"] == "clone_tail_pad"
     assert captured["sync_repair_clone_tail_sec"] == 8.782
     assert captured["sync_repair_clone_tail_ratio"] == 0.487
@@ -544,12 +534,6 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
                 "final_video": "final.mp4",
                 "music_file": "music.mp3",
             },
-            "audio_review_summary": {
-                "status": "reviewed",
-                "weighted_score": 46.0,
-                "recommended_next_action": "regenerate_audio",
-                "reason_codes": ["muddy_vocals", "weak_hook"],
-            },
         },
         "rerender_escalation": {
             "status": "manual_review_required",
@@ -626,12 +610,6 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
                 "final_video": "final.mp4",
                 "music_file": "music.mp3",
             },
-            "audio_review_summary": {
-                "status": "reviewed",
-                "weighted_score": 46.0,
-                "recommended_next_action": "regenerate_audio",
-                "reason_codes": ["muddy_vocals", "weak_hook"],
-            },
         },
         "review_packet_manifest": "review/review-packet.json",
         "rerender_escalation": {
@@ -641,12 +619,6 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
             "section_ids": ["SEC_001"],
             "unique_material_ids": ["MAT_001"],
             "unique_section_ids": ["SEC_001"],
-        },
-        "audio_review_summary": {
-            "status": "reviewed",
-            "weighted_score": 46.0,
-            "recommended_next_action": "regenerate_audio",
-            "reason_codes": ["muddy_vocals", "weak_hook"],
         },
     }
     assert run_summary["schema_version"] == "ai_mv_schema_v2"
@@ -663,10 +635,6 @@ def test_write_pipeline_artifacts_writes_roundtrip_manifest_and_summary_files(mo
     assert run_summary["technical_completion_score"] == 100.0
     assert run_summary["material_quality_score"] == 100.0
     assert run_summary["final_mv_quality_score"] == 84.0
-    assert run_summary["audio_review_status"] == "reviewed"
-    assert run_summary["audio_review_weighted_score"] == 46.0
-    assert run_summary["audio_review_recommended_next_action"] == "regenerate_audio"
-    assert run_summary["audio_review_reason_codes"] == ["muddy_vocals", "weak_hook"]
 
 
 

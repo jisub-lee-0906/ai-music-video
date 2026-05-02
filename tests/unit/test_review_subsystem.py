@@ -1558,39 +1558,6 @@ def test_review_models_build_report_from_inputs():
     assert report["coverage"]["stills_ratio"] == 1.0
     assert report["rerender_reasons"] == {}
 
-
-def test_review_models_surface_audio_review_summary_and_override_next_action_when_audio_is_weak():
-    report = build_review_report(
-        planned_shot_ids=["S001"],
-        still_results=[{"shot_id": "S001"}],
-        clip_results=[{"shot_id": "S001"}],
-        still_status={"S001": True},
-        clip_status={"S001": True},
-        final_video_exists=True,
-        rerender_targets=[],
-        rerender_reasons={},
-        audio_video_drift_sec=0.0,
-        config={"review": {"max_audio_video_drift_sec": 0.5}},
-        audio_review_summary={
-            "status": "reviewed",
-            "weighted_score": 46.0,
-            "verdict": "weak hook and muddy vocal delivery",
-            "recommended_next_action": "regenerate_audio",
-            "reason_codes": ["muddy_vocals", "weak_hook", "weak_mv_cues"],
-            "prescription": {
-                "fix_strategy": "strengthen_hook_and_clean_vocal_delivery",
-                "prompt_contract_focus": ["hook_brief", "vocal_profile", "audio_direction"],
-            },
-        },
-    )
-
-    assert report["audio_review_summary"]["weighted_score"] == 46.0
-    assert report["audio_reroll_prescription"]["fix_strategy"] == "strengthen_hook_and_clean_vocal_delivery"
-    assert report["overall_status"] == "needs_audio_revision"
-    assert report["publishability_tier"] == "needs_audio_revision"
-    assert report["recommended_next_action"] == "regenerate_audio"
-
-
 def test_review_models_marks_report_needing_rerender_when_drift_exceeds_tolerance():
     report = build_review_report(
         planned_shot_ids=["S001"],
