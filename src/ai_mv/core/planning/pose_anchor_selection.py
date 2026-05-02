@@ -59,7 +59,7 @@ POSE_ANCHOR_CATALOG: dict[str, dict] = {
 def build_pose_anchor_selection(shot: dict) -> dict:
     text = _shot_text(shot)
     story_function = str(shot.get("story_function", "")).strip().lower()
-    if _has_microphone_action(text) or story_function == "performance" and "microphone" in text:
+    if _has_microphone_action(text):
         return _selection("ANCHOR_POSE_MICROPHONE_PERFORMANCE")
     if story_function == "payoff" or _has_any_word(text, ("payoff", "final", "resolve", "resolved")):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT")
@@ -69,9 +69,11 @@ def build_pose_anchor_selection(shot: dict) -> dict:
         return _selection("ANCHOR_POSE_PROFILE_EMOTIONAL")
     if any(token in text for token in ("full body", "full-body", "wide", "world", "establish")):
         return _selection("ANCHOR_POSE_FULL_BODY_STANDING")
+    if any(token in text for token in ("hero", "close", "closeup", "close-up", "threshold")) or story_function == "threshold":
+        return _selection("ANCHOR_POSE_HERO_CLOSEUP")
     if any(token in text for token in ("three quarter", "three-quarter", "bridge")):
         return _selection("ANCHOR_POSE_THREE_QUARTER_MEDIUM")
-    if any(token in text for token in ("hero", "close", "closeup", "close-up", "threshold", "emotional")) or story_function == "threshold":
+    if "emotional" in text:
         return _selection("ANCHOR_POSE_HERO_CLOSEUP")
     return _selection("ANCHOR_POSE_THREE_QUARTER_MEDIUM")
 
@@ -94,7 +96,24 @@ def _has_any_word(text: str, words: tuple[str, ...]) -> bool:
 
 
 def _has_microphone_action(text: str) -> bool:
-    return any(marker in text for marker in ("microphone", "mic stand", "handheld mic", "singing into a mic"))
+    positive_markers = ("microphone", "mic stand", "handheld mic", "singing into a mic")
+    return any(marker in text and not _is_negated_action(text, marker) for marker in positive_markers)
+
+
+def _is_negated_action(text: str, marker: str) -> bool:
+    normalized_marker = marker.replace("_", " ")
+    negated_forms = (
+        f"no {normalized_marker}",
+        f"without {normalized_marker}",
+        f"avoid {normalized_marker}",
+        f"not {normalized_marker}",
+        f"never {normalized_marker}",
+    )
+    if any(form in text for form in negated_forms):
+        return True
+    if marker == "microphone" and ("no microphone" in text or "without microphone" in text):
+        return True
+    return False
 
 
 def _shot_text(shot: dict) -> str:

@@ -121,6 +121,62 @@ def test_render_item_selects_distinct_pose_anchors_from_story_and_shot_needs():
     assert len({hero["selected_pose_anchor_id"], walking["selected_pose_anchor_id"], payoff["selected_pose_anchor_id"], microphone["selected_pose_anchor_id"]}) == 4
 
 
+def test_performance_shot_without_microphone_action_does_not_select_microphone_anchor():
+    style_bible = get_style_bible("citypop")
+    item = build_render_item(
+        {},
+        "cinematic narrative MV about choosing courage at sunrise",
+        "citypop",
+        style_bible,
+        {
+            "shot_id": "S005",
+            "render_mode": "ia2v",
+            "start_sec": 6.0,
+            "duration_sec": 3.0,
+            "section_id": "SEC_CHORUS",
+            "section_type": "chorus",
+            "shot_role": "camera-facing emotional delivery without props",
+            "visual_mode": "solo_vocal_presence_medium",
+            "story_function": "performance",
+            "story_contract": {
+                "why_this_shot": "the protagonist commits to the chorus without introducing stage props",
+                "protagonist_action": "camera-facing emotional vocal delivery with empty hands",
+            },
+        },
+    )
+
+    assert item["selected_pose_anchor_id"] != "ANCHOR_POSE_MICROPHONE_PERFORMANCE"
+    assert item["selected_pose_anchor_id"] == "ANCHOR_POSE_HERO_CLOSEUP"
+
+
+def test_microphone_anchor_is_selected_only_from_positive_story_action_not_negative_copy():
+    style_bible = get_style_bible("citypop")
+    item = build_render_item(
+        {},
+        "cinematic narrative MV with no stage-performance props",
+        "citypop",
+        style_bible,
+        {
+            "shot_id": "S006",
+            "render_mode": "ia2v",
+            "start_sec": 9.0,
+            "duration_sec": 3.0,
+            "section_id": "SEC_BRIDGE",
+            "section_type": "bridge",
+            "shot_role": "quiet bridge performance, no microphone, no stage prop",
+            "visual_mode": "emotional_closeup_no_microphone",
+            "story_function": "performance",
+            "story_contract": {
+                "why_this_shot": "avoid literal concert grammar",
+                "protagonist_action": "she sings silently to camera without microphone",
+            },
+        },
+    )
+
+    assert item["selected_pose_anchor_id"] != "ANCHOR_POSE_MICROPHONE_PERFORMANCE"
+    assert item["selected_pose_anchor_id"] == "ANCHOR_POSE_HERO_CLOSEUP"
+
+
 def test_pose_anchor_selection_does_not_treat_unresolved_text_as_final_payoff():
     style_bible = get_style_bible("citypop")
     item = build_render_item(
