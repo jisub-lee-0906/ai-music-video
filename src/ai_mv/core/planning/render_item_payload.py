@@ -21,6 +21,7 @@ def build_render_item_payload(
     reference_policy: dict,
     variation_delta: dict,
     production_policy: dict | None = None,
+    pose_anchor_selection: dict | None = None,
 ) -> dict:
     out = {
         "shot_id": shot["shot_id"],
@@ -35,6 +36,7 @@ def build_render_item_payload(
         "variation_profile": variation_profile,
         "continuity_contract": continuity_contract,
         "shot_relation_contract": shot_relation_contract,
+        "story_contract": dict(shot.get("story_contract", {})) if isinstance(shot.get("story_contract"), dict) else {},
         "prompt_seed": prompt_bundle["prompt_seed"],
         "prompt_draft": prompt_bundle["prompt_draft"],
         "prompt_polish": prompt_bundle["prompt_polish"],
@@ -52,6 +54,8 @@ def build_render_item_payload(
         "ia2v_risk_class": (production_policy or {}).get("ia2v_risk_class", ""),
         "anchor_reference_arm": (production_policy or {}).get("anchor_reference_arm", ""),
         "recommended_duration_sec": (production_policy or {}).get("recommended_duration_sec", {}),
+        "pose_anchor_selection": dict(pose_anchor_selection or {}),
+        "selected_pose_anchor_id": str((pose_anchor_selection or {}).get("selected_pose_anchor_id", "")).strip(),
         "still_a": "",
     }
     if render_mode == "ia2v":

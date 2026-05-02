@@ -12,6 +12,7 @@ from ai_mv.core.planning.prompt_assembly import (
     polish_prompt as prompt_assembly_polish_prompt,
 )
 from ai_mv.core.planning.production_policy import build_production_policy as production_policy_build_production_policy
+from ai_mv.core.planning.pose_anchor_selection import build_pose_anchor_selection as pose_anchor_selection_build_pose_anchor_selection
 from ai_mv.core.planning.prompt_contracts import (
     build_clip_positive_prompt as prompt_contracts_build_clip_positive_prompt,
     build_clip_prompt_seed as prompt_contracts_build_clip_prompt_seed,
@@ -53,6 +54,8 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     shot_relation_contract = build_shot_relation_contract(shot)
     variation_seed = _variation_seed_for_shot(shot)
     variation_profile = build_variation_profile(variation_seed, shot)
+    if isinstance(shot.get("story_contract"), dict):
+        variation_profile = {**variation_profile, "story_contract": dict(shot["story_contract"])}
     clip_prompt_seed = build_clip_prompt_seed(render_mode, shot, prompt_seed, variation_profile, shot_relation_contract)
     clip_positive_prompt = build_clip_positive_prompt(render_mode, shot, clip_prompt_seed, variation_profile, shot_relation_contract)
     edit_intent = build_edit_intent(shot, variation_profile)
@@ -61,6 +64,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     reference_policy = build_reference_policy(shot)
     variation_delta = build_variation_delta_contract(shot, reference_policy)
     production_policy = production_policy_build_production_policy(shot, style_name=style_name)
+    pose_anchor_selection = pose_anchor_selection_build_pose_anchor_selection(shot)
     still_prompt_text = build_still_prompt_text(
         prompt_seed,
         prompt_draft,
@@ -88,6 +92,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         reference_policy=reference_policy,
         variation_delta=variation_delta,
         production_policy=production_policy,
+        pose_anchor_selection=pose_anchor_selection,
     )
     return out
 

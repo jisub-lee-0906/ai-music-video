@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.output_paths import still_prefix
+from ai_mv.core.stages.still_qa_gate import evaluate_still_for_ia2v
 from ai_mv.engines.flux2_image.runner import run_flux2_still
 
 _RAW_STILL_VISUAL_MODES = {"window_reflection"}
@@ -29,6 +30,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
     material_map = {str(row.get("material_id", "")).strip(): row for row in material_plan if str(row.get("material_id", "")).strip()}
     anchor_results = _render_anchor_package(stage_input)
     anchor_still_map = {str(row.get("anchor_id", "")).strip(): row for row in anchor_results if str(row.get("anchor_id", "")).strip()}
+    anchor_identity_prompt = _anchor_identity_prompt(anchor_still_map)
     still_results = []
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
@@ -36,6 +38,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         material_id = str(render_item.get("material_id", "") or shot.get("material_id", "")).strip()
         material_row = material_map.get(material_id, {})
         base_prompt_text = _still_prompt_text(render_item)
+        base_prompt_text = _apply_anchor_identity_prompt(base_prompt_text, render_item, anchor_identity_prompt)
         prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
         anchor_reference_image = _anchor_reference_image(render_item, generated_still_map, prior_still_map, anchor_still_map)
@@ -75,27 +78,29 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         selected_candidate, selected_candidate_index, selection_policy = _select_still_candidate(candidate_results, render_item)
         candidate_images = [str(row.get("image", "")).strip() for row in candidate_results]
         image_path = str(selected_candidate.get("image", "")).strip()
-        still_results.append(
-            {
-                "shot_id": shot_id,
-                "material_id": material_id,
-                "section_id": str(render_item.get("section_id", "") or shot.get("section_id", "") or material_row.get("section_id", "")).strip(),
-                "image": image_path,
-                "candidate_images": candidate_images,
-                "candidate_count": len(candidate_images),
-                "candidate_results": candidate_results,
-                "selected_candidate": dict(selected_candidate),
-                "selected_candidate_index": selected_candidate_index,
-                "selection_policy": selection_policy,
-                "prompt_seed": str(render_item.get("prompt_seed", "")).strip(),
-                "prompt_text": prompt_text,
-                "reference_mode": str(render_item.get("reference_mode", "")).strip(),
-                "reference_source_shot_id": str(render_item.get("reference_source_shot_id", "")).strip(),
-                "identity_lock_strength": str(render_item.get("identity_lock_strength", "")).strip(),
-                "status": "done",
-            }
-        )
-        generated_still_map[shot_id] = still_results[-1]
+        still_row = {
+            "shot_id": shot_id,
+            "material_id": material_id,
+            "section_id": str(render_item.get("section_id", "") or shot.get("section_id", "") or material_row.get("section_id", "")).strip(),
+            "image": image_path,
+            "candidate_images": candidate_images,
+            "candidate_count": len(candidate_images),
+            "candidate_results": candidate_results,
+            "selected_candidate": dict(selected_candidate),
+            "selected_candidate_index": selected_candidate_index,
+            "selection_policy": selection_policy,
+            "prompt_seed": str(render_item.get("prompt_seed", "")).strip(),
+            "prompt_text": prompt_text,
+            "reference_mode": str(render_item.get("reference_mode", "")).strip(),
+            "reference_source_shot_id": str(render_item.get("reference_source_shot_id", "")).strip(),
+            "identity_lock_strength": str(render_item.get("identity_lock_strength", "")).strip(),
+            "selected_pose_anchor_id": str(render_item.get("selected_pose_anchor_id", "")).strip(),
+            "pose_anchor_selection": dict(render_item.get("pose_anchor_selection", {})) if isinstance(render_item.get("pose_anchor_selection"), dict) else {},
+            "status": "done",
+        }
+        still_row["still_qa"] = evaluate_still_for_ia2v(still_row=still_row, shot=shot, render_item=render_item)
+        still_results.append(still_row)
+        generated_still_map[shot_id] = still_row
     return StageOutput(
         "render_stills",
         "done",
@@ -104,7 +109,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
             "anchor_results": anchor_results,
             "workflow_inputs": {
                 **dict(stage_input.payload.get("workflow_inputs", {})),
-                "stills": {"count": len(still_results), "anchor_count": len(anchor_results)},
+                "stills": {"count": len(still_results), "anchor_count": len(anchor_results), "pose_anchor_count": _pose_anchor_result_count(anchor_results)},
             },
         },
         [],
@@ -116,6 +121,8 @@ def _render_anchor_package(stage_input: StageInput) -> list[dict]:
     if not isinstance(anchor_package, dict):
         return []
     anchors = [row for row in anchor_package.get("anchors", []) if isinstance(row, dict)]
+    pose_anchors = [row for row in anchor_package.get("pose_anchor_bank", []) if isinstance(row, dict)]
+    anchors = [*anchors, *pose_anchors]
     anchor_results: list[dict] = []
     anchor_image_by_id: dict[str, str] = {}
     for anchor in anchors:
@@ -132,22 +139,40 @@ def _render_anchor_package(stage_input: StageInput) -> list[dict]:
             "workflow_target": str(anchor.get("workflow_target", "")).strip(),
         }
         reference_image = _anchor_package_reference_image(anchor, anchor_image_by_id)
+        if _anchor_requires_reference_image(anchor) and not reference_image:
+            continue
         if reference_image:
             item["reference_image"] = reference_image
         image_path = run_flux2_still(stage_input.config, item)
         anchor_image_by_id[anchor_id] = image_path
-        anchor_results.append(
-            {
-                "anchor_id": anchor_id,
-                "anchor_type": str(anchor.get("anchor_type", "")).strip(),
-                "material_class": str(anchor.get("material_class", "")).strip(),
-                "workflow_target": str(anchor.get("workflow_target", "")).strip(),
-                "image": image_path,
-                "prompt_text": prompt_text,
-                "status": "done",
-            }
-        )
+        result_row = {
+            "anchor_id": anchor_id,
+            "anchor_type": str(anchor.get("anchor_type", "")).strip(),
+            "material_class": str(anchor.get("material_class", "")).strip(),
+            "workflow_target": str(anchor.get("workflow_target", "")).strip(),
+            "image": image_path,
+            "prompt_text": prompt_text,
+            "status": "done",
+        }
+        for metadata_key in ("pose_family", "framing", "camera_angle"):
+            metadata_value = str(anchor.get(metadata_key, "")).strip()
+            if metadata_value:
+                result_row[metadata_key] = metadata_value
+        anchor_results.append(result_row)
     return anchor_results
+
+
+def _pose_anchor_result_count(anchor_results: list[dict]) -> int:
+    return sum(
+        1
+        for row in anchor_results
+        if isinstance(row, dict)
+        and (
+            str(row.get("anchor_type", "")).strip() == "pose_variant"
+            or str(row.get("material_class", "")).strip() == "pose_reference_anchor"
+            or str(row.get("pose_family", "")).strip()
+        )
+    )
 
 
 
@@ -160,10 +185,33 @@ def _anchor_package_reference_image(anchor: dict, anchor_image_by_id: dict[str, 
         image = str(anchor_image_by_id.get(anchor_id, "")).strip()
         if image:
             return image
-    for image in anchor_image_by_id.values():
-        if str(image).strip():
-            return str(image).strip()
+    if _is_pose_reference_anchor(anchor):
+        return ""
+    primary_identity = str(anchor_image_by_id.get("ANCHOR_CHARACTER_UPPER_BODY", "")).strip()
+    if primary_identity:
+        return primary_identity
+    full_body_identity = str(anchor_image_by_id.get("ANCHOR_CHARACTER_FULL_BODY", "")).strip()
+    if full_body_identity:
+        return full_body_identity
     return ""
+
+
+
+def _anchor_requires_reference_image(anchor: dict) -> bool:
+    workflow_target = str(anchor.get("workflow_target", "")).strip().lower()
+    if workflow_target not in {"image_flux2_reference_image", "image_flux2", "flux2_reference_image"}:
+        return False
+    return bool(str(anchor.get("anchor_id", "")).strip() or str(anchor.get("anchor_type", "")).strip())
+
+
+
+def _is_pose_reference_anchor(anchor: dict) -> bool:
+    return (
+        str(anchor.get("anchor_type", "")).strip() == "pose_variant"
+        or str(anchor.get("anchor_role", "")).strip() == "pose_variant"
+        or str(anchor.get("material_class", "")).strip() == "pose_reference_anchor"
+        or bool(str(anchor.get("pose_family", "")).strip())
+    )
 
 
 
@@ -173,6 +221,122 @@ def _still_prompt_text(render_item: dict) -> str:
         if value:
             return value
     return "photoreal live-action still frame, neon-lit night street, cinematic mood, bittersweet atmosphere"
+
+
+def _apply_anchor_identity_prompt(prompt_text: str, render_item: dict, anchor_identity_prompt: str) -> str:
+    if not anchor_identity_prompt:
+        return str(prompt_text).strip()
+    if not _should_apply_anchor_identity_prompt(render_item):
+        return str(prompt_text).strip()
+    base = _remove_anchor_identity_contradictions(str(prompt_text).strip(), anchor_identity_prompt)
+    existing = base.lower()
+    tokens: list[str] = [base] if base else []
+    for token in [part.strip() for part in anchor_identity_prompt.split(",") if part.strip()]:
+        if token.lower() not in existing and token not in tokens:
+            tokens.append(token)
+    return ", ".join(token for token in tokens if token)
+
+
+def _remove_anchor_identity_contradictions(prompt_text: str, anchor_identity_prompt: str) -> str:
+    anchor_text = anchor_identity_prompt.lower()
+    if not ("bright red" in anchor_text and "raincoat" in anchor_text):
+        return str(prompt_text).strip()
+    blocked_exact = {
+        "stable dark outerwear silhouette",
+        "stable outfit silhouette",
+        "stable bright stage outfit silhouette",
+    }
+    replacement_tokens = [
+        "preserve visible bright red raincoat as the outerwear continuity marker",
+        "bright red raincoat remains visible in this shot",
+    ]
+    tokens: list[str] = []
+    for token in [part.strip() for part in str(prompt_text).split(",") if part.strip()]:
+        if token.lower() in blocked_exact:
+            continue
+        if token not in tokens:
+            tokens.append(token)
+    for token in replacement_tokens:
+        if token not in tokens:
+            tokens.append(token)
+    return ", ".join(tokens)
+
+
+def _should_apply_anchor_identity_prompt(render_item: dict) -> bool:
+    if not isinstance(render_item, dict):
+        return False
+    reference_mode = str(render_item.get("reference_mode", "")).strip().lower()
+    if reference_mode in {"anchor_source", "performance_anchor_source", "use_anchor_still", "use_performance_anchor_still"}:
+        return True
+    continuity_contract = render_item.get("continuity_contract") if isinstance(render_item.get("continuity_contract"), dict) else {}
+    return bool(str(continuity_contract.get("protagonist_anchor", "")).strip())
+
+
+def _anchor_identity_prompt(anchor_still_map: dict[str, dict] | None) -> str:
+    if not isinstance(anchor_still_map, dict):
+        return ""
+    anchor_row = _preferred_character_anchor_row(anchor_still_map)
+    prompt_text = str(anchor_row.get("prompt_text", "")).strip() if isinstance(anchor_row, dict) else ""
+    if not prompt_text:
+        return ""
+    blocked_markers = (
+        "white background",
+        "pure white",
+        "seamless background",
+        "identity reference card",
+        "reference card",
+        "full-body",
+        "upper-body",
+        "no street",
+        "single clean",
+        "stable dark outerwear silhouette",
+    )
+    identity_tokens: list[str] = [
+        "preserve the exact same white-background character model identity",
+        "do not change gender, face, hair, coat, or wardrobe color",
+        "no unrelated male singer",
+    ]
+    lower_prompt = prompt_text.lower()
+    explicit_markers: list[str] = []
+    if "woman" in lower_prompt or " she " in f" {lower_prompt} ":
+        explicit_markers.append("same young woman")
+    if "short black bob" in lower_prompt and "bang" in lower_prompt:
+        explicit_markers.append("short black bob with bangs")
+    elif "short black bob" in lower_prompt:
+        explicit_markers.append("short black bob")
+    if "bright red" in lower_prompt and "raincoat" in lower_prompt:
+        explicit_markers.append("bright red raincoat")
+    elif "red" in lower_prompt and "raincoat" in lower_prompt:
+        explicit_markers.append("red raincoat")
+    for marker in explicit_markers:
+        if marker not in identity_tokens:
+            identity_tokens.append(marker)
+    for token in [part.strip() for part in prompt_text.split(",") if part.strip()]:
+        lower = token.lower()
+        if any(marker in lower for marker in blocked_markers):
+            continue
+        if token not in identity_tokens:
+            identity_tokens.append(token)
+    return ", ".join(identity_tokens)
+
+
+def _preferred_character_anchor_row(anchor_still_map: dict[str, dict]) -> dict:
+    preferred_ids = ("ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY")
+    for anchor_id in preferred_ids:
+        row = anchor_still_map.get(anchor_id)
+        if isinstance(row, dict) and str(row.get("image", "")).strip():
+            return row
+    for row in anchor_still_map.values():
+        if not isinstance(row, dict):
+            continue
+        material_class = str(row.get("material_class", "")).strip().lower()
+        anchor_type = str(row.get("anchor_type", "")).strip().lower()
+        if str(row.get("image", "")).strip() and ("character" in material_class or "character" in anchor_type):
+            return row
+    for row in anchor_still_map.values():
+        if isinstance(row, dict) and str(row.get("image", "")).strip():
+            return row
+    return {}
 
 
 def _single_keyframe_prompt_text(prompt_text: str) -> str:
@@ -264,6 +428,12 @@ def _anchor_reference_image(
     reference_mode = str(render_item.get("reference_mode", "")).strip().lower()
     if reference_mode == "reuse_prior_still":
         return ""
+    selected_pose_anchor_id = str(render_item.get("selected_pose_anchor_id", "")).strip()
+    if selected_pose_anchor_id and isinstance(anchor_still_map, dict):
+        selected_pose_image = str(anchor_still_map.get(selected_pose_anchor_id, {}).get("image", "")).strip()
+        if selected_pose_image:
+            return selected_pose_image
+        return ""
     if reference_mode == "":
         continuity_contract = render_item.get("continuity_contract") if isinstance(render_item.get("continuity_contract"), dict) else {}
         has_continuity_anchor = bool(
@@ -272,7 +442,7 @@ def _anchor_reference_image(
         )
         if not has_continuity_anchor:
             return ""
-        anchor_reference = _first_anchor_package_image(anchor_still_map)
+        anchor_reference = _primary_identity_anchor_image(anchor_still_map)
         if anchor_reference:
             return anchor_reference
         for still_map in (generated_still_map, prior_still_map):
@@ -280,6 +450,11 @@ def _anchor_reference_image(
                 image = str(row.get("image", "")).strip() if isinstance(row, dict) else ""
                 if image:
                     return image
+        return ""
+    if reference_mode == "performance_anchor_source":
+        anchor_reference = _primary_identity_anchor_image(anchor_still_map)
+        if anchor_reference:
+            return anchor_reference
         return ""
     if reference_mode in {"use_anchor_still", "use_performance_anchor_still"}:
         reference_shot_id = str(render_item.get("reference_source_shot_id", "")).strip()
@@ -299,7 +474,7 @@ def _anchor_reference_image(
                 if image and row_mode == preferred_source_mode:
                     return image
         if reference_mode == "use_anchor_still":
-            anchor_reference = _first_anchor_package_image(anchor_still_map)
+            anchor_reference = _primary_identity_anchor_image(anchor_still_map)
             if anchor_reference:
                 return anchor_reference
             return ""
@@ -307,14 +482,23 @@ def _anchor_reference_image(
 
 
 
-def _first_anchor_package_image(anchor_still_map: dict[str, dict] | None) -> str:
+def _primary_identity_anchor_image(anchor_still_map: dict[str, dict] | None) -> str:
     if not isinstance(anchor_still_map, dict):
         return ""
+    for anchor_id in ("ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"):
+        row = anchor_still_map.get(anchor_id)
+        image = str(row.get("image", "")).strip() if isinstance(row, dict) else ""
+        if image:
+            return image
     for row in anchor_still_map.values():
         if not isinstance(row, dict):
             continue
+        material_class = str(row.get("material_class", "")).strip().lower()
+        anchor_type = str(row.get("anchor_type", "")).strip().lower()
+        if "world" in material_class or "world" in anchor_type:
+            continue
         image = str(row.get("image", "")).strip()
-        if image:
+        if image and ("character" in material_class or "character" in anchor_type):
             return image
     return ""
 

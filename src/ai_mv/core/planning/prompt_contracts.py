@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.core.planning.story_contracts import story_contract_prompt_tokens
+
 
 
 def build_still_prompt_text(
@@ -26,6 +28,7 @@ def build_still_prompt_text(
             str(relation.get("same_block_vs_new_block", "")).strip(),
             _reference_identity_token(reference),
             _reference_delta_token(variation_delta),
+            *story_contract_prompt_tokens(variation.get("story_contract")),
         ]
     )
 
@@ -76,6 +79,7 @@ def build_clip_positive_prompt(
             _story_function_token(shot),
             _visual_event_token(shot),
             _payoff_requirement_token(shot),
+            *story_contract_prompt_tokens(shot.get("story_contract")),
             str(relation.get("same_block_vs_new_block", "")).strip(),
             str(relation.get("emotional_delta", "")).strip(),
         ]

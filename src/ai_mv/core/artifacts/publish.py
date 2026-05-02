@@ -7,6 +7,43 @@ from ai_mv.core.artifacts.schema import artifact_schema_version
 from ai_mv.core.artifacts.summary_fields import derive_summary_fields
 
 
+def _story_contract_summary(shot_plan: object) -> dict:
+    shots = [row for row in shot_plan if isinstance(row, dict)] if isinstance(shot_plan, list) else []
+    required = {
+        "why_this_shot",
+        "protagonist_action",
+        "section_alignment",
+        "progression_from_previous",
+        "visual_payoff",
+        "anti_repetition_constraint",
+    }
+    complete: list[dict] = []
+    missing_ids: list[str] = []
+    for row in shots:
+        contract = row.get("story_contract") if isinstance(row.get("story_contract"), dict) else {}
+        has_all = all(str(contract.get(key, "")).strip() for key in required)
+        if has_all:
+            complete.append(row)
+        else:
+            shot_id = str(row.get("shot_id", "")).strip()
+            if shot_id:
+                missing_ids.append(shot_id)
+    sections = dedupe_preserve_order(str(row.get("section_type", "")).strip() for row in complete if str(row.get("section_type", "")).strip())
+    action_samples = [
+        str(row.get("story_contract", {}).get("protagonist_action", "")).strip()
+        for row in complete[:6]
+        if isinstance(row.get("story_contract"), dict) and str(row.get("story_contract", {}).get("protagonist_action", "")).strip()
+    ]
+    return {
+        "story_contract_shot_count": len(complete),
+        "story_contract_total_shot_count": len(shots),
+        "story_contract_coverage_ratio": round((len(complete) / len(shots)) if shots else 0.0, 3),
+        "story_contract_sections": sections,
+        "story_contract_missing_shot_ids": missing_ids,
+        "story_contract_action_samples": action_samples,
+    }
+
+
 def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     write_manifest(state, payload)
     rerender_escalation = payload.get("rerender_escalation") if isinstance(payload.get("rerender_escalation"), dict) else {}
@@ -71,6 +108,10 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         if isinstance(row, dict) and str(row.get("reference_summary_label", "")).strip()
     ]
     summary_fields = derive_summary_fields(payload)
+    anchor_results = [row for row in payload.get("anchor_results", []) if isinstance(row, dict)]
+    anchor_result_ids = [str(row.get("anchor_id", "")).strip() for row in anchor_results if str(row.get("anchor_id", "")).strip()]
+    anchor_result_image_paths = [str(row.get("image", "")).strip() for row in anchor_results if str(row.get("image", "")).strip()]
+    anchor_result_workflow_targets = [str(row.get("workflow_target", "")).strip() for row in anchor_results if str(row.get("workflow_target", "")).strip()]
     review_report = payload.get("review_report") if isinstance(payload.get("review_report"), dict) else {}
     review_scores = review_report.get("scores") if isinstance(review_report.get("scores"), dict) else {}
     review_severity = review_report.get("severity") if isinstance(review_report.get("severity"), dict) else {}
@@ -91,6 +132,7 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
     )
     audio_review_summary = review_report.get("audio_review_summary") if isinstance(review_report.get("audio_review_summary"), dict) else {}
     sync_repair_summary = payload.get("sync_repair_summary") if isinstance(payload.get("sync_repair_summary"), dict) else {}
+    story_contract_summary = _story_contract_summary(payload.get("shot_plan"))
     summary = {
         "run_id": state["run_id"],
         "scope": str(state.get("scope", "run")),
@@ -100,9 +142,15 @@ def write_pipeline_artifacts(state: dict, payload: dict, config: dict) -> None:
         "completed_stages": list(state.get("completed_stages", [])),
         "schema_version": artifact_schema_version(),
         "concept_text": str(payload.get("concept_text", "")).strip(),
+        **story_contract_summary,
         **summary_fields,
         "final_video": str(payload.get("final_video", "")).strip(),
         "music_file": str(payload.get("music_file", "")).strip(),
+        "anchor_result_count": len(anchor_results),
+        "anchor_result_ids": anchor_result_ids,
+        "anchor_result_image_paths": anchor_result_image_paths,
+        "anchor_result_workflow_targets": anchor_result_workflow_targets,
+        "anchor_result_unique_workflow_targets": dedupe_preserve_order(anchor_result_workflow_targets),
         "review_status": str(review_report.get("status", "")).strip(),
         "overall_status": str(review_report.get("overall_status", "")).strip(),
         "publishability_tier": str(review_report.get("publishability_tier", "")).strip(),

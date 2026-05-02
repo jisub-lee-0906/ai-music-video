@@ -54,6 +54,9 @@ def write_manifest(state: dict, payload: dict) -> None:
             "scope": scope,
         },
     }
+    anchor_results = [row for row in payload.get("anchor_results", []) if isinstance(row, dict)]
+    if anchor_results:
+        out["stills"]["anchor_results"] = anchor_results
     write_json(run_file(state["run_id"], "manifest.json", scope), out)
     write_json(latest_file("manifest.json", scope), out)
     if latest_success_eligible(state, payload):

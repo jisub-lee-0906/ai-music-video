@@ -62,19 +62,25 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     anchor_package = out["anchor_package"]
     assert anchor_package["strategy"] == "character_card_plus_world_anchor_then_reference_variants"
     assert [anchor["anchor_type"] for anchor in anchor_package["anchors"]] == [
-        "character_full_body",
         "character_upper_body_identity",
+        "character_full_body",
         "world_character_anchor",
     ]
-    full_body = anchor_package["anchors"][0]
+    upper_body = anchor_package["anchors"][0]
+    assert upper_body["workflow_target"] == "image_flux2_text_to_image"
+    assert "reference_anchor_ids" not in upper_body
+    assert "upper-body character reference image" in upper_body["prompt_text"]
+    assert "clear face visibility" in upper_body["prompt_text"]
+    full_body = anchor_package["anchors"][1]
     assert full_body["material_class"] == "character_reference_anchor"
+    assert full_body["workflow_target"] == "image_flux2_reference_image"
+    assert full_body["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+    assert "same face identity from the upper-body reference" in full_body["prompt_text"]
     assert "single clean full-body identity reference card" in full_body["prompt_text"]
     assert "pure white seamless background" in full_body["prompt_text"]
     assert "No street" in full_body["prompt_text"]
-    upper_body = anchor_package["anchors"][1]
-    assert "upper-body character reference image" in upper_body["prompt_text"]
-    assert "clear face visibility" in upper_body["prompt_text"]
     world_anchor = anchor_package["anchors"][2]
+    assert world_anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"]
     assert world_anchor["material_class"] == "world_reference_anchor"
     assert "Using the same woman as the character reference" in world_anchor["prompt_text"]
     assert "rainy neon" in world_anchor["prompt_text"]
@@ -610,6 +616,7 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
         "variation_profile",
         "continuity_contract",
         "shot_relation_contract",
+        "story_contract",
         "prompt_seed",
         "prompt_draft",
         "prompt_polish",
@@ -627,6 +634,8 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
         "ia2v_risk_class",
         "anchor_reference_arm",
         "recommended_duration_sec",
+        "pose_anchor_selection",
+        "selected_pose_anchor_id",
         "still_a",
         "audio_segment",
     }

@@ -33,9 +33,15 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
     merged_payload.update(dict(reviewed.payload))
     review_report = merged_payload.get("rerender_review_report") if isinstance(merged_payload.get("rerender_review_report"), dict) else None
     if review_report is not None:
-        merged_payload["rerender_outcome"] = _rerender_outcome(review_report)
+        merged_payload["rerender_outcome"] = _rerender_outcome(
+            review_report,
+            assembly_revision_result=merged_payload.get("assembly_revision_result"),
+        )
     else:
-        merged_payload["rerender_outcome"] = _rerender_outcome(merged_payload.get("review_report"))
+        merged_payload["rerender_outcome"] = _rerender_outcome(
+            merged_payload.get("review_report"),
+            assembly_revision_result=merged_payload.get("assembly_revision_result"),
+        )
 
     final_video = str(merged_payload.get("final_video", "")).strip()
     if final_video:
@@ -50,14 +56,34 @@ def run_rerender_loop(stage_input: StageInput) -> StageOutput:
 
 
 
-def _rerender_outcome(review_report: object) -> dict[str, bool]:
+def _rerender_outcome(review_report: object, *, assembly_revision_result: object = None) -> dict[str, bool]:
     if not isinstance(review_report, dict):
         return {"attempted": True, "resolved": False, "exhausted": True}
     status = str(review_report.get("status", "")).strip()
     rerender_targets = review_report.get("rerender_targets")
-    unresolved = status == "needs_rerender" or bool(rerender_targets)
+    rerender_payloads = review_report.get("rerender_execution_payloads")
+    unresolved = status == "needs_rerender" or bool(rerender_targets) or bool(rerender_payloads)
+    if unresolved and _assembly_coverage_revision_resolved_clone_tail(review_report, assembly_revision_result):
+        unresolved = False
     return {
         "attempted": True,
         "resolved": not unresolved,
         "exhausted": unresolved,
     }
+
+
+def _assembly_coverage_revision_resolved_clone_tail(review_report: dict, assembly_revision_result: object) -> bool:
+    if not isinstance(assembly_revision_result, dict):
+        return False
+    if str(assembly_revision_result.get("status", "")).strip() != "applied":
+        return False
+    if str(assembly_revision_result.get("action", "")).strip() != "revise_assembly_coverage_before_sync_pad":
+        return False
+    if not str(assembly_revision_result.get("output_final_video", "")).strip():
+        return False
+    rerender_targets = review_report.get("rerender_targets")
+    rerender_payloads = review_report.get("rerender_execution_payloads")
+    if rerender_targets or rerender_payloads:
+        return False
+    blocking_checks = review_report.get("blocking_checks") if isinstance(review_report.get("blocking_checks"), dict) else {}
+    return bool(blocking_checks.get("sync_clone_tail_within_threshold", False))

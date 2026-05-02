@@ -1291,7 +1291,7 @@ def test_render_stills_reuse_prior_still_does_not_fallback_to_other_anchor_when_
 
 
 
-def test_render_stills_generates_white_background_flux_tti_anchor_before_reference_keyframes(monkeypatch):
+def test_render_stills_generates_upper_body_tti_then_full_body_reference_anchor_before_keyframes(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -1306,12 +1306,20 @@ def test_render_stills_generates_white_background_flux_tti_anchor_before_referen
             "anchor_package": {
                 "anchors": [
                     {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "anchor_type": "character_upper_body_identity",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
+                    },
+                    {
                         "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
                         "anchor_type": "character_full_body",
                         "material_class": "character_reference_anchor",
-                        "workflow_target": "image_flux2_text_to_image",
-                        "prompt_text": "single clean full-body identity reference card, pure white seamless background, no street",
-                    }
+                        "workflow_target": "image_flux2_reference_image",
+                        "reference_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY"],
+                        "prompt_text": "single clean full-body identity reference card, same face identity from the upper-body reference, pure white seamless background, no street",
+                    },
                 ],
                 "variant_policy": {"workflow_target": "image_flux2_reference_image"},
             },
@@ -1328,21 +1336,32 @@ def test_render_stills_generates_white_background_flux_tti_anchor_before_referen
 
     out = run_render_stills(stage_input)
 
-    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_FULL_BODY", "S001"]
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY", "S001"]
     assert calls[0]["workflow_target"] == "image_flux2_text_to_image"
     assert "pure white seamless background" in calls[0]["positive_prompt"]
     assert "reference_image" not in calls[0]
-    assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png"
+    assert calls[1]["workflow_target"] == "image_flux2_reference_image"
+    assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert calls[2]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
     assert out.payload["anchor_results"] == [
+        {
+            "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+            "anchor_type": "character_upper_body_identity",
+            "material_class": "character_reference_anchor",
+            "workflow_target": "image_flux2_text_to_image",
+            "image": "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png",
+            "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
+            "status": "done",
+        },
         {
             "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
             "anchor_type": "character_full_body",
             "material_class": "character_reference_anchor",
-            "workflow_target": "image_flux2_text_to_image",
+            "workflow_target": "image_flux2_reference_image",
             "image": "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png",
-            "prompt_text": "single clean full-body identity reference card, pure white seamless background, no street",
+            "prompt_text": "single clean full-body identity reference card, same face identity from the upper-body reference, pure white seamless background, no street",
             "status": "done",
-        }
+        },
     ]
 
 
@@ -1391,7 +1410,7 @@ def test_render_stills_uses_first_generated_anchor_still_for_later_continuity_sh
 
 
 
-def test_render_stills_uses_generated_performance_anchor_source_for_later_performance_shot(monkeypatch):
+def test_render_stills_uses_white_background_character_anchor_for_performance_anchor_source(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -1403,6 +1422,17 @@ def test_render_stills_uses_generated_performance_anchor_source_for_later_perfor
         run_id="run-performance-anchor-reference",
         config={"render": {"flux2_size": "1280x720"}},
         payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
+                        "anchor_type": "character_full_body",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "Make a single clean full-body identity reference card of same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders on a pure white seamless background. She wears a bright red raincoat over simple dark clothes and has a short black bob haircut with straight bangs. The character must be alone, centered, full body visible, face readable, outfit readable, soft studio lighting. No street, no room, no city, no scenery, no umbrella, no microphone, no chair, no text, no logo, no second person, no duplicate body, no collage, no split screen, no frame insert, no decorative background.",
+                    }
+                ]
+            },
             "shot_plan": [
                 {"shot_id": "S010", "visual_mode": "chorus_performance"},
                 {"shot_id": "S011", "visual_mode": "chorus_front_lights"},
@@ -1410,7 +1440,7 @@ def test_render_stills_uses_generated_performance_anchor_source_for_later_perfor
             "render_plan": [
                 {
                     "shot_id": "S010",
-                    "still_prompt_text": "same lead performer on the same glossy performance-night stage",
+                    "still_prompt_text": "same lead performer on the same glossy performance-night stage, stable dark outerwear silhouette",
                     "reference_mode": "performance_anchor_source",
                     "reference_source_shot_id": "S010",
                     "identity_lock_strength": "performance_anchor",
@@ -1430,8 +1460,15 @@ def test_render_stills_uses_generated_performance_anchor_source_for_later_perfor
 
     run_render_stills(stage_input)
 
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_FULL_BODY", "S010", "S011"]
     assert "reference_image" not in calls[0]
-    assert calls[1]["reference_image"] == "D:/renders/S010.png"
+    assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png"
+    assert "same young woman" in calls[1]["positive_prompt"]
+    assert "short black bob with bangs" in calls[1]["positive_prompt"]
+    assert "bright red raincoat" in calls[1]["positive_prompt"]
+    assert "stable dark outerwear silhouette" not in calls[1]["positive_prompt"]
+    assert "preserve visible bright red raincoat as the outerwear continuity marker" in calls[1]["positive_prompt"]
+    assert calls[2]["reference_image"] == "D:/renders/S010.png"
 
 
 
@@ -1867,6 +1904,66 @@ def test_render_clips_routes_ia2v(monkeypatch):
     assert calls[0][1]["prompt_seed"] == "slow windshield drift"
     assert calls[0][1]["positive_prompt"] == "slow windshield drift, stable motion, no abrupt pose change"
     assert calls[0][1]["audio"] == "music/song.mp3"
+
+
+def test_render_clips_propagates_anchor_identity_and_extends_duration_to_audio_coverage(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-redcoat-clips",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload={
+            "music_file": "music/song.mp3",
+            "audio_map": {"duration_sec": 18.0},
+            "shot_plan": [
+                {"shot_id": "S001", "duration_sec": 2.0, "render_mode": "ia2v", "start_sec": 0.0},
+                {"shot_id": "S002", "duration_sec": 2.0, "render_mode": "ia2v", "start_sec": 2.0},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "render_mode": "ia2v",
+                    "clip_prompt_seed": "neon walk",
+                    "clip_positive_prompt": "neon walk, stable performer identity",
+                },
+                {
+                    "shot_id": "S002",
+                    "render_mode": "ia2v",
+                    "clip_prompt_seed": "chorus profile",
+                    "clip_positive_prompt": "chorus profile, stable performer identity",
+                },
+            ],
+            "still_results": [
+                {
+                    "shot_id": "S001",
+                    "image": "D:/renders/S001.png",
+                    "prompt_text": "same young woman, short black bob with bangs, bright red raincoat remains visible in this shot",
+                },
+                {
+                    "shot_id": "S002",
+                    "image": "D:/renders/S002.png",
+                    "prompt_text": "same young woman, short black bob with bangs, preserve visible bright red raincoat as the outerwear continuity marker",
+                },
+            ],
+        },
+    )
+
+    run_render_clips(stage_input)
+
+    assert len(calls) == 2
+    assert calls[0]["duration_sec"] == 9.0
+    assert calls[1]["duration_sec"] == 9.0
+    for item in calls:
+        assert "same young woman" in item["positive_prompt"]
+        assert "short black bob with bangs" in item["positive_prompt"]
+        assert "bright red raincoat remains visible" in item["positive_prompt"]
+        assert "no unrelated male singer" in item["positive_prompt"]
+
 
 
 def test_render_clips_requires_explicit_render_mode_in_canonical_runtime():

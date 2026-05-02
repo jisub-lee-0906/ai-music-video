@@ -7,6 +7,7 @@ from ai_mv.core.planning.director_treatment import build_director_treatment
 from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.core.planning.sections import normalized_sections
 from ai_mv.core.planning.shot_plan import build_shot_plan
+from ai_mv.core.planning.story_contracts import build_story_contract
 from ai_mv.styles.resolver import get_style_bible, resolve_style_selection
 
 
@@ -47,6 +48,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
     shot_plan = build_shot_plan(config, sections, style_name=style_lane)
     _thread_continuity_anchor_bundle(shot_plan, creative_direction)
     _thread_director_story_beats(shot_plan, director_treatment)
+    _thread_story_contracts(shot_plan, concept_text=concept_text)
     _thread_shot_relation_contracts(shot_plan, style_name=style_lane)
     material_plan = build_material_plan(style_lane, shot_plan)
     render_plan = [build_render_item(config, concept_text, style_lane, style_bible, shot) for shot in shot_plan]
@@ -298,6 +300,16 @@ def _thread_director_story_beats(shot_plan: list[dict], director_treatment: dict
         shot["emotional_state"] = str(beat.get("emotional_state", "")).strip()
         shot["required_change_from_previous"] = str(beat.get("required_change_from_previous", "")).strip()
         shot["payoff_requirement"] = str(beat.get("payoff_requirement", "")).strip()
+
+
+def _thread_story_contracts(shot_plan: list[dict], *, concept_text: str) -> None:
+    previous_shot: dict | None = None
+    for shot in shot_plan:
+        if not isinstance(shot, dict):
+            continue
+        shot["story_contract"] = build_story_contract(shot, previous_shot=previous_shot, concept_text=concept_text)
+        previous_shot = shot
+
 
 
 def _thread_shot_relation_contracts(shot_plan: list[dict], *, style_name: str = "") -> None:

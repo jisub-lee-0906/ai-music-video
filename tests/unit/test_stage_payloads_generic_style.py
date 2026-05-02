@@ -1,6 +1,7 @@
 import pytest
 
 from ai_mv.core.artifacts import manifest as manifest_module
+from ai_mv.core.artifacts import publish as publish_module
 from ai_mv.core.contracts.errors import StageFailure
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.orchestration.stage_runs import merge_stage_payload
@@ -146,3 +147,72 @@ def test_write_manifest_does_not_backfill_style_bible_from_legacy_citypop_bible(
     }
     assert "style_bible" not in manifest
     assert "citypop_bible" not in manifest
+
+
+def test_write_manifest_publishes_flux_tti_anchor_results(monkeypatch, tmp_path):
+    writes: list[tuple[str, dict]] = []
+
+    monkeypatch.setattr(manifest_module, "run_file", lambda run_id, name, scope="run": tmp_path / scope / run_id / name)
+    monkeypatch.setattr(manifest_module, "latest_file", lambda name, scope="run": tmp_path / scope / "latest" / name)
+    monkeypatch.setattr(manifest_module, "latest_success_file", lambda name, scope="run": tmp_path / scope / "latest_success" / name)
+    monkeypatch.setattr(manifest_module, "write_json", lambda path, data: writes.append((str(path), data)))
+
+    anchor_results = [
+        {
+            "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
+            "workflow_target": "image_flux2_text_to_image",
+            "image": "D:/renders/shot-ANCHOR_CHARACTER_FULL_BODY.png",
+            "prompt_text": "pure white seamless background, same young woman, bright red hooded raincoat",
+            "status": "done",
+        }
+    ]
+    manifest_module.write_manifest(
+        {"run_id": "run-anchor-manifest", "status": "done", "failure_reason": "", "scope": "run"},
+        {
+            "anchor_results": anchor_results,
+            "still_results": [],
+            "clip_results": [],
+            "audio_map": {},
+            "audio_plan": {},
+            "review_report": {},
+            "final_video": "final.mp4",
+            "music_file": "music.mp3",
+        },
+    )
+
+    manifest = writes[0][1]
+    assert manifest["stills"]["anchor_results"] == anchor_results
+
+
+def test_write_pipeline_summary_publishes_flux_tti_anchor_counts_and_paths(monkeypatch):
+    summaries: list[dict] = []
+
+    monkeypatch.setattr(publish_module, "write_manifest", lambda _state, _payload: None)
+    monkeypatch.setattr(publish_module, "write_run_summary", lambda _state, summary: summaries.append(summary))
+
+    publish_module.write_pipeline_artifacts(
+        {
+            "run_id": "run-anchor-summary",
+            "status": "done",
+            "failure_reason": "",
+            "current_stage": "done",
+            "completed_stages": ["stills"],
+        },
+        {
+            "anchor_results": [
+                {
+                    "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
+                    "workflow_target": "image_flux2_text_to_image",
+                    "image": "D:/renders/shot-ANCHOR_CHARACTER_FULL_BODY.png",
+                    "status": "done",
+                }
+            ],
+            "review_report": {},
+        },
+        {},
+    )
+
+    summary = summaries[0]
+    assert summary["anchor_result_count"] == 1
+    assert summary["anchor_result_ids"] == ["ANCHOR_CHARACTER_FULL_BODY"]
+    assert summary["anchor_result_image_paths"] == ["D:/renders/shot-ANCHOR_CHARACTER_FULL_BODY.png"]
