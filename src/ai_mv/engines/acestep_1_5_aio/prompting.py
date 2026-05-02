@@ -268,6 +268,12 @@ def _audio_retry_clause(plan: dict) -> str:
             "Put the short hook as the first or last Chorus line. "
             "Use a compact phrase, not a sentence-shaped explanation. "
         )
+    elif "hook line has too many words" in lowered:
+        clause += (
+            "Each Chorus line must be six words or fewer. "
+            "Rewrite both hook lines as very short one-breath phrases. "
+            "Remove clauses, filler, and extra images; prefer repeated hook wording over a long story sentence. "
+        )
     elif "final chorus underuses its extended bar space" in lowered:
         clause += (
             "Final Chorus has the extended bar lane; write five lyric lines for it. "

@@ -79,6 +79,7 @@ def validate_audio_lyrics_quality(
     _validate_chorus_growth(rows, lang)
     _validate_hook_quality(rows, lang)
     _validate_section_role_minimums(rows, line_budgets or {})
+    _validate_compact_hook_word_count(rows, lang, line_budgets or {})
     _validate_bar_fit(rows, lang, section_bars or {})
     _validate_pre_chorus_chorus_contrast(rows, lang, section_bars or {})
 
@@ -523,6 +524,22 @@ def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> N
             raise RuntimeError(f"audio lyrics quality mismatch: {label} underdelivers its section role")
         if max_allowed > 0 and len(lines) > max_allowed:
             raise RuntimeError(f"audio lyrics quality mismatch: {label} exceeds line budget")
+
+
+def _validate_compact_hook_word_count(blocks: list[dict], language: str, line_budgets: dict) -> None:
+    if int(line_budgets.get("Chorus", 0) or 0) != 2:
+        return
+    max_words = 6 if language == "en" else 0
+    if max_words <= 0:
+        return
+    for row in blocks:
+        label = str(row.get("label", "")).strip()
+        if label not in {"Chorus", "Chorus 2"}:
+            continue
+        for line in row.get("lines", []):
+            words = _latin_words(str(line))
+            if len(words) > max_words:
+                raise RuntimeError(f"audio lyrics quality mismatch: {label} hook line has too many words")
 
 
 def _validate_bar_fit(blocks: list[dict], language: str, section_bars: dict) -> None:
