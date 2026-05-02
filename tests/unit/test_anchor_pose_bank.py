@@ -26,6 +26,19 @@ def test_anchor_package_builds_white_background_pose_bank_from_single_tti_identi
     assert "ANCHOR_POSE_WALKING_SIDE" in pose_ids
     assert "ANCHOR_POSE_PROFILE_EMOTIONAL" in pose_ids
     assert "ANCHOR_POSE_MICROPHONE_PERFORMANCE" in pose_ids
+    assert "ANCHOR_POSE_WALKING_TOWARD" in pose_ids
+    assert "ANCHOR_POSE_SEATED_WAITING" in pose_ids
+    assert "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE" in pose_ids
+    walking_toward_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_WALKING_TOWARD")
+    assert walking_toward_anchor["pose_family"] == "walking_toward"
+    assert "toward camera" in walking_toward_anchor["prompt_text"].lower()
+    seated_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_SEATED_WAITING")
+    assert seated_anchor["pose_family"] == "seated_waiting"
+    assert "seated" in seated_anchor["prompt_text"].lower()
+    hand_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
+    assert hand_anchor["pose_family"] == "expressive_hand_gesture"
+    assert "hand" in hand_anchor["prompt_text"].lower()
+    assert "microphone" not in hand_anchor.get("allowed_props", [])
     microphone_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_MICROPHONE_PERFORMANCE")
     assert microphone_anchor["pose_family"] == "microphone_performance"
     assert "performance" in microphone_anchor["intended_shot_functions"]
@@ -119,6 +132,72 @@ def test_render_item_selects_distinct_pose_anchors_from_story_and_shot_needs():
     assert microphone["selected_pose_anchor_id"] == "ANCHOR_POSE_MICROPHONE_PERFORMANCE"
     assert microphone["pose_anchor_selection"]["required_pose_family"] == "microphone_performance"
     assert len({hero["selected_pose_anchor_id"], walking["selected_pose_anchor_id"], payoff["selected_pose_anchor_id"], microphone["selected_pose_anchor_id"]}) == 4
+
+
+def test_story_contract_action_needs_select_scene_specific_non_microphone_anchors():
+    style_bible = get_style_bible("citypop")
+    concept = "cinematic MV with changing emotional blocking"
+    base = {
+        "render_mode": "ia2v",
+        "start_sec": 0.0,
+        "duration_sec": 3.0,
+        "section_id": "SEC_ACTION",
+        "section_type": "verse_2",
+    }
+
+    walking_toward = build_render_item(
+        {},
+        concept,
+        "citypop",
+        style_bible,
+        {
+            **base,
+            "shot_id": "S007",
+            "shot_role": "protagonist walks toward camera through the frame",
+            "visual_mode": "walk_toward_camera_medium_full",
+            "story_function": "release",
+            "story_contract": {"protagonist_action": "walks toward camera with determined forward motion"},
+        },
+    )
+    seated_waiting = build_render_item(
+        {},
+        concept,
+        "citypop",
+        style_bible,
+        {
+            **base,
+            "shot_id": "S008",
+            "shot_role": "quiet seated waiting moment",
+            "visual_mode": "seated_waiting_medium",
+            "story_function": "bridge",
+            "story_contract": {"protagonist_action": "sits alone waiting by the window with hands relaxed"},
+        },
+    )
+    expressive_hand = build_render_item(
+        {},
+        concept,
+        "citypop",
+        style_bible,
+        {
+            **base,
+            "shot_id": "S009",
+            "shot_role": "objectless expressive hand gesture",
+            "visual_mode": "emotional_hand_gesture_medium",
+            "story_function": "performance",
+            "story_contract": {
+                "why_this_shot": "chorus emotion without literal concert props",
+                "protagonist_action": "raises one open hand near chest, empty hands, no microphone",
+            },
+        },
+    )
+
+    assert walking_toward["selected_pose_anchor_id"] == "ANCHOR_POSE_WALKING_TOWARD"
+    assert walking_toward["pose_anchor_selection"]["required_motion_direction"] == "toward_camera"
+    assert seated_waiting["selected_pose_anchor_id"] == "ANCHOR_POSE_SEATED_WAITING"
+    assert seated_waiting["pose_anchor_selection"]["required_body_action"] == "seated_waiting"
+    assert expressive_hand["selected_pose_anchor_id"] == "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE"
+    assert expressive_hand["pose_anchor_selection"]["required_prop"] == "none"
+
 
 
 def test_performance_shot_without_microphone_action_does_not_select_microphone_anchor():

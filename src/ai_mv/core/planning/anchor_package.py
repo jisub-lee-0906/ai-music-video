@@ -179,6 +179,34 @@ def _pose_anchor_bank(protagonist_anchor: str, wardrobe_anchor: str) -> list[dic
             "pose_instruction": "a side-view walking pose, one foot forward, natural arm line, full body visible, face partly readable in profile",
         },
         {
+            "anchor_id": "ANCHOR_POSE_WALKING_TOWARD",
+            "pose_family": "walking_toward",
+            "framing": "full",
+            "camera_angle": "front",
+            "subject_position": "center",
+            "intended_shot_functions": ["search", "movement", "release", "forward_motion", "approach"],
+            "pose_instruction": "a full-body walking-toward-camera pose, one foot stepping toward camera, centered subject, readable face and outfit, no duplicate limbs",
+        },
+        {
+            "anchor_id": "ANCHOR_POSE_SEATED_WAITING",
+            "pose_family": "seated_waiting",
+            "framing": "medium",
+            "camera_angle": "front_three_quarter",
+            "subject_position": "center",
+            "intended_shot_functions": ["waiting", "bridge", "introspection", "quiet_moment"],
+            "pose_instruction": "a seated waiting pose on a simple invisible studio stool or clean neutral seat, hands relaxed, torso readable, face readable, no environment scene",
+            "allowed_props": ["neutral_seat"],
+        },
+        {
+            "anchor_id": "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE",
+            "pose_family": "expressive_hand_gesture",
+            "framing": "medium",
+            "camera_angle": "front_three_quarter",
+            "subject_position": "center",
+            "intended_shot_functions": ["performance", "chorus", "emotional_turn", "vocal_delivery"],
+            "pose_instruction": "a medium objectless emotional gesture pose, one open hand near the chest or reaching slightly forward, empty hands, face readable",
+        },
+        {
             "anchor_id": "ANCHOR_POSE_PROFILE_EMOTIONAL",
             "pose_family": "profile",
             "framing": "medium_close",
@@ -234,13 +262,31 @@ def _pose_anchor_spec(spec: dict, protagonist_anchor: str, wardrobe_anchor: str)
             wardrobe_anchor,
             str(spec["pose_instruction"]),
             allow_microphone="handheld_microphone" in spec.get("allowed_props", []),
+            allow_neutral_seat="neutral_seat" in spec.get("allowed_props", []),
         ),
     }
 
 
-def _pose_anchor_prompt(protagonist_anchor: str, wardrobe_anchor: str, pose_instruction: str, *, allow_microphone: bool = False) -> str:
-    forbidden_props = "no umbrella, no chair" if allow_microphone else "no umbrella, no microphone, no chair"
-    prop_contract = " Allow exactly one simple handheld microphone as the only prop." if allow_microphone else ""
+def _pose_anchor_prompt(
+    protagonist_anchor: str,
+    wardrobe_anchor: str,
+    pose_instruction: str,
+    *,
+    allow_microphone: bool = False,
+    allow_neutral_seat: bool = False,
+) -> str:
+    forbidden = ["no umbrella", "no microphone", "no chair"]
+    if allow_microphone:
+        forbidden.remove("no microphone")
+    if allow_neutral_seat:
+        forbidden.remove("no chair")
+    forbidden_props = ", ".join(forbidden)
+    prop_contracts = []
+    if allow_microphone:
+        prop_contracts.append("Allow exactly one simple handheld microphone as the only prop.")
+    if allow_neutral_seat:
+        prop_contracts.append("Allow only a minimal neutral seat needed for the seated pose, with no environment detail.")
+    prop_contract = f" {' '.join(prop_contracts)}" if prop_contracts else ""
     return (
         "Using the upper-body identity reference as the only face and wardrobe source, create a white-background pose reference variant. "
         f"Depict {protagonist_anchor} with the same face identity, same short black bob haircut with straight bangs, and {wardrobe_anchor}. "

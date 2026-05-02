@@ -30,7 +30,40 @@ POSE_ANCHOR_CATALOG: dict[str, dict] = {
         "required_framing": "full",
         "required_camera_angle": "side",
         "required_subject_position": "right_third",
+        "required_body_action": "walking_side",
+        "required_motion_direction": "sideways",
+        "required_prop": "none",
         "reason": "movement/search/release shots need a side walking pose instead of static portrait collapse",
+    },
+    "ANCHOR_POSE_WALKING_TOWARD": {
+        "pose_family": "walking_toward",
+        "required_framing": "full",
+        "required_camera_angle": "front",
+        "required_subject_position": "center",
+        "required_body_action": "walking_toward",
+        "required_motion_direction": "toward_camera",
+        "required_prop": "none",
+        "reason": "forward-motion shots need a toward-camera walking anchor instead of side walking re-instantiation",
+    },
+    "ANCHOR_POSE_SEATED_WAITING": {
+        "pose_family": "seated_waiting",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "seated_waiting",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "waiting or window/bench shots need a seated pose card instead of forcing standing anatomy",
+    },
+    "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE": {
+        "pose_family": "expressive_hand_gesture",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "expressive_hand_gesture",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "objectless chorus/emotional shots need a hand gesture anchor without defaulting to microphone grammar",
     },
     "ANCHOR_POSE_PROFILE_EMOTIONAL": {
         "pose_family": "profile",
@@ -61,6 +94,12 @@ def build_pose_anchor_selection(shot: dict) -> dict:
     story_function = str(shot.get("story_function", "")).strip().lower()
     if _has_microphone_action(text):
         return _selection("ANCHOR_POSE_MICROPHONE_PERFORMANCE")
+    if _has_toward_camera_action(text):
+        return _selection("ANCHOR_POSE_WALKING_TOWARD")
+    if _has_seated_waiting_action(text):
+        return _selection("ANCHOR_POSE_SEATED_WAITING")
+    if _has_expressive_hand_action(text):
+        return _selection("ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
     if story_function == "payoff" or _has_any_word(text, ("payoff", "final", "resolve", "resolved")):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT")
     if _has_any_word(text, ("walk", "walking", "side", "movement")) or "forward motion" in text or story_function in {"search", "release"} and "close" not in text:
@@ -80,7 +119,7 @@ def build_pose_anchor_selection(shot: dict) -> dict:
 
 def _selection(anchor_id: str) -> dict:
     spec = POSE_ANCHOR_CATALOG[anchor_id]
-    return {
+    selection = {
         "selected_pose_anchor_id": anchor_id,
         "required_pose_family": spec["pose_family"],
         "required_framing": spec["required_framing"],
@@ -89,6 +128,10 @@ def _selection(anchor_id: str) -> dict:
         "anchor_selection_reason": spec["reason"],
         "fallback_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"],
     }
+    for key in ("required_body_action", "required_motion_direction", "required_prop"):
+        if key in spec:
+            selection[key] = spec[key]
+    return selection
 
 
 def _has_any_word(text: str, words: tuple[str, ...]) -> bool:
@@ -98,6 +141,34 @@ def _has_any_word(text: str, words: tuple[str, ...]) -> bool:
 def _has_microphone_action(text: str) -> bool:
     positive_markers = ("microphone", "mic stand", "handheld mic", "singing into a mic")
     return any(marker in text and not _is_negated_action(text, marker) for marker in positive_markers)
+
+
+def _has_toward_camera_action(text: str) -> bool:
+    markers = (
+        "walks toward camera",
+        "walking toward camera",
+        "walk toward camera",
+        "toward camera",
+        "towards camera",
+        "approaches camera",
+        "approach camera",
+        "forward motion",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _has_seated_waiting_action(text: str) -> bool:
+    seated = any(marker in text for marker in ("seated", "sits ", "sit ", "sitting"))
+    waiting_context = any(marker in text for marker in ("waiting", "waits", "window", "bench", "chair", "stairs", "step"))
+    return seated and waiting_context
+
+
+def _has_expressive_hand_action(text: str) -> bool:
+    if _has_microphone_action(text):
+        return False
+    hand_markers = ("open hand", "hand near chest", "hand gesture", "raises one hand", "reaches out", "reaching hand")
+    objectless_markers = ("empty hands", "without props", "no prop", "no microphone", "without microphone")
+    return any(marker in text for marker in hand_markers) and any(marker in text for marker in objectless_markers)
 
 
 def _is_negated_action(text: str, marker: str) -> bool:
