@@ -128,14 +128,14 @@ def test_map_audio_workflow_omits_acestep_quality_controls_when_plan_uses_offici
     assert "min_p" not in text_inputs
 
 
-def test_audio_checkpoint_workflow_template_matches_official_default_text_controls():
+def test_audio_checkpoint_workflow_template_carries_required_official_advanced_text_defaults():
     workflow_path = Path(__file__).resolve().parents[2] / "workflows" / "audio_ace_step_1_5_checkpoint.json"
     workflow = json.loads(workflow_path.read_text())
     text_inputs = workflow[audio_mapper.AUDIO_TEXT]["inputs"]
 
-    assert "generate_audio_codes" not in text_inputs
-    assert "cfg_scale" not in text_inputs
-    assert "temperature" not in text_inputs
-    assert "top_p" not in text_inputs
-    assert "top_k" not in text_inputs
-    assert "min_p" not in text_inputs
+    assert text_inputs["generate_audio_codes"] is True
+    assert text_inputs["cfg_scale"] == 2
+    assert text_inputs["temperature"] == 0.85
+    assert text_inputs["top_p"] == 0.9
+    assert text_inputs["top_k"] == 0
+    assert text_inputs["min_p"] == 0
