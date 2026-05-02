@@ -12,10 +12,9 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
     direction = creative_direction if isinstance(creative_direction, dict) else {}
     protagonist_anchor = str(direction.get("protagonist_anchor", "")).strip() or "one beautiful young Korean woman"
     wardrobe_anchor = _wardrobe_anchor(style_name)
-    pose_anchor_bank = _pose_anchor_bank(protagonist_anchor, wardrobe_anchor)
     return {
-        "strategy": "character_card_then_white_background_pose_variants",
-        "workflow_family": "flux2_reference_first",
+        "strategy": "white_background_tti_character_anchors_then_flux_reference_keyframes",
+        "workflow_family": "flux2_tti_identity_anchor_then_reference_keyframes",
         "anchors": [
             {
                 "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
@@ -36,8 +35,7 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
                 "anchor_id": "ANCHOR_CHARACTER_FULL_BODY",
                 "anchor_type": "character_full_body",
                 "material_class": "character_reference_anchor",
-                "workflow_target": "image_flux2_reference_image",
-                "reference_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY"],
+                "workflow_target": "image_flux2_text_to_image",
                 "prompt_style": "negative_heavy_strict_card",
                 "prompt_text": _full_body_character_prompt(protagonist_anchor, wardrobe_anchor),
                 "selection_criteria": [
@@ -49,13 +47,13 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
                 ],
             },
         ],
-        "pose_anchor_bank": pose_anchor_bank,
+        "pose_anchor_bank": [],
         "pose_anchor_policy": {
             "primary_identity_anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
             "workflow_target": "image_flux2_reference_image",
             "background_contract": "white_background",
-            "selection_policy": "shot_intent_pose_family_match_then_identity_fallback",
-            "diversity_guard": "do_not_route_all_story_keyframes_through_the_static_upper_body_identity_card",
+            "selection_policy": "story_keyframes_reference_the_tti_identity_model_anchor_directly",
+            "diversity_guard": "shot prompts carry story pose and action; do not generate fixed pose-bank anchors",
         },
         "variant_policy": {
             "workflow_target": "image_flux2_reference_image",
@@ -94,7 +92,7 @@ def _upper_body_identity_prompt(protagonist_anchor: str, wardrobe_anchor: str) -
     return (
         f"Create a clean upper-body character reference image of {protagonist_anchor} alone on a seamless pure white studio background. "
         f"Frame her from the waist up, centered, with clear face visibility, stable face fingerprint, short black bob haircut with straight bangs, gentle expressive eyes, and {wardrobe_anchor} clearly visible at the collar and shoulders. "
-        "Use soft even studio lighting and keep it as one continuous clean character card with no props, no scenery, no text, no logo, no collage, no split screen, no distant human silhouettes, and no extra people."
+        "Use soft even studio lighting and keep it as one continuous clean character card with no street, no room, no city, no props, no scenery, no text, no logo, no collage, no split screen, no distant human silhouettes, and no extra people."
     )
 
 

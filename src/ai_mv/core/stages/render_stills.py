@@ -454,6 +454,9 @@ def _anchor_reference_image(
         selected_pose_image = str(anchor_still_map.get(selected_pose_anchor_id, {}).get("image", "")).strip()
         if selected_pose_image:
             return selected_pose_image
+        anchor_reference = _primary_identity_anchor_image(anchor_still_map)
+        if anchor_reference:
+            return anchor_reference
         return ""
     if reference_mode == "":
         continuity_contract = render_item.get("continuity_contract") if isinstance(render_item.get("continuity_contract"), dict) else {}

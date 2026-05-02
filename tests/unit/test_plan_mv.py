@@ -42,7 +42,7 @@ def test_plan_mv_builds_creative_direction_payload():
     assert first_material["mode_hint"]
 
 
-def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
+def test_plan_mv_builds_tti_identity_anchors_for_flux2_reference_keyframes():
     out = build_plan_preview_payload(
         {},
         {
@@ -60,7 +60,7 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     )
 
     anchor_package = out["anchor_package"]
-    assert anchor_package["strategy"] == "character_card_then_white_background_pose_variants"
+    assert anchor_package["strategy"] == "white_background_tti_character_anchors_then_flux_reference_keyframes"
     assert [anchor["anchor_type"] for anchor in anchor_package["anchors"]] == [
         "character_upper_body_identity",
         "character_full_body",
@@ -77,13 +77,15 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     assert "no distant human silhouettes" in upper_body["prompt_text"]
     full_body = anchor_package["anchors"][1]
     assert full_body["material_class"] == "character_reference_anchor"
-    assert full_body["workflow_target"] == "image_flux2_reference_image"
-    assert full_body["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
-    assert "same face identity from the upper-body reference" in full_body["prompt_text"]
-    assert "exact face fingerprint from the upper-body reference" in full_body["prompt_text"]
+    assert full_body["workflow_target"] == "image_flux2_text_to_image"
+    assert "reference_anchor_ids" not in full_body
+    assert "same face identity" in full_body["prompt_text"]
+    assert "exact face fingerprint" in full_body["prompt_text"]
     assert "single clean full-body identity reference card" in full_body["prompt_text"]
     assert "pure white seamless background" in full_body["prompt_text"]
     assert "No street" in full_body["prompt_text"]
+    assert anchor_package["pose_anchor_bank"] == []
+    assert anchor_package["pose_anchor_policy"]["selection_policy"] == "story_keyframes_reference_the_tti_identity_model_anchor_directly"
     assert "world_character_anchor" not in anchor_package["variant_policy"]["reference_order"]
     assert anchor_package["variant_policy"]["important_story_functions"] == ["release", "payoff"]
     assert anchor_package["variant_policy"]["candidates_per_important_shot"] >= 2

@@ -5,7 +5,7 @@ from ai_mv.styles.resolver import get_style_bible
 from ai_mv.core.stages.render_stills import run_render_stills
 
 
-def test_anchor_package_builds_white_background_pose_bank_from_single_tti_identity_anchor():
+def test_anchor_package_builds_white_background_tti_identity_model_anchors_only():
     package = build_anchor_package(
         concept_text="late-night city pop walk under wet neon lights, missed train, unresolved goodbye turning into quiet resolve",
         style_name="citypop",
@@ -13,51 +13,17 @@ def test_anchor_package_builds_white_background_pose_bank_from_single_tti_identi
     )
 
     anchors = package["anchors"]
-    tti_anchors = [anchor for anchor in anchors if anchor["workflow_target"] == "image_flux2_text_to_image"]
-    assert [anchor["anchor_id"] for anchor in tti_anchors] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+    assert [anchor["anchor_id"] for anchor in anchors] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"]
+    assert all(anchor["workflow_target"] == "image_flux2_text_to_image" for anchor in anchors)
+    assert package["pose_anchor_bank"] == []
 
-    pose_bank = package["pose_anchor_bank"]
-    pose_ids = [anchor["anchor_id"] for anchor in pose_bank]
-    assert len(pose_ids) >= 5
-    assert len(set(pose_ids)) == len(pose_ids)
-    assert "ANCHOR_POSE_HERO_CLOSEUP" in pose_ids
-    assert "ANCHOR_POSE_THREE_QUARTER_MEDIUM" in pose_ids
-    assert "ANCHOR_POSE_FULL_BODY_STANDING" in pose_ids
-    assert "ANCHOR_POSE_WALKING_SIDE" in pose_ids
-    assert "ANCHOR_POSE_PROFILE_EMOTIONAL" in pose_ids
-    assert "ANCHOR_POSE_MICROPHONE_PERFORMANCE" in pose_ids
-    assert "ANCHOR_POSE_WALKING_TOWARD" in pose_ids
-    assert "ANCHOR_POSE_SEATED_WAITING" in pose_ids
-    assert "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE" in pose_ids
-    walking_toward_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_WALKING_TOWARD")
-    assert walking_toward_anchor["pose_family"] == "walking_toward"
-    assert "toward camera" in walking_toward_anchor["prompt_text"].lower()
-    seated_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_SEATED_WAITING")
-    assert seated_anchor["pose_family"] == "seated_waiting"
-    assert "seated" in seated_anchor["prompt_text"].lower()
-    hand_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
-    assert hand_anchor["pose_family"] == "expressive_hand_gesture"
-    assert "hand" in hand_anchor["prompt_text"].lower()
-    assert "microphone" not in hand_anchor.get("allowed_props", [])
-    microphone_anchor = next(anchor for anchor in pose_bank if anchor["anchor_id"] == "ANCHOR_POSE_MICROPHONE_PERFORMANCE")
-    assert microphone_anchor["pose_family"] == "microphone_performance"
-    assert "performance" in microphone_anchor["intended_shot_functions"]
-    assert "microphone" in microphone_anchor["prompt_text"].lower()
-    assert "no microphone" not in microphone_anchor["prompt_text"].lower()
-
-    for anchor in pose_bank:
-        assert anchor["anchor_role"] == "pose_variant"
-        assert anchor["workflow_target"] == "image_flux2_reference_image"
-        assert anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
-        assert anchor["background_contract"] == "white_background"
-        assert "same face identity" in anchor["identity_contract"]
-        assert "same outfit" in anchor["identity_contract"]
-        assert "pure white seamless background" in anchor["prompt_text"]
-        assert "No street" in anchor["prompt_text"]
-        assert anchor["pose_family"]
-        assert anchor["framing"]
-        assert anchor["camera_angle"]
-        assert anchor["intended_shot_functions"]
+    for anchor in anchors:
+        prompt_text = anchor["prompt_text"].lower()
+        assert "pure white" in prompt_text
+        assert "background" in prompt_text
+        assert "no street" in prompt_text
+        assert "no scenery" in prompt_text
+        assert "character" in anchor["material_class"]
 
 
 def test_render_item_selects_distinct_pose_anchors_from_story_and_shot_needs():
@@ -527,7 +493,7 @@ def test_keyframe_reference_fallback_uses_primary_identity_and_ignores_legacy_wo
 
 
 
-def test_keyframe_with_missing_selected_pose_anchor_does_not_use_legacy_world_anchor(monkeypatch):
+def test_keyframe_with_missing_selected_pose_anchor_falls_back_to_tti_identity_anchor_not_world_anchor(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -547,6 +513,13 @@ def test_keyframe_with_missing_selected_pose_anchor_does_not_use_legacy_world_an
                         "material_class": "world_reference_anchor",
                         "workflow_target": "image_flux2_text_to_image",
                         "prompt_text": "rainy neon city world with one red-coated woman",
+                    },
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "anchor_type": "character_upper_body_identity",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
                     }
                 ],
                 "pose_anchor_bank": [],
@@ -565,5 +538,5 @@ def test_keyframe_with_missing_selected_pose_anchor_does_not_use_legacy_world_an
 
     run_render_stills(stage_input)
 
-    assert [call["shot_id"] for call in calls] == ["S001"]
-    assert "reference_image" not in calls[-1]
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "S001"]
+    assert calls[-1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
