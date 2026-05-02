@@ -369,7 +369,7 @@ def test_render_stills_routes_keyframes_through_selected_pose_anchor(monkeypatch
 
 
 
-def test_pose_anchor_rendering_requires_upper_body_identity_reference(monkeypatch):
+def test_render_stills_ignores_legacy_world_reference_anchors(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -410,13 +410,14 @@ def test_pose_anchor_rendering_requires_upper_body_identity_reference(monkeypatc
 
     out = run_render_stills(stage_input)
 
-    assert [call["shot_id"] for call in calls] == ["ANCHOR_WORLD_CHARACTER"]
-    assert [row["anchor_id"] for row in out.payload["anchor_results"]] == ["ANCHOR_WORLD_CHARACTER"]
+    assert calls == []
+    assert out.payload["anchor_results"] == []
+    assert out.payload["workflow_inputs"]["stills"]["anchor_count"] == 0
     assert out.payload["workflow_inputs"]["stills"]["pose_anchor_count"] == 0
 
 
 
-def test_keyframe_reference_fallback_uses_primary_identity_not_world_anchor(monkeypatch):
+def test_keyframe_reference_fallback_uses_primary_identity_and_ignores_legacy_world_anchor(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -460,12 +461,12 @@ def test_keyframe_reference_fallback_uses_primary_identity_not_world_anchor(monk
 
     run_render_stills(stage_input)
 
-    assert [call["shot_id"] for call in calls] == ["ANCHOR_WORLD_CHARACTER", "ANCHOR_CHARACTER_UPPER_BODY", "S001"]
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "S001"]
     assert calls[-1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
 
 
 
-def test_keyframe_with_missing_selected_pose_anchor_does_not_fall_back_to_world_anchor(monkeypatch):
+def test_keyframe_with_missing_selected_pose_anchor_does_not_use_legacy_world_anchor(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -503,5 +504,5 @@ def test_keyframe_with_missing_selected_pose_anchor_does_not_fall_back_to_world_
 
     run_render_stills(stage_input)
 
-    assert [call["shot_id"] for call in calls] == ["ANCHOR_WORLD_CHARACTER", "S001"]
+    assert [call["shot_id"] for call in calls] == ["S001"]
     assert "reference_image" not in calls[-1]

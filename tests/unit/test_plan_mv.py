@@ -60,12 +60,14 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     )
 
     anchor_package = out["anchor_package"]
-    assert anchor_package["strategy"] == "character_card_plus_world_anchor_then_reference_variants"
+    assert anchor_package["strategy"] == "character_card_then_white_background_pose_variants"
     assert [anchor["anchor_type"] for anchor in anchor_package["anchors"]] == [
         "character_upper_body_identity",
         "character_full_body",
-        "world_character_anchor",
     ]
+    assert all("world" not in str(anchor.get("anchor_id", "")).lower() for anchor in anchor_package["anchors"])
+    assert all("world" not in str(anchor.get("anchor_type", "")).lower() for anchor in anchor_package["anchors"])
+    assert all("world" not in str(anchor.get("material_class", "")).lower() for anchor in anchor_package["anchors"])
     upper_body = anchor_package["anchors"][0]
     assert upper_body["workflow_target"] == "image_flux2_text_to_image"
     assert "reference_anchor_ids" not in upper_body
@@ -82,14 +84,7 @@ def test_plan_mv_builds_anchor_package_for_flux2_reference_first_generation():
     assert "single clean full-body identity reference card" in full_body["prompt_text"]
     assert "pure white seamless background" in full_body["prompt_text"]
     assert "No street" in full_body["prompt_text"]
-    world_anchor = anchor_package["anchors"][2]
-    assert world_anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"]
-    assert world_anchor["material_class"] == "world_reference_anchor"
-    assert "Using the same woman as the character reference" in world_anchor["prompt_text"]
-    assert "single visible protagonist only" in world_anchor["prompt_text"]
-    assert "no distant human silhouettes" in world_anchor["prompt_text"]
-    assert "no bystanders" in world_anchor["prompt_text"]
-    assert "rainy neon" in world_anchor["prompt_text"]
+    assert "world_character_anchor" not in anchor_package["variant_policy"]["reference_order"]
     assert anchor_package["variant_policy"]["important_story_functions"] == ["release", "payoff"]
     assert anchor_package["variant_policy"]["candidates_per_important_shot"] >= 2
 

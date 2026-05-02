@@ -120,8 +120,16 @@ def _render_anchor_package(stage_input: StageInput) -> list[dict]:
     anchor_package = stage_input.payload.get("anchor_package")
     if not isinstance(anchor_package, dict):
         return []
-    anchors = [row for row in anchor_package.get("anchors", []) if isinstance(row, dict)]
-    pose_anchors = [row for row in anchor_package.get("pose_anchor_bank", []) if isinstance(row, dict)]
+    anchors = [
+        row
+        for row in anchor_package.get("anchors", [])
+        if isinstance(row, dict) and not _is_world_reference_anchor(row)
+    ]
+    pose_anchors = [
+        row
+        for row in anchor_package.get("pose_anchor_bank", [])
+        if isinstance(row, dict) and not _is_world_reference_anchor(row)
+    ]
     anchors = [*anchors, *pose_anchors]
     anchor_results: list[dict] = []
     anchor_image_by_id: dict[str, str] = {}
@@ -160,6 +168,19 @@ def _render_anchor_package(stage_input: StageInput) -> list[dict]:
                 result_row[metadata_key] = metadata_value
         anchor_results.append(result_row)
     return anchor_results
+
+
+def _is_world_reference_anchor(anchor: dict) -> bool:
+    anchor_id = str(anchor.get("anchor_id", "")).strip().lower()
+    anchor_type = str(anchor.get("anchor_type", "")).strip().lower()
+    anchor_role = str(anchor.get("anchor_role", "")).strip().lower()
+    material_class = str(anchor.get("material_class", "")).strip().lower()
+    prompt_style = str(anchor.get("prompt_style", "")).strip().lower()
+    return any(
+        "world" in value
+        for value in (anchor_id, anchor_type, anchor_role, material_class, prompt_style)
+        if value
+    )
 
 
 def _pose_anchor_result_count(anchor_results: list[dict]) -> int:
