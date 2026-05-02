@@ -515,9 +515,12 @@ def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> N
         lines = [str(line).strip() for line in row.get("lines", []) if str(line).strip()]
         if _allows_empty_lyric_section(str(row.get("section", "")).strip(), label) and not lines:
             continue
-        if label in minimums and len(lines) < minimums[label]:
-            raise RuntimeError(f"audio lyrics quality mismatch: {label} underdelivers its section role")
         max_allowed = int(line_budgets.get(label, 0) or 0)
+        minimum_required = minimums.get(label, 0)
+        if max_allowed > 0 and minimum_required > max_allowed:
+            minimum_required = max_allowed
+        if minimum_required > 0 and len(lines) < minimum_required:
+            raise RuntimeError(f"audio lyrics quality mismatch: {label} underdelivers its section role")
         if max_allowed > 0 and len(lines) > max_allowed:
             raise RuntimeError(f"audio lyrics quality mismatch: {label} exceeds line budget")
 

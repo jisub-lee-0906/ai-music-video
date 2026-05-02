@@ -119,6 +119,22 @@ def test_validate_audio_lyrics_quality_accepts_english_growth():
     validate_audio_lyrics_quality(blocks, "en")
 
 
+def test_validate_audio_lyrics_quality_accepts_hook_validation_compact_line_budgets():
+    blocks = [
+        {"section": "intro", "label": "Intro", "style": "setup", "lines": []},
+        {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["Dashboard glow", "Rain on the glass"]},
+        {"section": "chorus", "label": "Chorus", "style": "hook", "lines": ["Stay neon", "Drive me home"]},
+        {"section": "outro", "label": "Outro", "style": "tail", "lines": []},
+    ]
+
+    validate_audio_lyrics_quality(
+        blocks,
+        "en",
+        line_budgets={"Intro": 0, "Verse 1": 2, "Chorus": 2, "Outro": 0},
+        section_bars={"intro": 4, "verse_1": 4, "chorus": 4, "outro": 4, "final_chorus_bonus": 0},
+    )
+
+
 def test_validate_audio_lyrics_quality_rejects_overdense_korean_line():
     blocks = [
         {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은불빛아래서나는아무숨도고르지못한채너의이름을너무길게불러보네"]},
