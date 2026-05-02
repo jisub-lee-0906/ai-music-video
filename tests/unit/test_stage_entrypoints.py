@@ -2999,7 +2999,7 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
     )
 
     assert out.payload["rerender_target_ids"] == ["COV_REPAIR_001"]
-    assert out.payload["rerender_stage_sequence"] == ["stills", "clips"]
+    assert out.payload["rerender_stage_sequence"] == ["stills", "clips", "assemble"]
     stills = out.payload["rerender_stage_inputs"]["stills"]
     clips = out.payload["rerender_stage_inputs"]["clips"]
     assert stills == {
@@ -3060,6 +3060,15 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
         "still_results": [],
         "music_file": "song.wav",
     }
+    assemble = out.payload["rerender_stage_inputs"]["assemble"]
+    assert assemble["shot_plan"] == stills["shot_plan"]
+    assert assemble["render_plan"] == [
+        {"shot_id": "S001", "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE"},
+        *stills["render_plan"],
+    ]
+    assert assemble["clip_results"] == []
+    assert assemble["music_file"] == "song.wav"
+    assert assemble["audio_map"] == {}
     validate_stage_input("stills", stills)
 
 
@@ -3490,6 +3499,100 @@ def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
         }
     }
 
+
+
+def test_execute_rerender_merges_coverage_repair_clips_and_reassembles(monkeypatch):
+    calls = []
+
+    def _fake_run_render_stills(stage_input):
+        calls.append(("stills", stage_input.payload))
+        return StageOutput(
+            "render_stills",
+            "done",
+            {"still_results": [{"shot_id": "COV_REPAIR_001", "material_id": "COV_REPAIR_MAT_001", "image": "repair.png"}]},
+            [],
+        )
+
+    def _fake_run_render_clips(stage_input):
+        calls.append(("clips", stage_input.payload))
+        return StageOutput(
+            "render_clips",
+            "done",
+            {"clip_results": [{"shot_id": "COV_REPAIR_001", "material_id": "COV_REPAIR_MAT_001", "section_id": "SEC_001", "video": "repair.mp4", "source": "assembly_coverage_repair"}]},
+            [],
+        )
+
+    def _fake_run_assemble(stage_input):
+        calls.append(("assemble", stage_input.payload))
+        assert [row["shot_id"] for row in stage_input.payload["shot_plan"]] == ["S001", "COV_REPAIR_001", "S002"]
+        assert [row["shot_id"] for row in stage_input.payload["render_plan"]] == ["S001", "COV_REPAIR_001", "S002"]
+        assert [row["shot_id"] for row in stage_input.payload["clip_results"]] == ["S001", "S002", "COV_REPAIR_001"]
+        return StageOutput(
+            "assemble_mv",
+            "done",
+            {
+                "final_video": "mv-repaired.mp4",
+                "assembly_plan": {
+                    "coverage_summary": {"status": "raw_coverage_ok", "recommended_action": "continue_to_sync"},
+                    "section_edits": [{"section_id": "SEC_001", "selected_clip_ids": ["S001", "COV_REPAIR_001", "S002"]}],
+                },
+                "review_inputs": {"music_file": "song.wav", "clip_results": stage_input.payload["clip_results"]},
+            },
+            ["mv-repaired.mp4"],
+        )
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_render_stills", _fake_run_render_stills)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_render_clips", _fake_run_render_clips)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_assemble_mv", _fake_run_assemble)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-coverage-repair-reassemble",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["stills", "clips", "assemble"],
+                "rerender_stage_inputs": {
+                    "stills": {
+                        "shot_plan": [{"shot_id": "COV_REPAIR_001", "section_id": "SEC_001", "material_id": "COV_REPAIR_MAT_001", "render_mode": "ia2v"}],
+                        "material_plan": [{"material_id": "COV_REPAIR_MAT_001", "section_id": "SEC_001"}],
+                        "render_plan": [{"shot_id": "COV_REPAIR_001", "section_id": "SEC_001", "material_id": "COV_REPAIR_MAT_001", "render_mode": "ia2v"}],
+                        "style_bible": {"style": "live action"},
+                    },
+                    "clips": {
+                        "shot_plan": [{"shot_id": "COV_REPAIR_001", "section_id": "SEC_001", "material_id": "COV_REPAIR_MAT_001", "render_mode": "ia2v"}],
+                        "render_plan": [{"shot_id": "COV_REPAIR_001", "section_id": "SEC_001", "material_id": "COV_REPAIR_MAT_001", "render_mode": "ia2v"}],
+                        "still_results": [],
+                        "music_file": "song.wav",
+                    },
+                    "assemble": {
+                        "music_file": "song.wav",
+                        "shot_plan": [
+                            {"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001"},
+                            {"shot_id": "S002", "section_id": "SEC_001", "material_id": "MAT_002"},
+                            {"shot_id": "COV_REPAIR_001", "section_id": "SEC_001", "material_id": "COV_REPAIR_MAT_001", "source": "assembly_coverage_repair", "after_shot_id": "S001", "before_shot_id": "S002"},
+                        ],
+                        "render_plan": [
+                            {"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001", "render_mode": "ia2v"},
+                            {"shot_id": "S002", "section_id": "SEC_001", "material_id": "MAT_002", "render_mode": "ia2v"},
+                            {"shot_id": "COV_REPAIR_001", "section_id": "SEC_001", "material_id": "COV_REPAIR_MAT_001", "render_mode": "ia2v", "source": "assembly_coverage_repair", "after_shot_id": "S001", "before_shot_id": "S002", "edit_intent": {"target_clip_sec": 3.0}},
+                        ],
+                        "clip_results": [
+                            {"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001", "video": "clip-1.mp4"},
+                            {"shot_id": "S002", "section_id": "SEC_001", "material_id": "MAT_002", "video": "clip-2.mp4"},
+                        ],
+                        "audio_map": {"duration_sec": 9.0},
+                    },
+                },
+            },
+        )
+    )
+
+    assert [name for name, _payload in calls] == ["stills", "clips", "assemble"]
+    assert out.payload["rerender_results"]["completed_stages"] == ["stills", "clips", "assemble"]
+    assert out.payload["rerender_results"]["final_video"] == "mv-repaired.mp4"
+    assert out.payload["assembly_plan"]["coverage_summary"]["status"] == "raw_coverage_ok"
+    assert out.payload["rerender_final_video"] == "mv-repaired.mp4"
+    assert out.artifacts == ["mv-repaired.mp4"]
 
 
 def test_execute_rerender_preserves_anchor_results_from_rerendered_stills(monkeypatch):

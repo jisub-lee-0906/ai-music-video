@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ai_mv.core.orchestration.input_gate import validate_stage_input
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
-from ai_mv.core.stages.assemble_mv import apply_assembly_revision
+from ai_mv.core.stages.assemble_mv import apply_assembly_revision, run_assemble_mv
 from ai_mv.core.stages.ffmpeg_muxer import run_ffmpeg_mux
 from ai_mv.core.stages.repair_audio_video_sync import run_repair_audio_video_sync
 from ai_mv.core.stages.render_clips import run_render_clips
@@ -24,6 +24,8 @@ def _stage_runner(stage_name: str):
         return run_render_stills
     if stage_name == "clips":
         return run_render_clips
+    if stage_name == "assemble":
+        return run_assemble_mv
     return None
 
 
@@ -35,6 +37,7 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
     rerendered_clips: list[dict] = []
     completed_stages: list[str] = []
     passthrough_payload: dict[str, object] = {}
+    assembly_result_payload: dict[str, object] = {}
     artifacts: list[str] = []
 
     for stage_name in stage_sequence:
@@ -57,6 +60,8 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
                 base_results=stage_payload.get("still_results"),
                 fresh_results=rerendered_stills,
             )
+        if stage_name == "assemble":
+            stage_payload = _merged_repair_assembly_payload(stage_payload, rerendered_clips)
         validate_stage_input(stage_name, stage_payload)
         result = runner(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=stage_payload))
         if stage_name == "stills":
@@ -64,6 +69,14 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
             rerendered_anchor_results = [row for row in result.payload.get("anchor_results", []) if isinstance(row, dict)]
         if stage_name == "clips":
             rerendered_clips = [row for row in result.payload.get("clip_results", []) if isinstance(row, dict)]
+        if stage_name == "assemble":
+            for key in ("final_video", "assembly_plan", "review_inputs"):
+                value = result.payload.get(key)
+                if value:
+                    passthrough_payload[key] = value
+                    assembly_result_payload[key] = value
+            if result.payload.get("final_video"):
+                passthrough_payload["rerender_final_video"] = result.payload.get("final_video")
         completed_stages.append(stage_name)
         artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
 
@@ -72,6 +85,9 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
         "still_results": rerendered_stills,
         "clip_results": rerendered_clips,
     }
+    for key in ("final_video", "assembly_plan", "review_inputs"):
+        if assembly_result_payload.get(key):
+            rerender_results[key] = assembly_result_payload[key]
     if rerendered_anchor_results:
         rerender_results["anchor_results"] = rerendered_anchor_results
         passthrough_payload["anchor_results"] = rerendered_anchor_results
@@ -103,6 +119,68 @@ def _merge_still_results(*, base_results: object, fresh_results: list[dict]) -> 
         merged.append(row)
     merged.extend(fresh_map.values())
     return merged
+
+
+def _merged_repair_assembly_payload(stage_payload: dict, fresh_clip_results: list[dict]) -> dict:
+    merged = dict(stage_payload)
+    repair_clip_ids = {
+        str(row.get("shot_id", "")).strip()
+        for row in fresh_clip_results
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    }
+    merged["clip_results"] = _merge_rows_by_shot_id(merged.get("clip_results"), fresh_clip_results)
+    for key in ("shot_plan", "render_plan"):
+        rows = merged.get(key) if isinstance(merged.get(key), list) else []
+        merged[key] = _insert_repair_rows_by_neighbor(rows, repair_clip_ids)
+    return merged
+
+
+def _merge_rows_by_shot_id(base_rows: object, fresh_rows: object) -> list[dict]:
+    merged: list[dict] = []
+    fresh_items = fresh_rows if isinstance(fresh_rows, list) else []
+    fresh_map = {
+        str(row.get("shot_id", "")).strip(): row
+        for row in fresh_items
+        if isinstance(row, dict) and str(row.get("shot_id", "")).strip()
+    }
+    for row in base_rows if isinstance(base_rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        shot_id = str(row.get("shot_id", "")).strip()
+        if shot_id and shot_id in fresh_map:
+            continue
+        merged.append(row)
+    merged.extend(fresh_map.values())
+    return merged
+
+
+def _insert_repair_rows_by_neighbor(rows: object, repair_shot_ids: set[str]) -> list[dict]:
+    source_rows = [dict(row) for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+    if not source_rows or not repair_shot_ids:
+        return source_rows
+    repairs = [row for row in source_rows if str(row.get("shot_id", "")).strip() in repair_shot_ids]
+    canonical = [row for row in source_rows if str(row.get("shot_id", "")).strip() not in repair_shot_ids]
+    for repair in repairs:
+        shot_id = str(repair.get("shot_id", "")).strip()
+        if not shot_id:
+            continue
+        insert_at = _repair_insert_index(repair, canonical)
+        canonical.insert(insert_at, repair)
+    return canonical
+
+
+def _repair_insert_index(repair_row: dict, canonical_rows: list[dict]) -> int:
+    after_shot_id = str(repair_row.get("after_shot_id", "")).strip()
+    before_shot_id = str(repair_row.get("before_shot_id", "")).strip()
+    if after_shot_id:
+        for index, row in enumerate(canonical_rows):
+            if str(row.get("shot_id", "")).strip() == after_shot_id:
+                return index + 1
+    if before_shot_id:
+        for index, row in enumerate(canonical_rows):
+            if str(row.get("shot_id", "")).strip() == before_shot_id:
+                return index
+    return len(canonical_rows)
 
 
 

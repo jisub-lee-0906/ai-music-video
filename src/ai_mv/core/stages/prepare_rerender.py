@@ -6,6 +6,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 _STAGE_SCHEMA = {
     "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible", "anchor_package"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
+    "assemble": ("shot_plan", "render_plan", "clip_results", "music_file", "audio_map"),
     "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids", "assembly_plan", "review_inputs", "sync_repair_summary"),
 }
 
@@ -62,6 +63,9 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
         return
     stills = stage_inputs.setdefault("stills", _empty_stage_payload("stills"))
     clips = stage_inputs.setdefault("clips", _empty_stage_payload("clips"))
+    assemble = stage_inputs.setdefault("assemble", _empty_stage_payload("assemble"))
+    for key in ("shot_plan", "render_plan", "clip_results", "audio_map"):
+        _merge_stage_field(assemble, key, payload.get(key))
     style_bible = payload.get("style_bible") if isinstance(payload.get("style_bible"), dict) else {}
     if style_bible:
         _merge_stage_field(stills, "style_bible", style_bible)
@@ -71,6 +75,7 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
     music_file = str(payload.get("music_file", "")).strip()
     if music_file:
         _merge_stage_field(clips, "music_file", music_file)
+        _merge_stage_field(assemble, "music_file", music_file)
     canonical_render_plan = [row for row in payload.get("render_plan", []) if isinstance(row, dict)] if isinstance(payload.get("render_plan"), list) else []
     for index, repair_shot in enumerate(repair_shots, start=1):
         shot_id = str(repair_shot.get("shot_id", "")).strip()
@@ -133,6 +138,8 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
         _merge_stage_field(stills, "render_plan", [render_row])
         _merge_stage_field(clips, "shot_plan", [shot_row])
         _merge_stage_field(clips, "render_plan", [render_row])
+        _merge_stage_field(assemble, "shot_plan", [shot_row])
+        _merge_stage_field(assemble, "render_plan", [render_row])
 
 
 def _coverage_repair_selected_pose_anchor_id(repair_shot: dict, render_plan: list[dict]) -> str:
@@ -176,6 +183,8 @@ def _safe_float(value: object, default: float) -> float:
 def _empty_stage_payload(stage_name: str) -> dict[str, object]:
     if stage_name == "clips":
         return {"shot_plan": [], "render_plan": [], "still_results": [], "music_file": ""}
+    if stage_name == "assemble":
+        return {"shot_plan": [], "render_plan": [], "clip_results": [], "music_file": "", "audio_map": {}}
     if stage_name == "review":
         return {
             "final_video": "",
@@ -196,6 +205,12 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
         text = str(value or "").strip()
         if text and not str(target.get(key, "")).strip():
             target[key] = text
+        return
+    if key == "audio_map":
+        if isinstance(value, dict) and not isinstance(target.get(key), dict):
+            target[key] = dict(value)
+        elif isinstance(value, dict) and not target.get(key):
+            target[key] = dict(value)
         return
     if key in {"style_bible", "anchor_package"}:
         if isinstance(value, dict) and not isinstance(target.get(key), dict):
