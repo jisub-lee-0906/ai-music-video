@@ -129,7 +129,7 @@ def audio_policy(config: dict) -> dict:
     variants = songform_variants(songform_mode)
     preferred_rows = variants[0] if songform_mode == "hook_validation" and variants else preferred_songform_rows()
     duration = int(override_duration) if override_duration is not None else 0
-    return {
+    policy = {
         "duration": int(duration),
         "duration_override": override_duration is not None,
         "duration_min_sec": _coerce_positive_int(audio.get("target_duration_min_sec"), default=150),
@@ -151,21 +151,28 @@ def audio_policy(config: dict) -> dict:
         "ending_tags": _ending_tags(audio),
         "line_budgets": resolve_line_budgets(audio, songform_mode=songform_mode),
         "timesignature": str(audio.get("timesignature", "4")).strip() or "4",
-        "generate_audio_codes": _coerce_bool(audio.get("generate_audio_codes"), default=True),
-        "cfg_scale": float(audio.get("cfg_scale", 2.0) or 2.0),
-        "temperature": float(audio.get("temperature", 0.85) or 0.85),
-        "top_p": float(audio.get("top_p", 0.9) or 0.9),
-        "top_k": int(audio.get("top_k", 0) or 0),
-        "min_p": float(audio.get("min_p", 0.0) or 0.0),
-        "sampler_steps": _coerce_positive_int(audio.get("sampler_steps"), default=12),
-        "sampler_cfg": float(audio.get("sampler_cfg", 1.3) or 1.3),
-        "sampler_name": str(audio.get("sampler_name", "euler")).strip() or "euler",
-        "scheduler": str(audio.get("scheduler", "simple")).strip() or "simple",
     }
+    _copy_explicit_audio_runtime_controls(policy, audio)
+    return policy
 
 
 def preferred_songform_rows() -> list[dict[str, str]]:
     return [{"section": sec, "label": label} for sec, label in PREFERRED_SONGFORM]
+
+
+def _copy_explicit_audio_runtime_controls(policy: dict, audio: dict) -> None:
+    if "generate_audio_codes" in audio:
+        policy["generate_audio_codes"] = _coerce_bool(audio.get("generate_audio_codes"), default=True)
+    for key in ("cfg_scale", "temperature", "top_p", "min_p", "sampler_cfg"):
+        if key in audio and audio.get(key) not in (None, ""):
+            policy[key] = float(audio.get(key) or 0.0)
+    if "top_k" in audio and audio.get("top_k") not in (None, ""):
+        policy["top_k"] = int(audio.get("top_k") or 0)
+    if "sampler_steps" in audio:
+        policy["sampler_steps"] = _coerce_positive_int(audio.get("sampler_steps"), default=8)
+    for key in ("sampler_name", "scheduler"):
+        if key in audio and str(audio.get(key, "")).strip():
+            policy[key] = str(audio.get(key, "")).strip()
 
 
 def short_form_songform_variants() -> list[list[dict[str, str]]]:

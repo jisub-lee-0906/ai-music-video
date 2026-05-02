@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import ai_mv.engines.acestep_1_5_aio.mapper as audio_mapper
 
 
@@ -98,3 +101,41 @@ def test_map_audio_workflow_publishes_acestep_quality_controls():
     assert sampler_inputs["cfg"] == 1.3
     assert sampler_inputs["sampler_name"] == "euler"
     assert sampler_inputs["scheduler"] == "simple"
+
+
+def test_map_audio_workflow_omits_acestep_quality_controls_when_plan_uses_official_defaults():
+    out = audio_mapper.map_audio_workflow(
+        {},
+        {
+            "genre_description": "Synthwave: analog pads and a clean lead vocal.",
+            "lyrics": "[Chorus]\nNeon heart, don't let go",
+            "seed": 31,
+            "bpm": 118,
+            "duration": 31,
+            "language": "en",
+            "filename_prefix": "audio/default-parity",
+            "quality": "V0",
+            "timesignature": "4",
+        },
+    )
+
+    text_inputs = out["node.inputs"][audio_mapper.AUDIO_TEXT]
+    assert "generate_audio_codes" not in text_inputs
+    assert "cfg_scale" not in text_inputs
+    assert "temperature" not in text_inputs
+    assert "top_p" not in text_inputs
+    assert "top_k" not in text_inputs
+    assert "min_p" not in text_inputs
+
+
+def test_audio_checkpoint_workflow_template_matches_official_default_text_controls():
+    workflow_path = Path(__file__).resolve().parents[2] / "workflows" / "audio_ace_step_1_5_checkpoint.json"
+    workflow = json.loads(workflow_path.read_text())
+    text_inputs = workflow[audio_mapper.AUDIO_TEXT]["inputs"]
+
+    assert "generate_audio_codes" not in text_inputs
+    assert "cfg_scale" not in text_inputs
+    assert "temperature" not in text_inputs
+    assert "top_p" not in text_inputs
+    assert "top_k" not in text_inputs
+    assert "min_p" not in text_inputs

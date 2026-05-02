@@ -19,6 +19,24 @@ def test_audio_policy_target_duration_override_wins():
     assert out["duration_override"] is True
 
 
+def test_audio_policy_uses_official_acestep_defaults_when_controls_are_unset():
+    out = audio_policy({"audio": {"bpm": 108}})
+
+    for key in (
+        "generate_audio_codes",
+        "cfg_scale",
+        "temperature",
+        "top_p",
+        "top_k",
+        "min_p",
+        "sampler_steps",
+        "sampler_cfg",
+        "sampler_name",
+        "scheduler",
+    ):
+        assert key not in out
+
+
 def test_audio_policy_uses_compact_songlet_contract_for_thirty_second_validation():
     out = audio_policy({"audio": {"bpm": 118, "target_duration_min_sec": 25, "target_duration_max_sec": 35}})
 
