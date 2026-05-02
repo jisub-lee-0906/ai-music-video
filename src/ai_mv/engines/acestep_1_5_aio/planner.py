@@ -226,7 +226,19 @@ def _audio_runtime_context(plan: dict) -> dict:
         "tags": plan["tags"],
         "language": str(plan.get("language", "")).strip(),
         "filename_prefix": str(plan.get("filename_prefix", "")).strip(),
+        "songform_mode": str(plan.get("songform_mode", "")).strip(),
         "songform_variants": list(plan.get("songform_variants", [])) if isinstance(plan.get("songform_variants", []), list) else [],
+        "timesignature": str(plan.get("timesignature", "")).strip(),
+        "generate_audio_codes": bool(plan.get("generate_audio_codes", False)),
+        "cfg_scale": float(plan.get("cfg_scale", 0.0) or 0.0),
+        "temperature": float(plan.get("temperature", 0.0) or 0.0),
+        "top_p": float(plan.get("top_p", 0.0) or 0.0),
+        "top_k": int(plan.get("top_k", 0) or 0),
+        "min_p": float(plan.get("min_p", 0.0) or 0.0),
+        "sampler_steps": int(plan.get("sampler_steps", 0) or 0),
+        "sampler_cfg": float(plan.get("sampler_cfg", 0.0) or 0.0),
+        "sampler_name": str(plan.get("sampler_name", "")).strip(),
+        "scheduler": str(plan.get("scheduler", "")).strip(),
         "genre_head": str(plan.get("genre_head", "")).strip(),
         "vocal_profile": str(plan.get("vocal_profile", "")).strip(),
         "vocal_tone": str(plan.get("vocal_tone", "")).strip(),
@@ -427,7 +439,7 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
             if label in budgets and line_count != 0:
                 raise RuntimeError(f"line_count must stay instrumental for {label}: {line_count} > 0")
             continue
-        min_lines = _outline_section_role_minimum(label)
+        min_lines = _outline_section_role_minimum(label, plan)
         if min_lines > 0 and line_count < min_lines:
             raise RuntimeError(f"line_count underdelivers section role for {label}: {line_count} < {min_lines}")
         if line_count > max_lines:
@@ -435,8 +447,8 @@ def _validate_outline_line_budgets(plan: dict, outline: dict) -> None:
     _validate_short_form_songform(plan, outline)
 
 
-def _outline_section_role_minimum(label: str) -> int:
-    return {
+def _outline_section_role_minimum(label: str, plan: dict | None = None) -> int:
+    minimum = {
         "Verse 1": 4,
         "Verse 2": 4,
         "Pre-Chorus": 3,
@@ -446,6 +458,11 @@ def _outline_section_role_minimum(label: str) -> int:
         "Final Chorus": 4,
         "Bridge": 2,
     }.get(str(label).strip(), 0)
+    budgets = plan.get("line_budgets", {}) if isinstance(plan, dict) and isinstance(plan.get("line_budgets", {}), dict) else {}
+    mode = str(plan.get("songform_mode", "")).strip().lower() if isinstance(plan, dict) else ""
+    if mode == "hook_validation" and str(label).strip() in budgets:
+        return min(minimum, int(budgets.get(str(label).strip(), minimum) or 0))
+    return minimum
 
 
 def _validate_short_form_songform(plan: dict, outline: dict) -> None:

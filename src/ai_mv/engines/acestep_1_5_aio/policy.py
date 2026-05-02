@@ -39,6 +39,31 @@ DEFAULT_SECTION_BARS: dict[str, int] = {
     "outro": 8,
     "final_chorus_bonus": 8,
 }
+HOOK_VALIDATION_SECTION_BARS: dict[str, int] = {
+    "intro": 4,
+    "verse": 4,
+    "verse_1": 4,
+    "verse_2": 4,
+    "pre_chorus": 4,
+    "chorus": 4,
+    "post_chorus": 4,
+    "bridge": 4,
+    "outro": 4,
+    "final_chorus_bonus": 0,
+}
+HOOK_VALIDATION_LINE_BUDGETS: dict[str, int] = {
+    "Intro": 0,
+    "Verse 1": 2,
+    "Verse 2": 2,
+    "Pre-Chorus": 2,
+    "Pre-Chorus 2": 2,
+    "Chorus": 2,
+    "Chorus 2": 2,
+    "Final Chorus": 3,
+    "Post-Chorus": 1,
+    "Bridge": 2,
+    "Outro": 0,
+}
 PREFERRED_SONGFORM: tuple[tuple[str, str], ...] = (
     ("intro", "Intro"),
     ("verse_1", "Verse 1"),
@@ -79,23 +104,46 @@ SHORT_FORM_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
         ("outro", "Outro"),
     ),
 )
+HOOK_VALIDATION_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
+    (
+        ("intro", "Intro"),
+        ("verse_1", "Verse 1"),
+        ("chorus", "Chorus"),
+        ("outro", "Outro"),
+    ),
+    (
+        ("intro", "Intro"),
+        ("verse_1", "Verse 1"),
+        ("pre_chorus", "Pre-Chorus"),
+        ("chorus", "Chorus"),
+        ("outro", "Outro"),
+    ),
+    (
+        ("intro", "Intro"),
+        ("chorus", "Chorus"),
+        ("outro", "Outro"),
+    ),
+)
 
 
 def audio_policy(config: dict) -> dict:
     audio = _audio_config(config)
     bpm = _coerce_positive_int(audio.get("bpm"), default=0)
     beats_per_bar = _coerce_positive_int(audio.get("beats_per_bar"), default=DEFAULT_BEATS_PER_BAR)
-    section_bars = resolve_section_bars(audio)
+    songform_mode = resolve_songform_mode(audio)
+    section_bars = resolve_section_bars(audio, songform_mode=songform_mode)
     override_duration = _explicit_target_duration(audio)
-    preferred_rows = preferred_songform_rows()
+    variants = songform_variants(songform_mode)
+    preferred_rows = variants[0] if songform_mode == "hook_validation" and variants else preferred_songform_rows()
     duration = int(override_duration) if override_duration is not None else 0
     return {
         "duration": int(duration),
         "duration_override": override_duration is not None,
         "duration_min_sec": _coerce_positive_int(audio.get("target_duration_min_sec"), default=150),
         "duration_max_sec": _coerce_positive_int(audio.get("target_duration_max_sec"), default=180),
+        "songform_mode": songform_mode,
         "bar_lane": bar_lane_summary(preferred_rows, section_bars),
-        "songform_variants": short_form_songform_variants(),
+        "songform_variants": variants,
         "beats_per_bar": beats_per_bar,
         "section_bars": section_bars,
         "seed": int(audio.get("seed", 31)),
@@ -108,7 +156,18 @@ def audio_policy(config: dict) -> dict:
         "outro_required": _coerce_bool(audio.get("outro_required"), default=False),
         "ending_vocal_density": _ending_vocal_density(audio),
         "ending_tags": _ending_tags(audio),
-        "line_budgets": resolve_line_budgets(audio),
+        "line_budgets": resolve_line_budgets(audio, songform_mode=songform_mode),
+        "timesignature": str(audio.get("timesignature", "4")).strip() or "4",
+        "generate_audio_codes": _coerce_bool(audio.get("generate_audio_codes"), default=True),
+        "cfg_scale": float(audio.get("cfg_scale", 2.0) or 2.0),
+        "temperature": float(audio.get("temperature", 0.85) or 0.85),
+        "top_p": float(audio.get("top_p", 0.9) or 0.9),
+        "top_k": int(audio.get("top_k", 0) or 0),
+        "min_p": float(audio.get("min_p", 0.0) or 0.0),
+        "sampler_steps": _coerce_positive_int(audio.get("sampler_steps"), default=12),
+        "sampler_cfg": float(audio.get("sampler_cfg", 1.3) or 1.3),
+        "sampler_name": str(audio.get("sampler_name", "euler")).strip() or "euler",
+        "scheduler": str(audio.get("scheduler", "simple")).strip() or "simple",
     }
 
 
@@ -117,9 +176,18 @@ def preferred_songform_rows() -> list[dict[str, str]]:
 
 
 def short_form_songform_variants() -> list[list[dict[str, str]]]:
+    return songform_variants("full_short_form")
+
+
+def hook_validation_songform_variants() -> list[list[dict[str, str]]]:
+    return songform_variants("hook_validation")
+
+
+def songform_variants(songform_mode: str) -> list[list[dict[str, str]]]:
+    raw = HOOK_VALIDATION_VARIANTS if songform_mode == "hook_validation" else SHORT_FORM_VARIANTS
     return [
         [{"section": sec, "label": label} for sec, label in variant]
-        for variant in SHORT_FORM_VARIANTS
+        for variant in raw
     ]
 
 
@@ -222,13 +290,14 @@ def build_song_timing(
     }
 
 
-def resolve_section_bars(audio: dict) -> dict[str, int]:
+def resolve_section_bars(audio: dict, *, songform_mode: str | None = None) -> dict[str, int]:
     raw = audio.get("section_bars", {}) if isinstance(audio, dict) else {}
+    base = HOOK_VALIDATION_SECTION_BARS if songform_mode == "hook_validation" else DEFAULT_SECTION_BARS
     if raw in ("", None):
-        return dict(DEFAULT_SECTION_BARS)
+        return dict(base)
     if not isinstance(raw, dict):
         raise RuntimeError("audio.section_bars must be a mapping")
-    resolved = dict(DEFAULT_SECTION_BARS)
+    resolved = dict(base)
     for key, value in raw.items():
         name = str(key).strip().lower()
         if not name:
@@ -237,8 +306,8 @@ def resolve_section_bars(audio: dict) -> dict[str, int]:
     return resolved
 
 
-def resolve_line_budgets(audio: dict) -> dict[str, int]:
-    resolved = dict(DEFAULT_LINE_BUDGETS)
+def resolve_line_budgets(audio: dict, *, songform_mode: str | None = None) -> dict[str, int]:
+    resolved = dict(HOOK_VALIDATION_LINE_BUDGETS if songform_mode == "hook_validation" else DEFAULT_LINE_BUDGETS)
     language = str(audio.get("language", "")).strip().lower()
     ending_mode = _ending_mode(audio)
     terminal_end_tag = _terminal_end_tag(audio)
@@ -272,6 +341,16 @@ def resolve_line_budgets(audio: dict) -> dict[str, int]:
     if outro_required and terminal_end_tag and ending_mode == "clean_resolve":
         resolved["Outro"] = min(int(resolved.get("Outro", 0)), 0)
     return resolved
+
+
+def resolve_songform_mode(audio: dict) -> str:
+    raw = str(audio.get("songform_mode", "")).strip().lower() if isinstance(audio, dict) else ""
+    if raw in {"hook_validation", "full_short_form"}:
+        return raw
+    max_sec = _coerce_positive_int(audio.get("target_duration_max_sec"), default=0) if isinstance(audio, dict) else 0
+    if 0 < max_sec <= 45:
+        return "hook_validation"
+    return "full_short_form"
 
 
 def section_bar_plan(rows: Sequence[dict], section_bars: dict[str, int]) -> list[int]:

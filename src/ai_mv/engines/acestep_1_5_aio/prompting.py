@@ -58,6 +58,16 @@ def _audio_conditioning_contract_rules(plan: dict) -> str:
 def _audio_songform_rules(plan: dict) -> str:
     ending = _ending_policy(plan)
     variant_text = _songform_variant_clause(plan)
+    if str(plan.get("songform_mode", "")).strip().lower() == "hook_validation":
+        return (
+            "Write a compact hook-validation songlet, not a compressed full song. "
+            "Use only enough structure to test genre, lead vocal, lyric hook, and clean ending inside the requested short duration. "
+            + variant_text
+            + "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take. "
+            "Keep Intro and Outro short and mostly instrumental. "
+            "Make the first Chorus line feel title-worthy and instantly memorable. "
+            "For each section, role should say what that section must do, and change should say what becomes different from the previous section. "
+        )
     rules = [
         "Write a full song, not a fragment. ",
         "Choose a songform that fits a modern short-form song around two and a half to three minutes instead of forcing one fixed template. ",
@@ -114,7 +124,7 @@ def _audio_line_budget_rules(plan: dict) -> str:
         "Outro",
     ]
     pairs = [f"{label}<= {int(budgets[label])}" for label in ordered if label in budgets]
-    minimums = {
+    base_minimums = {
         "Verse 1": 4,
         "Verse 2": 4,
         "Pre-Chorus": 3,
@@ -124,6 +134,7 @@ def _audio_line_budget_rules(plan: dict) -> str:
         "Final Chorus": 4,
         "Bridge": 2,
     }
+    minimums = {label: min(required, int(budgets.get(label, required) or 0)) for label, required in base_minimums.items()}
     if int(budgets.get("Final Chorus", 0) or 0) >= 5:
         minimums["Final Chorus"] = 5
     min_pairs = [f"{label}>= {minimums[label]}" for label in ordered if label in minimums and label in budgets]

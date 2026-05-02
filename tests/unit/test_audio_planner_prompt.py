@@ -125,6 +125,53 @@ def test_audio_prompt_requires_final_chorus_minimum_matching_its_extended_bar_bu
 
 
 
+def test_audio_prompt_marks_short_validation_as_songlet_not_full_song():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            duration_min_sec=25,
+            duration_max_sec=35,
+            songform_mode="hook_validation",
+            songform_variants=[
+                [
+                    {"section": "intro", "label": "Intro"},
+                    {"section": "verse_1", "label": "Verse 1"},
+                    {"section": "chorus", "label": "Chorus"},
+                    {"section": "outro", "label": "Outro"},
+                ]
+            ],
+            line_budgets={"Intro": 0, "Verse 1": 2, "Chorus": 2, "Outro": 0},
+        )
+    )
+
+    assert "compact hook-validation songlet" in prompt
+    assert "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take." in prompt
+    assert "Choose a songform that fits a modern short-form song around two and a half to three minutes" not in prompt
+    assert "Verse 1>= 2" in prompt
+    assert "Chorus>= 2" in prompt
+
+
+
+def test_audio_outline_minimums_do_not_exceed_short_validation_line_budgets():
+    plan = _prompt_plan(
+        duration_min_sec=25,
+        duration_max_sec=35,
+        songform_mode="hook_validation",
+        line_budgets={"Intro": 0, "Verse 1": 2, "Chorus": 2, "Outro": 0},
+    )
+    outline = {
+        "bpm": 118,
+        "lyrics_blocks": [
+            {"section": "intro", "label": "Intro", "role": "open", "change": "start", "line_count": 0},
+            {"section": "verse_1", "label": "Verse 1", "role": "setup", "change": "enter", "line_count": 2},
+            {"section": "chorus", "label": "Chorus", "role": "hook", "change": "release", "line_count": 2},
+            {"section": "outro", "label": "Outro", "role": "end", "change": "close", "line_count": 0},
+        ],
+    }
+
+    audio_planner._validate_outline_line_budgets(plan, outline)
+
+
+
 def test_audio_retry_feedback_for_final_chorus_underuse_demands_full_extended_return():
     prompt = audio_planner._audio_prompt(
         _prompt_plan(

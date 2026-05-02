@@ -19,6 +19,21 @@ def test_audio_policy_target_duration_override_wins():
     assert out["duration_override"] is True
 
 
+def test_audio_policy_uses_compact_songlet_contract_for_thirty_second_validation():
+    out = audio_policy({"audio": {"bpm": 118, "target_duration_min_sec": 25, "target_duration_max_sec": 35}})
+
+    assert out["songform_mode"] == "hook_validation"
+    assert out["section_bars"]["intro"] == 4
+    assert out["section_bars"]["verse_1"] == 4
+    assert out["section_bars"]["chorus"] == 4
+    assert out["section_bars"]["final_chorus_bonus"] == 0
+    assert out["line_budgets"]["Verse 1"] == 2
+    assert out["line_budgets"]["Chorus"] == 2
+    assert out["line_budgets"]["Final Chorus"] == 3
+    assert [row["label"] for row in out["songform_variants"][0]] == ["Intro", "Verse 1", "Chorus", "Outro"]
+    assert "verse 1 4" in out["bar_lane"]
+
+
 def test_audio_policy_populates_default_ending_contract():
     out = audio_policy({"audio": {"bpm": 108, "language": "ko"}})
     assert out["ending_mode"] == "clean_resolve"

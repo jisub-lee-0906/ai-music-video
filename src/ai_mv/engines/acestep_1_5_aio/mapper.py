@@ -129,11 +129,24 @@ def map_audio_workflow(config: dict, plan: dict) -> dict:
     keyscale = str(plan.get("keyscale", "")).strip()
     if keyscale:
         text_inputs["keyscale"] = keyscale
+    _copy_optional_audio_controls(
+        text_inputs,
+        plan,
+        {
+            "timesignature",
+            "generate_audio_codes",
+            "cfg_scale",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+        },
+    )
     return {
         "node.inputs": {
             AUDIO_TEXT: text_inputs,
             AUDIO_LATENT: {"seconds": int(plan["duration"])},
-            AUDIO_KSAMPLER: {"seed": seed},
+            AUDIO_KSAMPLER: _audio_sampler_inputs(plan, seed),
             AUDIO_SAVE: {
                 "filename_prefix": str(plan["filename_prefix"]),
                 "quality": str(plan["quality"]),
@@ -149,6 +162,26 @@ def audio_required_inputs() -> dict[str, list[str]]:
         "KSampler": ["seed"],
         "SaveAudioMP3": ["filename_prefix", "quality"],
     }
+
+
+def _copy_optional_audio_controls(target: dict, plan: dict, keys: set[str]) -> None:
+    for key in keys:
+        if key in plan and plan[key] not in (None, ""):
+            target[key] = plan[key]
+
+
+def _audio_sampler_inputs(plan: dict, seed: int) -> dict:
+    out = {"seed": seed}
+    mapping = {
+        "sampler_steps": "steps",
+        "sampler_cfg": "cfg",
+        "sampler_name": "sampler_name",
+        "scheduler": "scheduler",
+    }
+    for source, dest in mapping.items():
+        if source in plan and plan[source] not in (None, ""):
+            out[dest] = plan[source]
+    return out
 
 
 def _audio_language(plan: dict) -> str:
