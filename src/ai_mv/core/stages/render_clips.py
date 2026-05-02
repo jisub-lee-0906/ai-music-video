@@ -19,7 +19,7 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
         render_mode = str(render_item.get("render_mode") or shot.get("render_mode", "")).strip()
         if not render_mode:
             raise RuntimeError(f"missing render_mode for shot: {shot_id}")
-        video_path = _run_clip(stage_input, shot_id, shot, render_item, still_map, render_mode, duration_targets.get(shot_id))
+        video_path, duration_contract = _run_clip(stage_input, shot_id, shot, render_item, still_map, render_mode, duration_targets.get(shot_id))
         clip_results.append(
             {
                 "shot_id": shot_id,
@@ -28,6 +28,7 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
                 "material_id": _clip_material_id(shot, render_item, still_map.get(shot_id, {})),
                 "section_id": _clip_section_id(shot, render_item, still_map.get(shot_id, {})),
                 "status": "done",
+                **duration_contract,
             }
         )
     return StageOutput(
@@ -52,7 +53,7 @@ def _run_clip(
     still_map: dict,
     render_mode: str,
     duration_target_sec: float | None = None,
-) -> str:
+) -> tuple[str, dict[str, float | str]]:
     if render_mode != "ia2v":
         raise RuntimeError(f"unsupported render_mode for shot {shot_id}: {render_mode}")
     prompt_seed = _clip_prompt_text(render_item)
@@ -62,20 +63,21 @@ def _run_clip(
         still_row,
     )
     negative_prompt = str(stage_input.config.get("render", {}).get("ltx_negative", "")).strip()
-    duration_sec = float(duration_target_sec or shot.get("duration_sec", stage_input.config.get("render", {}).get("ltx_default_shot_sec", 4.0)) or 4.0)
+    target_duration_sec = float(duration_target_sec or shot.get("duration_sec", stage_input.config.get("render", {}).get("ltx_default_shot_sec", 4.0)) or 4.0)
+    duration_contract = _clip_duration_contract(target_duration_sec, render_item, stage_input.config)
     base_item = {
         "shot_id": shot_id,
         "prompt_seed": prompt_seed,
         "positive_prompt": positive_prompt,
         "negative_prompt": negative_prompt,
-        "duration_sec": duration_sec,
+        "duration_sec": duration_contract["rendered_duration_sec"],
         "fps": int(stage_input.config.get("render", {}).get("ltx_fps", 24) or 24),
         "filename_prefix": ltx_clip_prefix(stage_input.run_id, shot_id, render_mode),
     }
     still_image = str(still_row.get("image", "")).strip()
     _validate_clip_assets(stage_input, shot_id, render_mode, still_image, shot, render_item, still_map)
     assert_still_passes_ia2v_gate(shot_id=shot_id, still_row=still_row, shot=shot, render_item=render_item)
-    return run_ltx_ia2v(
+    video_path = run_ltx_ia2v(
         stage_input.config,
         {
             **base_item,
@@ -84,6 +86,7 @@ def _run_clip(
             "audio_start_sec": float(shot.get("start_sec", 0.0) or 0.0),
         },
     )
+    return video_path, duration_contract
 
 
 def _clip_prompt_text(render_item: dict) -> str:
@@ -92,6 +95,24 @@ def _clip_prompt_text(render_item: dict) -> str:
         if value:
             return value
     return "music video shot with a clear cinematic action beat"
+
+
+def _clip_duration_contract(target_duration_sec: float, render_item: dict, config: dict) -> dict[str, float | str]:
+    target = round(max(0.0, float(target_duration_sec or 0.0)), 3)
+    render_cfg = config.get("render", {}) if isinstance(config.get("render"), dict) else {}
+    explicit_handle = render_item.get("ia2v_handle_sec") if isinstance(render_item, dict) else None
+    handle = _safe_positive_float(explicit_handle)
+    if handle is None:
+        handle = _safe_positive_float(render_cfg.get("ia2v_handle_sec")) or 0.0
+    handle = round(max(0.0, float(handle or 0.0)), 3)
+    rendered = round(target + (handle * 2.0), 3) if handle > 0.0 else target
+    return {
+        "target_clip_sec": target,
+        "rendered_duration_sec": rendered,
+        "trim_handle_sec": handle,
+        "trim_strategy": "stable_middle_handle_trim" if handle > 0.0 else "use_full_clip",
+    }
+
 
 
 def _duration_targets_by_shot(shot_plan: list[dict], payload: dict, config: dict) -> dict[str, float]:

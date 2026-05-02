@@ -71,11 +71,25 @@ def _resolve_clip_results(config: dict, clip_rows: list[dict]) -> list[dict]:
                 "section_id": str(row.get("section_id", "")).strip(),
                 "material_id": str(row.get("material_id", "")).strip(),
                 "path": Path(resolve_generated_file(config, video, {".mp4", ".mov", ".mkv", ".webm"}, "video")),
+                **_clip_duration_contract_fields(row),
             }
         )
     if not out:
         raise RuntimeError("assemble requires at least one rendered clip")
     return out
+
+
+
+def _clip_duration_contract_fields(row: dict) -> dict[str, object]:
+    fields: dict[str, object] = {}
+    for key in ("target_clip_sec", "rendered_duration_sec", "trim_handle_sec"):
+        value = _safe_float(row.get(key), 0.0)
+        if value > 0.0:
+            fields[key] = value
+    trim_strategy = str(row.get("trim_strategy", "")).strip()
+    if trim_strategy:
+        fields["trim_strategy"] = trim_strategy
+    return fields
 
 
 
@@ -126,7 +140,7 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
     out: list[dict] = []
     for row in clip_rows:
         shot_id = str(row.get("shot_id", "")).strip()
-        edit_intent = edit_intent_by_shot.get(shot_id, {})
+        edit_intent = _edit_intent_for_clip(shot_id, row, edit_intent_by_shot)
         production_policy = production_policy_by_shot.get(shot_id, {})
         clip_duration = float(durations.get(shot_id) or ffprobe_duration(row["path"]))
         target_clip_sec = _policy_capped_target_clip_sec(edit_intent, production_policy)
@@ -146,12 +160,29 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
                 "trim_start_sec": trim_start_sec,
                 "trim_end_sec": trim_end_sec,
                 "trimmed_coverage_sec": trimmed_coverage_sec,
+                "trim_strategy": str(edit_intent.get("trim_strategy", "")).strip() or "edit_intent_window",
                 "snap_unit": snap_unit,
                 "cadence_profile": _cadence_profile(edit_intent),
                 **_production_policy_segment_fields(production_policy),
             }
         )
     return out
+
+
+
+def _edit_intent_for_clip(shot_id: str, clip_row: dict, edit_intent_by_shot: dict[str, dict]) -> dict:
+    edit_intent = dict(edit_intent_by_shot.get(shot_id, {}))
+    target = _safe_float(edit_intent.get("target_clip_sec"), 0.0)
+    clip_target = _safe_float(clip_row.get("target_clip_sec"), 0.0)
+    if target <= 0.0 and clip_target > 0.0:
+        edit_intent["target_clip_sec"] = clip_target
+    handle = _safe_float(clip_row.get("trim_handle_sec"), 0.0)
+    strategy = str(clip_row.get("trim_strategy", "")).strip()
+    if handle > 0.0:
+        edit_intent.setdefault("preferred_trim_start_sec", handle)
+    if strategy:
+        edit_intent.setdefault("trim_strategy", strategy)
+    return edit_intent
 
 
 
@@ -187,8 +218,11 @@ def _trim_window_for_clip(clip_duration: float, target_clip_sec: float, edit_int
     transition_in = str(edit_intent.get("transition_in", "")).strip()
     transition_out = str(edit_intent.get("transition_out", "")).strip()
     pattern_family = str(edit_intent.get("pattern_family", "")).strip()
+    preferred_start = _safe_float(edit_intent.get("preferred_trim_start_sec"), -1.0)
     available = max(0.0, duration - target)
-    if pattern_family == "hook_punch_in":
+    if preferred_start >= 0.0:
+        start = min(available, preferred_start)
+    elif pattern_family == "hook_punch_in":
         start = available / 2.0
     elif pattern_family == "hook_sustain":
         start = available * 0.25

@@ -2146,6 +2146,68 @@ def test_render_clips_propagates_anchor_identity_and_extends_duration_to_audio_c
 
 
 
+def test_render_clips_generates_ia2v_handles_and_publishes_trim_contract(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(item)
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    out = run_render_clips(
+        StageInput(
+            run_id="run-handle-clips",
+            config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0, "ia2v_handle_sec": 0.75}},
+            payload={
+                "music_file": "music/song.mp3",
+                "shot_plan": [{"shot_id": "S001", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 0.0}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "ia2v", "clip_prompt_seed": "clean motion hold"}],
+                "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png"}],
+            },
+        )
+    )
+
+    assert calls[0]["duration_sec"] == 5.5
+    clip = out.payload["clip_results"][0]
+    assert clip["target_clip_sec"] == 4.0
+    assert clip["rendered_duration_sec"] == 5.5
+    assert clip["trim_handle_sec"] == 0.75
+    assert clip["trim_strategy"] == "stable_middle_handle_trim"
+
+
+
+def test_assembly_uses_clip_handle_contract_when_render_plan_lacks_trim_intent(monkeypatch, tmp_path):
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    (tmp_path / "clip-handle.mp4").write_text("clip", encoding="utf-8")
+
+    segments = _assembly_clip_segments(
+        {"video": {"target": "1080p"}},
+        {
+            "clip_results": [
+                {
+                    "shot_id": "S001",
+                    "video": "clip-handle.mp4",
+                    "section_id": "SEC_001",
+                    "material_id": "MAT_001",
+                    "target_clip_sec": 4.0,
+                    "rendered_duration_sec": 5.5,
+                    "trim_handle_sec": 0.75,
+                    "trim_strategy": "stable_middle_handle_trim",
+                }
+            ],
+            "shot_plan": [{"shot_id": "S001", "duration_sec": 4.0, "start_sec": 0.0}],
+            "render_plan": [{"shot_id": "S001", "render_mode": "ia2v"}],
+        },
+        duration_by_shot={"S001": 5.5},
+    )
+
+    assert segments[0]["trim_start_sec"] == 0.75
+    assert segments[0]["trim_end_sec"] == 4.75
+    assert segments[0]["trimmed_coverage_sec"] == 4.0
+    assert segments[0]["trim_strategy"] == "stable_middle_handle_trim"
+
+
+
 def test_render_clips_requires_explicit_render_mode_in_canonical_runtime():
     stage_input = StageInput(
         run_id="run-2-missing-mode",
