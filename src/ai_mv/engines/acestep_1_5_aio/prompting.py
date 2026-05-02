@@ -63,7 +63,9 @@ def _audio_songform_rules(plan: dict) -> str:
             "Write a compact hook-validation songlet, not a compressed full song. "
             "Use only enough structure to test genre, lead vocal, lyric hook, and clean ending inside the requested short duration. "
             + variant_text
-            + "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take. "
+            + "Do not include Verse 1 or Pre-Chorus in a thirty-second validation take; ACE-Step often collapses them into the hook at this length. "
+            "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take. "
+            "Make this a chorus-only proof of genre, vocal, hook, and clean ending. "
             "Keep Intro and Outro short and mostly instrumental. "
             "Make the first Chorus line feel title-worthy and instantly memorable. "
             "For each section, role should say what that section must do, and change should say what becomes different from the previous section. "
@@ -137,7 +139,7 @@ def _audio_line_budget_rules(plan: dict) -> str:
     minimums = {label: min(required, int(budgets.get(label, required) or 0)) for label, required in base_minimums.items()}
     if int(budgets.get("Final Chorus", 0) or 0) >= 5:
         minimums["Final Chorus"] = 5
-    min_pairs = [f"{label}>= {minimums[label]}" for label in ordered if label in minimums and label in budgets]
+    min_pairs = [f"{label}>= {minimums[label]}" for label in ordered if label in minimums and label in budgets and int(minimums[label]) > 0]
     text = "Respect these maximum line counts: " + ", ".join(pairs) + ". "
     if min_pairs:
         text += "Respect these minimum line counts for any included required section: " + ", ".join(min_pairs) + ". "

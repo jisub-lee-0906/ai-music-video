@@ -24,14 +24,17 @@ def test_audio_policy_uses_compact_songlet_contract_for_thirty_second_validation
 
     assert out["songform_mode"] == "hook_validation"
     assert out["section_bars"]["intro"] == 4
-    assert out["section_bars"]["verse_1"] == 4
-    assert out["section_bars"]["chorus"] == 4
+    assert out["section_bars"]["verse_1"] == 0
+    assert out["section_bars"]["pre_chorus"] == 0
+    assert out["section_bars"]["chorus"] == 8
     assert out["section_bars"]["final_chorus_bonus"] == 0
-    assert out["line_budgets"]["Verse 1"] == 2
-    assert out["line_budgets"]["Chorus"] == 2
-    assert out["line_budgets"]["Final Chorus"] == 3
-    assert [row["label"] for row in out["songform_variants"][0]] == ["Intro", "Verse 1", "Chorus", "Outro"]
-    assert "verse 1 4" in out["bar_lane"]
+    assert out["line_budgets"]["Verse 1"] == 0
+    assert out["line_budgets"]["Pre-Chorus"] == 0
+    assert out["line_budgets"]["Chorus"] == 3
+    assert [row["label"] for row in out["songform_variants"][0]] == ["Intro", "Chorus", "Outro"]
+    assert "verse 1" not in out["bar_lane"].lower()
+    assert "pre" not in out["bar_lane"].lower()
+    assert "chorus 8" in out["bar_lane"]
 
 
 def test_audio_policy_populates_default_ending_contract():

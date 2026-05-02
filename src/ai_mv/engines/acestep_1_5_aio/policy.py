@@ -41,11 +41,11 @@ DEFAULT_SECTION_BARS: dict[str, int] = {
 }
 HOOK_VALIDATION_SECTION_BARS: dict[str, int] = {
     "intro": 4,
-    "verse": 4,
-    "verse_1": 4,
-    "verse_2": 4,
-    "pre_chorus": 4,
-    "chorus": 4,
+    "verse": 0,
+    "verse_1": 0,
+    "verse_2": 0,
+    "pre_chorus": 0,
+    "chorus": 8,
     "post_chorus": 4,
     "bridge": 4,
     "outro": 4,
@@ -53,11 +53,11 @@ HOOK_VALIDATION_SECTION_BARS: dict[str, int] = {
 }
 HOOK_VALIDATION_LINE_BUDGETS: dict[str, int] = {
     "Intro": 0,
-    "Verse 1": 2,
-    "Verse 2": 2,
-    "Pre-Chorus": 2,
-    "Pre-Chorus 2": 2,
-    "Chorus": 2,
+    "Verse 1": 0,
+    "Verse 2": 0,
+    "Pre-Chorus": 0,
+    "Pre-Chorus 2": 0,
+    "Chorus": 3,
     "Chorus 2": 2,
     "Final Chorus": 3,
     "Post-Chorus": 1,
@@ -105,19 +105,6 @@ SHORT_FORM_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
     ),
 )
 HOOK_VALIDATION_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
-    (
-        ("intro", "Intro"),
-        ("verse_1", "Verse 1"),
-        ("chorus", "Chorus"),
-        ("outro", "Outro"),
-    ),
-    (
-        ("intro", "Intro"),
-        ("verse_1", "Verse 1"),
-        ("pre_chorus", "Pre-Chorus"),
-        ("chorus", "Chorus"),
-        ("outro", "Outro"),
-    ),
     (
         ("intro", "Intro"),
         ("chorus", "Chorus"),

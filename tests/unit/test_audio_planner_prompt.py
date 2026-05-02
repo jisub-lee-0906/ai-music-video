@@ -125,7 +125,7 @@ def test_audio_prompt_requires_final_chorus_minimum_matching_its_extended_bar_bu
 
 
 
-def test_audio_prompt_marks_short_validation_as_songlet_not_full_song():
+def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
     prompt = audio_planner._audio_prompt(
         _prompt_plan(
             duration_min_sec=25,
@@ -134,20 +134,21 @@ def test_audio_prompt_marks_short_validation_as_songlet_not_full_song():
             songform_variants=[
                 [
                     {"section": "intro", "label": "Intro"},
-                    {"section": "verse_1", "label": "Verse 1"},
                     {"section": "chorus", "label": "Chorus"},
                     {"section": "outro", "label": "Outro"},
                 ]
             ],
-            line_budgets={"Intro": 0, "Verse 1": 2, "Chorus": 2, "Outro": 0},
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 0},
         )
     )
 
     assert "compact hook-validation songlet" in prompt
-    assert "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take." in prompt
+    assert "Do not include Verse 1 or Pre-Chorus in a thirty-second validation take" in prompt
+    assert "Intro -> Chorus -> Outro" in prompt
     assert "Choose a songform that fits a modern short-form song around two and a half to three minutes" not in prompt
-    assert "Verse 1>= 2" in prompt
-    assert "Chorus>= 2" in prompt
+    assert "Verse 1>= " not in prompt
+    assert "Pre-Chorus>= " not in prompt
+    assert "Chorus>= 3" in prompt
 
 
 
@@ -156,14 +157,13 @@ def test_audio_outline_minimums_do_not_exceed_short_validation_line_budgets():
         duration_min_sec=25,
         duration_max_sec=35,
         songform_mode="hook_validation",
-        line_budgets={"Intro": 0, "Verse 1": 2, "Chorus": 2, "Outro": 0},
+        line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 0},
     )
     outline = {
         "bpm": 118,
         "lyrics_blocks": [
             {"section": "intro", "label": "Intro", "role": "open", "change": "start", "line_count": 0},
-            {"section": "verse_1", "label": "Verse 1", "role": "setup", "change": "enter", "line_count": 2},
-            {"section": "chorus", "label": "Chorus", "role": "hook", "change": "release", "line_count": 2},
+            {"section": "chorus", "label": "Chorus", "role": "hook", "change": "release", "line_count": 3},
             {"section": "outro", "label": "Outro", "role": "end", "change": "close", "line_count": 0},
         ],
     }
