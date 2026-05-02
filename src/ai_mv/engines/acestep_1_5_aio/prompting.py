@@ -66,6 +66,8 @@ def _audio_songform_rules(plan: dict) -> str:
             + "Do not include Verse 1 or Pre-Chorus in a thirty-second validation take; ACE-Step often collapses them into the hook at this length. "
             "Do not force Verse 2, Bridge, or Final Chorus into a thirty-second validation take. "
             "Make this a chorus-only proof of genre, vocal, hook, and clean ending. "
+            "Use exactly two Chorus lyric lines: line one should be the title-grade hook, line two should repeat or lightly vary that hook within the same melodic idea. "
+            "Do not add a third narrative payoff line; late new story lines can make ACE-Step jump into a different chorus idea. "
             "Keep Intro and Outro short and mostly instrumental. "
             "Make the first Chorus line feel title-worthy and instantly memorable. "
             "For each section, role should say what that section must do, and change should say what becomes different from the previous section. "

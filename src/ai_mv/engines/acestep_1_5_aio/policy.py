@@ -57,7 +57,7 @@ HOOK_VALIDATION_LINE_BUDGETS: dict[str, int] = {
     "Verse 2": 0,
     "Pre-Chorus": 0,
     "Pre-Chorus 2": 0,
-    "Chorus": 3,
+    "Chorus": 2,
     "Chorus 2": 2,
     "Final Chorus": 3,
     "Post-Chorus": 1,

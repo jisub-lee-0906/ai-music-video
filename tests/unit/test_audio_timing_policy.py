@@ -30,7 +30,7 @@ def test_audio_policy_uses_compact_songlet_contract_for_thirty_second_validation
     assert out["section_bars"]["final_chorus_bonus"] == 0
     assert out["line_budgets"]["Verse 1"] == 0
     assert out["line_budgets"]["Pre-Chorus"] == 0
-    assert out["line_budgets"]["Chorus"] == 3
+    assert out["line_budgets"]["Chorus"] == 2
     assert [row["label"] for row in out["songform_variants"][0]] == ["Intro", "Chorus", "Outro"]
     assert "verse 1" not in out["bar_lane"].lower()
     assert "pre" not in out["bar_lane"].lower()

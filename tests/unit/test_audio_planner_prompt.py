@@ -138,7 +138,7 @@ def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
                     {"section": "outro", "label": "Outro"},
                 ]
             ],
-            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 0},
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 2, "Outro": 0},
         )
     )
 
@@ -148,7 +148,9 @@ def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
     assert "Choose a songform that fits a modern short-form song around two and a half to three minutes" not in prompt
     assert "Verse 1>= " not in prompt
     assert "Pre-Chorus>= " not in prompt
-    assert "Chorus>= 3" in prompt
+    assert "Chorus>= 2" in prompt
+    assert "Use exactly two Chorus lyric lines" in prompt
+    assert "Do not add a third narrative payoff line" in prompt
 
 
 
@@ -157,13 +159,13 @@ def test_audio_outline_minimums_do_not_exceed_short_validation_line_budgets():
         duration_min_sec=25,
         duration_max_sec=35,
         songform_mode="hook_validation",
-        line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 0},
+        line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 2, "Outro": 0},
     )
     outline = {
         "bpm": 118,
         "lyrics_blocks": [
             {"section": "intro", "label": "Intro", "role": "open", "change": "start", "line_count": 0},
-            {"section": "chorus", "label": "Chorus", "role": "hook", "change": "release", "line_count": 3},
+            {"section": "chorus", "label": "Chorus", "role": "hook", "change": "release", "line_count": 2},
             {"section": "outro", "label": "Outro", "role": "end", "change": "close", "line_count": 0},
         ],
     }
