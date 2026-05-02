@@ -100,8 +100,8 @@ def build_pose_anchor_selection(shot: dict) -> dict:
         return _selection("ANCHOR_POSE_SEATED_WAITING")
     if _has_expressive_hand_action(text):
         return _selection("ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
-    if story_function == "payoff" or _has_any_word(text, ("payoff", "final", "resolve", "resolved")):
-        return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT")
+    if _has_final_payoff_intent(shot, text, story_function):
+        return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT", decision=_final_payoff_decision())
     if _has_any_word(text, ("walk", "walking", "side", "movement")) or "forward motion" in text or story_function in {"search", "release"} and "close" not in text:
         return _selection("ANCHOR_POSE_WALKING_SIDE")
     if any(token in text for token in ("profile", "looking down", "over shoulder", "over-shoulder")):
@@ -117,7 +117,7 @@ def build_pose_anchor_selection(shot: dict) -> dict:
     return _selection("ANCHOR_POSE_THREE_QUARTER_MEDIUM")
 
 
-def _selection(anchor_id: str) -> dict:
+def _selection(anchor_id: str, decision: dict | None = None) -> dict:
     spec = POSE_ANCHOR_CATALOG[anchor_id]
     selection = {
         "selected_pose_anchor_id": anchor_id,
@@ -128,6 +128,8 @@ def _selection(anchor_id: str) -> dict:
         "anchor_selection_reason": spec["reason"],
         "fallback_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"],
     }
+    if decision:
+        selection.update(decision)
     for key in ("required_body_action", "required_motion_direction", "required_prop"):
         if key in spec:
             selection[key] = spec[key]
@@ -169,6 +171,59 @@ def _has_expressive_hand_action(text: str) -> bool:
     hand_markers = ("open hand", "hand near chest", "hand gesture", "raises one hand", "reaches out", "reaching hand")
     objectless_markers = ("empty hands", "without props", "no prop", "no microphone", "without microphone")
     return any(marker in text for marker in hand_markers) and any(marker in text for marker in objectless_markers)
+
+
+def _has_final_payoff_intent(shot: dict, text: str, story_function: str) -> bool:
+    if _has_unresolved_or_pre_final_context(text):
+        return False
+    section_type = str(shot.get("section_type", "")).strip().lower().replace("_", " ")
+    visual_mode = str(shot.get("visual_mode", "")).strip().lower().replace("_", " ")
+    if story_function in {"payoff", "final_payoff", "resolution"}:
+        return True
+    if section_type in {"outro", "finale", "ending"} and _has_resolution_language(text):
+        return True
+    if "final payoff" in text or "final visual payoff" in text or "resolved payoff" in text:
+        return True
+    return "final payoff" in visual_mode or "payoff front" in visual_mode
+
+
+def _has_resolution_language(text: str) -> bool:
+    return _has_any_word(text, ("payoff", "resolve", "resolved", "resolution", "ending"))
+
+
+def _has_unresolved_or_pre_final_context(text: str) -> bool:
+    blocked_phrases = (
+        "unresolved",
+        "not yet resolved",
+        "not resolved",
+        "not reached the final payoff",
+        "before the final",
+        "pre final",
+        "pre-final",
+        "still searching",
+        "searching before",
+    )
+    return any(phrase in text for phrase in blocked_phrases)
+
+
+def _final_payoff_decision() -> dict:
+    return {
+        "decision_method": "structured_shot_semantics",
+        "reason_codes": ["final_payoff_positive_resolution", "front_medium_resolved_identity_readability"],
+        "shot_semantics": {
+            "final_payoff": True,
+            "resolution_state": "resolved",
+            "body_action": "front_facing_resolved_pose",
+            "framing": "medium",
+            "camera_angle": "front",
+            "prop": "none",
+        },
+        "rejected_anchor_ids": {
+            "ANCHOR_POSE_HERO_CLOSEUP": "final payoff needs resolved medium front hero framing, not generic closeup",
+            "ANCHOR_POSE_THREE_QUARTER_MEDIUM": "final payoff should face the viewer instead of bridge three-quarter staging",
+            "ANCHOR_POSE_WALKING_SIDE": "final payoff is a resolved hold, not a movement/search shot",
+        },
+    }
 
 
 def _is_negated_action(text: str, marker: str) -> bool:

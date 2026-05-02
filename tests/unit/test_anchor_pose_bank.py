@@ -280,6 +280,67 @@ def test_pose_anchor_selection_does_not_treat_unresolved_text_as_final_payoff():
 
 
 
+def test_pose_anchor_selection_requires_positive_resolution_for_final_payoff_anchor():
+    style_bible = get_style_bible("citypop")
+    item = build_render_item(
+        {},
+        "not yet resolved, still searching before the final answer",
+        "citypop",
+        style_bible,
+        {
+            "shot_id": "S010",
+            "render_mode": "ia2v",
+            "start_sec": 12.0,
+            "duration_sec": 3.0,
+            "section_id": "SEC_BRIDGE",
+            "section_type": "bridge",
+            "shot_role": "pre-final searching walk, not yet resolved",
+            "visual_mode": "walking_side_profile",
+            "story_function": "search",
+            "story_contract": {
+                "why_this_shot": "the protagonist has not reached the final payoff yet",
+                "protagonist_action": "keeps walking sideways through uncertainty",
+            },
+        },
+    )
+
+    assert item["selected_pose_anchor_id"] == "ANCHOR_POSE_WALKING_SIDE"
+    assert "final_payoff_positive_resolution" not in item["pose_anchor_selection"].get("reason_codes", [])
+
+
+
+def test_pose_anchor_selection_publishes_final_payoff_decision_evidence():
+    style_bible = get_style_bible("citypop")
+    item = build_render_item(
+        {},
+        "resolved final chorus payoff with a calm face-to-camera ending",
+        "citypop",
+        style_bible,
+        {
+            "shot_id": "S011",
+            "render_mode": "ia2v",
+            "start_sec": 24.0,
+            "duration_sec": 3.5,
+            "section_id": "SEC_OUTRO",
+            "section_type": "outro",
+            "shot_role": "final resolved payoff portrait",
+            "visual_mode": "final_payoff_front_medium",
+            "story_function": "payoff",
+            "story_contract": {
+                "why_this_shot": "final visual payoff after the emotional arc resolves",
+                "protagonist_action": "faces camera calmly with resolved confidence",
+            },
+        },
+    )
+
+    assert item["selected_pose_anchor_id"] == "ANCHOR_POSE_FINAL_PAYOFF_FRONT"
+    assert item["pose_anchor_selection"]["decision_method"] == "structured_shot_semantics"
+    assert "final_payoff_positive_resolution" in item["pose_anchor_selection"]["reason_codes"]
+    assert item["pose_anchor_selection"]["shot_semantics"]["final_payoff"] is True
+    assert item["pose_anchor_selection"]["rejected_anchor_ids"]["ANCHOR_POSE_HERO_CLOSEUP"] == "final payoff needs resolved medium front hero framing, not generic closeup"
+
+
+
 def test_render_stills_routes_keyframes_through_selected_pose_anchor(monkeypatch):
     calls = []
 
