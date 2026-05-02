@@ -250,9 +250,9 @@ def _validated_command_parts(path: Path) -> list[str]:
 
 def _codex_model(config: dict) -> str:
     integ = config.get("integrations", {}) if isinstance(config, dict) else {}
-    raw = integ.get("codex_model", "gpt-5.5") if isinstance(integ, dict) else "gpt-5.5"
+    raw = integ.get("codex_model", "gpt-5.4-mini") if isinstance(integ, dict) else "gpt-5.4-mini"
     val = str(raw).strip()
-    return val or "gpt-5.5"
+    return val or "gpt-5.4-mini"
 
 
 def _codex_timeout(config: dict) -> int | None:
