@@ -3588,11 +3588,76 @@ def test_execute_rerender_merges_coverage_repair_clips_and_reassembles(monkeypat
     )
 
     assert [name for name, _payload in calls] == ["stills", "clips", "assemble"]
-    assert out.payload["rerender_results"]["completed_stages"] == ["stills", "clips", "assemble"]
+    assert out.payload["rerender_results"]["completed_stages"] == ["stills", "clips", "assemble", "sync"]
     assert out.payload["rerender_results"]["final_video"] == "mv-repaired.mp4"
     assert out.payload["assembly_plan"]["coverage_summary"]["status"] == "raw_coverage_ok"
     assert out.payload["rerender_final_video"] == "mv-repaired.mp4"
     assert out.artifacts == ["mv-repaired.mp4"]
+
+
+def test_execute_rerender_syncs_repaired_assembly_when_raw_coverage_ok(monkeypatch):
+    calls = []
+
+    def _fake_run_assemble(stage_input):
+        calls.append(("assemble", stage_input.payload))
+        return StageOutput(
+            "assemble_mv",
+            "done",
+            {
+                "final_video": "mv-repaired.mp4",
+                "assembly_plan": {
+                    "coverage_summary": {
+                        "status": "raw_coverage_ok",
+                        "recommended_action": "continue_to_sync",
+                    },
+                },
+                "review_inputs": {"music_file": "song.wav"},
+            },
+            ["mv-repaired.mp4"],
+        )
+
+    def _fake_run_sync(stage_input):
+        calls.append(("sync", stage_input.payload))
+        assert stage_input.payload == {"final_video": "mv-repaired.mp4", "music_file": "song.wav"}
+        return StageOutput(
+            "repair_audio_video_sync",
+            "done",
+            {
+                "final_video": "mv-repaired_synced.mp4",
+                "music_file": "song.wav",
+                "sync_repair_summary": {"repair_strategy": "remux_to_audio", "clone_tail_excessive": False},
+            },
+            ["mv-repaired_synced.mp4"],
+        )
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_assemble_mv", _fake_run_assemble)
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_repair_audio_video_sync", _fake_run_sync)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-coverage-repair-sync",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["assemble"],
+                "rerender_stage_inputs": {
+                    "assemble": {
+                        "music_file": "song.wav",
+                        "shot_plan": [{"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001"}],
+                        "render_plan": [{"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001", "render_mode": "ia2v"}],
+                        "clip_results": [{"shot_id": "S001", "section_id": "SEC_001", "material_id": "MAT_001", "video": "clip-1.mp4"}],
+                        "audio_map": {"duration_sec": 3.0},
+                    },
+                },
+            },
+        )
+    )
+
+    assert [name for name, _payload in calls] == ["assemble", "sync"]
+    assert out.payload["rerender_results"]["completed_stages"] == ["assemble", "sync"]
+    assert out.payload["rerender_results"]["final_video"] == "mv-repaired_synced.mp4"
+    assert out.payload["rerender_final_video"] == "mv-repaired_synced.mp4"
+    assert out.payload["sync_repair_summary"] == {"repair_strategy": "remux_to_audio", "clone_tail_excessive": False}
+    assert out.artifacts == ["mv-repaired.mp4", "mv-repaired_synced.mp4"]
 
 
 def test_execute_rerender_preserves_anchor_results_from_rerendered_stills(monkeypatch):

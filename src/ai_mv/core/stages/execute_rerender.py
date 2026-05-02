@@ -77,15 +77,36 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
                     assembly_result_payload[key] = value
             if result.payload.get("final_video"):
                 passthrough_payload["rerender_final_video"] = result.payload.get("final_video")
+            artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
         completed_stages.append(stage_name)
-        artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
+        if stage_name == "assemble" and _assembly_result_ready_to_sync(result.payload):
+            sync_payload = {
+                "final_video": str(result.payload.get("final_video", "")).strip(),
+                "music_file": str(stage_payload.get("music_file") or result.payload.get("review_inputs", {}).get("music_file", "")).strip(),
+            }
+            sync_result = run_repair_audio_video_sync(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=sync_payload))
+            completed_stages.append("sync")
+            artifacts.extend(str(path) for path in sync_result.artifacts if str(path).strip())
+            for key in ("final_video", "music_file", "sync_repair_summary"):
+                value = sync_result.payload.get(key)
+                if value:
+                    passthrough_payload[key] = value
+            synced_final_video = str(sync_result.payload.get("final_video", "")).strip()
+            if synced_final_video:
+                passthrough_payload["rerender_final_video"] = synced_final_video
+                assembly_result_payload["final_video"] = synced_final_video
+            sync_summary = sync_result.payload.get("sync_repair_summary")
+            if sync_summary:
+                assembly_result_payload["sync_repair_summary"] = sync_summary
+        if stage_name != "assemble":
+            artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
 
     rerender_results = {
         "completed_stages": completed_stages,
         "still_results": rerendered_stills,
         "clip_results": rerendered_clips,
     }
-    for key in ("final_video", "assembly_plan", "review_inputs"):
+    for key in ("final_video", "assembly_plan", "review_inputs", "sync_repair_summary"):
         if assembly_result_payload.get(key):
             rerender_results[key] = assembly_result_payload[key]
     if rerendered_anchor_results:
@@ -99,6 +120,19 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
             **passthrough_payload,
         },
         artifacts,
+    )
+
+def _assembly_result_ready_to_sync(payload: dict) -> bool:
+    final_video = str(payload.get("final_video", "")).strip()
+    review_inputs = payload.get("review_inputs") if isinstance(payload.get("review_inputs"), dict) else {}
+    music_file = str(review_inputs.get("music_file", "")).strip()
+    assembly_plan = payload.get("assembly_plan") if isinstance(payload.get("assembly_plan"), dict) else {}
+    coverage_summary = assembly_plan.get("coverage_summary") if isinstance(assembly_plan.get("coverage_summary"), dict) else {}
+    return bool(
+        final_video
+        and music_file
+        and str(coverage_summary.get("status", "")).strip() == "raw_coverage_ok"
+        and str(coverage_summary.get("recommended_action", "")).strip() == "continue_to_sync"
     )
 
 
