@@ -185,6 +185,20 @@ def test_audio_retry_feedback_for_final_chorus_underuse_demands_full_extended_re
 
 
 
+def test_audio_retry_feedback_for_missing_short_hook_demands_compact_title_line():
+    prompt = audio_planner._audio_prompt(
+        _prompt_plan(
+            audio_retry_attempt=1,
+            audio_retry_feedback="audio lyrics quality mismatch: Chorus lacks a short memorable hook line",
+        )
+    )
+
+    assert "Chorus must include at least one very short title-grade hook line." in prompt
+    assert "For English, keep that hook line under 28 visible characters." in prompt
+    assert "Put the short hook as the first or last Chorus line." in prompt
+
+
+
 def test_audio_outline_rejects_pre_chorus_below_section_role_minimum():
     plan = _prompt_plan()
     outline = {

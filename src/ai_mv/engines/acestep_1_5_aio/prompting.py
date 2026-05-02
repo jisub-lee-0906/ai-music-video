@@ -251,6 +251,14 @@ def _audio_retry_clause(plan: dict) -> str:
             "If the contrast is at risk, shorten Pre-Chorus and make Chorus a little broader instead of opening Pre-Chorus. "
             "Make Chorus lines more open and hook-led than Pre-Chorus. "
         )
+    elif "lacks a short memorable hook line" in lowered:
+        clause += (
+            "Chorus must include at least one very short title-grade hook line. "
+            "For English, keep that hook line under 28 visible characters. "
+            "For Korean, keep it under 14 visible characters; for Japanese, under 18. "
+            "Put the short hook as the first or last Chorus line. "
+            "Use a compact phrase, not a sentence-shaped explanation. "
+        )
     elif "final chorus underuses its extended bar space" in lowered:
         clause += (
             "Final Chorus has the extended bar lane; write five lyric lines for it. "
