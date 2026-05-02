@@ -4,7 +4,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 
 
 _STAGE_SCHEMA = {
-    "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible"),
+    "stills": ("shot_plan", "material_plan", "render_plan", "still_results", "style_bible", "anchor_package"),
     "clips": ("shot_plan", "render_plan", "still_results", "music_file"),
     "review": ("final_video", "music_file", "recommended_action", "target_shots", "target_material_ids", "target_section_ids", "assembly_plan", "review_inputs", "sync_repair_summary"),
 }
@@ -65,9 +65,13 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
     style_bible = payload.get("style_bible") if isinstance(payload.get("style_bible"), dict) else {}
     if style_bible:
         _merge_stage_field(stills, "style_bible", style_bible)
+    anchor_package = payload.get("anchor_package") if isinstance(payload.get("anchor_package"), dict) else {}
+    if anchor_package:
+        _merge_stage_field(stills, "anchor_package", anchor_package)
     music_file = str(payload.get("music_file", "")).strip()
     if music_file:
         _merge_stage_field(clips, "music_file", music_file)
+    canonical_render_plan = [row for row in payload.get("render_plan", []) if isinstance(row, dict)] if isinstance(payload.get("render_plan"), list) else []
     for index, repair_shot in enumerate(repair_shots, start=1):
         shot_id = str(repair_shot.get("shot_id", "")).strip()
         if not shot_id:
@@ -81,6 +85,7 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
         before_shot_id = str(repair_shot.get("before_shot_id", "")).strip()
         render_mode = str(repair_shot.get("render_mode", "ia2v")).strip() or "ia2v"
         repair_type = str(repair_shot.get("repair_type", "coverage_extension_shot")).strip() or "coverage_extension_shot"
+        selected_pose_anchor_id = _coverage_repair_selected_pose_anchor_id(repair_shot, canonical_render_plan)
         reason_codes = [str(value).strip() for value in repair_shot.get("reason_codes", []) if str(value).strip()] if isinstance(repair_shot.get("reason_codes"), list) else []
         shot_row = {
             "shot_id": shot_id,
@@ -106,6 +111,7 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
             "source": "assembly_coverage_repair",
             "repair_type": repair_type,
             "reference_mode": "selected_pose_anchor",
+            **({"selected_pose_anchor_id": selected_pose_anchor_id} if selected_pose_anchor_id else {}),
             "target_clip_sec": target_duration,
             "edit_intent": {
                 "target_clip_sec": target_duration,
@@ -127,6 +133,21 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
         _merge_stage_field(stills, "render_plan", [render_row])
         _merge_stage_field(clips, "shot_plan", [shot_row])
         _merge_stage_field(clips, "render_plan", [render_row])
+
+
+def _coverage_repair_selected_pose_anchor_id(repair_shot: dict, render_plan: list[dict]) -> str:
+    explicit = str(repair_shot.get("selected_pose_anchor_id", "")).strip()
+    if explicit:
+        return explicit
+    render_by_shot = {str(row.get("shot_id", "")).strip(): row for row in render_plan if str(row.get("shot_id", "")).strip()}
+    for neighbor_key in ("after_shot_id", "before_shot_id"):
+        neighbor_id = str(repair_shot.get(neighbor_key, "")).strip()
+        if not neighbor_id:
+            continue
+        pose_id = str(render_by_shot.get(neighbor_id, {}).get("selected_pose_anchor_id", "")).strip()
+        if pose_id:
+            return pose_id
+    return ""
 
 
 def _coverage_repair_prompt_seed(repair_type: str, after_shot_id: str, before_shot_id: str) -> str:
@@ -176,7 +197,7 @@ def _merge_stage_field(target: dict[str, object], key: str, value: object) -> No
         if text and not str(target.get(key, "")).strip():
             target[key] = text
         return
-    if key == "style_bible":
+    if key in {"style_bible", "anchor_package"}:
         if isinstance(value, dict) and not isinstance(target.get(key), dict):
             target[key] = dict(value)
         elif isinstance(value, dict) and not target.get(key):

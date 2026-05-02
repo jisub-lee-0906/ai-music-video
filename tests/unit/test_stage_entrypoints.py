@@ -2945,6 +2945,23 @@ def test_prepare_rerender_returns_empty_stage_inputs_when_review_has_no_targets(
 
 
 def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_inputs():
+    anchor_package = {
+        "anchors": [
+            {
+                "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                "workflow_target": "image_flux2_text_to_image",
+                "prompt_text": "upper-body white-background character identity card",
+            }
+        ],
+        "pose_anchor_bank": [
+            {
+                "anchor_id": "ANCHOR_POSE_WALKING_SIDE",
+                "workflow_target": "image_flux2_reference_image",
+                "reference_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY"],
+                "prompt_text": "same character walking pose card on pure white background",
+            }
+        ],
+    }
     out = run_prepare_rerender(
         StageInput(
             run_id="run-prepare-coverage-repair",
@@ -2952,6 +2969,13 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
             payload={
                 "music_file": "song.wav",
                 "style_bible": {"visual_style": "story-specific live action"},
+                "anchor_package": anchor_package,
+                "render_plan": [
+                    {
+                        "shot_id": "S001",
+                        "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE",
+                    }
+                ],
                 "assembly_plan": {
                     "coverage_repair_plan": {
                         "status": "repair_required",
@@ -2999,6 +3023,7 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
                 "repair_type": "coverage_bridge_shot",
             }
         ],
+        "anchor_package": anchor_package,
         "style_bible": {"visual_style": "story-specific live action"},
         "render_plan": [
             {
@@ -3009,6 +3034,7 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
                 "source": "assembly_coverage_repair",
                 "repair_type": "coverage_bridge_shot",
                 "reference_mode": "selected_pose_anchor",
+                "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE",
                 "target_clip_sec": 3.0,
                 "edit_intent": {
                     "target_clip_sec": 3.0,
@@ -3463,6 +3489,55 @@ def test_execute_rerender_runs_review_stage_sync_repair(monkeypatch):
             "clip_results": [{"shot_id": "S002", "video": "rerendered-2.mp4"}],
         }
     }
+
+
+
+def test_execute_rerender_preserves_anchor_results_from_rerendered_stills(monkeypatch):
+    def _fake_run_render_stills(_stage_input):
+        return StageOutput(
+            "render_stills",
+            "done",
+            {
+                "still_results": [{"shot_id": "S002", "material_id": "MAT_002", "image": "rerendered-2.png"}],
+                "anchor_results": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "image": "anchor-upper.png",
+                    }
+                ],
+            },
+            [],
+        )
+
+    monkeypatch.setattr("ai_mv.core.stages.execute_rerender.run_render_stills", _fake_run_render_stills)
+
+    out = run_execute_rerender(
+        StageInput(
+            run_id="run-rerender-anchor-results",
+            config={},
+            payload={
+                "rerender_stage_sequence": ["stills"],
+                "rerender_stage_inputs": {
+                    "stills": {
+                        "shot_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v"}],
+                        "material_plan": [{"material_id": "MAT_002", "section_id": "SEC_002"}],
+                        "render_plan": [{"shot_id": "S002", "material_id": "MAT_002", "render_mode": "ia2v", "still_prompt_text": "repair still"}],
+                        "style_bible": {"style": "synthwave"},
+                    }
+                },
+            },
+        )
+    )
+
+    assert out.payload["rerender_results"]["anchor_results"] == [
+        {
+            "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+            "workflow_target": "image_flux2_text_to_image",
+            "image": "anchor-upper.png",
+        }
+    ]
+    assert out.payload["anchor_results"] == out.payload["rerender_results"]["anchor_results"]
 
 
 

@@ -31,6 +31,7 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
     stage_sequence = [str(name).strip() for name in stage_input.payload.get("rerender_stage_sequence", []) if str(name).strip()]
     stage_inputs = stage_input.payload.get("rerender_stage_inputs") if isinstance(stage_input.payload.get("rerender_stage_inputs"), dict) else {}
     rerendered_stills: list[dict] = []
+    rerendered_anchor_results: list[dict] = []
     rerendered_clips: list[dict] = []
     completed_stages: list[str] = []
     passthrough_payload: dict[str, object] = {}
@@ -60,20 +61,25 @@ def run_execute_rerender(stage_input: StageInput) -> StageOutput:
         result = runner(StageInput(run_id=stage_input.run_id, config=stage_input.config, payload=stage_payload))
         if stage_name == "stills":
             rerendered_stills = [row for row in result.payload.get("still_results", []) if isinstance(row, dict)]
+            rerendered_anchor_results = [row for row in result.payload.get("anchor_results", []) if isinstance(row, dict)]
         if stage_name == "clips":
             rerendered_clips = [row for row in result.payload.get("clip_results", []) if isinstance(row, dict)]
         completed_stages.append(stage_name)
         artifacts.extend(str(path) for path in result.artifacts if str(path).strip())
 
+    rerender_results = {
+        "completed_stages": completed_stages,
+        "still_results": rerendered_stills,
+        "clip_results": rerendered_clips,
+    }
+    if rerendered_anchor_results:
+        rerender_results["anchor_results"] = rerendered_anchor_results
+        passthrough_payload["anchor_results"] = rerendered_anchor_results
     return StageOutput(
         "execute_rerender",
         "done",
         {
-            "rerender_results": {
-                "completed_stages": completed_stages,
-                "still_results": rerendered_stills,
-                "clip_results": rerendered_clips,
-            },
+            "rerender_results": rerender_results,
             **passthrough_payload,
         },
         artifacts,
