@@ -22,6 +22,7 @@ def build_creative_direction(*, concept_text: str, style_name: str, sections: li
         "continuity_rules": _continuity_rules(style_name=style_name, continuity_mode=normalized_continuity_mode),
         "protagonist_anchor": _protagonist_anchor(text=text, style_name=style_name),
         "world_anchor": _world_anchor(text=text, style_name=style_name),
+        "wardrobe_anchor": _wardrobe_anchor(text=text, style_name=style_name),
         "style_lane": str(style_name).strip(),
         "section_count": len(sections),
     }
@@ -87,14 +88,40 @@ def _protagonist_anchor(*, text: str, style_name: str) -> str:
     return "same lone protagonist, stable silhouette, no competing bystanders"
 
 
+def _wardrobe_anchor(*, text: str, style_name: str) -> str:
+    if style_name == "idol_pop":
+        return "stable bright stage outfit silhouette"
+    if style_name == "synthwave" or any(token in text for token in ("walk", "wet", "neon", "late-night", "night")):
+        return "stable dark outerwear silhouette"
+    return "story-derived stable outfit silhouette"
+
+
 def _world_anchor(*, text: str, style_name: str) -> str:
+    concept_world = _concept_world_anchor(text)
+    if concept_world:
+        return concept_world
     if style_name == "idol_pop":
         return "same glossy city-night performance world, bright reflected lights, polished urban stage energy"
     if style_name == "synthwave":
         return "same neon-night boulevard world, reflective pavement, glowing urban signage"
     if any(token in text for token in ("wet", "neon", "city", "late-night")):
         return "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage"
-    return "same coherent night-city world, readable street depth, stable urban lighting"
+    return "same coherent style world, readable scene depth, stable concept lighting"
+
+
+
+def _concept_world_anchor(text: str) -> str:
+    motifs: list[str] = []
+    if any(token in text for token in ("desert", "dune", "sand")):
+        motifs.append("same desert dune world")
+    if any(token in text for token in ("radio", "tower", "antenna", "signal")):
+        motifs.append("radio tower signal motif")
+    if any(token in text for token in ("sunrise", "dawn")):
+        motifs.append("sunrise horizon light")
+    if motifs:
+        return ", ".join(dict.fromkeys(motifs)) + ", no urban rooftop or street-location substitution"
+    return ""
+
 
 
 def _continuity_rules(*, style_name: str, continuity_mode: str) -> list[str]:

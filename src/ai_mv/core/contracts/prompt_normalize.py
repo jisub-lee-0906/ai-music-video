@@ -80,6 +80,7 @@ def validate_audio_lyrics_quality(
     _validate_hook_quality(rows, lang)
     _validate_section_role_minimums(rows, line_budgets or {})
     _validate_compact_hook_word_count(rows, lang, line_budgets or {})
+    _validate_hook_validation_outro_tag(rows, lang, line_budgets or {})
     _validate_bar_fit(rows, lang, section_bars or {})
     _validate_pre_chorus_chorus_contrast(rows, lang, section_bars or {})
 
@@ -527,19 +528,39 @@ def _validate_section_role_minimums(blocks: list[dict], line_budgets: dict) -> N
 
 
 def _validate_compact_hook_word_count(blocks: list[dict], language: str, line_budgets: dict) -> None:
-    if int(line_budgets.get("Chorus", 0) or 0) != 2:
+    chorus_budget = int(line_budgets.get("Chorus", 0) or 0)
+    if chorus_budget not in {2, 3}:
         return
     max_words = 6 if language == "en" else 0
     if max_words <= 0:
         return
     for row in blocks:
         label = str(row.get("label", "")).strip()
-        if label not in {"Chorus", "Chorus 2"}:
+        if label not in {"Chorus", "Chorus 2", "Final Chorus"}:
             continue
         for line in row.get("lines", []):
             words = _latin_words(str(line))
             if len(words) > max_words:
                 raise RuntimeError(f"audio lyrics quality mismatch: {label} hook line has too many words")
+
+
+def _validate_hook_validation_outro_tag(blocks: list[dict], language: str, line_budgets: dict) -> None:
+    if language != "en":
+        return
+    if int(line_budgets.get("Chorus", 0) or 0) != 3 or int(line_budgets.get("Outro", 0) or 0) != 2:
+        return
+    for row in blocks:
+        label = str(row.get("label", "")).strip()
+        if label != "Outro":
+            continue
+        lines = [str(line).strip() for line in row.get("lines", []) if str(line).strip()]
+        if len(lines) != 2:
+            raise RuntimeError("audio lyrics quality mismatch: Outro tag should repeat exactly twice")
+        if _compact_lyric_line(lines[0]) != _compact_lyric_line(lines[1]):
+            raise RuntimeError("audio lyrics quality mismatch: Outro tag should repeat exactly")
+        max_words = 4
+        if len(_latin_words(lines[0])) > max_words:
+            raise RuntimeError("audio lyrics quality mismatch: Outro tag is too long for a last breath")
 
 
 def _validate_bar_fit(blocks: list[dict], language: str, section_bars: dict) -> None:
@@ -623,6 +644,10 @@ def _shared_line_count(left: dict, right: dict) -> int:
     a = {re.sub(r"\s+", " ", str(line).strip()).lower() for line in left.get("lines", []) if str(line).strip()}
     b = {re.sub(r"\s+", " ", str(line).strip()).lower() for line in right.get("lines", []) if str(line).strip()}
     return len(a & b)
+
+
+def _compact_lyric_line(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text).strip()).lower()
 
 
 def _visible_char_count(text: str) -> int:

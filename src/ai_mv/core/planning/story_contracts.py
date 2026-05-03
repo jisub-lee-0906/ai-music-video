@@ -4,7 +4,7 @@ from __future__ import annotations
 def build_story_contract(shot: dict, *, previous_shot: dict | None = None, concept_text: str = "") -> dict:
     section_type = _clean(shot.get("section_type")) or "section"
     shot_role = _clean(shot.get("shot_role")) or "shot"
-    visual_mode = _clean(shot.get("visual_mode")) or "visual beat"
+    visual_mode = _section_alignment_visual_token(shot, concept_text=concept_text) or "visual beat"
     story_function = _clean(shot.get("story_function")) or "advance"
     visual_event = _clean(shot.get("visual_event")) or f"make the {story_function} beat visible"
     emotional_state = _clean(shot.get("emotional_state")) or "progressing"
@@ -26,11 +26,13 @@ def build_story_contract(shot: dict, *, previous_shot: dict | None = None, conce
         payoff_requirement=payoff_requirement,
         concept_motif=concept_motif,
     )
+    story_action_grammar = _clean(shot.get("story_action_grammar"))
     return {
         "why_this_shot": (
             f"This {section_type} {shot_role} exists to turn the {story_function} story beat into a readable action: {visual_event}."
         ),
         "protagonist_action": protagonist_action,
+        "story_action_grammar": story_action_grammar,
         "section_alignment": (
             f"Align with the {section_type} section by showing {emotional_state} energy through {visual_mode}, not a detachable generic mood shot."
         ),
@@ -50,6 +52,7 @@ def story_contract_prompt_tokens(story_contract: dict | None) -> list[str]:
     labels = {
         "why_this_shot": "shot purpose",
         "protagonist_action": "protagonist action",
+        "story_action_grammar": "story action grammar",
         "section_alignment": "section alignment",
         "progression_from_previous": "story progression",
         "visual_payoff": "visual payoff",
@@ -110,6 +113,25 @@ def _concept_motif(text: str) -> str:
         if important_words:
             motifs.append("concept motif: " + " / ".join(important_words[:3]))
     return "; ".join(dict.fromkeys(motifs)) if motifs else "the concept's signature visual motif"
+
+
+def _section_alignment_visual_token(shot: dict, *, concept_text: str = "") -> str:
+    raw_visual_mode = _clean(shot.get("visual_mode"))
+    lower = " ".join(
+        _clean(value).lower()
+        for value in (
+            concept_text,
+            shot.get("world_anchor"),
+            shot.get("story_action_grammar"),
+            shot.get("visual_event"),
+        )
+    )
+    if "desert" in lower and any(token in lower for token in ("radio", "signal", "tower", "antenna")):
+        progression = shot.get("narrative_progression") if isinstance(shot.get("narrative_progression"), dict) else {}
+        beat_role = _clean(progression.get("beat_role")) or _clean(shot.get("story_function")) or _clean(shot.get("section_type"))
+        return f"desert radio {beat_role.replace('_', ' ')} beat" if beat_role else "desert radio beat"
+    return raw_visual_mode
+
 
 
 def _clean(value: object) -> str:

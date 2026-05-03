@@ -46,7 +46,7 @@ def test_still_prompt_contract_adds_performance_anchor_identity_and_stage_readab
     assert "no ambiguous secondary silhouettes" in prompt
     assert "exact face fingerprint from the white-background identity anchor" in prompt
     assert "no distant human silhouettes" in prompt
-    assert "no bystanders or second red-coated figure" in prompt
+    assert "no bystanders or same-outfit background doubles" in prompt
 
 
 

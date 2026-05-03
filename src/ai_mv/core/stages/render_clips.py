@@ -94,7 +94,9 @@ def _clip_prompt_text(render_item: dict) -> str:
         value = str(render_item.get(key, "")).strip()
         if value:
             return value
-    return "music video shot with a clear cinematic action beat"
+    shot_id = str(render_item.get("shot_id", "")).strip() if isinstance(render_item, dict) else ""
+    suffix = f" for shot {shot_id}" if shot_id else ""
+    raise RuntimeError(f"missing clip prompt contract{suffix}")
 
 
 def _clip_duration_contract(target_duration_sec: float, render_item: dict, config: dict) -> dict[str, float | str]:

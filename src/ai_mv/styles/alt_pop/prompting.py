@@ -7,10 +7,10 @@ def build_alt_pop_prompt_seed(concept_text: str, style_bible: dict, shot: dict) 
         for part in [
             "alt pop music video",
             str(concept_text or "").strip() or "alt pop rooftop night",
-            "same protagonist, same modern night-world mood",
+            _world_continuity_anchor(shot),
             _subject_anchor(shot),
             _environment_anchor(shot),
-            ", ".join(style_bible.get("palette", [])[:2]),
+            _palette_anchor(style_bible, shot),
             "clean cinematic styling",
             "stable character identity",
         ]
@@ -38,7 +38,26 @@ def _subject_anchor(shot: dict) -> str:
 
 
 
+def _world_continuity_anchor(shot: dict) -> str:
+    world_anchor = str(shot.get("world_anchor", "")).strip()
+    if _is_desert_radio_world(world_anchor):
+        return "same protagonist, same desert radio sunrise world"
+    return "same protagonist, same modern style-world mood"
+
+
+
+def _palette_anchor(style_bible: dict, shot: dict) -> str:
+    world_anchor = str(shot.get("world_anchor", "")).strip()
+    if _is_desert_radio_world(world_anchor):
+        return "sunrise amber, desert blue shadow"
+    return ", ".join(style_bible.get("palette", [])[:2])
+
+
+
 def _environment_anchor(shot: dict) -> str:
+    world_anchor = str(shot.get("world_anchor", "")).strip()
+    if _is_desert_radio_world(world_anchor):
+        return _desert_radio_environment_anchor(shot)
     mapping = {
         "rooftop_edge": "night rooftop with chrome spill and concrete geometry",
         "glass_corridor": "glass corridor with club-adjacent light spill",
@@ -47,13 +66,42 @@ def _environment_anchor(shot: dict) -> str:
         "chorus_front": "open rooftop edge with direct city backlight",
         "release_stride": "night street stride with chrome reflections",
     }
-    return mapping.get(str(shot.get("visual_mode", "")), "modern urban night space with controlled edge lighting")
+    return mapping.get(str(shot.get("visual_mode", "")), "modern style space with controlled edge lighting")
+
+
+
+def _desert_radio_environment_anchor(shot: dict) -> str:
+    progression = shot.get("narrative_progression") if isinstance(shot.get("narrative_progression"), dict) else {}
+    beat_role = str(progression.get("beat_role", "") or shot.get("beat_role", "")).strip()
+    return {
+        "setup": "wide desert dune horizon with a silent handheld radio and pre-sunrise air",
+        "search": "open dunes with a faint radio signal light and low sunrise rim light",
+        "approach": "wind-shaped desert path toward a distant antenna silhouette",
+        "discovery": "distant radio tower revealed across the dunes under growing dawn light",
+        "confrontation": "radio tower signal zone with harsh static light against the sunrise horizon",
+        "recognition": "close desert signal moment with the radio held away from her face",
+        "release": "quiet sunrise desert horizon with the radio lowered or left behind",
+    }.get(beat_role, "desert dune radio-signal world with sunrise horizon light")
+
+
+
+def _is_desert_radio_world(text: str) -> bool:
+    lower = str(text or "").lower()
+    return any(token in lower for token in ("desert", "dune", "sand")) and any(
+        token in lower for token in ("radio", "tower", "signal", "antenna")
+    )
 
 
 
 def _framing_phrase(shot: dict) -> str:
+    if _is_desert_radio_world(str(shot.get("world_anchor", ""))):
+        return {
+            "establishing_wide": "wide desert establishing frame with one anchored subject and readable radio motif",
+            "performance_medium": "medium desert performance frame with clear radio-hand pose and sunrise edge light",
+            "release_wide": "medium-wide desert release frame with open horizon and one anchored subject",
+        }.get(str(shot.get("framing_intent", "")), "clean cinematic desert medium close-up with stable scene depth")
     return {
-        "establishing_wide": "wide establishing frame with angular city geometry and one anchored subject",
+        "establishing_wide": "wide establishing frame with angular style geometry and one anchored subject",
         "performance_medium": "performance-led medium shot with clean edge light",
-        "release_wide": "medium-wide release frame with strong city perspective",
+        "release_wide": "medium-wide release frame with strong style perspective",
     }.get(str(shot.get("framing_intent", "")), "clean cinematic medium close-up")

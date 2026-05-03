@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 
 _BLOCKING_PHRASES: tuple[tuple[str, str], ...] = (
     ("foreground_background_duplicate", "foreground protagonist plus"),
@@ -113,7 +115,18 @@ def _is_explicitly_negated_phrase(text: str, phrase: str) -> bool:
         f"not {phrase}",
         f"never {phrase}",
     )
-    return any(marker in text for marker in negated_markers)
+    if any(marker in text for marker in negated_markers):
+        return True
+    for match in re.finditer(re.escape(phrase), text):
+        clause_prefix = _clause_prefix_before(text, match.start())
+        if re.search(r"(?:^|\b)(no|without|avoid|not|never)\b", clause_prefix):
+            return True
+    return False
+
+
+def _clause_prefix_before(text: str, phrase_start: int) -> str:
+    clause_start = max(text.rfind(delimiter, 0, phrase_start) for delimiter in (".", ";", ":", ",", "\n"))
+    return text[clause_start + 1 : phrase_start]
 def _has_microphone_action(text: str) -> bool:
     return any(marker in text for marker in ("microphone", "mic stand", "handheld mic", "singing into a mic"))
 

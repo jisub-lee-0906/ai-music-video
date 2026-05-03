@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from ai_mv.core.contracts.errors import StageFailure
 from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
@@ -847,6 +849,102 @@ def test_assemble_mv_blocks_mux_when_raw_coverage_is_insufficient_before_sync_pa
     assert mux_calls == []
 
 
+
+def test_assemble_mv_preserves_use_full_clip_coverage_over_short_edit_intent_and_policy_caps(monkeypatch, tmp_path):
+    mux_calls = []
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv-full-coverage.mp4")
+    monkeypatch.setattr(
+        "ai_mv.core.stages.assemble_mv.ffprobe_duration",
+        lambda path: {
+            "clip1.mp4": 7.041667,
+            "clip2.mp4": 7.041667,
+            "clip3.mp4": 3.708333,
+        }[Path(path).name],
+    )
+
+    def fake_mux(clip_segments, *_args, **_kwargs):
+        mux_calls.append([dict(row) for row in clip_segments])
+        return True
+
+    monkeypatch.setattr("ai_mv.core.stages.assemble_mv.run_ffmpeg_mux", fake_mux)
+    (tmp_path / "clip1.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "clip2.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "clip3.mp4").write_text("clip", encoding="utf-8")
+    (tmp_path / "song.wav").write_text("audio", encoding="utf-8")
+
+    stage_input = StageInput(
+        run_id="run-use-full-clip-coverage",
+        config={},
+        payload={
+            "music_file": "song.wav",
+            "audio_map": {"duration_sec": 18.024},
+            "clip_results": [
+                {
+                    "shot_id": "S001",
+                    "video": "clip1.mp4",
+                    "material_id": "MAT_001",
+                    "section_id": "SEC_001",
+                    "target_clip_sec": 7.045,
+                    "rendered_duration_sec": 7.045,
+                    "trim_strategy": "use_full_clip",
+                },
+                {
+                    "shot_id": "S002",
+                    "video": "clip2.mp4",
+                    "material_id": "MAT_002",
+                    "section_id": "SEC_001",
+                    "target_clip_sec": 7.044,
+                    "rendered_duration_sec": 7.044,
+                    "trim_strategy": "use_full_clip",
+                },
+                {
+                    "shot_id": "S003",
+                    "video": "clip3.mp4",
+                    "material_id": "MAT_003",
+                    "section_id": "SEC_002",
+                    "target_clip_sec": 3.935,
+                    "rendered_duration_sec": 3.935,
+                    "trim_strategy": "use_full_clip",
+                },
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_id": "SEC_001",
+                    "material_id": "MAT_001",
+                    "edit_intent": {"target_clip_sec": 3.523, "pattern_family": "hook_surge"},
+                    "production_policy": {"recommended_duration_sec": {"min": 0.8, "max": 1.8}},
+                },
+                {
+                    "shot_id": "S002",
+                    "section_id": "SEC_001",
+                    "material_id": "MAT_002",
+                    "edit_intent": {"target_clip_sec": 2.818, "pattern_family": "hook_punch_in"},
+                    "production_policy": {"recommended_duration_sec": {"min": 0.8, "max": 1.8}},
+                },
+                {
+                    "shot_id": "S003",
+                    "section_id": "SEC_002",
+                    "material_id": "MAT_003",
+                    "edit_intent": {"target_clip_sec": 2.755, "pattern_family": "release_drift"},
+                    "production_policy": {"recommended_duration_sec": {"min": 0.8, "max": 2.0}},
+                },
+            ],
+        },
+    )
+
+    out = run_assemble_mv(stage_input)
+
+    summary = out.payload["assembly_plan"]["coverage_summary"]
+    assert summary["status"] == "sufficient_raw_coverage"
+    assert summary["raw_assembly_coverage_sec"] >= 17.123
+    assert [row["trim_strategy"] for row in mux_calls[0]] == ["use_full_clip", "use_full_clip", "use_full_clip"]
+    assert [row["trim_start_sec"] for row in mux_calls[0]] == [None, None, None]
+    assert [row["trim_end_sec"] for row in mux_calls[0]] == [None, None, None]
+
+
+
 def test_assembly_clip_segments_use_actual_clip_duration_when_target_exceeds_clip(monkeypatch, tmp_path):
     clip1 = tmp_path / "clip1.mp4"
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(path))
@@ -1114,18 +1212,14 @@ def test_assemble_mv_falls_back_to_beat_grid_when_bar_grid_has_too_few_markers(m
     assert segments[0]["trim_end_sec"] == 2.0
 
 
-def test_render_stills_uses_generic_fallback_prompt_text_when_empty():
-    prompt = _still_prompt_text({})
-
-    assert prompt
-    assert "city pop" not in prompt.lower()
+def test_render_stills_fails_closed_when_prompt_contract_is_missing():
+    with pytest.raises(RuntimeError, match="missing still prompt contract"):
+        _still_prompt_text({"shot_id": "S001"})
 
 
-def test_render_clips_uses_generic_fallback_prompt_text_when_empty():
-    prompt = _clip_prompt_text({})
-
-    assert prompt
-    assert "city pop" not in prompt.lower()
+def test_render_clips_fails_closed_when_prompt_contract_is_missing():
+    with pytest.raises(RuntimeError, match="missing clip prompt contract"):
+        _clip_prompt_text({"shot_id": "S001"})
 
 
 def test_render_stills_prefers_workflow_specific_still_prompt_text():
@@ -1523,6 +1617,13 @@ def test_render_stills_generates_upper_body_tti_then_full_body_reference_anchor_
     assert calls[1]["workflow_target"] == "image_flux2_reference_image"
     assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
     assert calls[2]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert out.payload["still_results"][0]["workflow_target"] == "image_flux2_reference_image"
+    assert out.payload["still_results"][0]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert out.payload["still_results"][0]["reference_anchor_id"] == "ANCHOR_CHARACTER_UPPER_BODY"
+    assert out.payload["workflow_inputs"]["stills"]["reference_keyframe_count"] == 1
+    assert out.payload["workflow_inputs"]["stills"]["referenced_keyframe_count"] == 1
+    assert out.payload["workflow_inputs"]["stills"]["reference_anchor_coverage_ratio"] == 1.0
+    assert out.payload["workflow_inputs"]["stills"]["missing_reference_anchor_shot_ids"] == []
     assert out.payload["anchor_results"] == [
         {
             "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
@@ -1648,7 +1749,124 @@ def test_render_stills_uses_white_background_character_anchor_for_performance_an
     assert "bright red raincoat" in calls[1]["positive_prompt"]
     assert "stable dark outerwear silhouette" not in calls[1]["positive_prompt"]
     assert "preserve visible bright red raincoat as the outerwear continuity marker" in calls[1]["positive_prompt"]
-    assert calls[2]["reference_image"] == "D:/renders/S010.png"
+    assert calls[2]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png"
+
+
+
+def test_render_stills_performance_followup_uses_tti_identity_anchor_not_generated_performance_still(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-performance-followup-identity-anchor",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "anchor_type": "character_upper_body_identity",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
+                    }
+                ]
+            },
+            "shot_plan": [
+                {"shot_id": "S010", "visual_mode": "chorus_performance"},
+                {"shot_id": "S011", "visual_mode": "chorus_front_lights"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S010",
+                    "still_prompt_text": "same lead performer on the same glossy performance-night stage",
+                    "reference_mode": "performance_anchor_source",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+                {
+                    "shot_id": "S011",
+                    "still_prompt_text": "same lead performer under chorus front lights on the same glossy performance-night stage",
+                    "reference_mode": "use_performance_anchor_still",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "S010", "S011"]
+    assert calls[0]["workflow_target"] == "image_flux2_text_to_image"
+    assert "reference_image" not in calls[0]
+    assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert calls[2]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert calls[2]["reference_image"] != "D:/renders/S010.png"
+
+
+
+def test_render_stills_performance_followup_fails_closed_when_anchor_package_has_no_identity_image(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        if item["shot_id"] == "ANCHOR_CHARACTER_UPPER_BODY":
+            return ""
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-performance-followup-missing-identity-anchor",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "anchor_type": "character_upper_body_identity",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
+                    }
+                ]
+            },
+            "shot_plan": [
+                {"shot_id": "S010", "visual_mode": "chorus_performance"},
+                {"shot_id": "S011", "visual_mode": "chorus_front_lights"},
+            ],
+            "render_plan": [
+                {
+                    "shot_id": "S010",
+                    "still_prompt_text": "same lead performer on the same glossy performance-night stage",
+                    "reference_mode": "performance_anchor_source",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+                {
+                    "shot_id": "S011",
+                    "still_prompt_text": "same lead performer under chorus front lights on the same glossy performance-night stage",
+                    "reference_mode": "use_performance_anchor_still",
+                    "reference_source_shot_id": "S010",
+                    "identity_lock_strength": "performance_anchor",
+                    "continuity_contract": {"protagonist_anchor": "same lead performer", "world_anchor": "same glossy performance-night stage"},
+                },
+            ],
+        },
+    )
+
+    run_render_stills(stage_input)
+
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "S010", "S011"]
+    assert "reference_image" not in calls[1]
+    assert "reference_image" not in calls[2]
 
 
 

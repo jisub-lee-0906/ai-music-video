@@ -56,12 +56,21 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     variation_profile = build_variation_profile(variation_seed, shot)
     if isinstance(shot.get("story_contract"), dict):
         variation_profile = {**variation_profile, "story_contract": dict(shot["story_contract"])}
+    if isinstance(shot.get("narrative_progression"), dict):
+        variation_profile = {**variation_profile, "narrative_progression": dict(shot["narrative_progression"])}
+    reference_policy = build_reference_policy(shot)
     clip_prompt_seed = build_clip_prompt_seed(render_mode, shot, prompt_seed, variation_profile, shot_relation_contract)
-    clip_positive_prompt = build_clip_positive_prompt(render_mode, shot, clip_prompt_seed, variation_profile, shot_relation_contract)
+    clip_positive_prompt = build_clip_positive_prompt(
+        render_mode,
+        shot,
+        clip_prompt_seed,
+        variation_profile,
+        shot_relation_contract,
+        reference_policy,
+    )
     edit_intent = build_edit_intent(shot, variation_profile)
     render_count = calculate_render_count(float(shot.get("duration_sec", 0.0) or 0.0))
     render_planning = build_render_planning(style_name, shot)
-    reference_policy = build_reference_policy(shot)
     variation_delta = build_variation_delta_contract(shot, reference_policy)
     production_policy = production_policy_build_production_policy(shot, style_name=style_name)
     pose_anchor_selection = pose_anchor_selection_build_pose_anchor_selection(shot)
@@ -152,6 +161,7 @@ def build_clip_positive_prompt(
     clip_prompt_seed: str,
     variation_profile: dict | None = None,
     shot_relation_contract: dict | None = None,
+    reference_policy: dict | None = None,
 ) -> str:
     return prompt_contracts_build_clip_positive_prompt(
         render_mode,
@@ -159,6 +169,7 @@ def build_clip_positive_prompt(
         clip_prompt_seed,
         variation_profile,
         shot_relation_contract,
+        reference_policy,
     )
 
 

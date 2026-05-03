@@ -103,6 +103,29 @@ def test_map_audio_workflow_publishes_acestep_quality_controls():
     assert sampler_inputs["scheduler"] == "simple"
 
 
+def test_map_audio_workflow_omits_non_positive_sampler_controls_from_planner_defaults():
+    out = audio_mapper.map_audio_workflow(
+        {},
+        {
+            "genre_description": "City Pop: warm drums and soft lead vocal.",
+            "lyrics": "[Chorus]\nRun with me through the glow",
+            "seed": 31,
+            "bpm": 118,
+            "duration": 30,
+            "language": "en",
+            "filename_prefix": "audio/planner-defaults",
+            "quality": "V0",
+            "sampler_steps": 0,
+            "sampler_cfg": 0.0,
+            "sampler_name": "",
+            "scheduler": "",
+        },
+    )
+
+    sampler_inputs = out["node.inputs"][audio_mapper.AUDIO_KSAMPLER]
+    assert sampler_inputs == {"seed": sampler_inputs["seed"]}
+
+
 def test_map_audio_workflow_omits_acestep_quality_controls_when_plan_uses_official_defaults():
     out = audio_mapper.map_audio_workflow(
         {},

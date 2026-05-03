@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 
+DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC = 0.25
+
+
 def rerender_targets(
     planned_shot_ids: list[str],
     still_status: dict[str, bool],
@@ -55,9 +58,9 @@ def rerender_reasons(
     out: dict[str, list[str]] = {}
     review = config.get("review", {}) if isinstance(config, dict) else {}
     try:
-        max_drift = float(review.get("max_audio_video_drift_sec", 0.5) or 0.5)
+        max_drift = float(review.get("max_audio_video_drift_sec", DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC) or DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC)
     except Exception:
-        max_drift = 0.5
+        max_drift = DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC
     try:
         min_stills = float(review.get("min_stills_coverage_ratio", 0.8) or 0.8)
     except Exception:

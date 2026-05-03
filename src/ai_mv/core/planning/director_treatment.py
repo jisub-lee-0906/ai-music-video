@@ -76,6 +76,19 @@ def _story_function(section_type: str, *, is_last: bool, idx: int) -> str:
 def _visual_event(*, story_function: str, text: str) -> str:
     lower = text.lower()
     night_city = any(token in lower for token in ("neon", "night", "city", "wet", "train", "전철"))
+    desert_radio = any(token in lower for token in ("desert", "dune", "sand")) and any(
+        token in lower for token in ("radio", "signal", "tower", "antenna")
+    )
+    if story_function == "wound_setup" and desert_radio:
+        return "establish the protagonist isolated with a silent radio in the desert signal world"
+    if story_function == "search" and desert_radio:
+        return "follow the first radio signal trace across the dunes instead of repeating the opener pose"
+    if story_function == "threshold" and desert_radio:
+        return "tighten around the radio direction cue before the signal becomes unavoidable"
+    if story_function == "release" and desert_radio:
+        return "make the hook visibly larger through radio static, sunrise light, and a stronger decision pose"
+    if story_function == "payoff" and desert_radio:
+        return "show the radio signal resolved or released against the sunrise horizon"
     if story_function == "wound_setup":
         return "establish the protagonist isolated inside the night-world wound"
     if story_function == "search":
@@ -120,6 +133,11 @@ def _payoff_requirement(story_function: str) -> str:
 def _motif_arc(*, text: str, style_name: str) -> dict:
     lower = text.lower()
     motifs: dict[str, str] = {}
+    if any(token in lower for token in ("desert", "dune", "sand")) and any(
+        token in lower for token in ("radio", "signal", "tower", "antenna")
+    ):
+        motifs["radio_signal"] = "silent radio -> faint signal -> static confrontation -> released silence"
+        motifs["desert_sunrise"] = "pre-dawn dunes -> signal path -> sunrise horizon payoff"
     if any(token in lower for token in ("rain", "wet", "neon", "city")) or style_name in {"citypop", "synthwave"}:
         motifs["rain_reflection"] = "distorted memory -> active movement -> clearer final reflection"
         motifs["city_light"] = "background mood -> decision pressure -> release path"

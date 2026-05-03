@@ -143,16 +143,24 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
         edit_intent = _edit_intent_for_clip(shot_id, row, edit_intent_by_shot)
         production_policy = production_policy_by_shot.get(shot_id, {})
         clip_duration = float(durations.get(shot_id) or ffprobe_duration(row["path"]))
-        target_clip_sec = _policy_capped_target_clip_sec(edit_intent, production_policy)
-        trim_start_sec, trim_end_sec = _trim_window_for_clip(clip_duration, target_clip_sec, edit_intent)
-        trim_start_sec, trim_end_sec, snap_unit = _snap_trim_window_to_audio_timing(
-            trim_start_sec,
-            trim_end_sec,
-            clip_duration,
-            shot_plan_by_shot.get(shot_id, {}),
-            audio_map if isinstance(audio_map, dict) else {},
-            edit_intent,
-        )
+        if _uses_full_clip_coverage(row):
+            target_clip_sec = _full_clip_coverage_sec(row, clip_duration)
+            trim_start_sec = None
+            trim_end_sec = None
+            snap_unit = "free"
+            trim_strategy = "use_full_clip"
+        else:
+            target_clip_sec = _policy_capped_target_clip_sec(edit_intent, production_policy)
+            trim_start_sec, trim_end_sec = _trim_window_for_clip(clip_duration, target_clip_sec, edit_intent)
+            trim_start_sec, trim_end_sec, snap_unit = _snap_trim_window_to_audio_timing(
+                trim_start_sec,
+                trim_end_sec,
+                clip_duration,
+                shot_plan_by_shot.get(shot_id, {}),
+                audio_map if isinstance(audio_map, dict) else {},
+                edit_intent,
+            )
+            trim_strategy = str(edit_intent.get("trim_strategy", "")).strip() or "edit_intent_window"
         trimmed_coverage_sec = _trimmed_coverage_sec(trim_start_sec, trim_end_sec, clip_duration, target_clip_sec)
         out.append(
             {
@@ -160,7 +168,7 @@ def _assembly_clip_segments(config: dict, payload: dict, duration_by_shot: dict[
                 "trim_start_sec": trim_start_sec,
                 "trim_end_sec": trim_end_sec,
                 "trimmed_coverage_sec": trimmed_coverage_sec,
-                "trim_strategy": str(edit_intent.get("trim_strategy", "")).strip() or "edit_intent_window",
+                "trim_strategy": trim_strategy,
                 "snap_unit": snap_unit,
                 "cadence_profile": _cadence_profile(edit_intent),
                 **_production_policy_segment_fields(production_policy),
@@ -183,6 +191,23 @@ def _edit_intent_for_clip(shot_id: str, clip_row: dict, edit_intent_by_shot: dic
     if strategy:
         edit_intent.setdefault("trim_strategy", strategy)
     return edit_intent
+
+
+
+def _uses_full_clip_coverage(clip_row: dict) -> bool:
+    return str(clip_row.get("trim_strategy", "")).strip() == "use_full_clip"
+
+
+
+def _full_clip_coverage_sec(clip_row: dict, clip_duration: float) -> float:
+    clip_duration = max(0.0, float(clip_duration or 0.0))
+    candidates = [clip_duration]
+    for key in ("rendered_duration_sec", "target_clip_sec"):
+        value = _safe_float(clip_row.get(key), 0.0)
+        if value > 0.0:
+            candidates.append(value)
+    positive = [value for value in candidates if value > 0.0]
+    return round(min(positive), 3) if positive else 0.0
 
 
 

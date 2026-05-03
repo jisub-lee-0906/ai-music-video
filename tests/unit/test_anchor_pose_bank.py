@@ -1,11 +1,54 @@
+import pytest
+
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.planning.anchor_package import build_anchor_package
 from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.styles.resolver import get_style_bible
+from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.core.stages.render_stills import run_render_stills
 
 
-def test_anchor_package_builds_white_background_tti_identity_model_anchors_only():
+def test_anchor_package_default_identity_card_does_not_inject_fixed_wardrobe_hair_or_demographics():
+    package = build_anchor_package(
+        concept_text="desert radio tower at sunrise, one protagonist follows a fading signal across dunes",
+        style_name="alt_pop",
+        creative_direction={"protagonist_anchor": "same lone protagonist, stable silhouette, no competing bystanders"},
+    )
+
+    prompts = " ".join(
+        anchor["prompt_text"]
+        for anchor in [*package["anchors"], *package["pose_anchor_bank"]]
+    ).lower()
+
+    assert "red raincoat" not in prompts
+    assert "bright red" not in prompts
+    assert "short black bob" not in prompts
+    assert "korean woman" not in prompts
+    assert "story-derived stable outfit silhouette" in prompts
+    assert "distinctive hairstyle from the identity anchor" in prompts
+
+
+def test_anchor_package_uses_explicit_creative_wardrobe_anchor_when_provided():
+    package = build_anchor_package(
+        concept_text="night train platform farewell",
+        style_name="alt_pop",
+        creative_direction={
+            "protagonist_anchor": "same lead dancer, silver braid, no competing bystanders",
+            "wardrobe_anchor": "oversized ivory coat with a blue scarf",
+        },
+    )
+
+    prompts = " ".join(
+        anchor["prompt_text"]
+        for anchor in [*package["anchors"], *package["pose_anchor_bank"]]
+    ).lower()
+
+    assert "oversized ivory coat with a blue scarf" in prompts
+    assert "red raincoat" not in prompts
+    assert "short black bob" not in prompts
+
+
+def test_anchor_package_builds_one_tti_upper_body_then_flux_ref_white_background_variants():
     package = build_anchor_package(
         concept_text="late-night city pop walk under wet neon lights, missed train, unresolved goodbye turning into quiet resolve",
         style_name="citypop",
@@ -13,17 +56,116 @@ def test_anchor_package_builds_white_background_tti_identity_model_anchors_only(
     )
 
     anchors = package["anchors"]
-    assert [anchor["anchor_id"] for anchor in anchors] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"]
-    assert all(anchor["workflow_target"] == "image_flux2_text_to_image" for anchor in anchors)
-    assert package["pose_anchor_bank"] == []
+    assert [anchor["anchor_id"] for anchor in anchors] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+    assert anchors[0]["workflow_target"] == "image_flux2_text_to_image"
 
-    for anchor in anchors:
+    variants = package["pose_anchor_bank"]
+    assert [anchor["anchor_id"] for anchor in variants] == ["ANCHOR_CHARACTER_FULL_BODY"]
+    assert variants[0]["workflow_target"] == "image_flux2_reference_image"
+    assert variants[0]["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+
+    for anchor in [*anchors, *variants]:
         prompt_text = anchor["prompt_text"].lower()
         assert "pure white" in prompt_text
         assert "background" in prompt_text
         assert "no street" in prompt_text
         assert "no scenery" in prompt_text
         assert "character" in anchor["material_class"]
+    assert "using the upper-body identity reference" not in anchors[0]["prompt_text"].lower()
+    assert "from the upper-body reference" not in anchors[0]["prompt_text"].lower()
+    assert "using the upper-body identity reference" in variants[0]["prompt_text"].lower()
+
+
+def test_full_body_identity_anchor_prompt_demands_head_to_toe_visibility():
+    package = build_anchor_package(concept_text="rainy neon protagonist", style_name="alt_pop")
+    full_body = next(anchor for anchor in package["pose_anchor_bank"] if anchor["anchor_id"] == "ANCHOR_CHARACTER_FULL_BODY")
+
+    text = full_body["prompt_text"].lower()
+
+    assert full_body["workflow_target"] == "image_flux2_reference_image"
+    assert full_body["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+    assert "head-to-toe" in text
+    assert "feet fully visible" in text
+    assert "large white margin" in text
+
+
+
+def test_flux_ref_anchor_prompts_lock_wardrobe_without_promoting_full_body_as_primary_reference():
+    package = build_anchor_package(
+        concept_text="quiet desert radio tower signal search",
+        style_name="alt_pop",
+        creative_direction={
+            "protagonist_anchor": "same lone signal seeker, dust-swept hair, no competing bystanders",
+            "wardrobe_anchor": "faded sand canvas jacket with teal scarf",
+        },
+    )
+    pose_anchor = next(anchor for anchor in package["pose_anchor_bank"] if anchor["anchor_id"] == "ANCHOR_CHARACTER_FULL_BODY")
+    # Simulate full planning attaching an actual pose/action variant.
+    from ai_mv.core.planning.anchor_package import with_selected_pose_anchor_bank
+
+    package = with_selected_pose_anchor_bank(
+        package,
+        render_plan=[{"selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE"}],
+        style_name="alt_pop",
+        creative_direction={
+            "protagonist_anchor": "same lone signal seeker, dust-swept hair, no competing bystanders",
+            "wardrobe_anchor": "faded sand canvas jacket with teal scarf",
+        },
+    )
+    pose_anchor = next(anchor for anchor in package["pose_anchor_bank"] if anchor["anchor_id"] == "ANCHOR_POSE_WALKING_SIDE")
+
+    text = pose_anchor["prompt_text"].lower()
+
+    assert pose_anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+    assert pose_anchor["source_anchor_id"] == "ANCHOR_CHARACTER_UPPER_BODY"
+    assert "anchored to the upper-body identity reference, not a full-body re-identity source" in text
+    assert "preserve the same upper-body wardrobe" in text
+    assert "wardrobe color palette" in text
+    assert "main outfit silhouette" in text
+    assert "faded sand canvas jacket with teal scarf" in text
+
+
+
+def test_plan_anchor_package_materializes_only_story_selected_pose_anchors():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights, missed train, unresolved goodbye turning into quiet resolve",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    selected_ids = {
+        str(item.get("selected_pose_anchor_id", "")).strip()
+        for item in out["render_plan"]
+        if str(item.get("selected_pose_anchor_id", "")).strip()
+    }
+    bank = out["anchor_package"]["pose_anchor_bank"]
+    bank_ids = {str(anchor.get("anchor_id", "")).strip() for anchor in bank}
+    pose_bank_ids = {anchor_id for anchor_id in bank_ids if anchor_id != "ANCHOR_CHARACTER_FULL_BODY"}
+
+    assert selected_ids
+    assert pose_bank_ids == selected_ids
+    assert "ANCHOR_CHARACTER_FULL_BODY" in bank_ids
+    assert "ANCHOR_POSE_MICROPHONE_PERFORMANCE" not in bank_ids
+    assert all(anchor["workflow_target"] == "image_flux2_reference_image" for anchor in bank)
+    assert all(anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"] for anchor in bank)
+    assert all(
+        "white-background pose reference variant" in anchor["prompt_text"]
+        for anchor in bank
+        if anchor["anchor_id"] != "ANCHOR_CHARACTER_FULL_BODY"
+    )
+    assert out["anchor_package"]["pose_anchor_policy"]["selection_policy"] == "full_body_and_story_selected_pose_anchors_are_generated_as_flux_ref_descendants"
+
+
 
 
 def test_render_item_selects_distinct_pose_anchors_from_story_and_shot_needs():
@@ -488,12 +630,16 @@ def test_keyframe_reference_fallback_uses_primary_identity_and_ignores_legacy_wo
 
     run_render_stills(stage_input)
 
+    keyframe_call = calls[-1]
     assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "S001"]
-    assert calls[-1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert keyframe_call["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert "upper-body wardrobe" in keyframe_call["positive_prompt"]
+    assert "main outfit silhouette" in keyframe_call["positive_prompt"]
+    assert "coat" not in keyframe_call["positive_prompt"].lower()
 
 
 
-def test_keyframe_with_missing_selected_pose_anchor_falls_back_to_tti_identity_anchor_not_world_anchor(monkeypatch):
+def test_keyframe_with_missing_selected_pose_anchor_fails_closed_instead_of_identity_fallback(monkeypatch):
     calls = []
 
     def _fake_run_flux2_still(_config, item):
@@ -502,7 +648,7 @@ def test_keyframe_with_missing_selected_pose_anchor_falls_back_to_tti_identity_a
 
     monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
     stage_input = StageInput(
-        run_id="run-missing-pose-no-world-fallback",
+        run_id="run-missing-pose-fail-closed",
         config={"render": {"flux2_size": "1280x720"}},
         payload={
             "anchor_package": {
@@ -536,7 +682,128 @@ def test_keyframe_with_missing_selected_pose_anchor_falls_back_to_tti_identity_a
         },
     )
 
-    run_render_stills(stage_input)
+    with pytest.raises(RuntimeError, match="missing selected pose anchor image.*S001.*ANCHOR_POSE_HERO_CLOSEUP"):
+        run_render_stills(stage_input)
 
-    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "S001"]
-    assert calls[-1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_UPPER_BODY.png"
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY"]
+
+
+
+def test_keyframe_with_failed_selected_pose_anchor_render_fails_closed(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        if item["shot_id"] == "ANCHOR_POSE_HERO_CLOSEUP":
+            return ""
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-failed-pose-anchor-fail-closed",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "anchor_type": "character_upper_body_identity",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
+                    }
+                ],
+                "pose_anchor_bank": [
+                    {
+                        "anchor_id": "ANCHOR_POSE_HERO_CLOSEUP",
+                        "anchor_type": "pose_variant",
+                        "anchor_role": "pose_variant",
+                        "material_class": "pose_reference_anchor",
+                        "workflow_target": "image_flux2_reference_image",
+                        "reference_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY"],
+                        "pose_family": "hero_closeup",
+                        "prompt_text": "hero close-up, same face identity, pure white seamless background",
+                    }
+                ],
+            },
+            "shot_plan": [{"shot_id": "S001", "visual_mode": "hero_closeup"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman in close emotional neon keyframe",
+                    "selected_pose_anchor_id": "ANCHOR_POSE_HERO_CLOSEUP",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman"},
+                }
+            ],
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="missing selected pose anchor image.*S001.*ANCHOR_POSE_HERO_CLOSEUP"):
+        run_render_stills(stage_input)
+
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_POSE_HERO_CLOSEUP"]
+
+
+
+def test_keyframe_with_selected_pose_anchor_and_no_anchor_package_fails_closed(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-selected-pose-no-anchor-package",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "shot_plan": [{"shot_id": "S001", "visual_mode": "hero_closeup"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman in close emotional neon keyframe",
+                    "selected_pose_anchor_id": "ANCHOR_POSE_HERO_CLOSEUP",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman"},
+                }
+            ],
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="missing selected pose anchor image.*S001.*ANCHOR_POSE_HERO_CLOSEUP"):
+        run_render_stills(stage_input)
+
+    assert calls == []
+
+
+
+def test_keyframe_with_selected_pose_anchor_does_not_bypass_through_prior_still_reuse(monkeypatch):
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-selected-pose-prior-reuse-blocked",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "anchor_package": {"anchors": [], "pose_anchor_bank": []},
+            "still_results": [{"shot_id": "S001", "image": "D:/renders/prior-S001.png"}],
+            "shot_plan": [{"shot_id": "S001", "visual_mode": "hero_closeup"}],
+            "render_plan": [
+                {
+                    "shot_id": "S001",
+                    "still_prompt_text": "same lead woman in close emotional neon keyframe",
+                    "reference_mode": "reuse_prior_still",
+                    "selected_pose_anchor_id": "ANCHOR_POSE_HERO_CLOSEUP",
+                    "continuity_contract": {"protagonist_anchor": "same lead woman"},
+                }
+            ],
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="missing selected pose anchor image.*S001.*ANCHOR_POSE_HERO_CLOSEUP"):
+        run_render_stills(stage_input)
+
+    assert calls == []

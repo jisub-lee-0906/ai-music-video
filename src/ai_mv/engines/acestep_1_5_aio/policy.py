@@ -40,12 +40,12 @@ DEFAULT_SECTION_BARS: dict[str, int] = {
     "final_chorus_bonus": 8,
 }
 HOOK_VALIDATION_SECTION_BARS: dict[str, int] = {
-    "intro": 4,
+    "intro": 0,
     "verse": 0,
     "verse_1": 0,
     "verse_2": 0,
     "pre_chorus": 0,
-    "chorus": 8,
+    "chorus": 12,
     "post_chorus": 4,
     "bridge": 4,
     "outro": 4,
@@ -63,12 +63,12 @@ HOOK_VALIDATION_LINE_BUDGETS: dict[str, int] = {
     "Verse 2": 0,
     "Pre-Chorus": 0,
     "Pre-Chorus 2": 0,
-    "Chorus": 2,
-    "Chorus 2": 2,
+    "Chorus": 3,
+    "Chorus 2": 3,
     "Final Chorus": 3,
     "Post-Chorus": 1,
     "Bridge": 2,
-    "Outro": 0,
+    "Outro": 2,
 }
 PREFERRED_SONGFORM: tuple[tuple[str, str], ...] = (
     ("intro", "Intro"),
@@ -112,7 +112,6 @@ SHORT_FORM_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
 )
 HOOK_VALIDATION_VARIANTS: tuple[tuple[tuple[str, str], ...], ...] = (
     (
-        ("intro", "Intro"),
         ("chorus", "Chorus"),
         ("outro", "Outro"),
     ),
@@ -127,6 +126,8 @@ def audio_policy(config: dict) -> dict:
     section_bars = resolve_section_bars(audio, songform_mode=songform_mode)
     override_duration = _explicit_target_duration(audio)
     variants = songform_variants(songform_mode)
+    if songform_mode == "hook_validation" and _coerce_positive_int(audio.get("target_duration_max_sec"), default=0) > 35:
+        variants = [[{"section": "intro", "label": "Intro"}, *variant] for variant in variants]
     preferred_rows = variants[0] if songform_mode == "hook_validation" and variants else preferred_songform_rows()
     duration = int(override_duration) if override_duration is not None else 0
     policy = {
@@ -322,7 +323,7 @@ def resolve_line_budgets(audio: dict, *, songform_mode: str | None = None) -> di
     terminal_end_tag = _terminal_end_tag(audio)
     ending_vocal_density = _ending_vocal_density(audio)
     outro_required = _coerce_bool(audio.get("outro_required"), default=False)
-    if language == "ko":
+    if songform_mode != "hook_validation" and language == "ko":
         resolved["Verse 1"] = 4
         resolved["Verse 2"] = 4
         resolved["Pre-Chorus"] = 3
@@ -333,7 +334,7 @@ def resolve_line_budgets(audio: dict, *, songform_mode: str | None = None) -> di
         resolved["Bridge"] = 2
         resolved["Intro"] = 0
         resolved["Outro"] = 0
-    if language == "ja":
+    if songform_mode != "hook_validation" and language == "ja":
         resolved["Verse 1"] = 5
         resolved["Verse 2"] = 5
         resolved["Pre-Chorus"] = 3

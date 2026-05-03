@@ -26,6 +26,7 @@ def build_still_prompt_text(
             _section_emphasis_variant_token(str(variation.get("section_emphasis_variant", "")).strip()),
             str(relation.get("camera_distance_progression", "")).strip(),
             str(relation.get("same_block_vs_new_block", "")).strip(),
+            *_narrative_progression_still_tokens(variation.get("narrative_progression")),
             _reference_identity_token(reference),
             _reference_delta_token(variation_delta),
             *story_contract_prompt_tokens(variation.get("story_contract")),
@@ -42,7 +43,7 @@ def build_clip_prompt_seed(
     shot_relation_contract: dict | None = None,
 ) -> str:
     role = str(shot.get("shot_role", "")).replace("_", " ").strip()
-    visual_mode = str(shot.get("visual_mode", "")).replace("_", " ").strip()
+    visual_mode = _clip_visual_mode_token(shot)
     variation = variation_profile if isinstance(variation_profile, dict) else {}
     relation = shot_relation_contract if isinstance(shot_relation_contract, dict) else {}
     seed_prefix = str(prompt_seed or "").split(",")[0].strip()
@@ -60,22 +61,36 @@ def build_clip_prompt_seed(
 
 
 
+def _clip_visual_mode_token(shot: dict) -> str:
+    world_anchor = str(shot.get("world_anchor", "")).strip().lower()
+    if "desert" in world_anchor and any(token in world_anchor for token in ("radio", "signal", "tower")):
+        progression = shot.get("narrative_progression") if isinstance(shot.get("narrative_progression"), dict) else {}
+        beat_role = str(progression.get("beat_role", "") or shot.get("beat_role", "")).replace("_", " ").strip()
+        return f"desert radio {beat_role} beat" if beat_role else "desert radio music-video beat"
+    return str(shot.get("visual_mode", "")).replace("_", " ").strip()
+
+
+
 def build_clip_positive_prompt(
     render_mode: str,
     shot: dict,
     clip_prompt_seed: str,
     variation_profile: dict | None = None,
     shot_relation_contract: dict | None = None,
+    reference_policy: dict | None = None,
 ) -> str:
     variation = variation_profile if isinstance(variation_profile, dict) else {}
     relation = shot_relation_contract if isinstance(shot_relation_contract, dict) else {}
+    reference = reference_policy if isinstance(reference_policy, dict) else {}
     framing_variant = _clip_framing_variant(shot, str(variation.get("framing_variant", "")).strip())
     return _join_prompt_tokens(
         [
             clip_prompt_seed,
+            _reference_identity_token(reference),
             _continuity_identity_token(str(variation.get("continuity_variant", "")).strip()),
             _framing_camera_token(framing_variant),
             _environment_motion_token(str(variation.get("environment_variant", "")).strip()),
+            *_narrative_progression_clip_tokens(variation.get("narrative_progression")),
             _story_function_token(shot),
             _visual_event_token(shot),
             _payoff_requirement_token(shot),
@@ -84,6 +99,45 @@ def build_clip_positive_prompt(
             str(relation.get("emotional_delta", "")).strip(),
         ]
     )
+
+
+
+def _narrative_progression_still_tokens(narrative_progression: dict | None) -> list[str]:
+    progression = narrative_progression if isinstance(narrative_progression, dict) else {}
+    return _join_labeled_progression_tokens(
+        progression,
+        (
+            ("beat_role", "narrative beat role"),
+            ("motif_state", "narrative motif state"),
+            ("visible_change", "narrative visible change"),
+            ("pose_intent", "narrative pose intent"),
+        ),
+    )
+
+
+
+def _narrative_progression_clip_tokens(narrative_progression: dict | None) -> list[str]:
+    progression = narrative_progression if isinstance(narrative_progression, dict) else {}
+    return _join_labeled_progression_tokens(
+        progression,
+        (
+            ("beat_role", "narrative beat role"),
+            ("motif_state", "narrative motif state"),
+            ("visible_change", "narrative visible change"),
+            ("motion_intent", "narrative motion intent"),
+            ("why_this_follows_previous", "narrative continuity"),
+        ),
+    )
+
+
+
+def _join_labeled_progression_tokens(progression: dict, fields: tuple[tuple[str, str], ...]) -> list[str]:
+    tokens: list[str] = []
+    for key, label in fields:
+        value = str(progression.get(key, "")).strip()
+        if value:
+            tokens.append(f"{label}: {value}")
+    return tokens
 
 
 
@@ -163,14 +217,14 @@ def _reference_identity_token(reference_policy: dict) -> str:
     if reference_mode == "performance_anchor_source" or identity_lock == "performance_anchor":
         return (
             "front-facing performance-ready face visibility, same lead performer identity, stable bright stage outfit silhouette, "
-            "exact face fingerprint from the white-background identity anchor, same glossy performance-night stage, "
+            "exact face fingerprint from the white-background identity anchor, same world anchor, "
             "one clear solo performer only, upper-body or full-body readability, no ambiguous secondary silhouettes, "
-            "no distant human silhouettes, no bystanders or second red-coated figure"
+            "no distant human silhouettes, no bystanders or same-outfit background doubles"
         )
     if reference_mode in {"anchor_source", "use_anchor_still"} or identity_lock in {"anchor", "high"}:
         return (
-            "preserve the same lead identity, exact face fingerprint from the white-background identity anchor, "
-            "stable outfit silhouette, same world anchor, one clear protagonist only, no distant human silhouettes, no bystanders or second red-coated figure"
+            "preserve the same lead identity, same lead performer identity, exact face fingerprint from the white-background identity anchor, "
+            "stable outfit silhouette, same world anchor, one clear solo performer only, no distant human silhouettes, no bystanders or same-outfit background doubles"
         )
     return ""
 

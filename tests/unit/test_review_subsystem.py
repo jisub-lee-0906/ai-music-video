@@ -158,6 +158,20 @@ def test_rerender_reasons_include_quality_failures():
     assert reasons["S001"] == ["missing_final_video", "drift_too_high", "coverage_too_low"]
 
 
+def test_default_publishable_review_marks_half_second_drift_for_sync_repair():
+    reasons = rerender_reasons(
+        ["S001"],
+        {"S001": True},
+        {"S001": True},
+        final_video_exists=True,
+        audio_video_drift_sec=0.491,
+        coverage={"stills_ratio": 1.0, "clips_ratio": 1.0},
+        config={},
+    )
+
+    assert reasons == {"S001": ["drift_too_high"]}
+
+
 def test_rerender_reasons_include_explicit_visual_quality_findings():
     reasons = rerender_reasons(
         ["S001", "S002"],

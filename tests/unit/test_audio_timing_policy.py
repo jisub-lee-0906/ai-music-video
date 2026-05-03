@@ -37,22 +37,35 @@ def test_audio_policy_uses_official_acestep_defaults_when_controls_are_unset():
         assert key not in out
 
 
-def test_audio_policy_uses_compact_songlet_contract_for_thirty_second_validation():
+def test_audio_policy_uses_original_b_like_hook_tag_contract_for_thirty_second_validation():
     out = audio_policy({"audio": {"bpm": 118, "target_duration_min_sec": 25, "target_duration_max_sec": 35}})
 
     assert out["songform_mode"] == "hook_validation"
-    assert out["section_bars"]["intro"] == 4
+    assert out["section_bars"]["intro"] == 0
     assert out["section_bars"]["verse_1"] == 0
     assert out["section_bars"]["pre_chorus"] == 0
-    assert out["section_bars"]["chorus"] == 8
+    assert out["section_bars"]["chorus"] == 12
+    assert out["section_bars"]["outro"] == 4
     assert out["section_bars"]["final_chorus_bonus"] == 0
     assert out["line_budgets"]["Verse 1"] == 0
     assert out["line_budgets"]["Pre-Chorus"] == 0
-    assert out["line_budgets"]["Chorus"] == 2
-    assert [row["label"] for row in out["songform_variants"][0]] == ["Intro", "Chorus", "Outro"]
+    assert out["line_budgets"]["Chorus"] == 3
+    assert out["line_budgets"]["Outro"] == 2
+    assert [row["label"] for row in out["songform_variants"][0]] == ["Chorus", "Outro"]
+    assert "intro" not in out["bar_lane"].lower()
     assert "verse 1" not in out["bar_lane"].lower()
     assert "pre" not in out["bar_lane"].lower()
-    assert "chorus 8" in out["bar_lane"]
+    assert "chorus 12" in out["bar_lane"]
+    assert "outro 4" in out["bar_lane"]
+
+
+def test_audio_policy_preserves_hook_tag_line_budget_for_korean_thirty_second_validation():
+    out = audio_policy({"audio": {"language": "ko", "target_duration_min_sec": 25, "target_duration_max_sec": 35}})
+
+    assert out["songform_mode"] == "hook_validation"
+    assert out["line_budgets"]["Chorus"] == 3
+    assert out["line_budgets"]["Outro"] == 2
+    assert out["line_budgets"]["Verse 1"] == 0
 
 
 def test_audio_policy_expands_forty_five_second_hook_validation_bars():

@@ -159,6 +159,55 @@ def test_validate_audio_lyrics_quality_rejects_overworded_two_line_hook_validati
         )
 
 
+def test_validate_audio_lyrics_quality_rejects_overworded_three_line_hook_validation_chorus():
+    blocks = [
+        {
+            "section": "chorus",
+            "label": "Chorus",
+            "style": "hook",
+            "lines": [
+                "Your signal drifts through the desert dawn",
+                "Say my name when the static is gone",
+                "Stay on the line",
+            ],
+        },
+        {"section": "outro", "label": "Outro", "style": "tail", "lines": ["Let it close", "Let it close"]},
+    ]
+
+    with pytest.raises(RuntimeError, match="Chorus hook line has too many words"):
+        validate_audio_lyrics_quality(
+            blocks,
+            "en",
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 2},
+            section_bars={"intro": 0, "verse_1": 0, "pre_chorus": 0, "chorus": 12, "outro": 4, "final_chorus_bonus": 0},
+        )
+
+
+def test_validate_audio_lyrics_quality_rejects_nonrepeated_hook_validation_outro_tag():
+    blocks = [
+        {
+            "section": "chorus",
+            "label": "Chorus",
+            "style": "hook",
+            "lines": ["Stay on the line", "Hear me now", "Stay on the line"],
+        },
+        {
+            "section": "outro",
+            "label": "Outro",
+            "style": "tail",
+            "lines": ["Warm in my hands, you fade to gold", "I let you go, and still you stay"],
+        },
+    ]
+
+    with pytest.raises(RuntimeError, match="Outro tag should repeat exactly"):
+        validate_audio_lyrics_quality(
+            blocks,
+            "en",
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 2},
+            section_bars={"intro": 0, "verse_1": 0, "pre_chorus": 0, "chorus": 12, "outro": 4, "final_chorus_bonus": 0},
+        )
+
+
 def test_validate_audio_lyrics_quality_rejects_overdense_korean_line():
     blocks = [
         {"section": "verse_1", "label": "Verse 1", "style": "move", "lines": ["젖은불빛아래서나는아무숨도고르지못한채너의이름을너무길게불러보네"]},

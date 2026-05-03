@@ -144,6 +144,36 @@ def test_render_clips_blocks_microphone_action_without_matching_pose_anchor(monk
     assert calls == []
 
 
+def test_render_clips_allows_negative_clone_constraints_without_treating_them_as_risk(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-still-qa-negated-clone-constraints",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload=_base_clip_payload(
+            {
+                "prompt_text": (
+                    "same young woman in a bright red raincoat, one clear solo performer only, "
+                    "no distant human silhouettes, no bystanders or second red-coated figure, "
+                    "no duplicate body, no collage, no split screen"
+                ),
+                "still_qa": {"status": "pass", "blocking_reasons": []},
+            }
+        ),
+    )
+
+    out = run_render_clips(stage_input)
+
+    assert len(calls) == 1
+    assert out.payload["clip_results"][0]["status"] == "done"
+
+
+
 def test_render_clips_allows_still_that_passes_qa_gate(monkeypatch):
     calls = []
 
@@ -236,6 +266,29 @@ def test_render_stills_publishes_still_qa_pass_metadata_for_clean_keyframe(monke
         run_id="run-still-qa-publish-pass",
         config={"render": {"flux2_size": "1280x720"}},
         payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "anchor_type": "character_upper_body_identity",
+                        "material_class": "character_reference_anchor",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "upper-body identity card, pure white seamless background, clear face visibility",
+                    }
+                ],
+                "pose_anchor_bank": [
+                    {
+                        "anchor_id": "ANCHOR_POSE_HERO_CLOSEUP",
+                        "anchor_type": "pose_variant",
+                        "anchor_role": "pose_variant",
+                        "material_class": "pose_reference_anchor",
+                        "workflow_target": "image_flux2_reference_image",
+                        "reference_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY"],
+                        "pose_family": "hero_closeup",
+                        "prompt_text": "hero close-up, same face identity, pure white seamless background",
+                    }
+                ],
+            },
             "shot_plan": [{"shot_id": "S002", "render_mode": "ia2v"}],
             "render_plan": [
                 {

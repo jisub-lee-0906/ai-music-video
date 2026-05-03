@@ -179,9 +179,22 @@ def _audio_sampler_inputs(plan: dict, seed: int) -> dict:
         "scheduler": "scheduler",
     }
     for source, dest in mapping.items():
-        if source in plan and plan[source] not in (None, ""):
-            out[dest] = plan[source]
+        if source not in plan or plan[source] in (None, ""):
+            continue
+        value = plan[source]
+        if source == "sampler_steps" and not _positive_number(value):
+            continue
+        if source == "sampler_cfg" and not _positive_number(value):
+            continue
+        out[dest] = value
     return out
+
+
+def _positive_number(value: object) -> bool:
+    try:
+        return float(value) > 0.0
+    except Exception:
+        return False
 
 
 def _audio_language(plan: dict) -> str:

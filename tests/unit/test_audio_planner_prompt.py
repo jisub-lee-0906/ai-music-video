@@ -125,7 +125,7 @@ def test_audio_prompt_requires_final_chorus_minimum_matching_its_extended_bar_bu
 
 
 
-def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
+def test_audio_prompt_marks_thirty_second_validation_as_original_b_like_hook_tag_songlet():
     prompt = audio_planner._audio_prompt(
         _prompt_plan(
             duration_min_sec=25,
@@ -133,28 +133,29 @@ def test_audio_prompt_marks_thirty_second_validation_as_chorus_only_songlet():
             songform_mode="hook_validation",
             songform_variants=[
                 [
-                    {"section": "intro", "label": "Intro"},
                     {"section": "chorus", "label": "Chorus"},
                     {"section": "outro", "label": "Outro"},
                 ]
             ],
-            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 2, "Outro": 0},
+            line_budgets={"Intro": 0, "Verse 1": 0, "Pre-Chorus": 0, "Chorus": 3, "Outro": 2},
         )
     )
 
     assert "compact hook-validation songlet" in prompt
-    assert "Do not include Verse 1 or Pre-Chorus in a thirty-second validation take" in prompt
-    assert "Intro -> Chorus -> Outro" in prompt
+    assert "Do not include Intro, Verse 1, or Pre-Chorus in a thirty-second validation take" in prompt
+    assert "Chorus -> Outro" in prompt
     assert "Choose a songform that fits a modern short-form song around two and a half to three minutes" not in prompt
     assert "Verse 1>= " not in prompt
     assert "Pre-Chorus>= " not in prompt
-    assert "Chorus>= 2" in prompt
-    assert "Use exactly two Chorus lyric lines" in prompt
-    assert "Do not add a third narrative payoff line" in prompt
+    assert "Chorus<= 3" in prompt
+    assert "Outro<= 2" in prompt
+    assert "Use exactly three Chorus lyric lines" in prompt
+    assert "Use exactly two Outro lyric lines as a repeated closing tag" in prompt
+    assert "tender and minimal, like a clean last breath" in prompt
     assert "one-breath phrases" in prompt
     assert "six words or fewer" in prompt
     assert "Avoid cramming syllables" in prompt
-    assert "Outro must feel like a terminal ending" in prompt
+    assert "Outro tag must feel like the last sung breath, not a new section" in prompt
 
 def test_audio_prompt_locks_hook_validation_outro_as_terminal_not_next_section_pickup():
     prompt = audio_planner._audio_prompt(

@@ -63,7 +63,6 @@ def test_plan_mv_builds_tti_identity_anchors_for_flux2_reference_keyframes():
     assert anchor_package["strategy"] == "white_background_tti_character_anchors_then_flux_reference_keyframes"
     assert [anchor["anchor_type"] for anchor in anchor_package["anchors"]] == [
         "character_upper_body_identity",
-        "character_full_body",
     ]
     assert all("world" not in str(anchor.get("anchor_id", "")).lower() for anchor in anchor_package["anchors"])
     assert all("world" not in str(anchor.get("anchor_type", "")).lower() for anchor in anchor_package["anchors"])
@@ -75,17 +74,29 @@ def test_plan_mv_builds_tti_identity_anchors_for_flux2_reference_keyframes():
     assert "clear face visibility" in upper_body["prompt_text"]
     assert "face fingerprint" in upper_body["prompt_text"]
     assert "no distant human silhouettes" in upper_body["prompt_text"]
-    full_body = anchor_package["anchors"][1]
+    full_body = next(anchor for anchor in anchor_package["pose_anchor_bank"] if anchor["anchor_id"] == "ANCHOR_CHARACTER_FULL_BODY")
     assert full_body["material_class"] == "character_reference_anchor"
-    assert full_body["workflow_target"] == "image_flux2_text_to_image"
-    assert "reference_anchor_ids" not in full_body
+    assert full_body["workflow_target"] == "image_flux2_reference_image"
+    assert full_body["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"]
     assert "same face identity" in full_body["prompt_text"]
     assert "exact face fingerprint" in full_body["prompt_text"]
     assert "single clean full-body identity reference card" in full_body["prompt_text"]
     assert "pure white seamless background" in full_body["prompt_text"]
     assert "No street" in full_body["prompt_text"]
-    assert anchor_package["pose_anchor_bank"] == []
-    assert anchor_package["pose_anchor_policy"]["selection_policy"] == "story_keyframes_reference_the_tti_identity_model_anchor_directly"
+    selected_pose_anchor_ids = {
+        str(item.get("selected_pose_anchor_id", "")).strip()
+        for item in out["render_plan"]
+        if str(item.get("selected_pose_anchor_id", "")).strip()
+    }
+    pose_anchor_ids = {
+        str(anchor.get("anchor_id", "")).strip()
+        for anchor in anchor_package["pose_anchor_bank"]
+        if str(anchor.get("anchor_id", "")).strip() != "ANCHOR_CHARACTER_FULL_BODY"
+    }
+    assert pose_anchor_ids == selected_pose_anchor_ids
+    assert all(anchor["workflow_target"] == "image_flux2_reference_image" for anchor in anchor_package["pose_anchor_bank"])
+    assert all(anchor["reference_anchor_ids"] == ["ANCHOR_CHARACTER_UPPER_BODY"] for anchor in anchor_package["pose_anchor_bank"])
+    assert anchor_package["pose_anchor_policy"]["selection_policy"] == "full_body_and_story_selected_pose_anchors_are_generated_as_flux_ref_descendants"
     assert "world_character_anchor" not in anchor_package["variant_policy"]["reference_order"]
     assert anchor_package["variant_policy"]["important_story_functions"] == ["release", "payoff"]
     assert anchor_package["variant_policy"]["candidates_per_important_shot"] >= 2
@@ -324,6 +335,206 @@ def test_plan_mv_caps_hero_face_policy_overuse_in_short_fresh_sequences():
     assert world_bridge_items
     assert all("role diversity world bridge" in item["still_prompt_text"] for item in world_bridge_items)
     assert all("avoid repeated centered front hero street walk" in item["still_prompt_text"] for item in world_bridge_items)
+
+
+def test_plan_mv_threads_story_action_grammar_for_publishable_short_sequences():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "citypop"}},
+        {
+            "concept_text": "late-night city walk under wet neon rain with one protagonist following a message and choosing to let go",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "label": "Intro", "start_sec": 0.0, "end_sec": 2.06},
+                    {"name": "verse_1", "label": "Verse 1", "start_sec": 2.06, "end_sec": 4.305},
+                    {"name": "pre_chorus", "label": "Pre-Chorus", "start_sec": 4.305, "end_sec": 6.536},
+                    {"name": "chorus", "label": "Chorus", "start_sec": 6.536, "end_sec": 8.796},
+                    {"name": "verse_2", "label": "Verse 2", "start_sec": 8.796, "end_sec": 11.019},
+                    {"name": "bridge", "label": "Bridge", "start_sec": 11.019, "end_sec": 12.156},
+                    {"name": "chorus", "label": "Final Chorus", "start_sec": 12.156, "end_sec": 16.478},
+                    {"name": "outro", "label": "Outro", "start_sec": 16.478, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    action_grammars = [shot["story_action_grammar"] for shot in out["shot_plan"]]
+    assert len(set(action_grammars)) >= 4
+    assert any("phone message" in grammar or "reflection cue" in grammar for grammar in action_grammars)
+    assert any("walks away" in grammar or "turns away" in grammar for grammar in action_grammars)
+
+    prompt_text = " ".join(item["clip_positive_prompt"] for item in out["render_plan"])
+    assert "story action grammar:" in prompt_text
+    assert "do not default to a static centered portrait" in prompt_text
+
+
+
+def test_plan_mv_story_action_grammar_is_concept_specific_not_city_template():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "alt_pop"}},
+        {
+            "concept_text": "desert radio tower at sunrise, one protagonist follows a fading signal across dunes",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    grammar_text = " ".join(shot["story_action_grammar"] for shot in out["shot_plan"]).lower()
+    prompt_text = " ".join(item["clip_positive_prompt"] for item in out["render_plan"]).lower()
+
+    assert "desert" in grammar_text or "dune" in grammar_text or "radio" in grammar_text or "signal" in grammar_text
+    assert "desert" in prompt_text or "dune" in prompt_text or "radio" in prompt_text or "signal" in prompt_text
+    for leaked_city_token in ("rainy block", "wet neon", "boulevard", "missed train", "train station", "station timing"):
+        assert leaked_city_token not in grammar_text
+        assert leaked_city_token not in prompt_text
+    assert out["creative_direction"]["wardrobe_anchor"] == "story-derived stable outfit silhouette"
+    assert all(
+        shot["continuity_contract"]["wardrobe_anchor"] == "story-derived stable outfit silhouette"
+        for shot in out["shot_plan"]
+    )
+    assert "stable dark outerwear silhouette" not in prompt_text
+
+
+
+def test_plan_mv_can_toggle_narrative_progression_fields_for_planning_spike():
+    payload = {
+        "concept_text": "desert radio tower at sunrise, one protagonist follows a fading signal across dunes",
+        "audio_map": {
+            "duration_sec": 18.024,
+            "sections": [
+                {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                {"name": "outro", "start_sec": 14.0, "end_sec": 18.024},
+            ],
+        },
+    }
+
+    off = build_plan_preview_payload({"planning": {"default_style_name": "alt_pop"}}, payload)
+    on = build_plan_preview_payload(
+        {"planning": {"default_style_name": "alt_pop", "enable_narrative_progression": True}},
+        payload,
+    )
+
+    assert all("narrative_progression" not in shot for shot in off["shot_plan"])
+    assert all("narrative_progression" in shot for shot in on["shot_plan"])
+
+    progressions = [shot["narrative_progression"] for shot in on["shot_plan"]]
+    assert len({row["beat_role"] for row in progressions}) >= 4
+    assert len({row["emotional_state"] for row in progressions}) >= 4
+    assert len({row["motif_state"] for row in progressions}) >= 4
+    assert len({row["pose_intent"] for row in progressions}) >= 4
+    assert all(row["visible_change"] for row in progressions)
+    assert all(row["motion_intent"] for row in progressions)
+
+    off_prompt_text = " ".join(item["still_prompt_text"] + " " + item["clip_positive_prompt"] for item in off["render_plan"]).lower()
+    on_prompt_text = " ".join(item["still_prompt_text"] + " " + item["clip_positive_prompt"] for item in on["render_plan"]).lower()
+
+    assert "narrative motif state:" not in off_prompt_text
+    assert "narrative visible change:" not in off_prompt_text
+    assert "narrative motion intent:" not in off_prompt_text
+    assert "narrative motif state:" in on_prompt_text
+    assert "narrative visible change:" in on_prompt_text
+    assert "narrative motion intent:" in on_prompt_text
+    assert "radio" in on_prompt_text
+    assert "signal" in on_prompt_text
+
+
+
+def test_plan_mv_concept_world_overrides_style_location_when_narrative_progression_enabled():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "alt_pop", "enable_narrative_progression": True}},
+        {
+            "concept_text": "desert radio tower at sunrise, one protagonist follows a fading signal across dunes",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    prompt_text = " ".join(
+        item["prompt_seed"] + " " + item["still_prompt_text"] + " " + item["clip_positive_prompt"]
+        for item in out["render_plan"]
+    ).lower()
+    world_anchor = out["creative_direction"]["world_anchor"].lower()
+
+    assert "desert" in world_anchor
+    assert "radio" in world_anchor
+    assert "sunrise" in world_anchor
+    assert "desert" in prompt_text
+    assert "dune" in prompt_text
+    assert "radio" in prompt_text
+    assert "sunrise" in prompt_text
+    for leaked_token in (
+        "night rooftop",
+        "glass corridor",
+        "club-adjacent",
+        "city backlight",
+        "night street stride",
+        "chrome reflections",
+        "modern night-world",
+        "night-world wound",
+        "night-city world",
+        "urban lighting",
+        "city geometry",
+        "city perspective",
+        "chrome blue",
+        "acid pink",
+        "street walk",
+        "wet neon",
+        "boulevard",
+        "street texture",
+        "rooftop_edge",
+        "glass_corridor",
+        "night_street_stride",
+        "chrome_reflections",
+        "performance-night stage",
+        "glossy performance-night stage",
+    ):
+        assert leaked_token not in prompt_text
+
+
+
+def test_plan_mv_threads_white_background_identity_anchor_into_every_ia2v_clip_prompt():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "alt_pop", "enable_narrative_progression": True}},
+        {
+            "concept_text": "desert radio tower at sunrise, one protagonist follows a fading signal across dunes",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    ia2v_items = [item for item in out["render_plan"] if item["render_mode"] == "ia2v"]
+
+    assert ia2v_items
+    for item in ia2v_items:
+        clip_text = f"{item['clip_prompt_seed']} {item['clip_positive_prompt']}".lower()
+        assert "same lead performer identity" in clip_text
+        assert "exact face fingerprint from the white-background identity anchor" in clip_text
+        assert "one clear solo performer only" in clip_text
+        assert "no bystanders or same-outfit background doubles" in clip_text
+
 
 
 def test_plan_mv_builds_rich_render_prompts():

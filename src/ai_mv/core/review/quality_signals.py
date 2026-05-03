@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.core.review.rerender_policy import DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC
+
 
 def build_quality_signals(
     *,
@@ -22,9 +24,9 @@ def build_quality_signals(
     }
     review_cfg = config.get("review", {}) if isinstance(config, dict) else {}
     try:
-        max_drift = float(review_cfg.get("max_audio_video_drift_sec", 0.5) or 0.5)
+        max_drift = float(review_cfg.get("max_audio_video_drift_sec", DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC) or DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC)
     except Exception:
-        max_drift = 0.5
+        max_drift = DEFAULT_MAX_AUDIO_VIDEO_DRIFT_SEC
     try:
         min_stills = float(review_cfg.get("min_stills_coverage_ratio", 0.8) or 0.8)
     except Exception:
