@@ -404,6 +404,46 @@ def test_plan_mv_story_action_grammar_is_concept_specific_not_city_template():
 
 
 
+def test_plan_mv_story_action_grammar_does_not_invent_city_fixture_actions_for_non_city_worlds():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "alt_pop"}},
+        {
+            "concept_text": "alt-pop forest pier music video, one solitary protagonist follows fireflies over moss and water",
+            "audio_map": {
+                "duration_sec": 18.024,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "bridge", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.024},
+                ],
+            },
+        },
+    )
+
+    grammar_text = " ".join(shot["story_action_grammar"] for shot in out["shot_plan"]).lower()
+    prompt_text = " ".join(item["clip_positive_prompt"] for item in out["render_plan"]).lower()
+
+    assert "forest" in prompt_text or "fireflies" in prompt_text or "moss" in prompt_text or "water" in prompt_text
+    for invented_fixture in (
+        "sign or reflection detail",
+        "rain-streaked glass",
+        "curb",
+        "reflective threshold",
+        "afterglow",
+    ):
+        assert invented_fixture not in grammar_text
+    for invented_prompt_phrase in (
+        "story action grammar: uses a glance, hand, sign, or reflection detail",
+        "story action grammar: reads a reflection cue through rain-streaked glass",
+        "story action grammar: crosses through the frame or turns at the curb",
+        "story action grammar: pauses at a reflective threshold",
+        "story action grammar: walks away or turns away into the afterglow",
+    ):
+        assert invented_prompt_phrase not in prompt_text
+
+
+
 def test_plan_mv_can_toggle_narrative_progression_fields_for_planning_spike():
     payload = {
         "concept_text": "desert radio tower at sunrise, one protagonist follows a fading signal across dunes",

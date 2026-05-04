@@ -516,15 +516,19 @@ def _story_action_grammar_for_shot(shot: dict, *, concept_text: str, sequence_in
     if ("message" in concept or "phone" in concept) and (section_type in {"verse", "pre_chorus"} or story_function in {"search", "threshold"}):
         return "uses a phone message or reflection cue as the visible decision trigger, then changes gaze or walking direction; do not default to a static centered portrait"
     if visual_mode in {"rain_window_detail", "window_reflection"}:
-        return "reads a reflection cue through rain-streaked glass with partial face or hand detail, not a front-facing pose; do not default to a static centered portrait"
+        if any(token in concept for token in ("rain", "window", "glass", "reflection")):
+            return "reads a reflection cue through rain-streaked glass with partial face or hand detail, not a front-facing pose; do not default to a static centered portrait"
+        return f"reads a source-bound detail inside {concept_cue} with partial face or hand detail, not a front-facing pose; do not default to a static centered portrait"
     if visual_mode == "partial_figure_transition" or section_type == "pre_chorus":
-        return "crosses through the frame or turns at the curb so the next beat has visible direction change; do not default to a static centered portrait"
+        return "crosses through the frame or changes direction so the next beat has visible movement change; do not default to a static centered portrait"
     if section_type == "chorus" or story_function == "release":
         return "moves forward into hook release with a clear step, turn, or shoulder-line change while staying solo; do not default to a static centered portrait"
     if section_type == "bridge":
-        return "pauses at a reflective threshold, then turns away from the previous direction with inward restraint; do not default to a static centered portrait"
+        return "pauses at a concept-world threshold, then turns away from the previous direction with inward restraint; do not default to a static centered portrait"
     if section_type == "outro" or story_function == "payoff":
-        return "walks away or turns away into the afterglow so the ending resolves as a changed state; do not default to a static centered portrait"
+        if "afterglow" in concept:
+            return "walks away or turns away into the afterglow so the ending resolves as a changed state; do not default to a static centered portrait"
+        return "walks away or turns away into the final concept light so the ending resolves as a changed state; do not default to a static centered portrait"
     return _fallback_story_action_grammar(shot, sequence_index=sequence_index, concept_cue=concept_cue)
 
 
@@ -551,7 +555,7 @@ def _fallback_story_action_grammar(shot: dict, *, sequence_index: int, concept_c
     if framing_intent in {"establishing_wide", "release_wide"} or sequence_index % 3 == 0:
         return f"uses off-center walking direction and readable {concept_cue} depth to advance the beat; do not default to a static centered portrait"
     if sequence_index % 3 == 1:
-        return "uses a glance, hand, sign, or reflection detail as the action cue; do not default to a static centered portrait"
+        return "uses a visible gesture or source-bound detail as the action cue; do not default to a static centered portrait"
     return "uses a side angle, over-shoulder turn, or walking-away beat to change silhouette; do not default to a static centered portrait"
 
 
