@@ -322,16 +322,41 @@ def _workflow_scene_description(world: dict) -> str:
 
 def _world_motion_cue(world: dict) -> str:
     description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
-    if "desert" in description or "radio tower" in description:
-        return "natural wind motion across clothing edges and drifting sand traces"
-    if "arctic" in description or "observatory" in description or "aurora" in description:
-        return "snow gusts, a soft aurora pulse, and subtle satellite-dish vibration"
-    if "greenhouse" in description:
-        return "rain streaks on glass, leaves trembling, and condensation sliding"
-    if "lighthouse" in description or "cliffside" in description:
-        return "storm spray, coat whip, and rotating lighthouse beam sweep"
-    if "underwater" in description or "library" in description:
-        return "floating fabric, drifting books, and soft light caustics"
+    cues: list[str] = []
+    if "wind" in description or "storm" in description or "desert" in description or "dune" in description:
+        cues.append("natural wind motion across clothing edges")
+    if "sand" in description or "desert" in description or "dune" in description:
+        cues.append("subtle drifting sand traces")
+    if "snow" in description:
+        cues.append("snow gusts")
+    if "aurora" in description:
+        cues.append("a soft aurora pulse")
+    if "satellite" in description or "dish" in description:
+        cues.append("subtle satellite-dish vibration")
+    if "ice" in description or "arctic" in description:
+        cues.append("cold blue light shimmer")
+    if "rain" in description:
+        cues.append("rain streaks on glass")
+    if "leaf" in description or "leaves" in description or "plant" in description:
+        cues.append("leaves trembling")
+    if "fogged glass" in description or "condensation" in description:
+        cues.append("condensation sliding")
+    if "spray" in description or "storm" in description or "cliffside" in description:
+        cues.append("storm spray")
+    if "coat" in description:
+        cues.append("coat edges whipping")
+    if "beam" in description or "lighthouse" in description:
+        cues.append("rotating lighthouse beam sweep")
+    if "underwater" in description:
+        cues.append("soft underwater light caustics")
+    if "fabric" in description or "dress" in description or "linen" in description:
+        cues.append("gentle fabric drift")
+    if "book" in description or "library" in description:
+        cues.append("drifting books")
+    if "pearl light" in description or "surface door" in description:
+        cues.append("soft light caustics")
+    if cues:
+        return ", ".join(_dedupe(cues[:3]))
     return "small environment motion matching the source still"
 
 

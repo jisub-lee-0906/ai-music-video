@@ -433,6 +433,32 @@ def test_adapter_fallback_actions_are_visible_world_specific_actions():
     )
 
 
+def test_ltx_motion_cues_do_not_invent_unsupplied_world_objects():
+    cases = [
+        (
+            "synthwave arctic aurora music video, one solitary protagonist crosses blue ice under pulsing sky light, "
+            "silver parka silhouette, no city, no satellite dish",
+            ("satellite-dish", "satellite dish", "city"),
+            ("snow", "aurora", "ice"),
+        ),
+        (
+            "dream-pop underwater chamber music video, one solitary protagonist moves through pearl light toward a surface door, "
+            "pale linen dress silhouette, no library, no floating books, no city",
+            ("drifting books", "floating books", "library", "city"),
+            ("underwater", "pearl light", "surface door"),
+        ),
+    ]
+
+    for concept, forbidden_terms, expected_terms in cases:
+        contract = parse_user_intent_contract(concept)
+        render_item = {"shot_id": "S003", "story_contract": {}, "selected_pose_anchor_id": "ANCHOR_POSE_THREE_QUARTER_MEDIUM"}
+        ltx = adapt_ltx_ia2v_prompt(contract, render_item)["positive_text"].lower()
+
+        for term in forbidden_terms:
+            assert term not in ltx, (concept, term, ltx)
+        assert any(term in ltx for term in expected_terms), (concept, ltx)
+
+
 def test_internal_visual_mode_tokens_are_not_model_facing():
     contract = parse_user_intent_contract(
         "k-indie rainy greenhouse music video, a solo adult protagonist repairs a flickering cassette recorder "
