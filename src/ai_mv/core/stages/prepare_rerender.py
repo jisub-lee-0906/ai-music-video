@@ -127,6 +127,8 @@ def _merge_coverage_repair_stage_inputs(payload: dict, stage_inputs: dict[str, d
             },
             "prompt_seed": _coverage_repair_prompt_seed(repair_type, after_shot_id, before_shot_id),
             "clip_prompt_seed": _coverage_repair_clip_prompt_seed(repair_type, after_shot_id, before_shot_id),
+            "workflow_prompts": _coverage_repair_workflow_prompts(repair_type, after_shot_id, before_shot_id),
+            "legacy_prompt_fields": _diagnostic_legacy_prompt_fields(),
             "coverage_repair": {
                 "after_shot_id": after_shot_id,
                 "before_shot_id": before_shot_id,
@@ -171,6 +173,58 @@ def _coverage_repair_clip_prompt_seed(repair_type: str, after_shot_id: str, befo
     if after_shot_id:
         return f"coverage extension motion after {after_shot_id}; clean single-subject motion, no clone, no duplicate body"
     return "coverage extension motion; clean single-subject motion, no clone, no duplicate body"
+
+
+def _coverage_repair_workflow_prompts(repair_type: str, after_shot_id: str, before_shot_id: str) -> dict[str, dict[str, str]]:
+    label = _coverage_repair_label(repair_type, after_shot_id, before_shot_id)
+    return {
+        "flux2_ref_still": {
+            "positive_text": _join_prompt_tokens(
+                [
+                    f"{label} keyframe",
+                    "single protagonist continuity repair",
+                    "source-bound transition composition",
+                    "preserve story continuity",
+                ]
+            )
+        },
+        "ltx_ia2v": {
+            "positive_text": _join_prompt_tokens(
+                [
+                    f"{label} motion",
+                    "single protagonist continuity motion",
+                    "source-bound transition movement",
+                    "clean terminal frame",
+                ]
+            ),
+            "negative_text": "clone, duplicate body, second person, unrelated person",
+        },
+    }
+
+
+def _coverage_repair_label(repair_type: str, after_shot_id: str, before_shot_id: str) -> str:
+    if repair_type == "coverage_bridge_shot" and after_shot_id and before_shot_id:
+        return f"coverage bridge between {after_shot_id} and {before_shot_id}"
+    if after_shot_id:
+        return f"coverage extension after {after_shot_id}"
+    return "coverage extension"
+
+
+def _diagnostic_legacy_prompt_fields() -> dict[str, object]:
+    return {
+        "status": "diagnostic_only",
+        "model_facing_source": "workflow_prompts",
+        "fields": ["prompt_seed", "clip_prompt_seed"],
+    }
+
+
+def _join_prompt_tokens(parts: list[str]) -> str:
+    tokens: list[str] = []
+    for part in parts:
+        token = str(part or "").strip()
+        if token and token not in tokens:
+            tokens.append(token)
+    return ", ".join(tokens)
 
 
 def _safe_float(value: object, default: float) -> float:

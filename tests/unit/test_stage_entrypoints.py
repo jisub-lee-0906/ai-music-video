@@ -3662,6 +3662,20 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
                 },
                 "prompt_seed": "coverage bridge shot between S001 and S002; preserve story continuity without introducing a second person",
                 "clip_prompt_seed": "coverage bridge motion between S001 and S002; clean single-subject motion, no clone, no duplicate body",
+                "workflow_prompts": {
+                    "flux2_ref_still": {
+                        "positive_text": "coverage bridge between S001 and S002 keyframe, single protagonist continuity repair, source-bound transition composition, preserve story continuity",
+                    },
+                    "ltx_ia2v": {
+                        "positive_text": "coverage bridge between S001 and S002 motion, single protagonist continuity motion, source-bound transition movement, clean terminal frame",
+                        "negative_text": "clone, duplicate body, second person, unrelated person",
+                    },
+                },
+                "legacy_prompt_fields": {
+                    "status": "diagnostic_only",
+                    "model_facing_source": "workflow_prompts",
+                    "fields": ["prompt_seed", "clip_prompt_seed"],
+                },
                 "coverage_repair": {
                     "after_shot_id": "S001",
                     "before_shot_id": "S002",
@@ -3687,6 +3701,48 @@ def test_prepare_rerender_expands_coverage_repair_shots_into_stills_and_clips_in
     assert assemble["music_file"] == "song.wav"
     assert assemble["audio_map"] == {}
     validate_stage_input("stills", stills)
+
+
+def test_prepare_rerender_coverage_repair_rows_include_workflow_prompts_not_legacy_only():
+    out = run_prepare_rerender(
+        StageInput(
+            run_id="run-prepare-coverage-workflow-prompts",
+            config={},
+            payload={
+                "music_file": "song.wav",
+                "assembly_plan": {
+                    "coverage_repair_plan": {
+                        "status": "repair_required",
+                        "repair_shots": [
+                            {
+                                "shot_id": "COV_REPAIR_001",
+                                "section_id": "SEC_001",
+                                "repair_type": "coverage_bridge_shot",
+                                "target_duration_sec": 3.0,
+                                "after_shot_id": "S001",
+                                "before_shot_id": "S002",
+                                "render_mode": "ia2v",
+                            }
+                        ],
+                    }
+                },
+            },
+        )
+    )
+
+    render_row = out.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]
+    workflow_prompts = render_row["workflow_prompts"]
+    still_positive = workflow_prompts["flux2_ref_still"]["positive_text"].lower()
+    ltx_positive = workflow_prompts["ltx_ia2v"]["positive_text"].lower()
+    ltx_negative = workflow_prompts["ltx_ia2v"]["negative_text"].lower()
+
+    assert "coverage bridge" in still_positive
+    assert "coverage bridge" in ltx_positive
+    assert "no clone" not in still_positive
+    assert "no clone" not in ltx_positive
+    assert "duplicate body" in ltx_negative
+    assert render_row["legacy_prompt_fields"]["status"] == "diagnostic_only"
+    assert render_row["legacy_prompt_fields"]["model_facing_source"] == "workflow_prompts"
 
 
 def test_prepare_rerender_collects_review_stage_inputs_for_sync_repairs():
@@ -5706,8 +5762,69 @@ def test_repair_rerender_prompts_leaves_inputs_unchanged_when_no_execution_paylo
     assert out.payload["rerender_stage_inputs"] == stage_input.payload["rerender_stage_inputs"]
 
 
+def test_repair_rerender_prompts_updates_workflow_prompts_without_promoting_poisoned_legacy_fields():
+    stage_input = StageInput(
+        run_id="run-rerender-workflow-prompt-repair",
+        config={},
+        payload={
+            "review_report": {
+                "rerender_execution_payloads": [
+                    {
+                        "shot_id": "S007",
+                        "fix_strategy": "tighten_identity_continuity_anchors",
+                        "prompt_contract_focus": ["still_prompt_text", "clip_positive_prompt"],
+                    }
+                ]
+            },
+            "rerender_stage_inputs": {
+                "stills": {
+                    "render_plan": [
+                        {
+                            "shot_id": "S007",
+                            "still_prompt_text": "poisoned legacy cassette lantern satellite dish radio tower floating books",
+                            "workflow_prompts": {
+                                "flux2_ref_still": {
+                                    "positive_text": "source-bound forest pier protagonist keyframe",
+                                }
+                            },
+                        }
+                    ]
+                },
+                "clips": {
+                    "render_plan": [
+                        {
+                            "shot_id": "S007",
+                            "clip_positive_prompt": "poisoned legacy neon rooftop with cassette and lantern",
+                            "workflow_prompts": {
+                                "ltx_ia2v": {
+                                    "positive_text": "source-bound forest pier protagonist motion",
+                                    "negative_text": "",
+                                }
+                            },
+                        }
+                    ]
+                },
+            },
+        },
+    )
+
+    out = run_repair_rerender_prompts(stage_input)
+    still_row = out.payload["rerender_stage_inputs"]["stills"]["render_plan"][0]
+    clip_row = out.payload["rerender_stage_inputs"]["clips"]["render_plan"][0]
+    still_positive = still_row["workflow_prompts"]["flux2_ref_still"]["positive_text"].lower()
+    ltx_positive = clip_row["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
+    combined_workflow = f"{still_positive} {ltx_positive}"
+
+    assert still_row["still_prompt_text"] == "poisoned legacy cassette lantern satellite dish radio tower floating books"
+    assert clip_row["clip_positive_prompt"] == "poisoned legacy neon rooftop with cassette and lantern"
+    assert "preserve neighboring-shot continuity" in still_positive
+    assert "preserve neighboring-shot continuity" in ltx_positive
+    for forbidden in ("cassette", "lantern", "satellite dish", "radio tower", "floating books", "neon rooftop"):
+        assert forbidden not in combined_workflow
+
 
 def test_rerender_loop_chains_prepare_repair_execute_and_review(monkeypatch):
+
     calls = []
 
     def _fake_prepare(stage_input):
