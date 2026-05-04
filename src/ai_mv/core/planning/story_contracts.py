@@ -130,6 +130,28 @@ def _section_alignment_visual_token(shot: dict, *, concept_text: str = "") -> st
         progression = shot.get("narrative_progression") if isinstance(shot.get("narrative_progression"), dict) else {}
         beat_role = _clean(progression.get("beat_role")) or _clean(shot.get("story_function")) or _clean(shot.get("section_type"))
         return f"desert radio {beat_role.replace('_', ' ')} beat" if beat_role else "desert radio beat"
+    return _visual_mode_label(raw_visual_mode)
+
+
+def _visual_mode_label(raw_visual_mode: str) -> str:
+    labels = {
+        "rooftop_edge": "high-edge section beat",
+        "glass_corridor": "layered-passage section beat",
+        "bridge_glass": "layered bridge transition beat",
+        "release_stride": "release stride beat",
+        "pre_chorus_tension": "pre-chorus tension beat",
+        "chorus_front": "front-facing chorus beat",
+        "neon_highway": "long-path section beat",
+        "crosswalk_wait": "threshold wait beat",
+        "live_house_entry": "performance-threshold beat",
+        "amp_corridor": "directional-light path beat",
+        "window_haze": "soft-haze section beat",
+    }
+    lower = raw_visual_mode.lower()
+    if lower in labels:
+        return labels[lower]
+    if "_" in raw_visual_mode:
+        return raw_visual_mode.replace("_", " ") + " beat"
     return raw_visual_mode
 
 

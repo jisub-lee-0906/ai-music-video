@@ -382,8 +382,10 @@ def _world_motion_cue(world: dict) -> str:
 def _visible_fallback_action(contract: dict, render_item: dict, *, still: bool) -> str:
     world = contract.get("world", {}) if isinstance(contract, dict) and isinstance(contract.get("world"), dict) else {}
     description = str(world.get("positive_description", "")).lower()
-    if "desert" in description or "radio tower" in description or "radio signal" in description:
+    if _is_desert_radio_world(world):
         return "moves through the established desert radio landscape and follows the visible signal direction"
+    if _has_desert_terms(world):
+        return "moves through the established desert landscape toward the visible horizon direction"
     if "arctic" in description or "observatory" in description or "aurora" in description:
         return "steps through the established ice-and-aurora space as the visible signal changes the composition"
     if "greenhouse" in description:
@@ -538,31 +540,51 @@ def _uses_front_payoff_anchor(render_item: dict) -> bool:
 
 
 def _final_payoff_readable_action(world: dict) -> str:
-    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
-    if "desert" in description or "radio tower" in description:
+    if _is_desert_radio_world(world):
         return "stands facing the viewer with the resolved radio signal held close to the body and calm resolve visible in the eyes"
+    if _has_desert_terms(world):
+        return "stands facing the viewer in the desert horizon light with calm resolve visible in the eyes"
     return "stands facing the viewer in a resolved still pose with calm emotion visible in the eyes"
 
 
 def _final_payoff_staging(world: dict) -> str:
-    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
-    if "desert" in description or "radio tower" in description:
+    if _is_desert_radio_world(world):
         return "centered front-facing hold, bright sunrise light on the face, radio tower behind as a soft distant motif, eyes and upper wardrobe clearly readable"
+    if _has_desert_terms(world):
+        return "centered front-facing hold, bright sunrise desert light on the face, horizon behind as a soft distant motif, eyes and upper wardrobe clearly readable"
     return "centered front-facing hold, bright key light on the face, eyes and upper wardrobe clearly readable"
 
 
 def _final_payoff_motion_action(world: dict) -> str:
-    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
-    if "desert" in description or "radio tower" in description:
+    if _is_desert_radio_world(world):
         return "remain front-facing throughout while holding the resolved radio close, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
+    if _has_desert_terms(world):
+        return "remain front-facing throughout in the desert horizon light, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
     return "remain front-facing throughout in a resolved hold, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
 
 
 def _final_payoff_motion_staging(world: dict) -> str:
-    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
-    if "desert" in description or "radio tower" in description:
+    if _is_desert_radio_world(world):
         return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep the radio tower softly behind, keep face and upper wardrobe readable for the whole clip"
+    if _has_desert_terms(world):
+        return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep the desert horizon softly behind, keep face and upper wardrobe readable for the whole clip"
     return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep face and upper wardrobe readable for the whole clip"
+
+
+def _has_desert_terms(world: dict) -> bool:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    return any(term in description for term in ("desert", "dune", "dunes", "sand", "sunrise"))
+
+
+def _has_radio_signal_terms(world: dict) -> bool:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    motifs = " ".join(str(motif or "") for motif in world.get("motifs", [])).lower() if isinstance(world, dict) else ""
+    source = f"{description} {motifs}"
+    return any(term in source for term in ("radio", "tower", "signal", "antenna"))
+
+
+def _is_desert_radio_world(world: dict) -> bool:
+    return _has_desert_terms(world) and _has_radio_signal_terms(world)
 
 
 def _final_payoff_motion_negatives() -> list[str]:
@@ -661,6 +683,12 @@ def _clean_model_sentence(text: object) -> str:
     value = value.replace("live_house_entry", "narrow threshold cut by performance light")
     value = value.replace("amp_corridor", "narrow path cut by directional light")
     value = value.replace("window_haze", "soft haze through layered foreground details")
+    value = value.replace("rooftop_edge", "high edge of the established scene")
+    value = value.replace("glass_corridor", "layered passage through the established scene")
+    value = value.replace("bridge_glass", "layered transition through the established scene")
+    value = value.replace("release_stride", "release-section stride through the established scene")
+    value = value.replace("pre_chorus_tension", "pre-chorus tension beat")
+    value = value.replace("chorus_front", "front-facing chorus emphasis")
     value = value.replace("same block", "same established space")
     value = value.replace("new angle", "changed camera angle")
     value = value.replace("evolved staging", "changed staging")

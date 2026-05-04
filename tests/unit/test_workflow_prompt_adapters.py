@@ -462,6 +462,44 @@ def test_ltx_motion_cues_do_not_invent_unsupplied_world_objects():
         assert any(term in ltx for term in expected_terms), (concept, ltx)
 
 
+def test_desert_only_final_payoff_does_not_invent_radio_signal_or_tower():
+    concept = (
+        "alt-pop desert sunrise music video, one solitary protagonist crosses silent dunes toward a warm horizon, "
+        "quiet uncertainty turning into calm resolve, linen travel jacket silhouette, no city, no neon"
+    )
+    contract = parse_user_intent_contract(concept)
+    render_item = {
+        "shot_id": "S004",
+        "selected_pose_anchor_id": "ANCHOR_POSE_FINAL_PAYOFF_FRONT",
+        "story_contract": {
+            "story_function": "payoff",
+            "visual_payoff": "calm resolve becomes visible at the horizon",
+        },
+    }
+
+    still = adapt_flux2_ref_still_prompt(contract, render_item)["positive_text"].lower()
+    ltx = adapt_ltx_ia2v_prompt(contract, render_item)["positive_text"].lower()
+    combined = still + "\n" + ltx
+
+    assert "desert" in combined or "dunes" in combined
+    assert "radio signal" not in combined
+    assert "resolved radio" not in combined
+    assert "radio tower" not in combined
+    assert "holding the resolved radio" not in combined
+
+
+def test_docs_default_desert_radio_payoff_preserves_radio_when_source_bound():
+    preview = _docs_default_preview()
+    final_item = next(item for item in preview["render_plan"] if item["selected_pose_anchor_id"] == "ANCHOR_POSE_FINAL_PAYOFF_FRONT")
+    still = final_item["workflow_prompts"]["flux2_ref_still"]["positive_text"].lower()
+    ltx = final_item["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
+    combined = still + "\n" + ltx
+
+    assert "radio" in combined
+    assert "tower" in combined
+    assert "desert" in combined or "dunes" in combined
+
+
 def test_internal_visual_mode_tokens_are_not_model_facing():
     contract = parse_user_intent_contract(
         "k-indie rainy greenhouse music video, a solo adult protagonist repairs a flickering cassette recorder "
@@ -481,6 +519,69 @@ def test_internal_visual_mode_tokens_are_not_model_facing():
     assert "crosswalk_wait" not in combined
     assert "window_haze" not in combined
     assert "between wet plant rows" in combined or "fogged glass" in combined
+
+
+def test_rooftop_and_glass_visual_mode_tokens_are_not_model_facing_or_lint_clean():
+    concept = (
+        "dream-pop forest fog pier music video, one solitary protagonist walks away into soft mist, "
+        "white linen dress silhouette, no city, no neon, no rooftop, no glass corridor"
+    )
+    preview = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": concept,
+            "audio_map": {"duration_sec": 24},
+            "shot_plan": [
+                {
+                    "shot_id": "S001",
+                    "section_type": "Verse",
+                    "shot_role": "world_bridge",
+                    "visual_mode": "rooftop_edge",
+                    "story_function": "search",
+                    "visual_event": "protagonist crosses the forest pier through rooftop_edge",
+                },
+                {
+                    "shot_id": "S002",
+                    "section_type": "Chorus",
+                    "shot_role": "hero_closeup",
+                    "visual_mode": "glass_corridor",
+                    "story_function": "release",
+                    "visual_event": "mist opens through glass_corridor",
+                },
+            ],
+        },
+    )
+    visual_positive = "\n".join(_visual_workflow_positive_texts(preview)).lower()
+
+    assert preview["workflow_prompt_lint"]["status"] == "pass"
+    for token in ("rooftop_edge", "glass_corridor", "through rooftop_edge", "through glass_corridor"):
+        assert token not in visual_positive
+    for forbidden in ("city", "neon", "rooftop", "glass corridor"):
+        assert forbidden not in visual_positive
+
+
+def test_workflow_prompt_lint_rejects_rooftop_and_glass_visual_mode_tokens():
+    payload = {
+        "render_plan": [
+            {
+                "shot_id": "S001",
+                "workflow_prompts": {
+                    "flux2_ref_still": {"positive_text": "A forest protagonist moves through rooftop_edge."},
+                    "ltx_ia2v": {
+                        "positive_text": "scene: forest pier. action: mist opens through glass_corridor.",
+                        "negative_text": "",
+                    },
+                },
+            }
+        ]
+    }
+
+    lint = lint_workflow_prompts(payload)
+
+    assert lint["status"] == "fail"
+    issues = "\n".join(v["issue"] for v in lint["violations"])
+    assert "rooftop_edge" in issues
+    assert "glass_corridor" in issues
 
 
 def test_tti_anchor_uses_concept_wardrobe_without_old_defaults():

@@ -17,7 +17,7 @@ _DIRECTOR_PLACEHOLDERS = (
     "concept-specific visual motif",
     "story-derived stable outfit silhouette",
 )
-_INTERNAL_TOKEN_RE = re.compile(r"\b(?:neon_highway|crosswalk_wait|live_house_entry|amp_corridor|window_haze)\b", re.I)
+_INTERNAL_TOKEN_RE = re.compile(r"\b(?:neon_highway|crosswalk_wait|live_house_entry|amp_corridor|window_haze|rooftop_edge|glass_corridor|bridge_glass|release_stride|pre_chorus_tension|chorus_front)\b", re.I)
 
 
 def lint_workflow_prompts(plan_payload: dict, audio_plan: dict | None = None) -> dict:
