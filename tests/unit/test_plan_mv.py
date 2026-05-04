@@ -665,6 +665,86 @@ def test_plan_mv_threads_explicit_continuity_anchor_bundle_into_shots_and_render
     assert all("young woman" not in item["prompt_seed"] for item in out["render_plan"])
 
 
+def test_plan_mv_wardrobe_fallback_does_not_inject_dark_outerwear_without_source():
+    sample_payloads = [
+        (
+            {"planning": {"default_style_name": "synthwave"}},
+            "synthwave arctic observatory music video, one solitary protagonist follows aurora pulses across ice",
+        ),
+        (
+            {"planning": {"default_style_name": "alt_pop"}},
+            "alt-pop night forest pier music video, one solitary protagonist follows fireflies over moss and water",
+        ),
+        (
+            {},
+            "late-night city pop walk under wet neon lights",
+        ),
+    ]
+
+    for config, concept_text in sample_payloads:
+        out = build_plan_preview_payload(
+            config,
+            {
+                "concept_text": concept_text,
+                "audio_map": {
+                    "duration_sec": 18.0,
+                    "sections": [
+                        {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                        {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                        {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                        {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                    ],
+                },
+            },
+        )
+
+        model_facing_text = " ".join(
+            item["workflow_prompts"]["flux2_ref_still"]["positive_text"]
+            + " "
+            + item["workflow_prompts"]["ltx_ia2v"]["positive_text"]
+            for item in out["render_plan"]
+        ).lower()
+        planning_text = " ".join(
+            [
+                out["creative_direction"]["protagonist_anchor"],
+                out["creative_direction"]["wardrobe_anchor"],
+                *[shot["continuity_contract"]["wardrobe_anchor"] for shot in out["shot_plan"]],
+            ]
+        ).lower()
+
+        assert "dark outerwear" not in planning_text
+        assert "dark outerwear" not in model_facing_text
+        assert out["creative_direction"]["wardrobe_anchor"] == "story-derived stable outfit silhouette"
+
+
+def test_plan_mv_preserves_explicit_dark_outerwear_when_user_supplies_it():
+    out = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": "late-night city pop walk under wet neon lights, one protagonist wearing a dark raincoat",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    assert out["creative_direction"]["wardrobe_anchor"] == "dark raincoat"
+    assert all(shot["continuity_contract"]["wardrobe_anchor"] == "dark raincoat" for shot in out["shot_plan"])
+    model_facing_text = " ".join(
+        item["workflow_prompts"]["flux2_tti_anchor"]["positive_text"]
+        if "flux2_tti_anchor" in item.get("workflow_prompts", {})
+        else item["workflow_prompts"]["flux2_ref_still"]["positive_text"]
+        for item in out["render_plan"]
+    ).lower()
+    assert "dark raincoat" in model_facing_text
+
+
 def test_plan_mv_emits_structured_continuity_and_neighbor_contracts():
     out = build_plan_preview_payload(
         {},
@@ -689,7 +769,7 @@ def test_plan_mv_emits_structured_continuity_and_neighbor_contracts():
     assert first_shot["continuity_contract"] == {
         "protagonist_anchor": creative_direction["protagonist_anchor"],
         "world_anchor": creative_direction["world_anchor"],
-        "wardrobe_anchor": "stable dark outerwear silhouette",
+        "wardrobe_anchor": "story-derived stable outfit silhouette",
         "no_competing_subjects": True,
         "time_band_anchor": "same concept time and lighting band",
     }

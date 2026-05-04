@@ -85,9 +85,9 @@ def _protagonist_anchor(*, text: str, style_name: str) -> str:
     if style_name == "idol_pop":
         return "same lead idol performer, stable bright stage outfit silhouette, camera-readable face, no competing co-stars"
     if style_name == "synthwave":
-        return "same lone neon-night protagonist, stable dark outerwear silhouette, no competing bystanders"
+        return "same lone synthwave protagonist, stable story-derived outfit silhouette, no competing bystanders"
     if any(token in text for token in ("walk", "wet", "neon", "late-night")):
-        return "same lone night-walk protagonist, stable dark outerwear silhouette, no competing bystanders"
+        return "same lone night-walk protagonist, stable story-derived outfit silhouette, no competing bystanders"
     return "same lone protagonist, stable silhouette, no competing bystanders"
 
 
@@ -97,8 +97,6 @@ def _wardrobe_anchor(*, text: str, style_name: str) -> str:
         return explicit
     if style_name == "idol_pop":
         return "stable bright stage outfit silhouette"
-    if style_name == "synthwave" or any(token in text for token in ("walk", "wet", "neon", "late-night", "night")):
-        return "stable dark outerwear silhouette"
     return "story-derived stable outfit silhouette"
 
 
@@ -185,8 +183,8 @@ def _explicit_wardrobe_from_text(text: str) -> str:
 
     value = str(text or "")
     patterns = (
-        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
-        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
     )
     for pattern in patterns:
         match = re.search(pattern, value, flags=re.I)

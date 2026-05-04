@@ -128,11 +128,12 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     if front_payoff_lock:
         shot_grammar = _final_payoff_staging(world)
     scene = _workflow_scene_description(world)
+    wardrobe = _wardrobe_from_contract(contract)
     prompt = _join_sentences(
         [
             "Use the reference character identity exactly.",
             f"A solitary protagonist in {scene}, {action}.",
-            f"Scene continuity: {scene}, stable practical wardrobe silhouette, exact same shirt color and collar details from the reference image, one readable protagonist only.",
+            f"Scene continuity: source world, {wardrobe}, exact same shirt color and collar details from the reference image, one readable protagonist only.",
             f"{camera}, {alignment}.",
             f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
             "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
@@ -160,10 +161,11 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
         shot_grammar = _final_payoff_motion_staging(world)
     scene = _workflow_scene_description(world)
     motion_cue = _world_motion_cue(world)
+    wardrobe = _wardrobe_from_contract(contract)
     prompt = _join_sentences(
         [
             f"scene: {scene}.",
-            "character: same solo protagonist from the source still, stable practical wardrobe silhouette and clear face continuity.",
+            f"character: same solo protagonist from the source still, {wardrobe} and clear face continuity.",
             f"action: {action}.",
             f"staging: {shot_grammar}." if shot_grammar else "",
             f"camera: {camera}, single continuous shot, {motion_cue}.",
@@ -315,8 +317,8 @@ def _wardrobe_info_from_text(positive_text: str) -> dict:
 def _explicit_wardrobe_garment(positive_text: str) -> str:
     text = str(positive_text or "")
     patterns = (
-        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
-        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.I)
