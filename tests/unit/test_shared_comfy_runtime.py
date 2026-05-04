@@ -39,3 +39,11 @@ def test_default_config_allows_explicit_exclusive_comfy_opt_in(monkeypatch):
 
     assert cfg["runtime"]["interrupt_comfy_before_start"] is True
     assert cfg["runtime"]["clear_comfy_queue_before_start"] is True
+
+
+def test_default_config_allows_explicit_between_clip_cleanup_opt_in(monkeypatch):
+    monkeypatch.setenv("AI_MV_CLEANUP_BETWEEN_CLIPS", "true")
+
+    cfg = default_config()
+
+    assert cfg["render"]["cleanup_between_clips"] is True

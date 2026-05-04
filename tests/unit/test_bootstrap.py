@@ -27,7 +27,15 @@ def test_bootstrap_applies_defaults_for_sparse_config(tmp_path, monkeypatch):
     assert out["render"]["ltx_fps"] == 24
     assert out["render"]["ltx_default_shot_sec"] == 4.0
     assert out["render"]["ltx_negative"] == "pc game, console game, video game, cartoon, childish, ugly"
-    assert set(out["render"]) == {"flux2_size", "ltx_ia2v_size", "ltx_fps", "ltx_default_shot_sec", "ltx_negative"}
+    assert out["render"]["cleanup_between_clips"] is False
+    assert set(out["render"]) == {
+        "flux2_size",
+        "ltx_ia2v_size",
+        "ltx_fps",
+        "ltx_default_shot_sec",
+        "ltx_negative",
+        "cleanup_between_clips",
+    }
     assert out["concept_text"]
 
 

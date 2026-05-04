@@ -51,6 +51,18 @@ def clear_queue(base_url: str, timeout: int | float | None = 5) -> None:
         raise ComfyRequestError(f"Comfy queue clear failed: {exc}") from exc
 
 
+def free_memory(base_url: str, timeout: int | float | None = 5) -> None:
+    try:
+        res = requests.post(
+            f"{base_url.rstrip('/')}/free",
+            json={"unload_models": True, "free_memory": True},
+            timeout=timeout,
+        )
+        res.raise_for_status()
+    except Exception as exc:
+        raise ComfyRequestError(f"Comfy free memory failed: {exc}") from exc
+
+
 def running_and_pending_counts(base_url: str, timeout: int | float | None = 5) -> tuple[int, int]:
     state = queue_state(base_url, timeout=timeout)
     running = state.get("queue_running", [])
@@ -80,6 +92,7 @@ def wait_history(
     prompt_id: str,
     timeout: int | None,
     max_transient_errors: int = 8,
+    request_timeout_cap: int | float = 10.0,
 ) -> dict[str, Any]:
     start = time.time()
     url = f"{base_url.rstrip('/')}/history/{prompt_id}"
@@ -92,7 +105,7 @@ def wait_history(
             raise TimeoutError(f"ComfyUI history timeout: {prompt_id}")
         remaining = max(0.0, timeout - elapsed) if timeout is not None else None
         try:
-            request_timeout = min(remaining, 10.0) if remaining is not None else None
+            request_timeout = min(remaining, float(request_timeout_cap)) if remaining is not None else float(request_timeout_cap)
             data = _safe_history_get(url, request_timeout, prompt_id)
             transient_errors = 0
         except RecoverableComfyError as exc:

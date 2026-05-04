@@ -2304,6 +2304,164 @@ def test_render_clips_routes_ia2v(monkeypatch):
     assert calls[0][1]["audio"] == "music/song.mp3"
 
 
+def test_render_clips_resumes_after_existing_completed_clip_results(monkeypatch):
+    calls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(item["shot_id"])
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-resume-clips",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload={
+            "music_file": "music/song.mp3",
+            "clip_results": [
+                {
+                    "shot_id": "S001",
+                    "video": "D:/renders/S001_existing.mp4",
+                    "render_mode": "ia2v",
+                    "status": "done",
+                }
+            ],
+            "shot_plan": [
+                {"shot_id": "S001", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 0.0},
+                {"shot_id": "S002", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 4.0},
+            ],
+            "render_plan": [
+                {"shot_id": "S001", "render_mode": "ia2v", "clip_prompt_seed": "already done"},
+                {"shot_id": "S002", "render_mode": "ia2v", "clip_prompt_seed": "resume here"},
+            ],
+            "still_results": [
+                {"shot_id": "S001", "image": "D:/renders/S001.png"},
+                {"shot_id": "S002", "image": "D:/renders/S002.png"},
+            ],
+        },
+    )
+
+    out = run_render_clips(stage_input)
+
+    assert calls == ["S002"]
+    assert [row["shot_id"] for row in out.payload["clip_results"]] == ["S001", "S002"]
+    assert out.payload["clip_results"][0]["video"] == "D:/renders/S001_existing.mp4"
+    assert stage_input.payload["clip_results"][-1]["shot_id"] == "S002"
+
+
+def test_render_clips_records_failed_shot_before_raising(monkeypatch):
+    def _fake_run_ltx_ia2v(_config, item):
+        if item["shot_id"] == "S002":
+            raise RuntimeError("Comfy workflow timed out: prompt_id=abc")
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    stage_input = StageInput(
+        run_id="run-failed-shot",
+        config={"render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0}},
+        payload={
+            "music_file": "music/song.mp3",
+            "shot_plan": [
+                {"shot_id": "S001", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 0.0},
+                {"shot_id": "S002", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 4.0},
+            ],
+            "render_plan": [
+                {"shot_id": "S001", "render_mode": "ia2v", "clip_prompt_seed": "first"},
+                {"shot_id": "S002", "render_mode": "ia2v", "clip_prompt_seed": "oom candidate"},
+            ],
+            "still_results": [
+                {"shot_id": "S001", "image": "D:/renders/S001.png"},
+                {"shot_id": "S002", "image": "D:/renders/S002.png"},
+            ],
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="clip generation failed for shot S002"):
+        run_render_clips(stage_input)
+
+    assert stage_input.payload["clip_results"][0]["shot_id"] == "S001"
+    assert stage_input.payload["clip_failure"] == {
+        "shot_id": "S002",
+        "render_mode": "ia2v",
+        "error": "Comfy workflow timed out: prompt_id=abc",
+    }
+
+
+def test_render_clips_optionally_frees_comfy_memory_after_each_generated_clip(monkeypatch):
+    calls = []
+    cleanup_urls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        calls.append(item["shot_id"])
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.free_comfy_memory", lambda url: cleanup_urls.append(url), raising=False)
+    stage_input = StageInput(
+        run_id="run-cleanup-clips",
+        config={
+            "integrations": {"comfyui_base_url": "http://127.0.0.1:8000"},
+            "render": {
+                "ltx_negative": "bad",
+                "ltx_fps": 24,
+                "ltx_default_shot_sec": 4.0,
+                "cleanup_between_clips": True,
+            },
+        },
+        payload={
+            "music_file": "music/song.mp3",
+            "shot_plan": [
+                {"shot_id": "S001", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 0.0},
+                {"shot_id": "S002", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 4.0},
+            ],
+            "render_plan": [
+                {"shot_id": "S001", "render_mode": "ia2v", "clip_prompt_seed": "first"},
+                {"shot_id": "S002", "render_mode": "ia2v", "clip_prompt_seed": "second"},
+            ],
+            "still_results": [
+                {"shot_id": "S001", "image": "D:/renders/S001.png"},
+                {"shot_id": "S002", "image": "D:/renders/S002.png"},
+            ],
+        },
+    )
+
+    run_render_clips(stage_input)
+
+    assert calls == ["S001", "S002"]
+    assert cleanup_urls == ["http://127.0.0.1:8000", "http://127.0.0.1:8000"]
+    assert stage_input.payload["clip_cleanup"] == {
+        "enabled": True,
+        "completed_shot_ids": ["S001", "S002"],
+    }
+
+
+def test_render_clips_cleanup_is_disabled_by_default(monkeypatch):
+    cleanup_urls = []
+
+    def _fake_run_ltx_ia2v(_config, item):
+        return f"D:/renders/{item['shot_id']}_ia2v.mp4"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.run_ltx_ia2v", _fake_run_ltx_ia2v)
+    monkeypatch.setattr("ai_mv.core.stages.render_clips.free_comfy_memory", lambda url: cleanup_urls.append(url), raising=False)
+
+    run_render_clips(
+        StageInput(
+            run_id="run-no-cleanup-clips",
+            config={
+                "integrations": {"comfyui_base_url": "http://127.0.0.1:8000"},
+                "render": {"ltx_negative": "bad", "ltx_fps": 24, "ltx_default_shot_sec": 4.0},
+            },
+            payload={
+                "music_file": "music/song.mp3",
+                "shot_plan": [{"shot_id": "S001", "duration_sec": 4.0, "render_mode": "ia2v", "start_sec": 0.0}],
+                "render_plan": [{"shot_id": "S001", "render_mode": "ia2v", "clip_prompt_seed": "first"}],
+                "still_results": [{"shot_id": "S001", "image": "D:/renders/S001.png"}],
+            },
+        )
+    )
+
+    assert cleanup_urls == []
+
+
 def test_render_clips_propagates_anchor_identity_and_extends_duration_to_audio_coverage(monkeypatch):
     calls = []
 

@@ -3,6 +3,7 @@ from ai_mv.core.contracts.stage_io import StageInput, StageOutput
 from ai_mv.core.output_paths import ltx_clip_prefix
 from ai_mv.core.stages.still_qa_gate import assert_still_passes_ia2v_gate
 from ai_mv.engines.ltx_ia2v.runner import run_ltx_ia2v
+from ai_mv.infra.comfy_client import free_comfy_memory
 
 
 def run_render_clips(stage_input: StageInput) -> StageOutput:
@@ -12,14 +13,26 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
     render_map = {str(row.get("shot_id", "")).strip(): row for row in render_plan}
     still_map = {str(row.get("shot_id", "")).strip(): row for row in still_results}
     duration_targets = _duration_targets_by_shot(shot_plan, stage_input.payload, stage_input.config)
-    clip_results = []
+    clip_results = _existing_done_clip_results(stage_input.payload)
+    done_shot_ids = {str(row.get("shot_id", "")).strip() for row in clip_results if isinstance(row, dict)}
+    stage_input.payload["clip_results"] = clip_results
     for shot in shot_plan:
         shot_id = str(shot.get("shot_id", "")).strip()
         render_item = render_map.get(shot_id, {})
         render_mode = str(render_item.get("render_mode") or shot.get("render_mode", "")).strip()
         if not render_mode:
             raise RuntimeError(f"missing render_mode for shot: {shot_id}")
-        video_path, duration_contract = _run_clip(stage_input, shot_id, shot, render_item, still_map, render_mode, duration_targets.get(shot_id))
+        if shot_id in done_shot_ids:
+            continue
+        try:
+            video_path, duration_contract = _run_clip(stage_input, shot_id, shot, render_item, still_map, render_mode, duration_targets.get(shot_id))
+        except Exception as exc:
+            stage_input.payload["clip_failure"] = {
+                "shot_id": shot_id,
+                "render_mode": render_mode,
+                "error": str(exc),
+            }
+            raise RuntimeError(f"clip generation failed for shot {shot_id}: {exc}") from exc
         clip_results.append(
             {
                 "shot_id": shot_id,
@@ -31,6 +44,8 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
                 **duration_contract,
             }
         )
+        stage_input.payload["clip_results"] = clip_results
+        _cleanup_after_generated_clip(stage_input, shot_id)
     return StageOutput(
         "render_clips",
         "done",
@@ -43,6 +58,27 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
         },
         [],
     )
+
+
+def _existing_done_clip_results(payload: dict) -> list[dict]:
+    rows = payload.get("clip_results") if isinstance(payload.get("clip_results"), list) else []
+    return [dict(row) for row in rows if isinstance(row, dict) and str(row.get("status", "")).strip() == "done" and str(row.get("shot_id", "")).strip()]
+
+
+def _cleanup_after_generated_clip(stage_input: StageInput, shot_id: str) -> None:
+    render_cfg = stage_input.config.get("render", {}) if isinstance(stage_input.config.get("render"), dict) else {}
+    if not bool(render_cfg.get("cleanup_between_clips", False)):
+        return
+    base_url = str(stage_input.config.get("integrations", {}).get("comfyui_base_url", "")).strip()
+    if not base_url:
+        raise RuntimeError(f"clip cleanup requested but comfyui_base_url is missing after shot {shot_id}")
+    free_comfy_memory(base_url)
+    cleanup = stage_input.payload.setdefault("clip_cleanup", {"enabled": True, "completed_shot_ids": []})
+    if isinstance(cleanup, dict):
+        cleanup["enabled"] = True
+        completed = cleanup.setdefault("completed_shot_ids", [])
+        if isinstance(completed, list):
+            completed.append(shot_id)
 
 
 def _run_clip(

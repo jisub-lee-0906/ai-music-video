@@ -38,7 +38,15 @@ def test_default_config_exposes_only_current_video_controls_in_current_canon():
     assert cfg["render"]["ltx_fps"] == 24
     assert cfg["render"]["ltx_default_shot_sec"] == 4.0
     assert cfg["render"]["ltx_negative"] == "pc game, console game, video game, cartoon, childish, ugly"
-    assert set(cfg["render"]) == {"flux2_size", "ltx_ia2v_size", "ltx_fps", "ltx_default_shot_sec", "ltx_negative"}
+    assert cfg["render"]["cleanup_between_clips"] is False
+    assert set(cfg["render"]) == {
+        "flux2_size",
+        "ltx_ia2v_size",
+        "ltx_fps",
+        "ltx_default_shot_sec",
+        "ltx_negative",
+        "cleanup_between_clips",
+    }
     assert cfg["planning"] == {
         "enable_ia2v": True,
         "max_shot_sec": 8.0,
@@ -49,22 +57,32 @@ def test_default_config_exposes_only_current_video_controls_in_current_canon():
 
 
 
-def test_sample_config_uses_flux2_keys_and_matches_current_video_schema():
-    text = Path("docs/sample-config.yaml").read_text(encoding="utf-8")
-    assert "flux2_size:" in text
+def test_full_run_defaults_doc_matches_current_video_schema_without_legacy_sample_config():
+    text = Path("docs/full-run-default-inputs.md").read_text(encoding="utf-8")
+
+    assert not Path("docs/sample-config.yaml").exists()
+    assert "render.flux2_size: 1280x720" in text
+    assert "render.ltx_ia2v_size: 1280x720" in text
+    assert "planning.max_ia2v_shots: 2" in text
     assert "qwen_size:" not in text
     assert "qwen_negative:" not in text
-    assert "ltx_ia2v_size:" in text
-    assert "max_ia2v_shots:" in text
 
 
 
-def test_sample_config_does_not_hardcode_lyrics_language_or_override_default_concept_bias():
-    text = Path("docs/sample-config.yaml").read_text(encoding="utf-8")
+def test_full_run_defaults_doc_keeps_concept_text_user_facing_and_unbiased():
+    text = Path("docs/full-run-default-inputs.md").read_text(encoding="utf-8")
+    preferred_block = text.split("## Recommended default concept_text", 1)[1].split("## Recommended run_id", 1)[0]
+    concept_text = preferred_block.split("```text", 1)[1].split("```", 1)[0]
+
     assert 'language: "ja"' not in text
-    assert 'language: ""' in text
-    assert 'city pop' not in text.lower()
-    assert 'citypop' not in text.lower()
+    assert 'language: ""' not in text
+    assert "Flux" not in concept_text
+    assert "TTI" not in concept_text
+    assert "reference image" not in concept_text
+    assert "anchor" not in concept_text
+    assert "white background" not in concept_text
+    assert "city pop" not in concept_text.lower()
+    assert "citypop" not in concept_text.lower()
 
 
 

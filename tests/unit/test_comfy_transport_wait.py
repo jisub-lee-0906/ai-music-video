@@ -25,6 +25,21 @@ def test_wait_history_uses_subsecond_remaining(monkeypatch):
     assert seen["timeout"] < 1.0
 
 
+def test_wait_history_uses_bounded_request_timeout_even_when_total_timeout_disabled(monkeypatch):
+    seen = {"timeout": None}
+
+    def _fake_get_json(_url, timeout):
+        seen["timeout"] = timeout
+        return {"pid": {"outputs": {"9": {"images": [{"filename": "x.png"}]}}}}
+
+    monkeypatch.setattr(ct, "_get_json", _fake_get_json)
+
+    history = ct.wait_history("http://127.0.0.1:8000", "pid", timeout=None)
+
+    assert history["outputs"]
+    assert seen["timeout"] == 10.0
+
+
 def test_wait_history_wraps_request_error(monkeypatch):
     monkeypatch.setattr(ct, "_get_json", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
     with pytest.raises(ct.ComfyRequestError, match="history request failed"):
@@ -74,3 +89,27 @@ def test_collect_file_entries_ignores_none_subfolder():
         }
     )
     assert files == ["x.png"]
+
+
+def test_free_memory_posts_comfy_free_payload(monkeypatch):
+    calls = []
+
+    class _Response:
+        def raise_for_status(self):
+            return None
+
+    def _fake_post(url, json, timeout):
+        calls.append((url, json, timeout))
+        return _Response()
+
+    monkeypatch.setattr(ct.requests, "post", _fake_post)
+
+    ct.free_memory("http://127.0.0.1:8000")
+
+    assert calls == [
+        (
+            "http://127.0.0.1:8000/free",
+            {"unload_models": True, "free_memory": True},
+            5,
+        )
+    ]

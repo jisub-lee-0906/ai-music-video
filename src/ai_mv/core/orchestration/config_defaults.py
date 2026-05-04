@@ -23,10 +23,11 @@ DEFAULT_CONFIG: dict = {
         "ltx_fps": 24,
         "ltx_default_shot_sec": 4.0,
         "ltx_negative": "pc game, console game, video game, cartoon, childish, ugly",
+        "cleanup_between_clips": False,
     },
     "limits": {
         "timeout_seconds": 0,
-        "ltx_timeout_seconds": 0,
+        "ltx_timeout_seconds": 1800,
     },
     "integrations": {
         "comfyui_base_url": None,
@@ -91,16 +92,21 @@ def _clone(value):
 
 def _apply_runtime_env_overrides(config: dict) -> None:
     runtime = config.get("runtime")
-    if not isinstance(runtime, dict):
-        return
-    runtime["interrupt_comfy_before_start"] = _env_bool(
-        "AI_MV_INTERRUPT_COMFY_BEFORE_START",
-        bool(runtime.get("interrupt_comfy_before_start", False)),
-    )
-    runtime["clear_comfy_queue_before_start"] = _env_bool(
-        "AI_MV_CLEAR_COMFY_QUEUE_BEFORE_START",
-        bool(runtime.get("clear_comfy_queue_before_start", False)),
-    )
+    if isinstance(runtime, dict):
+        runtime["interrupt_comfy_before_start"] = _env_bool(
+            "AI_MV_INTERRUPT_COMFY_BEFORE_START",
+            bool(runtime.get("interrupt_comfy_before_start", False)),
+        )
+        runtime["clear_comfy_queue_before_start"] = _env_bool(
+            "AI_MV_CLEAR_COMFY_QUEUE_BEFORE_START",
+            bool(runtime.get("clear_comfy_queue_before_start", False)),
+        )
+    render = config.get("render")
+    if isinstance(render, dict):
+        render["cleanup_between_clips"] = _env_bool(
+            "AI_MV_CLEANUP_BETWEEN_CLIPS",
+            bool(render.get("cleanup_between_clips", False)),
+        )
 
 
 def _env_bool(name: str, default: bool) -> bool:

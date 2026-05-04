@@ -30,8 +30,8 @@ def ltx_timeout(config: dict) -> int | None:
     try:
         value = int(raw)
     except Exception:
-        return None
-    return None if value <= 0 else value
+        return 1800
+    return 1800 if value <= 0 else value
 
 
 

@@ -6,6 +6,7 @@ from typing import Any
 
 from ai_mv.infra.comfy_transport import (
     clear_queue as transport_clear_queue,
+    free_memory as transport_free_memory,
     interrupt as transport_interrupt,
     ping_comfy as transport_ping_comfy,
     running_and_pending_counts as transport_running_and_pending_counts,
@@ -51,6 +52,10 @@ def ping_comfy(base_url: str) -> bool:
 
 def clear_comfy_queue(base_url: str) -> None:
     transport_clear_queue(base_url)
+
+
+def free_comfy_memory(base_url: str) -> None:
+    transport_free_memory(base_url)
 
 
 def interrupt_comfy(base_url: str) -> None:

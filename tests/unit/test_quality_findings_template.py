@@ -58,10 +58,12 @@ def test_quality_findings_review_input_template_exposes_manual_mv_payoff_codes()
     assert "background_dominant_composition" in template["known_quality_finding_codes"]
 
 
-def test_quality_findings_manual_review_docs_list_scaffold_known_codes():
-    docs_text = (REPO_ROOT / "docs" / "quality-findings.md").read_text(encoding="utf-8")
+def test_quality_findings_manual_review_scaffold_is_internal_not_active_docs_surface():
+    docs_dir = REPO_ROOT / "docs"
+    docs_guide = (docs_dir / "README.md").read_text(encoding="utf-8")
 
-    missing = [code for code in KNOWN_QUALITY_FINDING_CODES if f"`{code}`" not in docs_text]
-
-    assert missing == []
-    assert "`repetitive_safe_editing`" in docs_text
+    assert not (docs_dir / "quality-findings.md").exists()
+    assert "quality-findings.md" not in docs_guide
+    assert "Current source of truth" in docs_guide
+    assert "known_quality_finding_codes" in quality_findings_review_input_template(["S001"])
+    assert "repetitive_safe_editing" in KNOWN_QUALITY_FINDING_CODES
