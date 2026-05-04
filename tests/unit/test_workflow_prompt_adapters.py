@@ -59,6 +59,7 @@ def test_flux2_tti_anchor_prompt_is_concrete_short_and_does_not_reference_prior_
     assert "adult protagonist" in lower
     assert "seamless pure white studio background" in lower
     assert "stable wardrobe silhouette" in lower
+    assert "light olive-gray desert travel overshirt" in lower
     assert "reference image" not in lower
     assert "from the identity anchor" not in lower
     assert "young woman" not in lower
@@ -462,3 +463,48 @@ def test_tti_anchor_uses_concept_wardrobe_without_old_defaults():
     assert "bob" not in prompt
     assert "young woman" not in prompt
     assert "story-derived stable outfit silhouette" not in prompt
+
+
+
+def test_docs_default_final_payoff_prompt_requires_front_lit_readable_face_without_turn_away_conflict():
+    preview = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": DOCS_DEFAULT_CONCEPT,
+            "audio_map": {
+                "duration_sec": 30.0,
+                "sections": [
+                    {"section_id": "CHORUS", "section_type": "Chorus", "start_sec": 0.0, "end_sec": 22.0},
+                    {"section_id": "OUTRO", "section_type": "Outro", "start_sec": 22.0, "end_sec": 30.0},
+                ],
+            },
+        },
+    )
+    final_item = next(item for item in preview["render_plan"] if item["selected_pose_anchor_id"] == "ANCHOR_POSE_FINAL_PAYOFF_FRONT")
+    prompt = final_item["workflow_prompts"]["flux2_ref_still"]["positive_text"].lower()
+
+    assert "front-facing medium shot" in prompt
+    assert "bright front-lit readable face" in prompt
+    assert "direct viewer-facing gaze" in prompt
+    assert "same shirt color and collar details from the reference image" in prompt
+    assert "turns away" not in prompt
+    assert "turn away" not in prompt
+    assert "walks away" not in prompt
+    assert "side-profile" not in prompt
+
+
+def test_docs_default_pose_anchor_prompts_lock_reference_wardrobe_and_face_readability():
+    preview = _docs_default_preview()
+    pose_bank = preview["anchor_package"]["pose_anchor_bank"]
+    prompts_by_id = {
+        anchor["anchor_id"]: anchor["workflow_prompts"]["flux2_ref_anchor"]["positive_text"].lower()
+        for anchor in pose_bank
+    }
+
+    for anchor_id in ("ANCHOR_POSE_FULL_BODY_STANDING", "ANCHOR_POSE_FINAL_PAYOFF_FRONT"):
+        prompt = prompts_by_id[anchor_id]
+        assert "exact same shirt or jacket color from the reference image" in prompt
+        assert "matching collar and shoulder details" in prompt
+        assert "bright front-lit readable face" in prompt
+        assert "wardrobe color palette" in prompt
+        assert not NEGATIVE_CLAUSE_RE.search(prompt)

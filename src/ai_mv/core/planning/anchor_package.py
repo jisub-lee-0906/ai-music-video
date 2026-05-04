@@ -12,10 +12,11 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
     """
 
     direction = creative_direction if isinstance(creative_direction, dict) else {}
+    contract = parse_user_intent_contract(concept_text)
     protagonist_anchor = str(direction.get("protagonist_anchor", "")).strip() or "one lead protagonist with story-appropriate presentation"
-    wardrobe_anchor = _wardrobe_anchor(style_name, direction)
+    wardrobe_anchor = _wardrobe_anchor(style_name, direction, contract=contract)
     workflow_anchor_prompt = adapt_flux2_tti_anchor_prompt(
-        parse_user_intent_contract(concept_text),
+        contract,
         {
             "protagonist_anchor": protagonist_anchor,
             "wardrobe_anchor": wardrobe_anchor,
@@ -43,6 +44,7 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
             },
         ],
         "pose_anchor_bank": [_full_body_anchor_spec(protagonist_anchor, wardrobe_anchor)],
+        "wardrobe_anchor": wardrobe_anchor,
         "pose_anchor_policy": {
             "primary_identity_anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
             "workflow_target": "image_flux2_reference_image",
@@ -93,7 +95,9 @@ def with_selected_pose_anchor_bank(
             selected_ids.append(anchor_id)
     direction = creative_direction if isinstance(creative_direction, dict) else {}
     protagonist_anchor = str(direction.get("protagonist_anchor", "")).strip() or "one lead protagonist with story-appropriate presentation"
-    wardrobe_anchor = _wardrobe_anchor(style_name, direction)
+    explicit_wardrobe = str(direction.get("wardrobe_anchor", "")).strip()
+    usable_explicit_wardrobe = "" if explicit_wardrobe.lower() == "story-derived stable outfit silhouette" else explicit_wardrobe
+    wardrobe_anchor = usable_explicit_wardrobe or str(anchor_package.get("wardrobe_anchor", "")).strip() or _wardrobe_anchor(style_name, direction)
     buildable_by_id = {anchor["anchor_id"]: anchor for anchor in _pose_anchor_bank(protagonist_anchor, wardrobe_anchor)}
     base_variants = [row for row in anchor_package.get("pose_anchor_bank", []) if isinstance(row, dict)]
     existing_ids = {str(row.get("anchor_id", "")).strip() for row in base_variants}
@@ -123,11 +127,15 @@ def with_selected_pose_anchor_bank(
 
 
 
-def _wardrobe_anchor(style_name: str, creative_direction: dict | None = None) -> str:
+def _wardrobe_anchor(style_name: str, creative_direction: dict | None = None, *, contract: dict | None = None) -> str:
     direction = creative_direction if isinstance(creative_direction, dict) else {}
     explicit = str(direction.get("wardrobe_anchor", "")).strip()
-    if explicit:
+    protagonist = contract.get("protagonist", {}) if isinstance(contract, dict) and isinstance(contract.get("protagonist"), dict) else {}
+    contract_wardrobe = str(protagonist.get("wardrobe", "")).strip()
+    if explicit and explicit.lower() != "story-derived stable outfit silhouette":
         return explicit
+    if contract_wardrobe and contract_wardrobe != "stable practical wardrobe silhouette":
+        return contract_wardrobe
     if style_name == "idol_pop":
         return "a bright stage-ready outfit with a clear stable silhouette"
     return "a story-derived stable outfit silhouette with readable color and shape continuity"
@@ -313,8 +321,8 @@ def _pose_anchor_workflow_prompt(
     return (
         "Use the reference character identity exactly. "
         "Create a white-background pose reference card with one centered subject and stable identity. "
-        f"Depict {subject} with the exact face identity, distinctive hairstyle, readable face, and {wardrobe_anchor}. "
-        f"Preserve the same wardrobe from the identity anchor: {wardrobe_anchor}; keep wardrobe color palette, collar and shoulder details, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
+        f"Depict {subject} with the exact face identity, distinctive hairstyle, bright front-lit readable face, and {wardrobe_anchor}. "
+        f"Preserve the same wardrobe from the identity anchor: {wardrobe_anchor}; exact same shirt or jacket color from the reference image, matching collar and shoulder details, keep wardrobe color palette, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
         f"Pose and framing: {clean_pose_instruction}.{prop_clause} "
         "Use a pure white seamless studio background with soft even studio lighting."
     )

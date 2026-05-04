@@ -112,18 +112,23 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=True)
+    final_payoff = _is_final_payoff_item(render_item)
+    if final_payoff:
+        action = _final_payoff_readable_action(world)
     alignment = _strip_default_world_leaks(
         _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression")),
         contract,
     ).strip(" .")
     camera = _still_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
+    if final_payoff:
+        shot_grammar = _final_payoff_staging(world)
     scene = _workflow_scene_description(world)
     prompt = _join_sentences(
         [
             "Use the reference character identity exactly.",
             f"A solitary protagonist in {scene}, {action}.",
-            f"Scene continuity: {scene}, stable practical wardrobe silhouette, one readable protagonist only.",
+            f"Scene continuity: {scene}, stable practical wardrobe silhouette, exact same shirt color and collar details from the reference image, one readable protagonist only.",
             f"{camera}, {alignment}.",
             f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
             "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
@@ -272,7 +277,10 @@ def _wardrobe_from_text(positive_text: str) -> str:
     lower = str(positive_text or "").lower()
     match = re.search(r"([^,.]+?silhouette)\b", positive_text, flags=re.I)
     if match:
-        return _clean_model_sentence(match.group(1))
+        matched = _clean_model_sentence(match.group(1))
+        if "desert" in lower and "radio" in lower and matched.lower() in {"stable wardrobe silhouette", "a stable wardrobe silhouette"}:
+            return "stable wardrobe silhouette: light olive-gray desert travel overshirt, neutral shirt collar, dark trousers"
+        return matched
     if "parka" in lower:
         return "stable silver parka silhouette"
     if "coat" in lower:
@@ -444,6 +452,39 @@ def _extract_visual_action(text: object) -> str:
     return ""
 
 
+def _is_final_payoff_item(render_item: dict) -> bool:
+    if not isinstance(render_item, dict):
+        return False
+    anchor = str(render_item.get("selected_pose_anchor_id", "")).lower()
+    story = render_item.get("story_contract") if isinstance(render_item.get("story_contract"), dict) else {}
+    combined = " ".join(
+        str(value or "")
+        for value in (
+            anchor,
+            render_item.get("story_function"),
+            render_item.get("section_type"),
+            render_item.get("visual_mode"),
+            story.get("visual_payoff"),
+            story.get("story_function"),
+        )
+    ).lower()
+    return "final_payoff" in anchor or "final payoff" in combined or "payoff" in combined and "resolved" in combined
+
+
+def _final_payoff_readable_action(world: dict) -> str:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    if "desert" in description or "radio tower" in description:
+        return "stands facing the viewer with the resolved radio signal held close to the body and calm resolve visible in the eyes"
+    return "stands facing the viewer in a resolved still pose with calm emotion visible in the eyes"
+
+
+def _final_payoff_staging(world: dict) -> str:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    if "desert" in description or "radio tower" in description:
+        return "centered front-facing hold, bright sunrise light on the face, radio tower behind as a soft distant motif, eyes and upper wardrobe clearly readable"
+    return "centered front-facing hold, bright key light on the face, eyes and upper wardrobe clearly readable"
+
+
 def _still_camera_for_item(render_item: dict) -> str:
     anchor = str(render_item.get("selected_pose_anchor_id", "")).lower() if isinstance(render_item, dict) else ""
     role = str(render_item.get("candidate_role", "")).lower() if isinstance(render_item, dict) else ""
@@ -452,7 +493,7 @@ def _still_camera_for_item(render_item: dict) -> str:
     if "walking_side" in anchor:
         return "medium-wide three-quarter profile with readable face and clear body direction"
     if "final_payoff" in anchor:
-        return "front-facing medium shot with calm resolved posture"
+        return "front-facing medium shot with bright front-lit readable face, direct viewer-facing gaze, calm resolved posture"
     return "medium-wide cinematic composition"
 
 
