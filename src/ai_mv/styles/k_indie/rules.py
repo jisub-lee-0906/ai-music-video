@@ -12,7 +12,7 @@ def k_indie_section_shot_specs(section_type: str, duration_sec: float) -> list[d
     if section_type == "bridge":
         return [_spec("bridge_pause", "bridge_pause", "medium", render_mode, 1.0)]
     if section_type == "outro":
-        return [_spec("outro_afterglow", "bus_stop_afterglow", "low", render_mode, 1.0)]
+        return [_spec("outro_release", "source_bound_release_hold", "low", render_mode, 1.0)]
     return [_spec("verse_walk", "crosswalk_wait", "medium", render_mode, 1.0)]
 
 

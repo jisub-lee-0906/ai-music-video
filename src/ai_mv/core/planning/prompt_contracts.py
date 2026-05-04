@@ -67,7 +67,21 @@ def _clip_visual_mode_token(shot: dict) -> str:
         progression = shot.get("narrative_progression") if isinstance(shot.get("narrative_progression"), dict) else {}
         beat_role = str(progression.get("beat_role", "") or shot.get("beat_role", "")).replace("_", " ").strip()
         return f"desert radio {beat_role} beat" if beat_role else "desert radio music-video beat"
-    return str(shot.get("visual_mode", "")).replace("_", " ").strip()
+    return _source_bound_visual_mode_label(str(shot.get("visual_mode", "")).strip())
+
+
+def _source_bound_visual_mode_label(raw_visual_mode: str) -> str:
+    labels = {
+        "bookstore_window": "world-first window beat",
+        "rain_window_detail": "source-bound detail beat",
+        "window_reflection": "source-bound window detail beat",
+        "bus_stop_afterglow": "late-section release hold beat",
+        "afterglow_hold": "late-section release hold beat",
+    }
+    lower = raw_visual_mode.lower()
+    if lower in labels:
+        return labels[lower]
+    return raw_visual_mode.replace("_", " ").strip()
 
 
 
@@ -199,7 +213,7 @@ def _section_emphasis_variant_token(variant: str) -> str:
         "late-night drift": "late-night drift emphasis",
         "reset_suspension": "reset-and-suspension emphasis",
         "world_anchor": "world-continuity still emphasis",
-        "afterglow_hold": "afterglow hold emphasis",
+        "afterglow_hold": "late-section release hold emphasis",
         "slow_release": "slow release emphasis",
         "forward_drive": "forward-drive still emphasis",
         "cinematic_push": "cinematic push still emphasis",
@@ -276,7 +290,7 @@ def _section_emphasis_clip_token(variant: str) -> str:
         "late-night drift": "late-night motion drift",
         "reset_suspension": "reset-and-suspension beat",
         "world_anchor": "world-anchor motion restraint",
-        "afterglow_hold": "afterglow hold beat",
+        "afterglow_hold": "late-section release hold beat",
         "slow_release": "slow release beat",
         "forward_drive": "forward-driving energy",
         "cinematic_push": "cinematic motion push",

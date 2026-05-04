@@ -372,7 +372,7 @@ def _world_motion_cue(world: dict) -> str:
         cues.append("subtle satellite-dish vibration")
     if "ice" in description or "arctic" in description:
         cues.append("cold blue light shimmer")
-    if "rain" in description:
+    if "rain" in description and "no rain" not in description:
         cues.append("rain streaks on glass")
     if "leaf" in description or "leaves" in description or "plant" in description:
         cues.append("leaves trembling")
@@ -407,7 +407,7 @@ def _visible_fallback_action(contract: dict, render_item: dict, *, still: bool) 
     if "arctic" in description or "observatory" in description or "aurora" in description:
         return "steps through the established ice-and-aurora space as the visible signal changes the composition"
     if "greenhouse" in description:
-        return "moves between fogged glass plants as rain changes the scene composition"
+        return "moves between fogged glass plants as source-bound light changes the scene composition"
     if "lighthouse" in description or "cliffside" in description:
         return "climbs along the established rocks toward the rotating lighthouse beam"
     if "underwater" in description:

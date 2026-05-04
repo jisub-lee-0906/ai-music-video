@@ -43,7 +43,7 @@ def _hook_visual(*, text: str, style_name: str) -> str:
 
 def _emotional_arc(*, text: str) -> str:
     if "lonely" in text or "romance" in text:
-        return "starts introspective, opens emotionally in the chorus, and fades with afterglow"
+        return "starts introspective, opens emotionally in the chorus, and closes with source-bound release light"
     return "builds from setup to release and closes on a clear final afterimage"
 
 

@@ -146,6 +146,11 @@ def _visual_mode_label(raw_visual_mode: str) -> str:
         "live_house_entry": "performance-threshold beat",
         "amp_corridor": "directional-light path beat",
         "window_haze": "soft-haze section beat",
+        "bookstore_window": "world-first window section beat",
+        "rain_window_detail": "source-bound detail section beat",
+        "window_reflection": "source-bound window detail beat",
+        "bus_stop_afterglow": "late-section release hold beat",
+        "afterglow_hold": "late-section release hold beat",
     }
     lower = raw_visual_mode.lower()
     if lower in labels:

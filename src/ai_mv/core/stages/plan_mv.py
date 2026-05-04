@@ -144,12 +144,12 @@ def _role_diversity_prompt_clauses(item: dict, role: str) -> tuple[str, str]:
         )
     if role == "symbolic_insert":
         return (
-            "role diversity symbolic insert: readable cutaway detail such as reflection, signage, hand, object, rain texture, or light motif; avoid repeated centered front hero street walk",
-            "role diversity symbolic insert motion: short cutaway with subtle reflection, light, hand, object, or rain movement; avoid hero walk/performance hold",
+            "role diversity symbolic insert: readable cutaway detail such as light motif, hand, object, texture, or source-bound world detail; avoid repeated centered front hero street walk",
+            "role diversity symbolic insert motion: short cutaway with subtle light, hand, object, or source-bound texture movement; avoid hero walk/performance hold",
         )
     return (
-        "role diversity world bridge: environment-led wide, profile, rear, over-shoulder, reflection, or small-figure composition; changed camera distance and spatial reset; avoid repeated centered front hero street walk",
-        "role diversity world bridge motion: environment-led drift, lateral pass, walking-away continuity, or reflection movement; avoid another centered hero walk/performance hold",
+        "role diversity world bridge: environment-led wide, profile, rear, over-shoulder, or small-figure composition; changed camera distance and spatial reset; avoid repeated centered front hero street walk",
+        "role diversity world bridge motion: environment-led drift, lateral pass, or walking-away continuity; avoid another centered hero walk/performance hold",
     )
 
 
@@ -233,12 +233,12 @@ def _sequence_diversity_prompt_clauses(item: dict, role: str) -> tuple[str, str]
         )
     if role == "symbolic_insert":
         return (
-            "sequence diversity symbolic insert: cut away from hero performance into a readable object, reflection, light motif, hand detail, or wet street texture; keep the same world continuity but avoid another centered street-performance portrait",
-            "sequence diversity symbolic insert motion: short held insert with subtle light/reflection movement; no new hero performance pose; preserve continuity as an editorial breaker",
+            "sequence diversity symbolic insert: cut away from hero performance into a readable object, light motif, hand detail, or source-bound world texture; keep the same world continuity but avoid another centered street-performance portrait",
+            "sequence diversity symbolic insert motion: short held insert with subtle source-bound light movement; no new hero performance pose; preserve continuity as an editorial breaker",
         )
     return (
         "sequence diversity world bridge: environment-led wide or over-shoulder frame with boulevard depth, smaller anchored figure, changed camera distance, and clear spatial reset; avoid another centered front street-performance pose",
-        "sequence diversity world bridge motion: gentle environment-led camera drift or walking-away continuity beat; emphasize spatial reset, wet neon reflections, and changed camera distance rather than another hero performance hold",
+        "sequence diversity world bridge motion: gentle environment-led camera drift or walking-away continuity beat; emphasize spatial reset, source-bound world texture, and changed camera distance rather than another hero performance hold",
     )
 
 
@@ -628,12 +628,12 @@ def _emotional_delta(shot: dict, *, style_name: str = "") -> str:
         return {
             "chorus": "open into crowd-ready hook lift without losing world continuity",
             "bridge": "tighten focus before the next performance release",
-            "outro": "resolve into bright afterglow on the same city stage",
+            "outro": "resolve into bright release light on the same city stage",
         }.get(section_type, "increase performer confidence without losing world continuity")
     return {
         "chorus": "open into hook release without changing world",
         "bridge": "turn inward without changing world",
-        "outro": "resolve into afterglow on the same block",
+        "outro": "resolve into source-bound release light on the same block",
     }.get(section_type, "increase intimacy without changing world")
 
 

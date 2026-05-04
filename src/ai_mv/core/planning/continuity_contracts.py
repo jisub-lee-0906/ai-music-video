@@ -41,7 +41,7 @@ def build_shot_relation_contract(shot: dict) -> dict:
     emotional = {
         "chorus": "open into hook release without changing world",
         "bridge": "turn inward without changing world",
-        "outro": "resolve into afterglow on the same block",
+        "outro": "resolve into source-bound release light on the same block",
     }.get(section_type, "increase intimacy without changing world")
     return {
         "relation_to_previous_shot": "continue same protagonist and world from previous shot",

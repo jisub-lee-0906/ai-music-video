@@ -1,3 +1,5 @@
+import re
+
 from ai_mv.core.planning.director_treatment import build_director_treatment
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.core.planning.sections import merged_shot_section_type, normalized_sections
@@ -743,6 +745,109 @@ def test_plan_mv_preserves_explicit_dark_outerwear_when_user_supplies_it():
         for item in out["render_plan"]
     ).lower()
     assert "dark raincoat" in model_facing_text
+
+
+def _all_positive_prompt_text(out: dict) -> str:
+    fragments: list[str] = []
+    fragments.append(str(out.get("creative_direction", {})))
+    for shot in out.get("shot_plan", []):
+        fragments.extend(
+            [
+                str(shot.get("story_action_grammar", "")),
+                str(shot.get("story_contract", "")),
+                str(shot.get("shot_relation_contract", "")),
+                str(shot.get("continuity_contract", "")),
+            ]
+        )
+    for item in out.get("render_plan", []):
+        fragments.extend(
+            [
+                str(item.get("prompt_seed", "")),
+                str(item.get("prompt_draft", "")),
+                str(item.get("prompt_polish", "")),
+                str(item.get("still_prompt_text", "")),
+                str(item.get("clip_prompt_seed", "")),
+                str(item.get("clip_positive_prompt", "")),
+                str(item.get("workflow_prompts", {}).get("flux2_tti_anchor", {}).get("positive_text", "")),
+                str(item.get("workflow_prompts", {}).get("flux2_ref_still", {}).get("positive_text", "")),
+                str(item.get("workflow_prompts", {}).get("ltx_ia2v", {}).get("positive_text", "")),
+            ]
+        )
+    return " ".join(fragments).lower()
+
+
+def _contains_forbidden_literal(text: str, term: str) -> bool:
+    if term in {"rain", "reflection", "book", "books", "library", "afterglow"}:
+        pattern = {
+            "book": r"\bbooks?\b",
+            "books": r"\bbooks?\b",
+        }.get(term, rf"\b{re.escape(term)}\b")
+        return re.search(pattern, text) is not None
+    return term in text
+
+
+def test_plan_mv_residual_style_fixtures_do_not_leak_without_positive_source():
+    sample_payloads = [
+        (
+            {"planning": {"default_style_name": "k_indie"}},
+            "k-indie greenhouse music video, one solitary protagonist follows condensation across glass plants, no books or bookstore",
+            ("book", "bookstore", "library", "rain", "rain-streaked glass", "afterglow"),
+        ),
+        (
+            {"planning": {"default_style_name": "j_rock"}},
+            "j-rock lighthouse cliffside music video, one solitary protagonist climbs toward a beacon over dry rocks, no rain or reflection",
+            ("rain", "reflection", "rain-streaked glass"),
+        ),
+        (
+            {"planning": {"default_style_name": "alt_pop"}},
+            "alt-pop forest pier music video, one solitary protagonist follows fireflies over moss and water",
+            ("afterglow", "rain", "reflection", "book", "library"),
+        ),
+    ]
+
+    for config, concept_text, forbidden_terms in sample_payloads:
+        out = build_plan_preview_payload(
+            config,
+            {
+                "concept_text": concept_text,
+                "audio_map": {
+                    "duration_sec": 18.0,
+                    "sections": [
+                        {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                        {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                        {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                        {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                    ],
+                },
+            },
+        )
+
+        positive_text = _all_positive_prompt_text(out)
+        for forbidden in forbidden_terms:
+            assert not _contains_forbidden_literal(positive_text, forbidden)
+
+
+def test_plan_mv_preserves_residual_terms_when_user_supplies_positive_source():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "j_rock"}},
+        {
+            "concept_text": "j-rock rain-soaked lighthouse music video, one protagonist watches reflections in tidal water beside old books",
+            "audio_map": {
+                "duration_sec": 18.0,
+                "sections": [
+                    {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                    {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                    {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                    {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                ],
+            },
+        },
+    )
+
+    positive_text = _all_positive_prompt_text(out)
+    assert "rain" in positive_text
+    assert "reflection" in positive_text
+    assert "books" in positive_text or "book" in positive_text
 
 
 def test_plan_mv_emits_structured_continuity_and_neighbor_contracts():
