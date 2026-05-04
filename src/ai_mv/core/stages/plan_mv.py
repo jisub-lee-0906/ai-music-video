@@ -429,7 +429,7 @@ def _narrative_beat_role(shot: dict, *, sequence_index: int, total_shots: int) -
 
 
 def _narrative_motif_family(concept_text: str) -> str:
-    text = str(concept_text or "").lower()
+    text = _positive_concept_text(concept_text)
     if any(token in text for token in ("radio", "tower", "antenna", "signal")):
         return "radio_signal"
     if any(token in text for token in ("message", "phone", "call", "text")):

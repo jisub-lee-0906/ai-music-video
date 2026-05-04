@@ -100,6 +100,9 @@ def build_pose_anchor_selection(shot: dict) -> dict:
         return _selection("ANCHOR_POSE_SEATED_WAITING")
     if _has_expressive_hand_action(text):
         return _selection("ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
+    departure_text = f"{text} {_positive_source_text(shot.get('concept_text', ''))}"
+    if _has_departure_payoff_intent(departure_text, story_function):
+        return _selection("ANCHOR_POSE_WALKING_SIDE", decision=_departure_payoff_decision())
     if _has_final_payoff_intent(shot, text, story_function):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT", decision=_final_payoff_decision())
     if _has_face_critical_identity_intent(text, story_function):
@@ -175,6 +178,39 @@ def _has_expressive_hand_action(text: str) -> bool:
     return any(marker in text for marker in hand_markers) and any(marker in text for marker in objectless_markers)
 
 
+def _has_departure_payoff_intent(text: str, story_function: str) -> bool:
+    if story_function not in {"payoff", "final_payoff", "resolution"} and "payoff" not in text:
+        return False
+    departure_markers = (
+        "walking away into fog",
+        "walks away into fog",
+        "walk away into fog",
+        "turns away into fog",
+        "turn away into fog",
+        "back view",
+        "back-facing",
+        "into fog",
+        "into the fog",
+        "departure",
+        "leaves the frame",
+        "exit the frame",
+        "exits the frame",
+    )
+    return any(marker in text for marker in departure_markers)
+
+
+def _positive_source_text(text: object) -> str:
+    pieces: list[str] = []
+    for raw_part in str(text or "").lower().split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return " ".join(pieces).replace("_", " ")
+
+
 def _has_final_payoff_intent(shot: dict, text: str, story_function: str) -> bool:
     if _has_unresolved_or_pre_final_context(text):
         return False
@@ -237,6 +273,25 @@ def _final_payoff_decision() -> dict:
     }
 
 
+def _departure_payoff_decision() -> dict:
+    return {
+        "decision_method": "structured_shot_semantics",
+        "reason_codes": ["departure_payoff_motion", "preserve_user_departure_intent"],
+        "shot_semantics": {
+            "final_payoff": True,
+            "resolution_state": "resolved_departure",
+            "body_action": "walking_or_turning_away",
+            "framing": "full",
+            "camera_angle": "side",
+            "prop": "none",
+        },
+        "rejected_anchor_ids": {
+            "ANCHOR_POSE_FINAL_PAYOFF_FRONT": "departure payoff should preserve walking-away or turn-away intent instead of forcing front-facing hero hold",
+            "ANCHOR_POSE_HERO_CLOSEUP": "departure payoff needs body direction and exit motion, not a static close-up",
+        },
+    }
+
+
 def _is_negated_action(text: str, marker: str) -> bool:
     normalized_marker = marker.replace("_", " ")
     negated_forms = (
@@ -258,6 +313,6 @@ def _shot_text(shot: dict) -> str:
     for key in ("shot_id", "shot_role", "visual_mode", "story_function", "visual_event", "emotional_state", "section_type"):
         parts.append(str(shot.get(key, "")))
     story_contract = shot.get("story_contract") if isinstance(shot.get("story_contract"), dict) else {}
-    for key in ("why_this_shot", "protagonist_action"):
+    for key in ("why_this_shot", "protagonist_action", "visual_event"):
         parts.append(str(story_contract.get(key, "")))
     return " ".join(parts).replace("_", " ").lower()

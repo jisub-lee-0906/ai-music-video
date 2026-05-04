@@ -74,7 +74,7 @@ def _story_function(section_type: str, *, is_last: bool, idx: int) -> str:
 
 
 def _visual_event(*, story_function: str, text: str) -> str:
-    lower = text.lower()
+    lower = _positive_text(text)
     night_city = any(token in lower for token in ("neon", "night", "city", "wet", "train", "전철"))
     desert_radio = any(token in lower for token in ("desert", "dune", "sand")) and any(
         token in lower for token in ("radio", "signal", "tower", "antenna")
@@ -131,7 +131,7 @@ def _payoff_requirement(story_function: str) -> str:
 
 
 def _motif_arc(*, text: str, style_name: str) -> dict:
-    lower = text.lower()
+    lower = _positive_text(text)
     motifs: dict[str, str] = {}
     if any(token in lower for token in ("desert", "dune", "sand")) and any(
         token in lower for token in ("radio", "signal", "tower", "antenna")
@@ -155,3 +155,15 @@ def _anti_repetition_rules() -> list[str]:
         "Final shot must show a decision, not just mood.",
         "If a beat is marked payoff, avoid another generic static neon-street pose unless it visibly resolves the arc.",
     ]
+
+
+def _positive_text(text: object) -> str:
+    pieces: list[str] = []
+    for raw_part in str(text or "").lower().split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)

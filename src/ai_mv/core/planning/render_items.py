@@ -77,7 +77,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     render_planning = build_render_planning(style_name, shot)
     variation_delta = build_variation_delta_contract(shot, reference_policy)
     production_policy = production_policy_build_production_policy(shot, style_name=style_name)
-    pose_anchor_selection = pose_anchor_selection_build_pose_anchor_selection(shot)
+    pose_anchor_selection = pose_anchor_selection_build_pose_anchor_selection({**shot, "concept_text": concept_text})
     still_prompt_text = build_still_prompt_text(
         prompt_seed,
         prompt_draft,

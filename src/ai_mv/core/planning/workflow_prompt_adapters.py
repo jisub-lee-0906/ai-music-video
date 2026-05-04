@@ -112,8 +112,8 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=True)
-    final_payoff = _is_final_payoff_item(render_item)
-    if final_payoff:
+    front_payoff_lock = _uses_front_payoff_anchor(render_item)
+    if front_payoff_lock:
         action = _final_payoff_readable_action(world)
     alignment = _strip_default_world_leaks(
         _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression")),
@@ -121,7 +121,7 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     ).strip(" .")
     camera = _still_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
-    if final_payoff:
+    if front_payoff_lock:
         shot_grammar = _final_payoff_staging(world)
     scene = _workflow_scene_description(world)
     prompt = _join_sentences(
@@ -146,13 +146,13 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=False)
-    final_payoff = _is_final_payoff_item(render_item)
-    if final_payoff:
+    front_payoff_lock = _uses_front_payoff_anchor(render_item)
+    if front_payoff_lock:
         action = _final_payoff_motion_action(world)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
     camera = _clip_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
-    if final_payoff:
+    if front_payoff_lock:
         shot_grammar = _final_payoff_motion_staging(world)
     scene = _workflow_scene_description(world)
     motion_cue = _world_motion_cue(world)
@@ -171,7 +171,7 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
             *_split_negative_text(base_negative),
             *world.get("forbidden", []),
             *_negative_constraints_from_text(source_text),
-            *(_final_payoff_motion_negatives() if final_payoff else []),
+            *(_final_payoff_motion_negatives() if front_payoff_lock else []),
             *_DEFAULT_VISUAL_NEGATIVES,
         ]
     )
@@ -477,6 +477,22 @@ def _is_final_payoff_item(render_item: dict) -> bool:
     return "final_payoff" in anchor or "final payoff" in combined or "payoff" in combined and "resolved" in combined
 
 
+def _uses_front_payoff_anchor(render_item: dict) -> bool:
+    """Return true only when the pose contract explicitly requires front payoff framing."""
+    if not isinstance(render_item, dict):
+        return False
+    anchor = str(render_item.get("selected_pose_anchor_id", "")).strip().upper()
+    if anchor == "ANCHOR_POSE_FINAL_PAYOFF_FRONT":
+        return True
+    selection = render_item.get("pose_anchor_selection")
+    if isinstance(selection, dict):
+        family = str(selection.get("required_pose_family", "")).strip().lower()
+        camera_angle = str(selection.get("required_camera_angle", "")).strip().lower()
+        framing = str(selection.get("required_framing", "")).strip().lower()
+        return family == "final_payoff_front" and camera_angle == "front" and framing in {"medium", "close", "medium_close"}
+    return False
+
+
 def _final_payoff_readable_action(world: dict) -> str:
     description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
     if "desert" in description or "radio tower" in description:
@@ -587,21 +603,21 @@ def _remove_negative_clauses(text: str) -> str:
 
 def _clean_model_sentence(text: object) -> str:
     value = _META_LABEL_RE.sub("", str(text or ""))
-    value = value.replace("role diversity world bridge", "environment-led desert bridge shot")
-    value = value.replace("role diversity symbolic insert", "readable desert-radio cutaway detail")
+    value = value.replace("role diversity world bridge", "environment-led bridge shot")
+    value = value.replace("role diversity symbolic insert", "readable motif cutaway detail")
     value = value.replace("beat-responsive camera motion", "gentle camera movement on the beat")
     value = value.replace("audio-reactive hook energy", "clear hook-section movement")
     value = value.replace("hook energy", "hook-section movement")
-    value = value.replace("radio wound setup beat", "silent-radio setup beat")
+    value = value.replace("radio wound setup beat", "setup beat around the primary motif")
     value = value.replace("starting wound", "starting hesitation")
-    value = value.replace("night-world wound", "night-world hesitation")
+    value = value.replace("night-world wound", "world hesitation")
     value = value.replace("concept-specific visual motif", "readable scene motif")
     value = value.replace("neon_highway", "long luminous path through the scene")
-    value = value.replace("crosswalk_wait", "paused between wet plant rows beside fogged glass")
+    value = value.replace("crosswalk_wait", "paused at a threshold within the scene")
     value = value.replace("live_house_entry", "narrow threshold cut by performance light")
-    value = value.replace("amp_corridor", "narrow path cut by rotating beam light")
-    value = value.replace("window_haze", "pearl-lit haze through drifting book pages")
-    value = value.replace("same block", "same desert space")
+    value = value.replace("amp_corridor", "narrow path cut by directional light")
+    value = value.replace("window_haze", "soft haze through layered foreground details")
+    value = value.replace("same block", "same established space")
     value = value.replace("new angle", "changed camera angle")
     value = value.replace("evolved staging", "changed staging")
     value = re.sub(r"\s+", " ", value).strip(" ,.")

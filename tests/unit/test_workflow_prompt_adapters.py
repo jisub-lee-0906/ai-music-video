@@ -538,3 +538,73 @@ def test_docs_default_final_payoff_ltx_prompt_holds_front_facing_payoff_motion()
     assert "profile turn" in negative
     assert "back view" in negative
     assert "walking away" in negative
+
+
+def test_non_front_payoff_ltx_does_not_force_front_facing_or_ban_departure_motion():
+    contract = parse_user_intent_contract(
+        "dream-pop ocean pier music video, one solitary protagonist resolves the story by walking away into fog, "
+        "stable wardrobe silhouette, no desert, no radio tower"
+    )
+    render_item = {
+        "shot_id": "S009",
+        "story_function": "payoff",
+        "section_type": "outro",
+        "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE",
+        "clip_positive_prompt": "protagonist walks away into fog as the story resolves, gentle camera drift",
+        "story_contract": {
+            "protagonist_action": "walks away into fog as the story resolves",
+            "visual_payoff": "resolved departure into fog",
+        },
+        "recommended_duration_sec": {"min": 1.2, "max": 2.0},
+    }
+
+    payload = adapt_ltx_ia2v_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+    negative = payload["negative_text"].lower()
+
+    assert "walks away into fog" in positive
+    assert "remain front-facing throughout" not in positive
+    assert "direct viewer-facing gaze" not in positive
+    assert "profile turn" not in negative
+    assert "back view" not in negative
+    assert "walking away" not in negative
+    assert "turning away" not in negative
+
+
+def test_prompt_cleanup_does_not_inject_desert_radio_world_for_generic_role_tokens():
+    contract = parse_user_intent_contract(
+        "dream-pop greenhouse music video, one solitary protagonist moves through fogged glass plants, "
+        "stable linen jacket silhouette, no desert, no radio tower"
+    )
+    render_item = {
+        "shot_id": "S003",
+        "still_prompt_text": "story visual event: role diversity world bridge, protagonist action: role diversity symbolic insert",
+        "story_contract": {
+            "protagonist_action": "role diversity world bridge",
+            "visual_event": "role diversity symbolic insert",
+        },
+        "selected_pose_anchor_id": "ANCHOR_POSE_THREE_QUARTER_MEDIUM",
+    }
+
+    payload = adapt_flux2_ref_still_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+
+    assert "desert" not in positive
+    assert "radio" not in positive
+    assert "cutaway detail" in positive or "bridge shot" in positive
+
+
+def test_plan_preview_departure_payoff_does_not_select_front_payoff_lock():
+    concept = (
+        "dream-pop ocean pier music video, one solitary protagonist resolves the story by walking away into fog, "
+        "stable wardrobe silhouette, no desert, no radio tower"
+    )
+    preview = build_plan_preview_payload({}, {"concept_text": concept, "audio_map": {"duration_sec": 24}})
+    final_item = preview["render_plan"][-1]
+    ltx = final_item["workflow_prompts"]["ltx_ia2v"]
+
+    assert final_item["selected_pose_anchor_id"] != "ANCHOR_POSE_FINAL_PAYOFF_FRONT"
+    assert "remain front-facing throughout" not in ltx["positive_text"].lower()
+    assert "radio signal" not in ltx["positive_text"].lower()
+    assert "radio tower" not in ltx["positive_text"].lower()
+    assert "walking away" not in ltx["negative_text"].lower()
