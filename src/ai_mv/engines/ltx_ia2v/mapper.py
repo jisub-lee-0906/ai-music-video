@@ -19,8 +19,8 @@ def map_ltx_ia2v_workflow(config: dict, item: dict) -> dict:
     fps = int_value(item.get("fps") or config.get("render", {}).get("ltx_fps"), 24)
     duration_sec = float_value(item.get("duration_sec"), 4.0)
     start_sec = non_negative_float(item.get("audio_start_sec"), 0.0)
-    prompt_seed = str(item.get("clip_prompt_seed") or item.get("prompt_seed") or "").strip()
-    positive_prompt = str(item.get("clip_positive_prompt") or item.get("positive_prompt") or "").strip()
+    prompt_seed = str(item.get("prompt_seed") or "").strip()
+    positive_prompt = str(item.get("positive_prompt") or "").strip()
     return {
         "node.inputs": {
             LTX_IA2V_IMAGE: {"image": str(item["image"]).strip()},

@@ -58,6 +58,18 @@ def build_render_item_payload(
         "pose_anchor_selection": dict(pose_anchor_selection or {}),
         "selected_pose_anchor_id": str((pose_anchor_selection or {}).get("selected_pose_anchor_id", "")).strip(),
         "workflow_prompts": dict(workflow_prompts or {}),
+        "legacy_prompt_fields": {
+            "status": "diagnostic_only",
+            "model_facing_source": "workflow_prompts",
+            "fields": [
+                "prompt_seed",
+                "prompt_draft",
+                "prompt_polish",
+                "still_prompt_text",
+                "clip_prompt_seed",
+                "clip_positive_prompt",
+            ],
+        },
         "still_a": "",
     }
     if render_mode == "ia2v":

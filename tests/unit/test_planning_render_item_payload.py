@@ -53,6 +53,45 @@ def test_render_item_payload_module_builds_core_fields_and_ia2v_audio_segment():
     assert out["still_a"] == ""
 
 
+def test_render_item_payload_marks_legacy_prompt_fields_as_diagnostic_only():
+    out = build_render_item_payload(
+        shot={"shot_id": "S003", "section_id": "SEC_003", "material_id": "MAT_003", "start_sec": 0.0, "duration_sec": 4.0},
+        render_mode="ia2v",
+        render_count=1,
+        render_planning={"render_priority_score": 0.5},
+        render_seed=3333,
+        variation_seed=4444,
+        variation_profile={},
+        continuity_contract={},
+        shot_relation_contract={},
+        prompt_bundle={
+            "prompt_seed": "legacy seed",
+            "prompt_draft": "legacy draft",
+            "prompt_polish": "legacy polish",
+        },
+        still_prompt_text="legacy still prompt",
+        clip_prompt_seed="legacy clip seed",
+        clip_positive_prompt="legacy clip positive",
+        edit_intent={},
+        reference_policy={"reference_mode": "", "reference_source_shot_id": "", "identity_lock_strength": ""},
+        variation_delta={"edit_variation_scope": "", "minimum_visual_delta": ""},
+        workflow_prompts={"ltx_ia2v": {"positive_text": "workflow prompt", "negative_text": ""}},
+    )
+
+    assert out["legacy_prompt_fields"] == {
+        "status": "diagnostic_only",
+        "model_facing_source": "workflow_prompts",
+        "fields": [
+            "prompt_seed",
+            "prompt_draft",
+            "prompt_polish",
+            "still_prompt_text",
+            "clip_prompt_seed",
+            "clip_positive_prompt",
+        ],
+    }
+
+
 
 def test_render_item_payload_module_skips_audio_segment_for_non_ia2v_modes():
     out = build_render_item_payload(

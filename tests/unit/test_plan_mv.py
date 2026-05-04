@@ -910,6 +910,7 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
         "pose_anchor_selection",
         "selected_pose_anchor_id",
         "workflow_prompts",
+        "legacy_prompt_fields",
         "still_a",
         "audio_segment",
     }

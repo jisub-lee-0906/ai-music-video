@@ -65,14 +65,36 @@ def test_ltx_ia2v_mapper():
     out = map_ltx_ia2v_workflow(cfg, item)["node.inputs"]
     assert out["269"]["image"] == "stills/S003.png"
     assert out["276"]["audio"] == "music/chorus.mp3"
-    assert out["340:319"]["value"] == item["clip_prompt_seed"]
-    assert out["340:306"]["text"] == item["clip_positive_prompt"]
+    assert out["340:319"]["value"] == item["prompt_seed"]
+    assert out["340:306"]["text"] == item["positive_prompt"]
     assert out["340:323"]["value"] == 24
     assert out["340:331"]["value"] == 6.0
     assert out["340:332"]["start_index"] == 12.5
     assert out["340:332"]["duration"] == 6.0
     assert out["341"]["filename_prefix"] == "ai_mv/runs/S003-run/clips/shot-S003-ia2v"
 
+
+def test_ltx_ia2v_mapper_treats_legacy_clip_prompt_fields_as_diagnostic_only():
+    cfg = {"render": {"ltx_ia2v_size": "1280x720", "ltx_fps": 24}, "video": {"target": "1920x1080@24"}}
+    item = {
+        "shot_id": "S004",
+        "image": "stills/S004.png",
+        "audio": "music/chorus.mp3",
+        "prompt_seed": "workflow-safe seed label",
+        "clip_prompt_seed": "legacy diagnostic city rooftop seed must not drive mapper",
+        "positive_prompt": "workflow-safe LTX positive prompt",
+        "clip_positive_prompt": "legacy diagnostic city rooftop prompt must not drive mapper",
+        "negative_prompt": "low quality",
+        "duration_sec": 4.0,
+        "filename_prefix": ltx_clip_prefix("S004-run", "S004", "ia2v"),
+    }
+
+    out = map_ltx_ia2v_workflow(cfg, item)["node.inputs"]
+
+    assert out["340:319"]["value"] == "workflow-safe seed label"
+    assert out["340:306"]["text"] == "workflow-safe LTX positive prompt"
+    assert "legacy diagnostic" not in out["340:319"]["value"]
+    assert "legacy diagnostic" not in out["340:306"]["text"]
 
 
 def test_output_path_contract_uses_run_scoped_clean_names():
