@@ -423,8 +423,6 @@ def _workflow_action_for_item(contract: dict, render_item: dict, *, still: bool)
     candidates = [
         story.get("protagonist_action"),
         story.get("visual_event"),
-        _extract_visual_action(render_item.get("still_prompt_text" if still else "clip_positive_prompt", "")),
-        _extract_visual_action(render_item.get("prompt_seed" if still else "clip_prompt_seed", "")),
         primary,
     ]
     forbidden = list(world.get("forbidden", [])) if isinstance(world, dict) else []
@@ -496,9 +494,14 @@ def _forbidden_terms_from_clause(clause: str) -> list[str]:
 
 
 def _model_source_text(render_item: dict) -> str:
-    if not isinstance(render_item, dict):
-        return ""
-    return " ".join(str(render_item.get(key, "")) for key in ("prompt_seed", "prompt_draft", "still_prompt_text", "clip_prompt_seed", "clip_positive_prompt"))
+    """Return model-facing source text that is safe for constraint extraction.
+
+    Legacy prompt fields are diagnostic-only once workflow prompts exist. Do not
+    read `prompt_seed`, `prompt_draft`, `still_prompt_text`, `clip_prompt_seed`,
+    or `clip_positive_prompt` here, because generated/legacy prose can contain
+    poisoned motifs and negative clauses that must not seed new workflow prompts.
+    """
+    return ""
 
 
 def _extract_visual_action(text: object) -> str:

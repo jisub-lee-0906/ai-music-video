@@ -98,7 +98,7 @@ def test_flux2_reference_still_adapter_removes_meta_labels_and_keeps_visual_acti
     assert not any(label in lower for label in META_LABELS)
     assert "avoid" not in lower
     assert "no distant human silhouettes" not in lower
-    assert "distant human silhouettes" in payload["negative_constraints"]
+    assert "distant human silhouettes" not in payload["negative_constraints"]
 
 
 def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
@@ -129,8 +129,8 @@ def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
     assert not NEGATIVE_CLAUSE_RE.search(positive)
     assert "pc game" in negative
     assert "cartoon" in negative
-    assert "bystanders" in negative
-    assert "near-duplicate framing" in negative
+    assert "bystanders" not in negative
+    assert "near-duplicate framing" not in negative
 
 
 def test_acestep_audio_adapter_emits_short_music_tags_without_visual_forbidden_terms():
@@ -816,3 +816,80 @@ def test_fallback_actions_do_not_invent_world_sample_props_when_not_in_concept()
         for term in forbidden_terms:
             assert term not in combined, (concept, term, combined)
         assert any(term in combined for term in expected_terms), (concept, combined)
+
+
+
+def test_workflow_adapters_ignore_poisoned_legacy_prompt_fields_as_action_source():
+    contract = parse_user_intent_contract(
+        "dream-pop forest pier music video, one solitary protagonist follows fireflies over mossy water, "
+        "white linen dress silhouette, no city, no rooftop, no satellite dish"
+    )
+    render_item = {
+        "shot_id": "S006",
+        "story_contract": {},
+        "still_prompt_text": "protagonist action: raises a cassette on a neon rooftop beside a satellite dish",
+        "prompt_seed": "action: opens floating books inside a glass corridor",
+        "clip_positive_prompt": "action: raises a lantern on a city curb under rain-streaked glass",
+        "clip_prompt_seed": "story visual event: walks toward a radio tower afterglow",
+        "selected_pose_anchor_id": "ANCHOR_POSE_THREE_QUARTER_MEDIUM",
+    }
+
+    still = adapt_flux2_ref_still_prompt(contract, render_item)
+    ltx = adapt_ltx_ia2v_prompt(contract, render_item)
+    combined_positive = (still["positive_text"] + "\n" + ltx["positive_text"]).lower()
+
+    assert "follows fireflies over mossy water" in combined_positive
+    for poisoned in (
+        "cassette",
+        "neon rooftop",
+        "satellite dish",
+        "floating books",
+        "glass corridor",
+        "lantern",
+        "city curb",
+        "rain-streaked glass",
+        "radio tower",
+        "afterglow",
+    ):
+        assert poisoned not in combined_positive, (poisoned, combined_positive)
+
+
+
+def test_workflow_adapters_do_not_promote_legacy_negative_clauses_to_model_constraints():
+    contract = parse_user_intent_contract(
+        "k-indie greenhouse music video, one solitary protagonist moves between fogged glass plants, "
+        "olive work jacket silhouette, no crowd"
+    )
+    render_item = {
+        "shot_id": "S002",
+        "story_contract": {
+            "protagonist_action": "moves between fogged glass plants",
+            "visual_event": "morning mist brightens the greenhouse path",
+        },
+        "still_prompt_text": "no greenhouse, no plants, avoid olive work jacket",
+        "clip_positive_prompt": "without fogged glass, avoid morning mist, no k-indie texture",
+        "prompt_seed": "no source-bound detail",
+        "clip_prompt_seed": "avoid visible gesture",
+    }
+
+    still = adapt_flux2_ref_still_prompt(contract, render_item)
+    ltx = adapt_ltx_ia2v_prompt(contract, render_item)
+    combined_negative = "\n".join(
+        [
+            ", ".join(still["negative_constraints"]),
+            ltx["negative_text"],
+        ]
+    ).lower()
+
+    assert "crowd" in combined_negative
+    for legacy_negative in (
+        "greenhouse",
+        "plants",
+        "olive work jacket",
+        "fogged glass",
+        "morning mist",
+        "k-indie texture",
+        "source-bound detail",
+        "visible gesture",
+    ):
+        assert legacy_negative not in combined_negative, (legacy_negative, combined_negative)
