@@ -4,6 +4,7 @@ import pytest
 
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.planning.anchor_package import build_anchor_package
+from ai_mv.core.planning.creative_direction import build_creative_direction
 from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.styles.resolver import get_style_bible
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
@@ -119,6 +120,30 @@ def test_anchor_package_exposes_docs_default_wardrobe_inference_source():
         "source_text": "stable wardrobe silhouette",
         "guard": "desert_radio_docs_default",
     }
+
+
+def test_anchor_package_prefers_user_wardrobe_over_style_night_outerwear_fallback():
+    concept = "alt-pop moonlit forest walk, one solitary protagonist in a white linen dress follows fireflies"
+    creative_direction = build_creative_direction(
+        concept_text=concept,
+        style_name="alt_pop",
+        sections=[{"section_type": "chorus"}],
+    )
+
+    package = build_anchor_package(
+        concept_text=concept,
+        style_name="alt_pop",
+        creative_direction=creative_direction,
+    )
+
+    prompts = " ".join(
+        anchor["prompt_text"]
+        for anchor in [*package["anchors"], *package["pose_anchor_bank"]]
+    ).lower()
+
+    assert "white linen dress" in prompts
+    assert "stable dark outerwear silhouette" not in prompts
+    assert package["wardrobe_anchor_source"]["source"] in {"user_explicit_silhouette", "user_keyword_dress"}
 
 
 def test_anchor_package_uses_explicit_creative_wardrobe_anchor_when_provided():

@@ -146,12 +146,13 @@ def _wardrobe_anchor(style_name: str, creative_direction: dict | None = None, *,
 def _wardrobe_anchor_source(creative_direction: dict | None = None, *, contract: dict | None = None) -> dict:
     direction = creative_direction if isinstance(creative_direction, dict) else {}
     explicit = str(direction.get("wardrobe_anchor", "")).strip()
-    if explicit and explicit.lower() != "story-derived stable outfit silhouette":
-        return {"source": "creative_direction_explicit", "source_text": explicit, "guard": ""}
     protagonist = contract.get("protagonist", {}) if isinstance(contract, dict) and isinstance(contract.get("protagonist"), dict) else {}
+    contract_wardrobe = str(protagonist.get("wardrobe", "")).strip()
     source = str(protagonist.get("wardrobe_source", "")).strip() or "style_or_generic_default"
     source_text = str(protagonist.get("wardrobe_source_text", "")).strip()
     guard = str(protagonist.get("wardrobe_inference_guard", "")).strip()
+    if explicit and explicit.lower() != "story-derived stable outfit silhouette" and explicit != contract_wardrobe:
+        return {"source": "creative_direction_explicit", "source_text": explicit, "guard": ""}
     if source and source != "generic_default":
         return {"source": source, "source_text": source_text, "guard": guard}
     return {"source": "style_or_generic_default", "source_text": "", "guard": ""}

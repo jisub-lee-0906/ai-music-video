@@ -80,6 +80,8 @@ def _bridge_intent(*, text: str) -> str:
 
 
 def _protagonist_anchor(*, text: str, style_name: str) -> str:
+    if _explicit_wardrobe_from_text(text):
+        return "same lone protagonist, stable user-specified wardrobe, camera-readable face, no competing bystanders"
     if style_name == "idol_pop":
         return "same lead idol performer, stable bright stage outfit silhouette, camera-readable face, no competing co-stars"
     if style_name == "synthwave":
@@ -90,6 +92,9 @@ def _protagonist_anchor(*, text: str, style_name: str) -> str:
 
 
 def _wardrobe_anchor(*, text: str, style_name: str) -> str:
+    explicit = _explicit_wardrobe_from_text(text)
+    if explicit:
+        return explicit
     if style_name == "idol_pop":
         return "stable bright stage outfit silhouette"
     if style_name == "synthwave" or any(token in text for token in ("walk", "wet", "neon", "late-night", "night")):
@@ -173,3 +178,18 @@ def _positive_concept_text(text: str) -> str:
             continue
         pieces.append(part)
     return ", ".join(pieces)
+
+
+def _explicit_wardrobe_from_text(text: str) -> str:
+    import re
+
+    value = str(text or "")
+    patterns = (
+        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, value, flags=re.I)
+        if match:
+            return " ".join(match.group(1).split()).strip(" .")
+    return ""

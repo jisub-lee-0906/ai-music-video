@@ -2,14 +2,15 @@ from __future__ import annotations
 
 
 def build_alt_pop_prompt_seed(concept_text: str, style_bible: dict, shot: dict) -> str:
+    positive_concept = _positive_concept_anchor(concept_text)
     return ", ".join(
         part
         for part in [
             "alt pop music video",
-            _positive_concept_anchor(concept_text) or "alt pop performance world",
+            positive_concept or "alt pop performance world",
             _world_continuity_anchor(shot),
             _subject_anchor(shot),
-            _environment_anchor(shot),
+            _environment_anchor(shot, positive_concept=positive_concept),
             _palette_anchor(style_bible, shot),
             "clean cinematic styling",
             "stable character identity",
@@ -54,19 +55,34 @@ def _palette_anchor(style_bible: dict, shot: dict) -> str:
 
 
 
-def _environment_anchor(shot: dict) -> str:
+def _environment_anchor(shot: dict, *, positive_concept: str = "") -> str:
     world_anchor = str(shot.get("world_anchor", "")).strip()
     if _is_desert_radio_world(world_anchor):
         return _desert_radio_environment_anchor(shot)
-    mapping = {
-        "rooftop_edge": "night rooftop with chrome spill and concrete geometry",
-        "glass_corridor": "glass corridor with club-adjacent light spill",
-        "pre_chorus_tension": "elevator lobby tension with mirrored steel and tightening city reflections",
-        "bridge_glass": "glass skybridge with isolated backlight and drifting club spill",
-        "chorus_front": "open rooftop edge with direct city backlight",
-        "release_stride": "night street stride with chrome reflections",
-    }
+    if _allows_alt_pop_urban_environment(positive_concept, world_anchor):
+        mapping = {
+            "rooftop_edge": "night rooftop with chrome spill and concrete geometry",
+            "glass_corridor": "glass corridor with club-adjacent light spill",
+            "pre_chorus_tension": "elevator lobby tension with mirrored steel and tightening city reflections",
+            "bridge_glass": "glass skybridge with isolated backlight and drifting club spill",
+            "chorus_front": "open rooftop edge with direct city backlight",
+            "release_stride": "night street stride with chrome reflections",
+        }
+    else:
+        mapping = {
+            "rooftop_edge": "elevated edge composition with controlled geometry",
+            "glass_corridor": "transparent passage composition with controlled light spill",
+            "pre_chorus_tension": "tightening threshold composition with mirrored texture",
+            "bridge_glass": "isolated translucent passage with soft backlight",
+            "chorus_front": "open front-facing composition with direct backlight",
+            "release_stride": "forward stride composition with clean reflective texture",
+        }
     return mapping.get(str(shot.get("visual_mode", "")), "modern style space with controlled edge lighting")
+
+
+def _allows_alt_pop_urban_environment(positive_concept: str, world_anchor: str) -> bool:
+    text = f"{positive_concept} {world_anchor}".lower()
+    return any(token in text for token in ("city", "urban", "street", "rooftop", "club", "corridor", "lobby", "neon", "chrome", "night drive"))
 
 
 

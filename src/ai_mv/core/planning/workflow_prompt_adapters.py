@@ -283,6 +283,9 @@ def _world_description(lower: str, positive_text: str) -> str:
 
 def _wardrobe_info_from_text(positive_text: str) -> dict:
     lower = str(positive_text or "").lower()
+    explicit_garment = _explicit_wardrobe_garment(positive_text)
+    if explicit_garment:
+        return {"wardrobe": explicit_garment, "source": "user_explicit_silhouette", "source_text": explicit_garment, "guard": ""}
     match = re.search(r"([^,.]+?silhouette)\b", positive_text, flags=re.I)
     if match:
         matched = _clean_model_sentence(match.group(1))
@@ -307,6 +310,19 @@ def _wardrobe_info_from_text(positive_text: str) -> dict:
         "source_text": "",
         "guard": "",
     }
+
+
+def _explicit_wardrobe_garment(positive_text: str) -> str:
+    text = str(positive_text or "")
+    patterns = (
+        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.I)
+        if match:
+            return _clean_model_sentence(match.group(1)).strip(" .")
+    return ""
 
 
 def _wardrobe_from_text(positive_text: str) -> str:

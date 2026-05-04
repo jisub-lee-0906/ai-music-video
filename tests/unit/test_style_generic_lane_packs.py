@@ -81,6 +81,41 @@ def test_alt_pop_prompt_seed_changes_across_verse_prechorus_and_bridge_roles():
     assert len({verse, pre_chorus, bridge}) == 3
 
 
+def test_alt_pop_style_visual_modes_do_not_replace_non_city_concept_world():
+    bible = get_alt_pop_bible()
+    concept = "alt-pop forest pier music video, one solitary protagonist follows fireflies over moss and water"
+    seeds = [
+        build_alt_pop_prompt_seed(
+            concept,
+            bible,
+            {"visual_mode": mode, "section_type": section, "shot_role": role},
+        )
+        for mode, section, role in [
+            ("rooftop_edge", "verse", "verse_edge"),
+            ("glass_corridor", "verse", "verse_edge"),
+            ("pre_chorus_tension", "pre_chorus", "pre_chorus_tension"),
+            ("bridge_glass", "bridge", "bridge_glass"),
+            ("chorus_front", "chorus", "chorus_front"),
+            ("release_stride", "outro", "release_stride"),
+        ]
+    ]
+
+    combined = " ".join(seeds).lower()
+
+    assert "forest pier" in combined
+    for leaked in (
+        "night rooftop",
+        "club-adjacent",
+        "city reflections",
+        "skybridge",
+        "city backlight",
+        "night street",
+        "chrome reflections",
+        "rooftop edge",
+    ):
+        assert leaked not in combined
+
+
 def test_idol_pop_prompt_seed_changes_across_verse_prechorus_and_bridge_roles():
     bible = get_idol_pop_bible()
     verse = build_idol_pop_prompt_seed(
