@@ -43,7 +43,8 @@ def test_user_intent_contract_splits_positive_world_and_forbidden_clauses():
     assert contract["genre"] == "alt-pop music video"
     assert contract["protagonist"]["count"] == "one"
     assert contract["protagonist"]["gender"] == "unspecified"
-    assert "sunrise desert dunes" in contract["world"]["positive_description"]
+    assert "desert radio music video" in contract["world"]["positive_description"]
+    assert "sunrise dunes" in contract["world"]["positive_description"]
     assert "distant radio tower" in contract["world"]["motifs"]
     assert contract["world"]["forbidden"] == ["crowd", "second protagonist", "city", "neon"]
     assert "no city" not in contract["world"]["positive_description"].lower()
@@ -90,7 +91,7 @@ def test_flux2_reference_still_adapter_removes_meta_labels_and_keeps_visual_acti
     assert len(text) <= 1200
     assert "use the reference character identity exactly" in lower
     assert "radio signal" in lower
-    assert "sunrise desert" in lower
+    assert "sunrise dunes" in lower
     assert not any(label in lower for label in META_LABELS)
     assert "avoid" not in lower
     assert "no distant human silhouettes" not in lower
@@ -218,7 +219,9 @@ def test_docs_default_workflow_prompts_are_polished_and_deduped():
     assert "duplicate subject alt pop music video" not in combined
     assert " ," not in combined
     assert ";." not in combined
-    assert "sunrise desert dunes with a distant radio tower" in combined
+    assert "desert radio music video" in combined
+    assert "sunrise dunes" in combined
+    assert "distant radio tower" in combined
     assert "stable wardrobe silhouette" in combined
     for negative in negative_texts:
         parts = [part.strip().lower() for part in negative.split(",") if part.strip()]
@@ -608,3 +611,64 @@ def test_plan_preview_departure_payoff_does_not_select_front_payoff_lock():
     assert "radio signal" not in ltx["positive_text"].lower()
     assert "radio tower" not in ltx["positive_text"].lower()
     assert "walking away" not in ltx["negative_text"].lower()
+
+
+def test_world_description_does_not_invent_sample_objects_from_keyword_worlds():
+    cases = [
+        (
+            "k-indie rainy greenhouse music video, one solitary protagonist waits among fogged glass plants, "
+            "stable linen jacket silhouette, no cassette recorder, no desert, no radio tower",
+            ("cassette", "desert", "radio tower"),
+        ),
+        (
+            "j-rock stormy lighthouse music video, one solitary protagonist climbs black rocks toward a rotating beam, "
+            "wind-torn navy coat, no lantern, no city",
+            ("lantern", "city"),
+        ),
+        (
+            "dream-pop underwater chamber music video, one solitary protagonist moves through pearl light toward a surface door, "
+            "pale linen dress silhouette, no library, no floating books, no city",
+            ("library", "floating books", "city"),
+        ),
+    ]
+
+    for concept, forbidden_terms in cases:
+        contract = parse_user_intent_contract(concept)
+        description = contract["world"]["positive_description"].lower()
+
+        for term in forbidden_terms:
+            assert term not in description, (concept, term, description)
+
+
+def test_fallback_actions_do_not_invent_world_sample_props_when_not_in_concept():
+    cases = [
+        (
+            "k-indie rainy greenhouse music video, fogged glass plants and soft morning rain, "
+            "stable linen jacket silhouette, no desert, no radio tower",
+            ("cassette", "desert", "radio tower"),
+            ("greenhouse", "fogged glass", "plants", "rain"),
+        ),
+        (
+            "j-rock stormy cliffside lighthouse music video, black rocks and a rotating lighthouse beam, "
+            "wind-torn navy coat, no city",
+            ("lantern", "city"),
+            ("cliffside", "lighthouse", "black rocks", "rotating lighthouse beam"),
+        ),
+        (
+            "dream-pop underwater chamber music video, pearl light and a moonlit surface door, "
+            "pale linen dress silhouette, no city",
+            ("library", "floating books", "city"),
+            ("underwater", "pearl light", "surface door"),
+        ),
+    ]
+
+    for concept, forbidden_terms, expected_terms in cases:
+        contract = parse_user_intent_contract(concept)
+        render_item = {"shot_id": "S003", "story_contract": {}, "selected_pose_anchor_id": "ANCHOR_POSE_THREE_QUARTER_MEDIUM"}
+        still = adapt_flux2_ref_still_prompt(contract, render_item)["positive_text"].lower()
+        ltx = adapt_ltx_ia2v_prompt(contract, render_item)["positive_text"].lower()
+        combined = still + "\n" + ltx
+
+        for term in forbidden_terms:
+            assert term not in combined, (concept, term, combined)
+        assert any(term in combined for term in expected_terms), (concept, combined)

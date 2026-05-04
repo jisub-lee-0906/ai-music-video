@@ -266,17 +266,15 @@ def _protagonist_description(lower: str) -> str:
 
 
 def _world_description(lower: str, positive_text: str) -> str:
-    if "desert" in lower and "radio" in lower:
-        return "sunrise desert dunes with a distant radio tower and fading radio signal"
-    if "arctic" in lower or "observatory" in lower or "aurora" in lower:
-        return "arctic observatory, pulsing aurora signal, blue ice, snow-covered satellite dish"
-    if "greenhouse" in lower:
-        return "rainy greenhouse, fogged glass plants, flickering cassette recorder, soft morning rain"
-    if "cliffside" in lower or "lighthouse" in lower:
-        return "stormy cliffside lighthouse, black rocks, broken signal lantern, rotating lighthouse beam"
-    if "underwater" in lower or "library" in lower:
-        return "underwater library, floating books, pearl light, moonlit surface door"
-    return positive_text
+    """Return the user-provided positive world text without sample-object invention.
+
+    Earlier breadth probes used keyword-to-template mappings such as greenhouse ->
+    cassette recorder or lighthouse -> signal lantern. Those were useful fixtures but
+    unsafe as general creative policy: a world keyword must not add an object unless
+    the positive concept actually supplied it.
+    """
+    del lower
+    return _clean_model_sentence(positive_text).strip(" .")
 
 
 def _wardrobe_from_text(positive_text: str) -> str:
@@ -340,16 +338,18 @@ def _world_motion_cue(world: dict) -> str:
 def _visible_fallback_action(contract: dict, render_item: dict, *, still: bool) -> str:
     world = contract.get("world", {}) if isinstance(contract, dict) and isinstance(contract.get("world"), dict) else {}
     description = str(world.get("positive_description", "")).lower()
-    if "desert" in description or "radio tower" in description:
-        return "pauses beside the silent radio, hand near the dial, then looks toward the distant tower"
+    if "desert" in description or "radio tower" in description or "radio signal" in description:
+        return "moves through the established desert radio landscape and follows the visible signal direction"
     if "arctic" in description or "observatory" in description or "aurora" in description:
-        return "steps across blue ice as the aurora pulse reflects across the face"
+        return "steps through the established ice-and-aurora space as the visible signal changes the composition"
     if "greenhouse" in description:
-        return "repairs the flickering cassette recorder beside fogged glass plants"
+        return "moves between fogged glass plants as rain changes the scene composition"
     if "lighthouse" in description or "cliffside" in description:
-        return "carries the broken signal lantern up black rocks toward the rotating beam"
-    if "underwater" in description or "library" in description:
-        return "drifts through floating books and reaches toward the moonlit surface door"
+        return "climbs along the established rocks toward the rotating lighthouse beam"
+    if "underwater" in description:
+        return "drifts through the established underwater light toward the visible opening"
+    if "library" in description:
+        return "moves through the established library space toward the visible opening"
     return "performs one readable hand turn or step that changes the scene composition"
 
 
