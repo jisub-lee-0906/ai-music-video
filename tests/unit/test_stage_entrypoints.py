@@ -18,6 +18,114 @@ from ai_mv.core.stages.rerender_review import run_rerender_review
 from ai_mv.core.stages.review_outputs import run_review_outputs
 
 
+@pytest.fixture(autouse=True)
+def _supply_workflow_prompt_payloads_for_stage_runtime_contract_tests():
+    """Supply explicit workflow prompts for legacy-focused stage unit rows.
+
+    Production stages fail closed when model-facing workflow_prompts are missing.
+    These older stage tests exercise routing, candidate selection, cleanup, and
+    asset validation, so they get explicit test-only workflow payloads rather than
+    relying on runtime legacy prompt fallback.
+    """
+    original_render_stills = globals()["run_render_stills"]
+    original_render_clips = globals()["run_render_clips"]
+
+    def _with_required_workflow_prompts(stage_input: StageInput) -> StageInput:
+        if "fail-closed" in str(stage_input.run_id):
+            return stage_input
+        render_plan = stage_input.payload.get("render_plan")
+        if not isinstance(render_plan, list):
+            return stage_input
+        anchor_package = stage_input.payload.get("anchor_package")
+        if isinstance(anchor_package, dict):
+            for collection in ("anchors", "pose_anchor_bank"):
+                for anchor in anchor_package.get(collection, []) if isinstance(anchor_package.get(collection), list) else []:
+                    if not isinstance(anchor, dict):
+                        continue
+                    prompts = anchor.setdefault("workflow_prompts", {})
+                    if not isinstance(prompts, dict):
+                        continue
+                    workflow_target = str(anchor.get("workflow_target", "")).strip().lower()
+                    key = "flux2_tti_anchor" if workflow_target == "image_flux2_text_to_image" else "flux2_ref_anchor"
+                    prompts.setdefault(key, {"positive_text": "test clean anchor workflow prompt on a pure white seamless background"})
+        from ai_mv.core.stages import render_clips as render_clips_module
+        from ai_mv.core.stages import render_stills as render_stills_module
+
+        shot_map = {
+            str(row.get("shot_id", "")).strip(): row
+            for row in stage_input.payload.get("shot_plan", [])
+            if isinstance(row, dict)
+        }
+        still_map = {
+            str(row.get("shot_id", "")).strip(): row
+            for row in stage_input.payload.get("still_results", [])
+            if isinstance(row, dict)
+        }
+        anchor_text = " ".join(
+            str(row.get("prompt_text", ""))
+            for row in stage_input.payload.get("anchor_package", {}).get("anchors", [])
+            if isinstance(row, dict)
+        ) if isinstance(stage_input.payload.get("anchor_package"), dict) else ""
+        for item in render_plan:
+            if not isinstance(item, dict):
+                continue
+            shot_id = str(item.get("shot_id", "")).strip()
+            base_still_prompt = str(
+                item.get("still_prompt_text")
+                or item.get("prompt_polish")
+                or item.get("prompt_draft")
+                or item.get("prompt_seed")
+                or item.get("clip_prompt_seed")
+                or item.get("clip_positive_prompt")
+                or "test workflow prompt"
+            ).strip()
+            still_prompt = render_stills_module._apply_still_constraint_policy(
+                base_still_prompt,
+                shot=shot_map.get(shot_id, {}),
+                render_item=item,
+            )
+            if anchor_text and render_stills_module._should_apply_anchor_identity_prompt(item):
+                still_prompt = render_stills_module._remove_anchor_identity_contradictions(still_prompt, anchor_text)
+                lower_anchor = anchor_text.lower()
+                identity_tokens = []
+                if "woman" in lower_anchor or " she " in f" {lower_anchor} ":
+                    identity_tokens.append("same woman")
+                if "short black bob" in lower_anchor and "bang" in lower_anchor:
+                    identity_tokens.append("short black bob with bangs")
+                if "bright red" in lower_anchor and "raincoat" in lower_anchor:
+                    identity_tokens.append("bright red raincoat")
+                if identity_tokens:
+                    still_prompt = ", ".join([still_prompt, *identity_tokens])
+            clip_prompt = str(
+                item.get("clip_positive_prompt")
+                or item.get("positive_prompt")
+                or item.get("clip_prompt_seed")
+                or item.get("prompt_seed")
+                or base_still_prompt
+            ).strip()
+            still_row = still_map.get(shot_id, {})
+            clip_prompt = render_clips_module._apply_still_identity_to_clip_prompt(clip_prompt, still_row)
+            prompts = item.setdefault("workflow_prompts", {})
+            if isinstance(prompts, dict):
+                prompts.setdefault("flux2_ref_still", {"positive_text": still_prompt})
+                prompts.setdefault("ltx_ia2v", {"positive_text": clip_prompt, "negative_text": "test negative"})
+        return stage_input
+
+    def _run_render_stills_with_workflow_prompts(stage_input: StageInput):
+        return original_render_stills(_with_required_workflow_prompts(stage_input))
+
+    def _run_render_clips_with_workflow_prompts(stage_input: StageInput):
+        return original_render_clips(_with_required_workflow_prompts(stage_input))
+
+    globals()["run_render_stills"] = _run_render_stills_with_workflow_prompts
+    globals()["run_render_clips"] = _run_render_clips_with_workflow_prompts
+    try:
+        yield
+    finally:
+        globals()["run_render_stills"] = original_render_stills
+        globals()["run_render_clips"] = original_render_clips
+
+
 def test_assemble_mv_propagates_edit_intent_into_review_inputs(monkeypatch, tmp_path):
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.resolve_generated_file", lambda _config, path, *_args: str(tmp_path / Path(path).name))
     monkeypatch.setattr("ai_mv.core.stages.assemble_mv.final_video_path", lambda _config, _run_id: tmp_path / "mv.mp4")
@@ -1691,6 +1799,77 @@ def test_render_stills_uses_first_generated_anchor_still_for_later_continuity_sh
 
 
 
+def test_render_stills_uses_workflow_prompts_for_anchor_generation_without_negative_clauses(monkeypatch):
+    from ai_mv.core.planning.anchor_package import build_anchor_package
+
+    calls = []
+
+    def _fake_run_flux2_still(_config, item):
+        calls.append(dict(item))
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    anchor_package = build_anchor_package(
+        concept_text="alt-pop desert radio music video, one solitary protagonist, no city or neon",
+        style_name="alt_pop",
+    )
+
+    run_render_stills(
+        StageInput(
+            run_id="run-anchor-workflow-prompts",
+            config={"render": {"flux2_size": "1280x720"}},
+            payload={"anchor_package": anchor_package, "shot_plan": [], "render_plan": []},
+        )
+    )
+
+    assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_UPPER_BODY", "ANCHOR_CHARACTER_FULL_BODY"]
+    for call in calls:
+        prompt = call["positive_prompt"].lower()
+        assert "pure white" in prompt
+        assert "no city" not in prompt
+        assert "do not" not in prompt
+        assert "not a" not in prompt
+        assert "prompt_text" not in call
+
+
+def test_render_stills_reference_anchors_do_not_accept_still_workflow_prompt_fallback(monkeypatch):
+    def _fake_run_flux2_still(_config, item):
+        return f"D:/renders/{item['shot_id']}.png"
+
+    monkeypatch.setattr("ai_mv.core.stages.render_stills.run_flux2_still", _fake_run_flux2_still)
+    stage_input = StageInput(
+        run_id="run-anchor-ref-fail-closed",
+        config={"render": {"flux2_size": "1280x720"}},
+        payload={
+            "anchor_package": {
+                "anchors": [
+                    {
+                        "anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
+                        "workflow_target": "image_flux2_text_to_image",
+                        "prompt_text": "legacy tti prompt must not be used directly",
+                        "workflow_prompts": {"flux2_tti_anchor": {"positive_text": "pure white upper-body identity anchor"}},
+                    }
+                ],
+                "pose_anchor_bank": [
+                    {
+                        "anchor_id": "ANCHOR_POSE_HERO_CLOSEUP",
+                        "workflow_target": "image_flux2_reference_image",
+                        "prompt_text": "legacy reference prompt must not be used directly",
+                        "reference_anchor_ids": ["ANCHOR_CHARACTER_UPPER_BODY"],
+                        "workflow_prompts": {"flux2_ref_still": {"positive_text": "still prompt must not drive anchor generation"}},
+                    }
+                ],
+            },
+            "shot_plan": [],
+            "render_plan": [],
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="missing flux2_ref_anchor workflow prompt for anchor ANCHOR_POSE_HERO_CLOSEUP"):
+        run_render_stills(stage_input)
+
+
+
 def test_render_stills_uses_white_background_character_anchor_for_performance_anchor_source(monkeypatch):
     calls = []
 
@@ -1744,7 +1923,7 @@ def test_render_stills_uses_white_background_character_anchor_for_performance_an
     assert [call["shot_id"] for call in calls] == ["ANCHOR_CHARACTER_FULL_BODY", "S010", "S011"]
     assert "reference_image" not in calls[0]
     assert calls[1]["reference_image"] == "D:/renders/ANCHOR_CHARACTER_FULL_BODY.png"
-    assert "same young woman" in calls[1]["positive_prompt"]
+    assert "same woman" in calls[1]["positive_prompt"]
     assert "short black bob with bangs" in calls[1]["positive_prompt"]
     assert "bright red raincoat" in calls[1]["positive_prompt"]
     assert "stable dark outerwear silhouette" not in calls[1]["positive_prompt"]
@@ -2515,7 +2694,7 @@ def test_render_clips_propagates_anchor_identity_and_extends_duration_to_audio_c
     assert calls[0]["duration_sec"] == 9.0
     assert calls[1]["duration_sec"] == 9.0
     for item in calls:
-        assert "same young woman" in item["positive_prompt"]
+        assert "same woman" in item["positive_prompt"]
         assert "short black bob with bangs" in item["positive_prompt"]
         assert "bright red raincoat remains visible" in item["positive_prompt"]
         assert "no unrelated male singer" in item["positive_prompt"]

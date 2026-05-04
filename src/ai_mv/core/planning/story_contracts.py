@@ -93,12 +93,12 @@ def _visual_payoff(*, story_function: str, visual_event: str, payoff_requirement
 
 
 def _concept_motif(text: str) -> str:
-    lower = str(text or "").lower()
+    lower = _positive_concept_text(text)
     motifs: list[str] = []
     keyword_map = [
         (("train", "station", "subway", "전철", "지하철"), "station timing and platform light"),
         (("rain", "wet", "umbrella", "비"), "rain/reflection texture"),
-        (("neon", "city", "night", "밤", "도시"), "night-city light"),
+        (("neon", "city", "night", "밤", "도시"), "urban night light"),
         (("desert", "dune", "sand"), "desert horizon space"),
         (("sunrise", "dawn", "새벽"), "sunrise transition light"),
         (("radio", "tower", "antenna"), "radio tower signal motif"),
@@ -120,7 +120,7 @@ def _section_alignment_visual_token(shot: dict, *, concept_text: str = "") -> st
     lower = " ".join(
         _clean(value).lower()
         for value in (
-            concept_text,
+            _positive_concept_text(concept_text),
             shot.get("world_anchor"),
             shot.get("story_action_grammar"),
             shot.get("visual_event"),
@@ -136,3 +136,16 @@ def _section_alignment_visual_token(shot: dict, *, concept_text: str = "") -> st
 
 def _clean(value: object) -> str:
     return str(value or "").strip()
+
+
+
+def _positive_concept_text(text: object) -> str:
+    pieces: list[str] = []
+    for raw_part in str(text or "").lower().split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)

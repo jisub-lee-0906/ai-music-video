@@ -1,8 +1,13 @@
 import json
 from pathlib import Path
 
+import pytest
+
 import ai_mv.engines.acestep_1_5_aio.mapper as audio_mapper
 
+
+def _acestep_workflow_prompt(tags: str = "Workflow-safe music tags") -> dict:
+    return {"acestep": {"tags": tags}}
 
 
 def test_map_audio_workflow_preserves_blank_language_when_unset():
@@ -17,6 +22,7 @@ def test_map_audio_workflow_preserves_blank_language_when_unset():
             "language": "",
             "filename_prefix": "run_audio",
             "quality": "V0",
+            "workflow_prompts": _acestep_workflow_prompt("Synthwave, glossy nocturnal lead vocal"),
         },
     )
 
@@ -36,6 +42,7 @@ def test_map_audio_workflow_preserves_explicit_supported_language():
             "language": "ko",
             "filename_prefix": "run_audio_ko",
             "quality": "V0",
+            "workflow_prompts": _acestep_workflow_prompt("K-Indie, warm intimate vocal"),
         },
     )
 
@@ -54,6 +61,7 @@ def test_map_audio_workflow_targets_current_checkpoint_workflow_save_node():
             "language": "en",
             "filename_prefix": "audio/run-7",
             "quality": "V0",
+            "workflow_prompts": _acestep_workflow_prompt("City Pop, glossy synths, warm live drums"),
         },
     )
 
@@ -85,6 +93,7 @@ def test_map_audio_workflow_publishes_acestep_quality_controls():
             "sampler_cfg": 1.3,
             "sampler_name": "euler",
             "scheduler": "simple",
+            "workflow_prompts": _acestep_workflow_prompt("Synthwave, intimate lead vocal"),
         },
     )
 
@@ -119,6 +128,7 @@ def test_map_audio_workflow_omits_non_positive_sampler_controls_from_planner_def
             "sampler_cfg": 0.0,
             "sampler_name": "",
             "scheduler": "",
+            "workflow_prompts": _acestep_workflow_prompt("City Pop, soft lead vocal"),
         },
     )
 
@@ -139,6 +149,7 @@ def test_map_audio_workflow_omits_acestep_quality_controls_when_plan_uses_offici
             "filename_prefix": "audio/default-parity",
             "quality": "V0",
             "timesignature": "4",
+            "workflow_prompts": _acestep_workflow_prompt("Synthwave, clean lead vocal"),
         },
     )
 
@@ -162,3 +173,46 @@ def test_audio_checkpoint_workflow_template_carries_required_official_advanced_t
     assert text_inputs["top_p"] == 0.9
     assert text_inputs["top_k"] == 0
     assert text_inputs["min_p"] == 0
+
+
+def test_map_audio_workflow_prefers_acestep_workflow_prompt_tags():
+    out = audio_mapper.map_audio_workflow(
+        {},
+        {
+            "genre_description": "Legacy visual prompt, city, neon, no crowd",
+            "lyrics": "[Chorus]\nFollow the signal",
+            "seed": 31,
+            "bpm": 108,
+            "duration": 30,
+            "language": "en",
+            "filename_prefix": "audio/workflow-tags",
+            "quality": "V0",
+            "workflow_prompts": {
+                "acestep": {
+                    "tags": "Alt Pop, intimate solo vocal, warm analog pulse, calm resolve",
+                }
+            },
+        },
+    )
+
+    text_inputs = out["node.inputs"][audio_mapper.AUDIO_TEXT]
+    assert text_inputs["tags"] == "Alt Pop, intimate solo vocal, warm analog pulse, calm resolve"
+    assert "city" not in text_inputs["tags"].lower()
+    assert "neon" not in text_inputs["tags"].lower()
+
+
+def test_map_audio_workflow_fails_closed_when_acestep_workflow_prompt_missing():
+    with pytest.raises(RuntimeError, match="missing acestep workflow prompt"):
+        audio_mapper.map_audio_workflow(
+            {},
+            {
+                "genre_description": "Legacy visual prompt, city, neon, no crowd",
+                "lyrics": "[Chorus]\nFollow the signal",
+                "seed": 31,
+                "bpm": 108,
+                "duration": 30,
+                "language": "en",
+                "filename_prefix": "audio/legacy-tags",
+                "quality": "V0",
+            },
+        )

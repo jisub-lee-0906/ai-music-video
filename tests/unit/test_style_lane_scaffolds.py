@@ -1,9 +1,14 @@
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.styles.alt_pop.bible import get_alt_pop_bible
 from ai_mv.styles.dream_pop.bible import get_dream_pop_bible
+from ai_mv.styles.dream_pop.prompting import build_dream_pop_prompt_seed
 from ai_mv.styles.j_rock.bible import get_j_rock_bible
+from ai_mv.styles.j_rock.prompting import build_j_rock_prompt_seed
 from ai_mv.styles.k_indie.bible import get_k_indie_bible
+from ai_mv.styles.k_indie.prompting import build_k_indie_prompt_seed
 from ai_mv.styles.resolver import STYLE_PACKS, resolve_style_name
+from ai_mv.styles.synthwave.bible import get_synthwave_bible
+from ai_mv.styles.synthwave.prompting import build_synthwave_prompt_seed
 
 
 
@@ -77,6 +82,20 @@ def test_plan_preview_accepts_all_six_canonical_style_overrides_for_ambiguous_co
         assert out["style_resolution"]["style_lane"] == lane_name
         assert out["style_resolution"]["selection_source"] == "override"
 
+
+
+def test_new_style_prompt_seeds_do_not_hardcode_young_woman_identity():
+    cases = [
+        (build_synthwave_prompt_seed, get_synthwave_bible(), {"visual_mode": "neon_highway"}),
+        (build_dream_pop_prompt_seed, get_dream_pop_bible(), {"visual_mode": "chorus_bloom"}),
+        (build_k_indie_prompt_seed, get_k_indie_bible(), {"visual_mode": "chorus_portrait"}),
+        (build_j_rock_prompt_seed, get_j_rock_bible(), {"visual_mode": "chorus_charge"}),
+    ]
+    for builder, bible, shot in cases:
+        seed = builder("one solitary protagonist crosses an unfamiliar world", bible, shot).lower()
+        assert "young woman" not in seed
+        assert "young man" not in seed
+        assert "solitary" in seed or "protagonist" in seed
 
 
 def test_plan_preview_accepts_new_style_override_for_ambiguous_concept():

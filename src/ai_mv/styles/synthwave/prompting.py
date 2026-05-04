@@ -93,17 +93,17 @@ def _continuity_anchor(shot: dict) -> str:
 def _subject_anchor(shot: dict) -> str:
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
-        "laser_horizon": "young woman with dark shoulder-length hair and a sleek silhouette",
-        "neon_highway": "young woman driver with dark shoulder-length hair and steady gaze",
-        "mirror_glass": "young woman with dark shoulder-length hair reflected in side glass",
-        "dashboard_pulse": "young woman in the cockpit with dark shoulder-length hair and focused expression",
-        "grid_surge": "young woman performer with dark shoulder-length hair and direct eye contact",
-        "neon_run": "young woman in motion with dark shoulder-length hair and neon rim light",
-        "skyline_bloom": "young woman silhouette with dark shoulder-length hair against the skyline",
-        "tunnel_reveal": "young woman framed by tunnel light with dark shoulder-length hair",
-        "afterglow_escape": "young woman with dark shoulder-length hair in a calm afterglow portrait",
+        "laser_horizon": "solitary protagonist with a sleek silhouette",
+        "neon_highway": "solitary driver with steady gaze",
+        "mirror_glass": "solitary protagonist reflected in side glass",
+        "dashboard_pulse": "solitary protagonist in the cockpit with focused expression",
+        "grid_surge": "solitary performer with direct eye contact",
+        "neon_run": "solitary protagonist in motion with rim light",
+        "skyline_bloom": "solitary protagonist silhouette against the skyline",
+        "tunnel_reveal": "solitary protagonist framed by tunnel light",
+        "afterglow_escape": "solitary protagonist in a calm afterglow portrait",
     }
-    return mapping.get(visual_mode, "young woman with dark shoulder-length hair and stable synthwave styling")
+    return mapping.get(visual_mode, "solitary protagonist with stable synthwave styling")
 
 
 def _environment_anchor(shot: dict) -> str:

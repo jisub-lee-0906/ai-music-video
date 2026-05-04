@@ -8,6 +8,7 @@ from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.core.planning.sections import normalized_sections
 from ai_mv.core.planning.shot_plan import build_shot_plan
 from ai_mv.core.planning.story_contracts import build_story_contract
+from ai_mv.core.planning.workflow_prompt_lint import lint_workflow_prompts
 from ai_mv.styles.resolver import get_style_bible, resolve_style_selection
 
 
@@ -63,7 +64,7 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
         style_name=style_lane,
         creative_direction=creative_direction,
     )
-    return {
+    result = {
         "style_lane": style_lane,
         "style_resolution": style_resolution,
         "style_bible": style_bible,
@@ -86,6 +87,9 @@ def build_plan_preview_payload(config: dict, payload: dict) -> dict:
             },
         },
     }
+    result["workflow_prompt_lint"] = lint_workflow_prompts(result, payload.get("audio_plan") if isinstance(payload.get("audio_plan"), dict) else None)
+    result["workflow_inputs"]["workflow_prompt_lint"] = result["workflow_prompt_lint"]
+    return result
 
 
 def _apply_sequence_role_diversity(render_plan: list[dict]) -> None:
@@ -526,7 +530,7 @@ def _story_action_grammar_for_shot(shot: dict, *, concept_text: str, sequence_in
 
 
 def _concept_action_cue(concept_text: str) -> str:
-    text = str(concept_text or "").lower()
+    text = _positive_concept_text(concept_text)
     cues: list[str] = []
     if any(token in text for token in ("desert", "dune", "sand")):
         cues.append("desert dune space")
@@ -537,7 +541,7 @@ def _concept_action_cue(concept_text: str) -> str:
     if any(token in text for token in ("rain", "wet")):
         cues.append("rain reflection texture")
     if any(token in text for token in ("neon", "city", "night")):
-        cues.append("night-city light")
+        cues.append("night urban light")
     return "; ".join(dict.fromkeys(cues)) if cues else "concept-specific visual motif"
 
 
@@ -627,3 +631,16 @@ def _emotional_delta(shot: dict, *, style_name: str = "") -> str:
         "bridge": "turn inward without changing world",
         "outro": "resolve into afterglow on the same block",
     }.get(section_type, "increase intimacy without changing world")
+
+
+
+def _positive_concept_text(text: object) -> str:
+    pieces: list[str] = []
+    for raw_part in str(text or "").lower().split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)

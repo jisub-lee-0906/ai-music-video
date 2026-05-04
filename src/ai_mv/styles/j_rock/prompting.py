@@ -33,8 +33,8 @@ def build_j_rock_prompt_draft(shot: dict) -> str:
 
 def _subject_anchor(shot: dict) -> str:
     if str(shot.get("visual_mode", "")) == "chorus_charge":
-        return "young woman facing camera with high-energy performance expression"
-    return "young woman with sharp silhouette and driven performance posture"
+        return "solitary protagonist facing camera with high-energy performance expression"
+    return "solitary protagonist with sharp silhouette and driven performance posture"
 
 
 

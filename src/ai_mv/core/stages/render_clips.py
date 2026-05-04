@@ -41,6 +41,7 @@ def run_render_clips(stage_input: StageInput) -> StageOutput:
                 "material_id": _clip_material_id(shot, render_item, still_map.get(shot_id, {})),
                 "section_id": _clip_section_id(shot, render_item, still_map.get(shot_id, {})),
                 "status": "done",
+                "prompt_text": _clip_result_prompt_text(render_item),
                 **duration_contract,
             }
         )
@@ -93,12 +94,10 @@ def _run_clip(
     if render_mode != "ia2v":
         raise RuntimeError(f"unsupported render_mode for shot {shot_id}: {render_mode}")
     prompt_seed = _clip_prompt_text(render_item)
+    workflow_ltx_prompt = _required_workflow_prompt_payload(render_item, "ltx_ia2v", shot_id=shot_id)
+    positive_prompt = str(workflow_ltx_prompt.get("positive_text", "")).strip()
+    negative_prompt = str(workflow_ltx_prompt.get("negative_text", "")).strip()
     still_row = still_map.get(shot_id, {})
-    positive_prompt = _apply_still_identity_to_clip_prompt(
-        str(render_item.get("clip_positive_prompt") or render_item.get("positive_prompt") or prompt_seed).strip(),
-        still_row,
-    )
-    negative_prompt = str(stage_input.config.get("render", {}).get("ltx_negative", "")).strip()
     target_duration_sec = float(duration_target_sec or shot.get("duration_sec", stage_input.config.get("render", {}).get("ltx_default_shot_sec", 4.0)) or 4.0)
     duration_contract = _clip_duration_contract(target_duration_sec, render_item, stage_input.config)
     base_item = {
@@ -123,6 +122,23 @@ def _run_clip(
         },
     )
     return video_path, duration_contract
+
+
+def _clip_result_prompt_text(render_item: dict) -> str:
+    workflow_payload = _required_workflow_prompt_payload(render_item, "ltx_ia2v")
+    return str(workflow_payload.get("positive_text", "")).strip()
+
+
+def _required_workflow_prompt_payload(render_item: dict, workflow_key: str, *, shot_id: str = "") -> dict:
+    prompts = render_item.get("workflow_prompts") if isinstance(render_item, dict) else {}
+    payload = prompts.get(workflow_key) if isinstance(prompts, dict) else {}
+    positive = str(payload.get("positive_text", "")).strip() if isinstance(payload, dict) else ""
+    if positive:
+        return payload
+    item_shot_id = str(render_item.get("shot_id", "")).strip() if isinstance(render_item, dict) else ""
+    resolved_shot_id = shot_id or item_shot_id
+    suffix = f" for shot {resolved_shot_id}" if resolved_shot_id else ""
+    raise RuntimeError(f"missing {workflow_key} workflow prompt{suffix}")
 
 
 def _clip_prompt_text(render_item: dict) -> str:
@@ -216,7 +232,7 @@ def _still_identity_markers(still_row: dict) -> list[str]:
         "no identity drift during motion",
     ]
     if "woman" in text or "she" in text:
-        markers.append("same young woman")
+        markers.append("same woman")
         markers.append("no unrelated male singer")
     if "short black bob" in text or ("black bob" in text and "bang" in text):
         markers.append("short black bob with bangs")

@@ -102,6 +102,8 @@ def build_pose_anchor_selection(shot: dict) -> dict:
         return _selection("ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
     if _has_final_payoff_intent(shot, text, story_function):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT", decision=_final_payoff_decision())
+    if _has_face_critical_identity_intent(text, story_function):
+        return _selection("ANCHOR_POSE_HERO_CLOSEUP")
     if _has_any_word(text, ("walk", "walking", "side", "movement")) or "forward motion" in text or story_function in {"search", "release"} and "close" not in text:
         return _selection("ANCHOR_POSE_WALKING_SIDE")
     if any(token in text for token in ("profile", "looking down", "over shoulder", "over-shoulder")):
@@ -187,8 +189,17 @@ def _has_final_payoff_intent(shot: dict, text: str, story_function: str) -> bool
     return "final payoff" in visual_mode or "payoff front" in visual_mode
 
 
+
+def _has_face_critical_identity_intent(text: str, story_function: str) -> bool:
+    if story_function == "threshold":
+        return True
+    return any(token in text for token in ("hero", "close", "closeup", "close-up", "front", "performance"))
+
+
+
 def _has_resolution_language(text: str) -> bool:
     return _has_any_word(text, ("payoff", "resolve", "resolved", "resolution", "ending"))
+
 
 
 def _has_unresolved_or_pre_final_context(text: str) -> bool:

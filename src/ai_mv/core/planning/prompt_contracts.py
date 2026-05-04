@@ -198,7 +198,7 @@ def _section_emphasis_variant_token(variant: str) -> str:
         "contrastive_turn": "contrastive section-turn emphasis",
         "late-night drift": "late-night drift emphasis",
         "reset_suspension": "reset-and-suspension emphasis",
-        "world_anchor": "world-anchor still emphasis",
+        "world_anchor": "world-continuity still emphasis",
         "afterglow_hold": "afterglow hold emphasis",
         "slow_release": "slow release emphasis",
         "forward_drive": "forward-drive still emphasis",
@@ -217,14 +217,14 @@ def _reference_identity_token(reference_policy: dict) -> str:
     if reference_mode == "performance_anchor_source" or identity_lock == "performance_anchor":
         return (
             "front-facing performance-ready face visibility, same lead performer identity, stable bright stage outfit silhouette, "
-            "exact face fingerprint from the white-background identity anchor, same world anchor, "
+            "exact face fingerprint from the white-background identity anchor, coherent concept-world continuity, "
             "one clear solo performer only, upper-body or full-body readability, no ambiguous secondary silhouettes, "
             "no distant human silhouettes, no bystanders or same-outfit background doubles"
         )
     if reference_mode in {"anchor_source", "use_anchor_still"} or identity_lock in {"anchor", "high"}:
         return (
             "preserve the same lead identity, same lead performer identity, exact face fingerprint from the white-background identity anchor, "
-            "stable outfit silhouette, same world anchor, one clear solo performer only, no distant human silhouettes, no bystanders or same-outfit background doubles"
+            "stable outfit silhouette, coherent concept-world continuity, one clear solo performer only, no distant human silhouettes, no bystanders or same-outfit background doubles"
         )
     return ""
 

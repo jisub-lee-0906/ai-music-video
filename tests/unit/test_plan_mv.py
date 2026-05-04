@@ -70,7 +70,7 @@ def test_plan_mv_builds_tti_identity_anchors_for_flux2_reference_keyframes():
     upper_body = anchor_package["anchors"][0]
     assert upper_body["workflow_target"] == "image_flux2_text_to_image"
     assert "reference_anchor_ids" not in upper_body
-    assert "upper-body character reference image" in upper_body["prompt_text"]
+    assert "upper-body character identity card" in upper_body["prompt_text"]
     assert "clear face visibility" in upper_body["prompt_text"]
     assert "face fingerprint" in upper_body["prompt_text"]
     assert "no distant human silhouettes" in upper_body["prompt_text"]
@@ -850,6 +850,7 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
         "recommended_duration_sec",
         "pose_anchor_selection",
         "selected_pose_anchor_id",
+        "workflow_prompts",
         "still_a",
         "audio_segment",
     }

@@ -33,8 +33,8 @@ def build_k_indie_prompt_draft(shot: dict) -> str:
 
 def _subject_anchor(shot: dict) -> str:
     if str(shot.get("visual_mode", "")) == "chorus_portrait":
-        return "young woman facing camera with intimate but steady performance energy"
-    return "young woman with natural styling and quiet expression"
+        return "solitary protagonist facing camera with intimate but steady performance energy"
+    return "solitary protagonist with natural styling and quiet expression"
 
 
 

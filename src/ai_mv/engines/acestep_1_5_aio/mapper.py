@@ -211,11 +211,18 @@ def _audio_seed(plan: dict) -> int:
 
 
 def _audio_conditioning_text(plan: dict) -> str:
-    desc = compact_sentences(plan.get("genre_description", ""), 2)
-    desc = _trim_sentence(desc)
-    if desc:
-        return desc
-    return str(plan.get("tags", "")).strip()
+    workflow_tags = _workflow_acestep_tags(plan)
+    if workflow_tags:
+        return workflow_tags
+    raise RuntimeError("missing acestep workflow prompt")
+
+
+def _workflow_acestep_tags(plan: dict) -> str:
+    prompts = plan.get("workflow_prompts") if isinstance(plan, dict) else {}
+    payload = prompts.get("acestep") if isinstance(prompts, dict) else {}
+    if not isinstance(payload, dict):
+        return ""
+    return str(payload.get("tags", "")).strip()
 
 
 def _locked_audio_contract(plan: dict) -> dict:

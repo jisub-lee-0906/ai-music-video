@@ -33,8 +33,8 @@ def build_dream_pop_prompt_draft(shot: dict) -> str:
 
 def _subject_anchor(shot: dict) -> str:
     if str(shot.get("visual_mode", "")) == "chorus_bloom":
-        return "young woman facing camera with softened afterglow expression"
-    return "young woman with soft silhouette and calm expression"
+        return "solitary protagonist facing camera with softened afterglow expression"
+    return "solitary protagonist with soft silhouette and calm expression"
 
 
 

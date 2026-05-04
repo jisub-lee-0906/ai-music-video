@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from ai_mv.core.contracts.stage_io import StageInput
@@ -6,6 +8,79 @@ from ai_mv.core.planning.render_items import build_render_item
 from ai_mv.styles.resolver import get_style_bible
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.core.stages.render_stills import run_render_stills
+
+
+@pytest.fixture(autouse=True)
+def _supply_flux2_ref_workflow_prompt_for_legacy_anchor_stage_fixtures(monkeypatch):
+    original = run_render_stills
+
+    def _clean_fixture_positive(text: str) -> str:
+        value = str(text or "").replace("No street", "minimal seamless background").replace("no street", "minimal seamless background")
+        value = value.replace("do not change", "preserve")
+        return value.strip() or "workflow prompt"
+
+    def _with_flux2_ref_workflow_prompts(stage_input: StageInput) -> StageInput:
+        render_plan = stage_input.payload.get("render_plan", [])
+        if isinstance(render_plan, list):
+            for item in render_plan:
+                if not isinstance(item, dict):
+                    continue
+                prompts = item.setdefault("workflow_prompts", {})
+                prompts.setdefault(
+                    "flux2_ref_still",
+                    {
+                        "positive_text": ", ".join(
+                            part
+                            for part in [
+                                _clean_fixture_positive(
+                                    item.get("still_prompt_text")
+                                    or item.get("prompt_seed")
+                                    or item.get("positive_prompt")
+                                    or item.get("shot_id")
+                                    or "workflow still prompt"
+                                ),
+                                (
+                                    "preserve gender, face, hair, upper-body wardrobe, wardrobe color palette, and main outfit silhouette"
+                                    if not item.get("selected_pose_anchor_id")
+                                    else ""
+                                ),
+                            ]
+                            if part
+                        ),
+                        "negative_text": "",
+                    },
+                )
+        anchor_package = stage_input.payload.get("anchor_package")
+        if isinstance(anchor_package, dict):
+            for anchor in [*anchor_package.get("anchors", []), *anchor_package.get("pose_anchor_bank", [])]:
+                if not isinstance(anchor, dict):
+                    continue
+                prompts = anchor.setdefault("workflow_prompts", {})
+                target = str(anchor.get("workflow_target", "")).strip().lower()
+                if target == "image_flux2_text_to_image":
+                    prompts.setdefault(
+                        "flux2_tti_anchor",
+                        {
+                            "positive_text": _clean_fixture_positive(
+                                anchor.get("prompt_text") or anchor.get("anchor_id") or "pure white identity anchor"
+                            ),
+                        },
+                    )
+                else:
+                    prompts.setdefault(
+                        "flux2_ref_anchor",
+                        {
+                            "positive_text": _clean_fixture_positive(
+                                anchor.get("prompt_text") or anchor.get("anchor_id") or "pure white pose anchor"
+                            ),
+                        },
+                    )
+        return stage_input
+
+    def _wrapped(stage_input: StageInput):
+        return original(_with_flux2_ref_workflow_prompts(stage_input))
+
+    monkeypatch.setattr(sys.modules[__name__], "run_render_stills", _wrapped)
 
 
 def test_anchor_package_default_identity_card_does_not_inject_fixed_wardrobe_hair_or_demographics():

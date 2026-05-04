@@ -6,7 +6,7 @@ def build_alt_pop_prompt_seed(concept_text: str, style_bible: dict, shot: dict) 
         part
         for part in [
             "alt pop music video",
-            str(concept_text or "").strip() or "alt pop rooftop night",
+            _positive_concept_anchor(concept_text) or "alt pop performance world",
             _world_continuity_anchor(shot),
             _subject_anchor(shot),
             _environment_anchor(shot),
@@ -33,8 +33,8 @@ def build_alt_pop_prompt_draft(shot: dict) -> str:
 
 def _subject_anchor(shot: dict) -> str:
     if str(shot.get("visual_mode", "")) == "chorus_front":
-        return "young woman facing camera with assertive performance energy"
-    return "young woman with sharp silhouette and controlled expression"
+        return "same solitary lead protagonist facing camera with assertive performance energy"
+    return "same solitary lead protagonist with sharp silhouette and controlled expression"
 
 
 
@@ -42,7 +42,7 @@ def _world_continuity_anchor(shot: dict) -> str:
     world_anchor = str(shot.get("world_anchor", "")).strip()
     if _is_desert_radio_world(world_anchor):
         return "same protagonist, same desert radio sunrise world"
-    return "same protagonist, same modern style-world mood"
+    return "same protagonist, same concept-led performance world"
 
 
 
@@ -79,7 +79,7 @@ def _desert_radio_environment_anchor(shot: dict) -> str:
         "approach": "wind-shaped desert path toward a distant antenna silhouette",
         "discovery": "distant radio tower revealed across the dunes under growing dawn light",
         "confrontation": "radio tower signal zone with harsh static light against the sunrise horizon",
-        "recognition": "close desert signal moment with the radio held away from her face",
+        "recognition": "close desert signal moment with the radio held away from the protagonist face",
         "release": "quiet sunrise desert horizon with the radio lowered or left behind",
     }.get(beat_role, "desert dune radio-signal world with sunrise horizon light")
 
@@ -90,6 +90,25 @@ def _is_desert_radio_world(text: str) -> bool:
     return any(token in lower for token in ("desert", "dune", "sand")) and any(
         token in lower for token in ("radio", "tower", "signal", "antenna")
     )
+
+
+
+def _positive_concept_anchor(concept_text: str) -> str:
+    """Keep user-desired positive motifs but drop explicit negative clauses from generation prompts."""
+
+    text = str(concept_text or "").strip()
+    if not text:
+        return ""
+    pieces: list[str] = []
+    for raw_part in text.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        lowered = part.lower()
+        if lowered.startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)
 
 
 

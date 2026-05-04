@@ -10,6 +10,7 @@ from ai_mv.core.contracts.prompt_normalize import (
     validate_audio_lyrics_language,
     validate_audio_lyrics_quality,
 )
+from ai_mv.core.planning.workflow_prompt_adapters import adapt_acestep_audio_prompt, parse_user_intent_contract
 from ai_mv.core.contracts.prompt_schema import audio_outline_schema
 from ai_mv.engines.acestep_1_5_aio.mapper import GENRE_ALIASES
 from ai_mv.engines.acestep_1_5_aio.policy import audio_policy, bar_lane_summary, preferred_songform_rows
@@ -111,6 +112,12 @@ def _normalize_and_validate(config: dict, plan: dict) -> dict:
     normalized["line_budgets"] = dict(plan.get("line_budgets", {})) if isinstance(plan.get("line_budgets", {}), dict) else {}
     normalized["bpm"] = int(normalized.get("bpm", 0) or int(plan.get("bpm", 0) or 0))
     normalized["keyscale"] = str(normalized.get("keyscale", "")).strip() or str(plan.get("keyscale", "")).strip()
+    normalized["workflow_prompts"] = {
+        "acestep": adapt_acestep_audio_prompt(
+            parse_user_intent_contract(str(plan.get("audio_direction", "") or plan.get("hook_brief", "") or plan.get("tags", ""))),
+            normalized,
+        )
+    }
     return normalized
 
 

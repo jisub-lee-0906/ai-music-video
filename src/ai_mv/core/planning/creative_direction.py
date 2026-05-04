@@ -3,6 +3,7 @@ from __future__ import annotations
 
 def build_creative_direction(*, concept_text: str, style_name: str, sections: list[dict], continuity_mode: str = "strict") -> dict:
     text = str(concept_text or "").strip().lower()
+    positive_text = _positive_concept_text(text)
     section_types = [str(row.get("section_type", "")).strip() for row in sections if isinstance(row, dict)]
     if any(name == "chorus" for name in section_types):
         mv_mode = "visualizer"
@@ -20,9 +21,9 @@ def build_creative_direction(*, concept_text: str, style_name: str, sections: li
         "bridge_intent": _bridge_intent(text=text),
         "continuity_mode": normalized_continuity_mode,
         "continuity_rules": _continuity_rules(style_name=style_name, continuity_mode=normalized_continuity_mode),
-        "protagonist_anchor": _protagonist_anchor(text=text, style_name=style_name),
-        "world_anchor": _world_anchor(text=text, style_name=style_name),
-        "wardrobe_anchor": _wardrobe_anchor(text=text, style_name=style_name),
+        "protagonist_anchor": _protagonist_anchor(text=positive_text, style_name=style_name),
+        "world_anchor": _world_anchor(text=positive_text, style_name=style_name),
+        "wardrobe_anchor": _wardrobe_anchor(text=positive_text, style_name=style_name),
         "style_lane": str(style_name).strip(),
         "section_count": len(sections),
     }
@@ -157,3 +158,18 @@ def _normalize_continuity_mode(value: str) -> str:
     if mode in {"strict", "moderate", "expressive"}:
         return mode
     return "strict"
+
+
+
+def _positive_concept_text(text: str) -> str:
+    """Drop comma-separated negative constraints before positive motif detection."""
+
+    pieces: list[str] = []
+    for raw_part in str(text or "").split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)

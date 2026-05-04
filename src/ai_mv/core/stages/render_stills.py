@@ -42,9 +42,7 @@ def run_render_stills(stage_input: StageInput) -> StageOutput:
         render_item = render_map.get(shot_id, {})
         material_id = str(render_item.get("material_id", "") or shot.get("material_id", "")).strip()
         material_row = material_map.get(material_id, {})
-        base_prompt_text = _still_prompt_text(render_item)
-        base_prompt_text = _apply_anchor_identity_prompt(base_prompt_text, render_item, anchor_identity_prompt)
-        prompt_text = _apply_still_constraint_policy(base_prompt_text, shot=shot, render_item=render_item)
+        prompt_text = _required_workflow_positive_prompt(render_item, "flux2_ref_still", shot_id=shot_id)
         previous_image = str(prior_still_map.get(shot_id, {}).get("image", "")).strip()
         anchor_reference_image = _anchor_reference_image(render_item, generated_still_map, prior_still_map, anchor_still_map)
         render_count = _render_count(render_item)
@@ -154,7 +152,7 @@ def _render_anchor_package(stage_input: StageInput) -> list[dict]:
             continue
         item = {
             "shot_id": anchor_id,
-            "positive_prompt": prompt_text,
+            "positive_prompt": _required_anchor_workflow_positive_prompt(anchor),
             "filename_prefix": still_prefix(stage_input.run_id, anchor_id),
             "flux2_size": str(stage_input.config.get("render", {}).get("flux2_size", "")).strip(),
             "retry": 0,
@@ -182,6 +180,21 @@ def _render_anchor_package(stage_input: StageInput) -> list[dict]:
                 result_row[metadata_key] = metadata_value
         anchor_results.append(result_row)
     return anchor_results
+
+
+def _required_anchor_workflow_positive_prompt(anchor: dict) -> str:
+    prompts = anchor.get("workflow_prompts") if isinstance(anchor.get("workflow_prompts"), dict) else {}
+    workflow_target = str(anchor.get("workflow_target", "")).strip().lower()
+    preferred_keys = ["flux2_tti_anchor"] if workflow_target == "image_flux2_text_to_image" else ["flux2_ref_anchor"]
+    for key in preferred_keys:
+        payload = prompts.get(key, {}) if isinstance(prompts, dict) else {}
+        prompt = str(payload.get("positive_text", "")).strip() if isinstance(payload, dict) else ""
+        if prompt:
+            return prompt
+    anchor_id = str(anchor.get("anchor_id", "")).strip()
+    suffix = f" for anchor {anchor_id}" if anchor_id else ""
+    expected = "/".join(preferred_keys)
+    raise RuntimeError(f"missing {expected} workflow prompt{suffix}")
 
 
 def _is_world_reference_anchor(anchor: dict) -> bool:
@@ -353,7 +366,7 @@ def _anchor_identity_prompt(anchor_still_map: dict[str, dict] | None) -> str:
     lower_prompt = prompt_text.lower()
     explicit_markers: list[str] = []
     if "woman" in lower_prompt or " she " in f" {lower_prompt} ":
-        explicit_markers.append("same young woman")
+        explicit_markers.append("same woman")
     if "short black bob" in lower_prompt and "bang" in lower_prompt:
         explicit_markers.append("short black bob with bangs")
     elif "short black bob" in lower_prompt:
@@ -460,6 +473,18 @@ def _resolve_still_constraint_mode(prompt_text: str, *, shot: dict, render_item:
         return "raw"
     return "constrained"
 
+
+
+def _required_workflow_positive_prompt(render_item: dict, workflow_key: str, *, shot_id: str = "") -> str:
+    prompts = render_item.get("workflow_prompts") if isinstance(render_item, dict) else {}
+    payload = prompts.get(workflow_key) if isinstance(prompts, dict) else {}
+    prompt = str(payload.get("positive_text", "")).strip() if isinstance(payload, dict) else ""
+    if prompt:
+        return prompt
+    item_shot_id = str(render_item.get("shot_id", "")).strip() if isinstance(render_item, dict) else ""
+    resolved_shot_id = shot_id or item_shot_id
+    suffix = f" for shot {resolved_shot_id}" if resolved_shot_id else ""
+    raise RuntimeError(f"missing {workflow_key} workflow prompt{suffix}")
 
 
 def _render_count(render_item: dict) -> int:

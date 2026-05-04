@@ -21,6 +21,10 @@ from ai_mv.core.planning.prompt_contracts import (
 from ai_mv.core.planning.render_item_inputs import resolve_render_item_inputs as render_item_inputs_resolve_render_item_inputs
 from ai_mv.core.planning.render_item_payload import build_render_item_payload as render_item_payload_build_render_item_payload
 from ai_mv.core.planning.render_sizing import calculate_render_count as render_sizing_calculate_render_count
+from ai_mv.core.planning.workflow_prompt_adapters import (
+    build_workflow_prompt_payloads,
+    parse_user_intent_contract,
+)
 from ai_mv.core.planning.reference_policy import (
     build_reference_policy as reference_policy_build_reference_policy,
     build_variation_delta_contract as reference_policy_build_variation_delta_contract,
@@ -83,6 +87,23 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         reference_policy,
         variation_delta,
     )
+    workflow_prompts = build_workflow_prompt_payloads(
+        parse_user_intent_contract(concept_text),
+        {
+            "shot_id": shot.get("shot_id", ""),
+            "prompt_seed": prompt_seed,
+            "prompt_draft": prompt_draft,
+            "prompt_polish": prompt_polish,
+            "still_prompt_text": still_prompt_text,
+            "clip_prompt_seed": clip_prompt_seed,
+            "clip_positive_prompt": clip_positive_prompt,
+            "story_contract": dict(shot.get("story_contract", {})) if isinstance(shot.get("story_contract"), dict) else {},
+            "selected_pose_anchor_id": str(pose_anchor_selection.get("selected_pose_anchor_id", "")).strip() if isinstance(pose_anchor_selection, dict) else "",
+            "candidate_role": str((production_policy or {}).get("candidate_role", "")).strip(),
+            "recommended_duration_sec": (production_policy or {}).get("recommended_duration_sec", {}),
+        },
+        base_ltx_negative=str(config.get("render", {}).get("ltx_negative", "")).strip() if isinstance(config, dict) else "",
+    )
     out = render_item_payload_build_render_item_payload(
         shot=shot,
         render_mode=render_mode,
@@ -102,6 +123,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         variation_delta=variation_delta,
         production_policy=production_policy,
         pose_anchor_selection=pose_anchor_selection,
+        workflow_prompts=workflow_prompts,
     )
     return out
 

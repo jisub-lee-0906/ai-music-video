@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ai_mv.core.planning.workflow_prompt_adapters import adapt_flux2_tti_anchor_prompt, parse_user_intent_contract
+
 
 def build_anchor_package(*, concept_text: str, style_name: str, creative_direction: dict | None = None) -> dict:
     """Build the stable reference-anchor package used before story variants.
@@ -12,6 +14,13 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
     direction = creative_direction if isinstance(creative_direction, dict) else {}
     protagonist_anchor = str(direction.get("protagonist_anchor", "")).strip() or "one lead protagonist with story-appropriate presentation"
     wardrobe_anchor = _wardrobe_anchor(style_name, direction)
+    workflow_anchor_prompt = adapt_flux2_tti_anchor_prompt(
+        parse_user_intent_contract(concept_text),
+        {
+            "protagonist_anchor": protagonist_anchor,
+            "wardrobe_anchor": wardrobe_anchor,
+        },
+    )
     return {
         "strategy": "white_background_tti_character_anchors_then_flux_reference_keyframes",
         "workflow_family": "flux2_tti_identity_anchor_then_reference_keyframes",
@@ -23,6 +32,7 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
                 "workflow_target": "image_flux2_text_to_image",
                 "prompt_style": "upper_body_identity_card",
                 "prompt_text": _upper_body_identity_prompt(protagonist_anchor, wardrobe_anchor),
+                "workflow_prompts": {"flux2_tti_anchor": workflow_anchor_prompt},
                 "selection_criteria": [
                     "pure_white_background",
                     "single_subject_only",
@@ -146,6 +156,7 @@ def _full_body_anchor_spec(protagonist_anchor: str, wardrobe_anchor: str) -> dic
         "background_contract": "white_background",
         "prompt_style": "white_background_full_body_from_upper_body_identity",
         "prompt_text": _full_body_character_prompt(protagonist_anchor, wardrobe_anchor),
+        "workflow_prompts": {"flux2_ref_anchor": {"positive_text": _full_body_workflow_prompt(protagonist_anchor, wardrobe_anchor)}},
         "selection_criteria": [
             "pure_white_background",
             "single_subject_only",
@@ -158,9 +169,9 @@ def _full_body_anchor_spec(protagonist_anchor: str, wardrobe_anchor: str) -> dic
 
 def _upper_body_identity_prompt(protagonist_anchor: str, wardrobe_anchor: str) -> str:
     return (
-        f"Create a clean upper-body character reference image of {protagonist_anchor} alone on a seamless pure white studio background. "
-        f"Frame the subject from the waist up, centered, with clear face visibility, a stable face fingerprint, a distinctive hairstyle from the identity anchor, expressive readable eyes, and {wardrobe_anchor} clearly visible at the collar and shoulders. "
-        f"{_wardrobe_lock_sentence(wardrobe_anchor)} "
+        f"Create a clean upper-body character identity card of {protagonist_anchor} alone on a seamless pure white studio background. "
+        f"Frame the subject from the waist up, centered, with clear face visibility, a stable face fingerprint, distinctive readable hairstyle, expressive readable eyes, and {wardrobe_anchor} clearly visible at the collar and shoulders. "
+        f"Preserve one coherent upper-body wardrobe: {wardrobe_anchor}; keep the wardrobe color palette, collar/shoulder details, fabric weight cues, sleeve shape, and main outfit silhouette stable; do not redesign clothing or introduce a new costume. "
         "Use soft even studio lighting and keep it as one continuous clean character card with no street, no room, no city, no props, no scenery, no text, no logo, no collage, no split screen, no distant human silhouettes, and no extra people."
     )
 
@@ -271,6 +282,51 @@ def _pose_anchor_bank(protagonist_anchor: str, wardrobe_anchor: str) -> list[dic
     return [_pose_anchor_spec(spec, protagonist_anchor, wardrobe_anchor) for spec in specs]
 
 
+def _full_body_workflow_prompt(protagonist_anchor: str, wardrobe_anchor: str) -> str:
+    subject = _workflow_safe_anchor_subject(protagonist_anchor)
+    return (
+        "Use the reference character identity exactly. "
+        "Create a full-body white-background character model card with one centered subject, head-to-toe visibility, readable face, readable outfit, visible shoes, and generous white margins. "
+        f"Keep {subject} with the exact face identity, distinctive hairstyle, expressive readable eyes, and {wardrobe_anchor}. "
+        f"Preserve the same upper-body wardrobe from the identity anchor: {wardrobe_anchor}; keep wardrobe color palette, collar and shoulder details, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
+        "Use a pure white seamless studio background with soft even studio lighting."
+    )
+
+
+def _pose_anchor_workflow_prompt(
+    protagonist_anchor: str,
+    wardrobe_anchor: str,
+    pose_instruction: str,
+    *,
+    allow_microphone: bool = False,
+    allow_neutral_seat: bool = False,
+) -> str:
+    prop_clause = ""
+    subject = _workflow_safe_anchor_subject(protagonist_anchor)
+    clean_pose_instruction = str(pose_instruction).replace("no duplicate limbs", "clean anatomically coherent limb structure")
+    if allow_microphone:
+        prop_clause = " Include exactly one simple handheld microphone as the only prop."
+    elif allow_neutral_seat:
+        prop_clause = " Include only a minimal neutral seat needed for the seated pose."
+    return (
+        "Use the reference character identity exactly. "
+        "Create a white-background pose reference card with one centered subject and stable identity. "
+        f"Depict {subject} with the exact face identity, distinctive hairstyle, readable face, and {wardrobe_anchor}. "
+        f"Preserve the same wardrobe from the identity anchor: {wardrobe_anchor}; keep wardrobe color palette, collar and shoulder details, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
+        f"Pose and framing: {clean_pose_instruction}.{prop_clause} "
+        "Use a pure white seamless studio background with soft even studio lighting."
+    )
+
+
+def _workflow_safe_anchor_subject(protagonist_anchor: str) -> str:
+    text = str(protagonist_anchor or "").strip() or "one lead protagonist with story-appropriate presentation"
+    blocked = ("no competing bystanders", "no bystanders", "no crowd", "no second protagonist", "no extra people")
+    for phrase in blocked:
+        text = text.replace(phrase, "")
+    text = ", ".join(part.strip() for part in text.split(",") if part.strip())
+    return text or "one lead protagonist with story-appropriate presentation"
+
+
 def _pose_anchor_spec(spec: dict, protagonist_anchor: str, wardrobe_anchor: str) -> dict:
     return {
         "anchor_id": spec["anchor_id"],
@@ -297,6 +353,17 @@ def _pose_anchor_spec(spec: dict, protagonist_anchor: str, wardrobe_anchor: str)
             allow_microphone="handheld_microphone" in spec.get("allowed_props", []),
             allow_neutral_seat="neutral_seat" in spec.get("allowed_props", []),
         ),
+        "workflow_prompts": {
+            "flux2_ref_anchor": {
+                "positive_text": _pose_anchor_workflow_prompt(
+                    protagonist_anchor,
+                    wardrobe_anchor,
+                    str(spec["pose_instruction"]),
+                    allow_microphone="handheld_microphone" in spec.get("allowed_props", []),
+                    allow_neutral_seat="neutral_seat" in spec.get("allowed_props", []),
+                )
+            }
+        },
     }
 
 

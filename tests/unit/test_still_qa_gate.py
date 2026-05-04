@@ -1,8 +1,55 @@
+import sys
+
 import pytest
 
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.stages.render_clips import run_render_clips
 from ai_mv.core.stages.render_stills import run_render_stills
+
+
+@pytest.fixture(autouse=True)
+def _supply_workflow_prompts_for_legacy_still_qa_fixtures(monkeypatch):
+    original_stills = run_render_stills
+    original_clips = run_render_clips
+
+    def _with_workflow_prompts(stage_input: StageInput) -> StageInput:
+        render_plan = stage_input.payload.get("render_plan", [])
+        if isinstance(render_plan, list):
+            anchor_package = stage_input.payload.get("anchor_package")
+            if isinstance(anchor_package, dict):
+                for collection in ("anchors", "pose_anchor_bank"):
+                    for anchor in anchor_package.get(collection, []) if isinstance(anchor_package.get(collection), list) else []:
+                        if not isinstance(anchor, dict):
+                            continue
+                        prompts = anchor.setdefault("workflow_prompts", {})
+                        if not isinstance(prompts, dict):
+                            continue
+                        workflow_target = str(anchor.get("workflow_target", "")).strip().lower()
+                        key = "flux2_tti_anchor" if workflow_target == "image_flux2_text_to_image" else "flux2_ref_anchor"
+                        prompts.setdefault(key, {"positive_text": "test clean anchor workflow prompt on a pure white seamless background"})
+            for item in render_plan:
+                if not isinstance(item, dict):
+                    continue
+                base = str(
+                    item.get("still_prompt_text")
+                    or item.get("prompt_seed")
+                    or item.get("clip_prompt_seed")
+                    or item.get("positive_prompt")
+                    or "workflow prompt"
+                ).strip()
+                prompts = item.setdefault("workflow_prompts", {})
+                prompts.setdefault("flux2_ref_still", {"positive_text": base, "negative_text": ""})
+                prompts.setdefault("ltx_ia2v", {"positive_text": str(item.get("clip_prompt_seed") or base), "negative_text": ""})
+        return stage_input
+
+    def _wrapped_stills(stage_input: StageInput):
+        return original_stills(_with_workflow_prompts(stage_input))
+
+    def _wrapped_clips(stage_input: StageInput):
+        return original_clips(_with_workflow_prompts(stage_input))
+
+    monkeypatch.setattr(sys.modules[__name__], "run_render_stills", _wrapped_stills)
+    monkeypatch.setattr(sys.modules[__name__], "run_render_clips", _wrapped_clips)
 
 
 def _base_clip_payload(still_row: dict, render_item: dict | None = None, shot: dict | None = None) -> dict:
