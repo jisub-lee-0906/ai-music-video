@@ -327,7 +327,7 @@ def _thread_continuity_anchor_bundle(shot_plan: list[dict], creative_direction: 
             "world_anchor": world_anchor,
             "wardrobe_anchor": wardrobe_anchor,
             "no_competing_subjects": True,
-            "time_band_anchor": "same night time band",
+            "time_band_anchor": "same concept time and lighting band",
         }
 
 
@@ -591,7 +591,7 @@ def _opening_emotional_delta(style_name: str, shot: dict | None = None) -> str:
         return "establish desert radio sunrise baseline"
     if style_name == "idol_pop":
         return "establish bright performance-night baseline"
-    return "establish lonely night-world baseline"
+    return "establish opening emotional baseline"
 
 
 def _camera_distance_progression(shot: dict) -> str:

@@ -197,7 +197,7 @@ def test_render_item_surfaces_structured_continuity_and_neighbor_contracts():
                 "world_anchor": "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage",
                 "wardrobe_anchor": "stable dark outerwear silhouette",
                 "no_competing_subjects": True,
-                "time_band_anchor": "same night time band",
+                "time_band_anchor": "same concept time and lighting band",
             },
             "shot_relation_contract": {
                 "relation_to_previous_shot": "continue same protagonist and world from previous shot",
@@ -584,7 +584,7 @@ def test_render_item_marks_sequence_opener_as_anchor_still_source():
                 "world_anchor": "same wet neon boulevard",
                 "wardrobe_anchor": "stable dark outerwear silhouette",
                 "no_competing_subjects": True,
-                "time_band_anchor": "same night time band",
+                "time_band_anchor": "same concept time and lighting band",
             },
         },
     )
@@ -643,7 +643,7 @@ def test_render_item_routes_later_continuity_shot_to_anchor_reference():
                 "world_anchor": "same wet neon boulevard",
                 "wardrobe_anchor": "stable dark outerwear silhouette",
                 "no_competing_subjects": True,
-                "time_band_anchor": "same night time band",
+                "time_band_anchor": "same concept time and lighting band",
             },
             "reference_source_shot_id": "S001",
         },
@@ -706,7 +706,7 @@ def test_render_item_marks_performance_opener_as_performance_anchor_source():
                 "world_anchor": "same glossy performance-night stage",
                 "wardrobe_anchor": "stable bright stage outfit silhouette",
                 "no_competing_subjects": True,
-                "time_band_anchor": "same night time band",
+                "time_band_anchor": "same concept time and lighting band",
             },
         },
     )
@@ -772,7 +772,7 @@ def test_render_item_routes_later_performance_shot_to_performance_anchor_referen
                 "world_anchor": "same glossy performance-night stage",
                 "wardrobe_anchor": "stable bright stage outfit silhouette",
                 "no_competing_subjects": True,
-                "time_band_anchor": "same night time band",
+                "time_band_anchor": "same concept time and lighting band",
             },
         },
     )

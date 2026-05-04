@@ -20,8 +20,20 @@ def test_continuity_contract_module_preserves_explicit_wardrobe_anchor():
         "world_anchor": "same rain-slick neon boulevard world, wet asphalt reflections, dense urban signage",
         "wardrobe_anchor": "stable bright stage outfit silhouette",
         "no_competing_subjects": True,
-        "time_band_anchor": "same night time band",
+        "time_band_anchor": "same concept time and lighting band",
     }
+
+
+def test_continuity_contract_defaults_do_not_force_night_time_band():
+    out = build_continuity_contract(
+        {
+            "protagonist_anchor": "same forest protagonist",
+            "world_anchor": "same forest pier world, moss and water",
+        }
+    )
+
+    assert out["time_band_anchor"] == "same concept time and lighting band"
+    assert "night" not in out["time_band_anchor"].lower()
 
 
 def test_shot_relation_contract_module_builds_intro_and_followup_defaults():
@@ -32,7 +44,7 @@ def test_shot_relation_contract_module_builds_intro_and_followup_defaults():
         "relation_to_previous_shot": "sequence opener",
         "camera_distance_progression": "set baseline distance",
         "same_block_vs_new_block": "same block baseline",
-        "emotional_delta": "establish lonely night-world baseline",
+        "emotional_delta": "establish opening emotional baseline",
     }
     assert followup == {
         "relation_to_previous_shot": "continue same protagonist and world from previous shot",

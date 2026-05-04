@@ -8,7 +8,7 @@ def build_continuity_contract(shot: dict) -> dict:
         "world_anchor": str(shot.get("world_anchor", "")).strip(),
         "wardrobe_anchor": _wardrobe_anchor(shot),
         "no_competing_subjects": True,
-        "time_band_anchor": "same night time band",
+        "time_band_anchor": "same concept time and lighting band",
     }
 
 
@@ -29,7 +29,7 @@ def build_shot_relation_contract(shot: dict) -> dict:
             "relation_to_previous_shot": "sequence opener",
             "camera_distance_progression": "set baseline distance",
             "same_block_vs_new_block": "same block baseline",
-            "emotional_delta": "establish lonely night-world baseline",
+            "emotional_delta": "establish opening emotional baseline",
         }
     progression = {
         "establishing_wide": "hold or widen from previous shot",

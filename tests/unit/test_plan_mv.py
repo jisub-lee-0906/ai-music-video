@@ -1,3 +1,4 @@
+from ai_mv.core.planning.director_treatment import build_director_treatment
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 from ai_mv.core.planning.sections import merged_shot_section_type, normalized_sections
 from ai_mv.styles.citypop.rules import BRIDGE_CONNECTIVE_FAMILIES, INTRO_WORLD_FIRST_FAMILIES, OUTRO_RELEASE_FAMILIES
@@ -448,6 +449,24 @@ def test_plan_mv_can_toggle_narrative_progression_fields_for_planning_spike():
 
 
 
+def test_director_treatment_defaults_do_not_inject_night_world_for_non_night_concepts():
+    treatment = build_director_treatment(
+        concept_text="alt-pop forest pier music video, one solitary protagonist follows fireflies over moss and water",
+        style_name="alt_pop",
+        sections=[
+            {"section_id": "SEC_001", "section_name": "Intro", "section_type": "intro"},
+            {"section_id": "SEC_002", "section_name": "Outro", "section_type": "outro"},
+        ],
+    )
+
+    text = str(treatment).lower()
+
+    for leaked in ("night-world", "night-city", "city keeps reflecting", "unfinished goodbye"):
+        assert leaked not in text
+    assert "concept-world" in text
+
+
+
 def test_plan_mv_concept_world_overrides_style_location_when_narrative_progression_enabled():
     out = build_plan_preview_payload(
         {"planning": {"default_style_name": "alt_pop", "enable_narrative_progression": True}},
@@ -632,13 +651,13 @@ def test_plan_mv_emits_structured_continuity_and_neighbor_contracts():
         "world_anchor": creative_direction["world_anchor"],
         "wardrobe_anchor": "stable dark outerwear silhouette",
         "no_competing_subjects": True,
-        "time_band_anchor": "same night time band",
+        "time_band_anchor": "same concept time and lighting band",
     }
     assert first_shot["shot_relation_contract"] == {
         "relation_to_previous_shot": "sequence opener",
         "camera_distance_progression": "set baseline distance",
         "same_block_vs_new_block": "same block baseline",
-        "emotional_delta": "establish lonely night-world baseline",
+        "emotional_delta": "establish opening emotional baseline",
     }
     assert second_shot["shot_relation_contract"]["relation_to_previous_shot"] == "continue same protagonist and world from previous shot"
     assert second_shot["shot_relation_contract"]["camera_distance_progression"]
@@ -676,7 +695,7 @@ def test_plan_mv_uses_idol_pop_relation_contracts_that_do_not_revert_to_lonely_b
     assert first_shot["shot_relation_contract"]["same_block_vs_new_block"] == "stage-ready city baseline"
     assert first_shot["shot_relation_contract"]["emotional_delta"] == "establish bright performance-night baseline"
     assert chorus_shot["shot_relation_contract"]["emotional_delta"] == "open into crowd-ready hook lift without losing world continuity"
-    assert "lonely night-world baseline" not in first_render["clip_positive_prompt"]
+    assert "opening emotional baseline" not in first_render["clip_positive_prompt"]
     assert "crowd-ready hook lift" in chorus_render["clip_positive_prompt"]
 
 

@@ -90,7 +90,7 @@ def _visual_event(*, story_function: str, text: str) -> str:
     if story_function == "payoff" and desert_radio:
         return "show the radio signal resolved or released against the sunrise horizon"
     if story_function == "wound_setup":
-        return "establish the protagonist isolated inside the night-world wound"
+        return "establish the protagonist isolated inside the concept-world hesitation"
     if story_function == "search":
         return "follow traces through the world instead of repeating the opener pose"
     if story_function == "threshold":
