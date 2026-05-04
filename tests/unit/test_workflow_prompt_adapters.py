@@ -508,3 +508,33 @@ def test_docs_default_pose_anchor_prompts_lock_reference_wardrobe_and_face_reada
         assert "bright front-lit readable face" in prompt
         assert "wardrobe color palette" in prompt
         assert not NEGATIVE_CLAUSE_RE.search(prompt)
+
+def test_docs_default_final_payoff_ltx_prompt_holds_front_facing_payoff_motion():
+    preview = build_plan_preview_payload(
+        {},
+        {
+            "concept_text": DOCS_DEFAULT_CONCEPT,
+            "audio_map": {
+                "duration_sec": 30.0,
+                "sections": [
+                    {"section_id": "CHORUS", "section_type": "Chorus", "start_sec": 0.0, "end_sec": 22.0},
+                    {"section_id": "OUTRO", "section_type": "Outro", "start_sec": 22.0, "end_sec": 30.0},
+                ],
+            },
+        },
+    )
+    final_item = next(item for item in preview["render_plan"] if item["selected_pose_anchor_id"] == "ANCHOR_POSE_FINAL_PAYOFF_FRONT")
+    payload = final_item["workflow_prompts"]["ltx_ia2v"]
+    positive = payload["positive_text"].lower()
+    negative = payload["negative_text"].lower()
+
+    assert "remain front-facing throughout" in positive
+    assert "maintain direct viewer-facing gaze" in positive
+    assert "minimal motion" in positive
+    assert "walks away" not in positive
+    assert "turns away" not in positive
+    assert "turn away" not in positive
+    assert "back-facing" not in positive
+    assert "profile turn" in negative
+    assert "back view" in negative
+    assert "walking away" in negative

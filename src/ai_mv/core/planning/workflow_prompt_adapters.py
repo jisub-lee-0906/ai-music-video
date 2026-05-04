@@ -146,9 +146,14 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=False)
+    final_payoff = _is_final_payoff_item(render_item)
+    if final_payoff:
+        action = _final_payoff_motion_action(world)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
     camera = _clip_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
+    if final_payoff:
+        shot_grammar = _final_payoff_motion_staging(world)
     scene = _workflow_scene_description(world)
     motion_cue = _world_motion_cue(world)
     prompt = _join_sentences(
@@ -166,6 +171,7 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
             *_split_negative_text(base_negative),
             *world.get("forbidden", []),
             *_negative_constraints_from_text(source_text),
+            *(_final_payoff_motion_negatives() if final_payoff else []),
             *_DEFAULT_VISUAL_NEGATIVES,
         ]
     )
@@ -483,6 +489,24 @@ def _final_payoff_staging(world: dict) -> str:
     if "desert" in description or "radio tower" in description:
         return "centered front-facing hold, bright sunrise light on the face, radio tower behind as a soft distant motif, eyes and upper wardrobe clearly readable"
     return "centered front-facing hold, bright key light on the face, eyes and upper wardrobe clearly readable"
+
+
+def _final_payoff_motion_action(world: dict) -> str:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    if "desert" in description or "radio tower" in description:
+        return "remain front-facing throughout while holding the resolved radio close, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
+    return "remain front-facing throughout in a resolved hold, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
+
+
+def _final_payoff_motion_staging(world: dict) -> str:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    if "desert" in description or "radio tower" in description:
+        return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep the radio tower softly behind, keep face and upper wardrobe readable for the whole clip"
+    return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep face and upper wardrobe readable for the whole clip"
+
+
+def _final_payoff_motion_negatives() -> list[str]:
+    return ["profile turn", "back view", "walking away", "turning away", "losing eye contact"]
 
 
 def _still_camera_for_item(render_item: dict) -> str:
