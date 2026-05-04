@@ -103,6 +103,24 @@ def test_anchor_package_default_identity_card_does_not_inject_fixed_wardrobe_hai
     assert "distinctive hairstyle from the identity anchor" in prompts
 
 
+def test_anchor_package_exposes_docs_default_wardrobe_inference_source():
+    package = build_anchor_package(
+        concept_text=(
+            "alt-pop desert radio music video, one solitary protagonist follows a fading signal across sunrise dunes "
+            "toward a distant radio tower, quiet uncertainty turning into calm resolve, stable wardrobe silhouette, "
+            "no crowd, no second protagonist, no city or neon"
+        ),
+        style_name="alt_pop",
+    )
+
+    assert package["wardrobe_anchor"] == "stable wardrobe silhouette: light olive-gray desert travel overshirt, neutral shirt collar, dark trousers"
+    assert package["wardrobe_anchor_source"] == {
+        "source": "docs_default_stable_silhouette_inferred",
+        "source_text": "stable wardrobe silhouette",
+        "guard": "desert_radio_docs_default",
+    }
+
+
 def test_anchor_package_uses_explicit_creative_wardrobe_anchor_when_provided():
     package = build_anchor_package(
         concept_text="night train platform farewell",

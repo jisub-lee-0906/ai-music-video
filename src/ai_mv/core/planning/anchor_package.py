@@ -15,6 +15,7 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
     contract = parse_user_intent_contract(concept_text)
     protagonist_anchor = str(direction.get("protagonist_anchor", "")).strip() or "one lead protagonist with story-appropriate presentation"
     wardrobe_anchor = _wardrobe_anchor(style_name, direction, contract=contract)
+    wardrobe_anchor_source = _wardrobe_anchor_source(direction, contract=contract)
     workflow_anchor_prompt = adapt_flux2_tti_anchor_prompt(
         contract,
         {
@@ -45,6 +46,7 @@ def build_anchor_package(*, concept_text: str, style_name: str, creative_directi
         ],
         "pose_anchor_bank": [_full_body_anchor_spec(protagonist_anchor, wardrobe_anchor)],
         "wardrobe_anchor": wardrobe_anchor,
+        "wardrobe_anchor_source": wardrobe_anchor_source,
         "pose_anchor_policy": {
             "primary_identity_anchor_id": "ANCHOR_CHARACTER_UPPER_BODY",
             "workflow_target": "image_flux2_reference_image",
@@ -139,6 +141,20 @@ def _wardrobe_anchor(style_name: str, creative_direction: dict | None = None, *,
     if style_name == "idol_pop":
         return "a bright stage-ready outfit with a clear stable silhouette"
     return "a story-derived stable outfit silhouette with readable color and shape continuity"
+
+
+def _wardrobe_anchor_source(creative_direction: dict | None = None, *, contract: dict | None = None) -> dict:
+    direction = creative_direction if isinstance(creative_direction, dict) else {}
+    explicit = str(direction.get("wardrobe_anchor", "")).strip()
+    if explicit and explicit.lower() != "story-derived stable outfit silhouette":
+        return {"source": "creative_direction_explicit", "source_text": explicit, "guard": ""}
+    protagonist = contract.get("protagonist", {}) if isinstance(contract, dict) and isinstance(contract.get("protagonist"), dict) else {}
+    source = str(protagonist.get("wardrobe_source", "")).strip() or "style_or_generic_default"
+    source_text = str(protagonist.get("wardrobe_source_text", "")).strip()
+    guard = str(protagonist.get("wardrobe_inference_guard", "")).strip()
+    if source and source != "generic_default":
+        return {"source": source, "source_text": source_text, "guard": guard}
+    return {"source": "style_or_generic_default", "source_text": "", "guard": ""}
 
 
 def _full_body_character_prompt(protagonist_anchor: str, wardrobe_anchor: str) -> str:

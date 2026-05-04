@@ -61,6 +61,9 @@ def test_flux2_tti_anchor_prompt_is_concrete_short_and_does_not_reference_prior_
     assert "seamless pure white studio background" in lower
     assert "stable wardrobe silhouette" in lower
     assert "light olive-gray desert travel overshirt" in lower
+    assert contract["protagonist"]["wardrobe_source"] == "docs_default_stable_silhouette_inferred"
+    assert contract["protagonist"]["wardrobe_source_text"] == "stable wardrobe silhouette"
+    assert contract["protagonist"]["wardrobe_inference_guard"] == "desert_radio_docs_default"
     assert "reference image" not in lower
     assert "from the identity anchor" not in lower
     assert "young woman" not in lower
@@ -493,6 +496,20 @@ def test_tti_anchor_uses_concept_wardrobe_without_old_defaults():
     assert "young woman" not in prompt
     assert "story-derived stable outfit silhouette" not in prompt
 
+
+
+def test_non_docs_stable_wardrobe_silhouette_keeps_generic_source_without_olive_fallback():
+    contract = parse_user_intent_contract(
+        "dream-pop ocean pier music video, one solitary protagonist walks away into fog, "
+        "stable wardrobe silhouette, no desert, no radio tower"
+    )
+    prompt = adapt_flux2_tti_anchor_prompt(contract)["positive_text"].lower()
+
+    assert contract["protagonist"]["wardrobe"] == "stable wardrobe silhouette"
+    assert contract["protagonist"]["wardrobe_source"] == "user_generic_silhouette"
+    assert contract["protagonist"].get("wardrobe_inference_guard", "") == ""
+    assert "light olive-gray" not in prompt
+    assert "desert travel overshirt" not in prompt
 
 
 def test_docs_default_final_payoff_prompt_requires_front_lit_readable_face_without_turn_away_conflict():

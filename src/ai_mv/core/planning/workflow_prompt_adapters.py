@@ -44,6 +44,7 @@ def parse_user_intent_contract(concept_text: str) -> dict:
     positive_text = ", ".join(positive_clauses)
     lower = positive_text.lower()
     motifs = _motifs_from_positive_text(lower)
+    wardrobe_info = _wardrobe_info_from_text(positive_text)
     return {
         "source_text": raw,
         "positive_text": positive_text,
@@ -52,7 +53,10 @@ def parse_user_intent_contract(concept_text: str) -> dict:
             "count": "one" if "one solitary" in lower or "solo" in lower or "one " in lower else "unspecified",
             "gender": _gender_from_text(lower),
             "description": _protagonist_description(lower),
-            "wardrobe": _wardrobe_from_text(positive_text),
+            "wardrobe": wardrobe_info["wardrobe"],
+            "wardrobe_source": wardrobe_info["source"],
+            "wardrobe_source_text": wardrobe_info["source_text"],
+            "wardrobe_inference_guard": wardrobe_info.get("guard", ""),
             "primary_action": _primary_action_from_text(positive_text),
         },
         "world": {
@@ -277,21 +281,36 @@ def _world_description(lower: str, positive_text: str) -> str:
     return _clean_model_sentence(positive_text).strip(" .")
 
 
-def _wardrobe_from_text(positive_text: str) -> str:
+def _wardrobe_info_from_text(positive_text: str) -> dict:
     lower = str(positive_text or "").lower()
     match = re.search(r"([^,.]+?silhouette)\b", positive_text, flags=re.I)
     if match:
         matched = _clean_model_sentence(match.group(1))
         if "desert" in lower and "radio" in lower and matched.lower() in {"stable wardrobe silhouette", "a stable wardrobe silhouette"}:
-            return "stable wardrobe silhouette: light olive-gray desert travel overshirt, neutral shirt collar, dark trousers"
-        return matched
+            return {
+                "wardrobe": "stable wardrobe silhouette: light olive-gray desert travel overshirt, neutral shirt collar, dark trousers",
+                "source": "docs_default_stable_silhouette_inferred",
+                "source_text": matched,
+                "guard": "desert_radio_docs_default",
+            }
+        source = "user_generic_silhouette" if matched.lower() in {"stable wardrobe silhouette", "a stable wardrobe silhouette"} else "user_explicit_silhouette"
+        return {"wardrobe": matched, "source": source, "source_text": matched, "guard": ""}
     if "parka" in lower:
-        return "stable silver parka silhouette"
+        return {"wardrobe": "stable silver parka silhouette", "source": "user_keyword_parka", "source_text": "parka", "guard": ""}
     if "coat" in lower:
-        return "stable coat silhouette"
+        return {"wardrobe": "stable coat silhouette", "source": "user_keyword_coat", "source_text": "coat", "guard": ""}
     if "dress" in lower:
-        return "stable dress silhouette"
-    return "stable practical wardrobe silhouette"
+        return {"wardrobe": "stable dress silhouette", "source": "user_keyword_dress", "source_text": "dress", "guard": ""}
+    return {
+        "wardrobe": "stable practical wardrobe silhouette",
+        "source": "generic_default",
+        "source_text": "",
+        "guard": "",
+    }
+
+
+def _wardrobe_from_text(positive_text: str) -> str:
+    return _wardrobe_info_from_text(positive_text)["wardrobe"]
 
 
 def _wardrobe_from_contract(contract: dict) -> str:
