@@ -12,6 +12,12 @@ _PROMPT_BUDGETS = {
 }
 _POSITIVE_NEGATIVE_RE = re.compile(r"\b(no|avoid|do not|without|never|exclude|not a)\b", re.I)
 _BAD_PUNCTUATION = ("not a .", "..", " ,")
+_DIRECTOR_PLACEHOLDERS = (
+    "clear section-specific visual progression",
+    "concept-specific visual motif",
+    "story-derived stable outfit silhouette",
+)
+_INTERNAL_TOKEN_RE = re.compile(r"\b(?:neon_highway|crosswalk_wait|live_house_entry|amp_corridor|window_haze)\b", re.I)
 
 
 def lint_workflow_prompts(plan_payload: dict, audio_plan: dict | None = None) -> dict:
@@ -39,6 +45,14 @@ def lint_workflow_prompts(plan_payload: dict, audio_plan: dict | None = None) ->
         for marker in (*_BAD_PUNCTUATION, ";."):
             if marker in lower_positive:
                 violations.append(_violation(row, f"bad punctuation: {marker}"))
+        if workflow in {"flux2_tti_anchor", "flux2_ref_anchor", "flux2_ref_still", "ltx_ia2v"}:
+            for placeholder in _DIRECTOR_PLACEHOLDERS:
+                if placeholder in lower_positive:
+                    violations.append(_violation(row, f"director placeholder: {placeholder}"))
+            if "jacket and sand" in lower_positive:
+                violations.append(_violation(row, "generic desert motion cue"))
+            for match in _INTERNAL_TOKEN_RE.finditer(positive):
+                violations.append(_violation(row, f"internal planning token: {match.group(0)}"))
         if workflow == "ltx_ia2v" and negative:
             terms = [part.strip().lower() for part in negative.split(",") if part.strip()]
             if len(terms) != len(set(terms)):

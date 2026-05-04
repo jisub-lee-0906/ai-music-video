@@ -284,6 +284,7 @@ def _pose_anchor_bank(protagonist_anchor: str, wardrobe_anchor: str) -> list[dic
 
 def _full_body_workflow_prompt(protagonist_anchor: str, wardrobe_anchor: str) -> str:
     subject = _workflow_safe_anchor_subject(protagonist_anchor)
+    wardrobe_anchor = _workflow_safe_wardrobe_anchor(wardrobe_anchor)
     return (
         "Use the reference character identity exactly. "
         "Create a full-body white-background character model card with one centered subject, head-to-toe visibility, readable face, readable outfit, visible shoes, and generous white margins. "
@@ -303,6 +304,7 @@ def _pose_anchor_workflow_prompt(
 ) -> str:
     prop_clause = ""
     subject = _workflow_safe_anchor_subject(protagonist_anchor)
+    wardrobe_anchor = _workflow_safe_wardrobe_anchor(wardrobe_anchor)
     clean_pose_instruction = str(pose_instruction).replace("no duplicate limbs", "clean anatomically coherent limb structure")
     if allow_microphone:
         prop_clause = " Include exactly one simple handheld microphone as the only prop."
@@ -316,6 +318,13 @@ def _pose_anchor_workflow_prompt(
         f"Pose and framing: {clean_pose_instruction}.{prop_clause} "
         "Use a pure white seamless studio background with soft even studio lighting."
     )
+
+
+def _workflow_safe_wardrobe_anchor(wardrobe_anchor: str) -> str:
+    value = str(wardrobe_anchor or "").strip()
+    if "story-derived stable outfit silhouette" in value.lower():
+        return "a stable practical wardrobe silhouette with readable color and shape continuity"
+    return value or "a stable practical wardrobe silhouette with readable color and shape continuity"
 
 
 def _workflow_safe_anchor_subject(protagonist_anchor: str) -> str:

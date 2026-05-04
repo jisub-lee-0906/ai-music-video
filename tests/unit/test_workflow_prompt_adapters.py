@@ -9,6 +9,7 @@ from ai_mv.core.planning.workflow_prompt_adapters import (
     adapt_ltx_ia2v_prompt,
     parse_user_intent_contract,
 )
+from ai_mv.core.planning.workflow_prompt_lint import lint_workflow_prompts
 from ai_mv.core.stages.plan_mv import build_plan_preview_payload
 
 DOCS_DEFAULT_CONCEPT = (
@@ -256,7 +257,11 @@ BREADTH_CONCEPT_SAMPLES = [
         ),
         "required_visual_terms": ("arctic", "observatory", "aurora", "ice"),
         "required_negative_terms": ("city", "neon", "desert", "radio tower"),
-        "forbidden_positive_terms": ("desert", "radio tower", "sunrise dunes", "young woman"),
+        "forbidden_positive_terms": (
+            "desert", "radio tower", "sunrise dunes", "young woman", "silent radio", "radio wound",
+            "radio signal", "signal world", "neon_highway", "jacket and sand",
+            "clear section-specific visual progression", "story-derived stable outfit silhouette",
+        ),
     },
     {
         "name": "k_indie_greenhouse_rain",
@@ -267,7 +272,11 @@ BREADTH_CONCEPT_SAMPLES = [
         ),
         "required_visual_terms": ("greenhouse", "rain", "cassette", "plants"),
         "required_negative_terms": ("crowds", "cars", "desert", "radio tower", "neon"),
-        "forbidden_positive_terms": ("desert", "radio tower", "sunrise dunes", "young woman"),
+        "forbidden_positive_terms": (
+            "desert", "radio tower", "sunrise dunes", "young woman", "silent radio", "radio wound",
+            "signal world", "crosswalk_wait", "jacket and sand",
+            "clear section-specific visual progression", "story-derived stable outfit silhouette",
+        ),
     },
     {
         "name": "j_rock_lighthouse_cliff",
@@ -278,7 +287,11 @@ BREADTH_CONCEPT_SAMPLES = [
         ),
         "required_visual_terms": ("cliffside", "lighthouse", "lantern", "rocks"),
         "required_negative_terms": ("crowd", "second protagonist", "city", "school uniforms", "choreography"),
-        "forbidden_positive_terms": ("desert", "radio tower", "sunrise dunes", "young woman"),
+        "forbidden_positive_terms": (
+            "desert", "radio tower", "sunrise dunes", "young woman", "live_house_entry",
+            "amp_corridor", "jacket and sand", "clear section-specific visual progression",
+            "story-derived stable outfit silhouette",
+        ),
     },
     {
         "name": "dream_pop_underwater_library",
@@ -289,7 +302,11 @@ BREADTH_CONCEPT_SAMPLES = [
         ),
         "required_visual_terms": ("underwater", "library", "floating books", "pearl light"),
         "required_negative_terms": ("crowd", "second protagonist", "desert", "radio tower", "city", "neon"),
-        "forbidden_positive_terms": ("desert", "radio tower", "sunrise dunes", "young woman"),
+        "forbidden_positive_terms": (
+            "desert", "radio tower", "sunrise dunes", "young woman", "silent radio", "radio wound",
+            "signal world", "window_haze", "jacket and sand",
+            "clear section-specific visual progression", "story-derived stable outfit silhouette",
+        ),
     },
 ]
 
@@ -340,3 +357,108 @@ def test_breadth_user_input_samples_preserve_explicit_gender_without_hardcoding(
         assert expectations[sample["name"]] in prompt, sample["name"]
         assert "young woman" not in prompt
         assert "young man" not in prompt
+
+
+
+def test_workflow_prompt_lint_rejects_director_semantic_placeholders_and_internal_tokens():
+    payload = {
+        "render_plan": [
+            {
+                "shot_id": "S001",
+                "workflow_prompts": {
+                    "flux2_ref_still": {
+                        "positive_text": "A protagonist in a greenhouse, crosswalk_wait, clear section-specific visual progression."
+                    },
+                    "ltx_ia2v": {
+                        "positive_text": "camera: locked shot, natural wind motion in jacket and sand.",
+                        "negative_text": "",
+                    },
+                },
+            }
+        ]
+    }
+
+    lint = lint_workflow_prompts(payload)
+
+    assert lint["status"] == "fail"
+    issues = "\n".join(v["issue"] for v in lint["violations"])
+    assert "director placeholder" in issues
+    assert "internal planning token" in issues
+    assert "generic desert motion cue" in issues
+
+
+def test_ltx_motion_cues_are_world_specific():
+    expected = {
+        "synthwave_arctic_observatory": ("snow gust", "aurora pulse", "satellite-dish"),
+        "k_indie_greenhouse_rain": ("rain streaks", "leaves trembling", "condensation"),
+        "j_rock_lighthouse_cliff": ("storm spray", "coat whip", "rotating lighthouse beam"),
+        "dream_pop_underwater_library": ("floating fabric", "drifting books", "light caustics"),
+    }
+    for sample in BREADTH_CONCEPT_SAMPLES:
+        preview = build_plan_preview_payload({}, {"concept_text": sample["concept"], "audio_map": {"duration_sec": 24}})
+        ltx_positive = "\n".join(
+            item["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
+            for item in preview["render_plan"]
+        )
+        assert "jacket and sand" not in ltx_positive, sample["name"]
+        assert any(term in ltx_positive for term in expected[sample["name"]]), sample["name"]
+
+
+def test_adapter_fallback_actions_are_visible_world_specific_actions():
+    concept = (
+        "dream-pop underwater library music video, one female protagonist drifts through floating books and pearl light "
+        "toward a moonlit surface door, loneliness becoming soft acceptance, pale linen dress silhouette, "
+        "no crowd, no second protagonist"
+    )
+    contract = parse_user_intent_contract(concept)
+    render_item = {"shot_id": "S003", "story_contract": {}}
+
+    still = adapt_flux2_ref_still_prompt(contract, render_item)["positive_text"].lower()
+    ltx = adapt_ltx_ia2v_prompt(contract, render_item)["positive_text"].lower()
+
+    combined = still + "\n" + ltx
+    assert "clear section-specific visual progression" not in combined
+    assert "concept-specific visual motif" not in combined
+    assert any(
+        term in combined
+        for term in (
+            "drifts through floating books",
+            "reaches toward the moonlit surface door",
+            "turns through pearl light",
+        )
+    )
+
+
+def test_internal_visual_mode_tokens_are_not_model_facing():
+    contract = parse_user_intent_contract(
+        "k-indie rainy greenhouse music video, a solo adult protagonist repairs a flickering cassette recorder "
+        "among fogged glass plants, olive work jacket silhouette, avoid desert, avoid radio tower"
+    )
+    render_item = {
+        "shot_id": "S002",
+        "still_prompt_text": "visual mode: crosswalk_wait, protagonist action: wait between plant rows beside fogged glass",
+        "clip_positive_prompt": "window_haze crosswalk_wait gentle motion",
+        "story_contract": {"story_action_grammar": "crosswalk_wait"},
+    }
+
+    still = adapt_flux2_ref_still_prompt(contract, render_item)["positive_text"].lower()
+    ltx = adapt_ltx_ia2v_prompt(contract, render_item)["positive_text"].lower()
+    combined = still + ltx
+
+    assert "crosswalk_wait" not in combined
+    assert "window_haze" not in combined
+    assert "between wet plant rows" in combined or "fogged glass" in combined
+
+
+def test_tti_anchor_uses_concept_wardrobe_without_old_defaults():
+    contract = parse_user_intent_contract(
+        "synthwave arctic observatory music video, one solitary protagonist crosses blue ice, "
+        "silver parka silhouette, no city or neon"
+    )
+    prompt = adapt_flux2_tti_anchor_prompt(contract)["positive_text"].lower()
+
+    assert "silver parka silhouette" in prompt
+    assert "red raincoat" not in prompt
+    assert "bob" not in prompt
+    assert "young woman" not in prompt
+    assert "story-derived stable outfit silhouette" not in prompt

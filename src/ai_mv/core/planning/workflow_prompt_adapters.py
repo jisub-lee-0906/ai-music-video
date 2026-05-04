@@ -112,15 +112,18 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=True)
-    alignment = _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression"))
+    alignment = _strip_default_world_leaks(
+        _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression")),
+        contract,
+    ).strip(" .")
     camera = _still_camera_for_item(render_item)
-    shot_grammar = _workflow_safe_alignment(story.get("story_action_grammar", ""))
+    shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
     scene = _workflow_scene_description(world)
     prompt = _join_sentences(
         [
             "Use the reference character identity exactly.",
             f"A solitary protagonist in {scene}, {action}.",
-            f"Scene continuity: {scene}, stable wardrobe silhouette, one readable protagonist only.",
+            f"Scene continuity: {scene}, stable practical wardrobe silhouette, one readable protagonist only.",
             f"{camera}, {alignment}.",
             f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
             "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
@@ -140,15 +143,16 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     action = _workflow_action_for_item(contract, render_item, still=False)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
     camera = _clip_camera_for_item(render_item)
-    shot_grammar = _workflow_safe_alignment(story.get("story_action_grammar", ""))
+    shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
     scene = _workflow_scene_description(world)
+    motion_cue = _world_motion_cue(world)
     prompt = _join_sentences(
         [
             f"scene: {scene}.",
-            "character: same solo protagonist from the source still, stable wardrobe silhouette and clear face continuity.",
+            "character: same solo protagonist from the source still, stable practical wardrobe silhouette and clear face continuity.",
             f"action: {action}.",
             f"staging: {shot_grammar}." if shot_grammar else "",
-            f"camera: {camera}, single continuous shot, natural wind motion in jacket and sand.",
+            f"camera: {camera}, single continuous shot, {motion_cue}.",
         ]
     )
     source_text = _model_source_text(render_item)
@@ -304,6 +308,37 @@ def _workflow_scene_description(world: dict) -> str:
     return _clean_model_sentence(description).strip(" .")
 
 
+def _world_motion_cue(world: dict) -> str:
+    description = str(world.get("positive_description", "") if isinstance(world, dict) else "").lower()
+    if "desert" in description or "radio tower" in description:
+        return "natural wind motion across clothing edges and drifting sand traces"
+    if "arctic" in description or "observatory" in description or "aurora" in description:
+        return "snow gusts, a soft aurora pulse, and subtle satellite-dish vibration"
+    if "greenhouse" in description:
+        return "rain streaks on glass, leaves trembling, and condensation sliding"
+    if "lighthouse" in description or "cliffside" in description:
+        return "storm spray, coat whip, and rotating lighthouse beam sweep"
+    if "underwater" in description or "library" in description:
+        return "floating fabric, drifting books, and soft light caustics"
+    return "small environment motion matching the source still"
+
+
+def _visible_fallback_action(contract: dict, render_item: dict, *, still: bool) -> str:
+    world = contract.get("world", {}) if isinstance(contract, dict) and isinstance(contract.get("world"), dict) else {}
+    description = str(world.get("positive_description", "")).lower()
+    if "desert" in description or "radio tower" in description:
+        return "pauses beside the silent radio, hand near the dial, then looks toward the distant tower"
+    if "arctic" in description or "observatory" in description or "aurora" in description:
+        return "steps across blue ice as the aurora pulse reflects across the face"
+    if "greenhouse" in description:
+        return "repairs the flickering cassette recorder beside fogged glass plants"
+    if "lighthouse" in description or "cliffside" in description:
+        return "carries the broken signal lantern up black rocks toward the rotating beam"
+    if "underwater" in description or "library" in description:
+        return "drifts through floating books and reaches toward the moonlit surface door"
+    return "performs one readable hand turn or step that changes the scene composition"
+
+
 def _workflow_action_for_item(contract: dict, render_item: dict, *, still: bool) -> str:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     protagonist = contract.get("protagonist", {}) if isinstance(contract, dict) else {}
@@ -318,19 +353,41 @@ def _workflow_action_for_item(contract: dict, render_item: dict, *, still: bool)
     ]
     forbidden = list(world.get("forbidden", [])) if isinstance(world, dict) else []
     for candidate in candidates:
-        action = _strip_forbidden_words(_workflow_safe_alignment(candidate), forbidden).strip(" .")
+        action = _strip_forbidden_words(_strip_default_world_leaks(_workflow_safe_alignment(candidate), contract), forbidden).strip(" .")
         if action and not _looks_like_default_desert_radio_leak(action, contract):
             return action
     if primary:
-        return _strip_forbidden_words(_workflow_safe_alignment(primary), forbidden).strip(" .")
-    return "moves through the concept-specific scene with one clear readable gesture"
+        return _strip_forbidden_words(_strip_default_world_leaks(_workflow_safe_alignment(primary), contract), forbidden).strip(" .")
+    return _visible_fallback_action(contract, render_item, still=still)
 
 
 def _looks_like_default_desert_radio_leak(text: str, contract: dict) -> bool:
     lower = str(text or "").lower()
-    source = str(contract.get("source_text", "")).lower() if isinstance(contract, dict) else ""
+    source = _contract_positive_source(contract)
     leaked = ("desert", "dune", "radio", "tower", "sunrise")
     return any(term in lower and term not in source for term in leaked)
+
+
+def _contract_positive_source(contract: dict) -> str:
+    if not isinstance(contract, dict):
+        return ""
+    text = str(contract.get("positive_text", "")).lower()
+    if text:
+        return text
+    world = contract.get("world", {}) if isinstance(contract.get("world"), dict) else {}
+    return str(world.get("positive_description", "")).lower()
+
+
+def _strip_default_world_leaks(text: str, contract: dict) -> str:
+    value = str(text or "")
+    source = _contract_positive_source(contract)
+    if "radio" not in source:
+        value = re.sub(r"\b(?:silent|dead|faint|fading)?\s*radio(?:\s+(?:wound|signal|tower|static|light|interference|voice))?\b", "", value, flags=re.I)
+        value = re.sub(r"\bradio\s+\w+\b", "", value, flags=re.I)
+    if "desert" not in source and "dune" not in source:
+        value = re.sub(r"\b(?:sunrise\s+)?(?:desert|dune|dunes|sand|sandy)\b", "", value, flags=re.I)
+    value = re.sub(r"\bsignal world\b", "", value, flags=re.I)
+    return _finalize_prompt_text(value)
 
 
 def _motifs_from_positive_text(lower: str) -> list[str]:
@@ -451,8 +508,6 @@ def _clean_negative_term(text: str) -> str:
 
 def _workflow_safe_alignment(text: object) -> str:
     value = _remove_negative_clauses(_clean_model_sentence(text)).strip(" ,.")
-    if not value:
-        return "clear section-specific visual progression"
     return value
 
 
@@ -471,6 +526,16 @@ def _clean_model_sentence(text: object) -> str:
     value = value.replace("role diversity symbolic insert", "readable desert-radio cutaway detail")
     value = value.replace("beat-responsive camera motion", "gentle camera movement on the beat")
     value = value.replace("audio-reactive hook energy", "clear hook-section movement")
+    value = value.replace("hook energy", "hook-section movement")
+    value = value.replace("radio wound setup beat", "silent-radio setup beat")
+    value = value.replace("starting wound", "starting hesitation")
+    value = value.replace("night-world wound", "night-world hesitation")
+    value = value.replace("concept-specific visual motif", "readable scene motif")
+    value = value.replace("neon_highway", "long luminous path through the scene")
+    value = value.replace("crosswalk_wait", "paused between wet plant rows beside fogged glass")
+    value = value.replace("live_house_entry", "narrow threshold cut by performance light")
+    value = value.replace("amp_corridor", "narrow path cut by rotating beam light")
+    value = value.replace("window_haze", "pearl-lit haze through drifting book pages")
     value = value.replace("same block", "same desert space")
     value = value.replace("new angle", "changed camera angle")
     value = value.replace("evolved staging", "changed staging")
