@@ -67,7 +67,7 @@ def _section_emphasis_variant(section_type: str, energy: str, seed: int) -> str:
     if normalized_type == "bridge":
         return _pick_variant(seed, ["contrastive_turn", "late-night drift", "reset_suspension"])
     if normalized_type in {"intro", "outro"}:
-        return _pick_variant(seed, ["world_anchor", "afterglow_hold", "slow_release"])
+        return _pick_variant(seed, ["world_anchor", "release_hold", "slow_release"])
     if normalized_energy == "high":
         return _pick_variant(seed, ["forward_drive", "cinematic_push", "contained_intensity"])
     return _pick_variant(seed, ["sequence_support", "observational_flow", "ambient_progression"])

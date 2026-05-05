@@ -72,11 +72,18 @@ def _clip_visual_mode_token(shot: dict) -> str:
 
 def _source_bound_visual_mode_label(raw_visual_mode: str) -> str:
     labels = {
+        "rooftop_edge": "high-edge section beat",
+        "glass_corridor": "layered-passage section beat",
+        "pre_chorus_tension": "pre-chorus tension beat",
+        "bridge_glass": "layered transition beat",
+        "chorus_front": "front-facing chorus beat",
+        "release_stride": "release stride beat",
         "bookstore_window": "world-first window beat",
         "rain_window_detail": "source-bound detail beat",
         "window_reflection": "source-bound window detail beat",
         "bus_stop_afterglow": "late-section release hold beat",
         "afterglow_hold": "late-section release hold beat",
+        "release_hold": "late-section release hold beat",
     }
     lower = raw_visual_mode.lower()
     if lower in labels:
@@ -214,6 +221,7 @@ def _section_emphasis_variant_token(variant: str) -> str:
         "reset_suspension": "reset-and-suspension emphasis",
         "world_anchor": "world-continuity still emphasis",
         "afterglow_hold": "late-section release hold emphasis",
+        "release_hold": "late-section release hold emphasis",
         "slow_release": "slow release emphasis",
         "forward_drive": "forward-drive still emphasis",
         "cinematic_push": "cinematic push still emphasis",
@@ -291,6 +299,7 @@ def _section_emphasis_clip_token(variant: str) -> str:
         "reset_suspension": "reset-and-suspension beat",
         "world_anchor": "world-anchor motion restraint",
         "afterglow_hold": "late-section release hold beat",
+        "release_hold": "late-section release hold beat",
         "slow_release": "slow release beat",
         "forward_drive": "forward-driving energy",
         "cinematic_push": "cinematic motion push",

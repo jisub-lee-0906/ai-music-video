@@ -118,12 +118,21 @@ def _concept_world_anchor(text: str) -> str:
     motifs: list[str] = []
     if any(token in text for token in ("desert", "dune", "sand")):
         motifs.append("same desert dune world")
-    if any(token in text for token in ("radio", "tower", "antenna", "signal")):
+    has_tower_source = any(token in text for token in ("tower", "antenna"))
+    has_signal_source = "signal" in text
+    has_radio_source = "radio" in text
+    if has_tower_source and (has_radio_source or has_signal_source):
         motifs.append("radio tower signal motif")
+    elif has_tower_source:
+        motifs.append("distant tower motif")
+    elif has_signal_source:
+        motifs.append("source-bound signal motif")
+    elif has_radio_source:
+        motifs.append("radio object motif")
     if any(token in text for token in ("sunrise", "dawn")):
         motifs.append("sunrise horizon light")
     if motifs:
-        return ", ".join(dict.fromkeys(motifs)) + ", no urban rooftop or street-location substitution"
+        return ", ".join(dict.fromkeys(motifs)) + ", avoid urban or street-location substitution"
     return ""
 
 

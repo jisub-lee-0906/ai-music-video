@@ -526,7 +526,7 @@ def _story_action_grammar_for_shot(shot: dict, *, concept_text: str, sequence_in
     if section_type == "bridge":
         return "pauses at a concept-world threshold, then turns away from the previous direction with inward restraint; do not default to a static centered portrait"
     if section_type == "outro" or story_function == "payoff":
-        if "afterglow" in concept:
+        if "afterglow" in _positive_concept_text(concept):
             return "walks away or turns away into the afterglow so the ending resolves as a changed state; do not default to a static centered portrait"
         return "walks away or turns away into the final concept light so the ending resolves as a changed state; do not default to a static centered portrait"
     return _fallback_story_action_grammar(shot, sequence_index=sequence_index, concept_cue=concept_cue)

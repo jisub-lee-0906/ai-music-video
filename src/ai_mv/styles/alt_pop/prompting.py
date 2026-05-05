@@ -81,7 +81,9 @@ def _environment_anchor(shot: dict, *, positive_concept: str = "") -> str:
 
 
 def _allows_alt_pop_urban_environment(positive_concept: str, world_anchor: str) -> bool:
-    text = f"{positive_concept} {world_anchor}".lower()
+    concept_source = _positive_concept_anchor(positive_concept)
+    world_source = _positive_concept_anchor(world_anchor)
+    text = f"{concept_source} {world_source}".lower()
     return any(token in text for token in ("city", "urban", "street", "rooftop", "club", "corridor", "lobby", "neon", "chrome", "night drive"))
 
 

@@ -827,6 +827,44 @@ def test_plan_mv_residual_style_fixtures_do_not_leak_without_positive_source():
             assert not _contains_forbidden_literal(positive_text, forbidden)
 
 
+def test_plan_mv_broad_static_breadth_fixtures_do_not_leak_into_model_prompts():
+    samples = [
+        (
+            {"planning": {"default_style_name": "alt_pop"}},
+            "alt-pop overcast forest pier music video, one solitary protagonist in a white cotton jacket walks from mossy trail to wooden pier, quiet uncertainty turning into calm resolve, no city, no curb, no rain, no reflection, no afterglow",
+            ("rooftop", "afterglow"),
+        ),
+        (
+            {"planning": {"default_style_name": "alt_pop"}},
+            "bedroom alt-pop music video, one solitary protagonist listens to a small radio on a plain wooden desk, quiet uncertainty turning into calm resolve, stable blue cardigan",
+            ("radio tower",),
+        ),
+    ]
+
+    for config, concept_text, forbidden_terms in samples:
+        out = build_plan_preview_payload(
+            config,
+            {
+                "concept_text": concept_text,
+                "audio_map": {
+                    "duration_sec": 18.0,
+                    "sections": [
+                        {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                        {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                        {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                        {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                    ],
+                },
+            },
+        )
+
+        positive_text = _all_positive_prompt_text(out)
+        story_grammar_text = " ".join(str(shot.get("story_action_grammar", "")) for shot in out["shot_plan"]).lower()
+        for forbidden in forbidden_terms:
+            assert forbidden not in positive_text
+            assert forbidden not in story_grammar_text
+
+
 def test_plan_mv_preserves_residual_terms_when_user_supplies_positive_source():
     out = build_plan_preview_payload(
         {"planning": {"default_style_name": "j_rock"}},

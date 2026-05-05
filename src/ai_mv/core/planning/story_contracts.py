@@ -101,13 +101,23 @@ def _concept_motif(text: str) -> str:
         (("neon", "city", "night", "밤", "도시"), "urban night light"),
         (("desert", "dune", "sand"), "desert horizon space"),
         (("sunrise", "dawn", "새벽"), "sunrise transition light"),
-        (("radio", "tower", "antenna"), "radio tower signal motif"),
         (("ocean", "sea", "beach", "바다"), "ocean horizon motif"),
         (("room", "bedroom", "apartment", "방"), "interior personal-object motif"),
     ]
     for keys, motif in keyword_map:
         if any(key in lower for key in keys):
             motifs.append(motif)
+    has_tower_source = any(token in lower for token in ("tower", "antenna"))
+    has_signal_source = "signal" in lower
+    has_radio_source = "radio" in lower
+    if has_tower_source and (has_radio_source or has_signal_source):
+        motifs.append("radio tower signal motif")
+    elif has_tower_source:
+        motifs.append("distant tower motif")
+    elif has_signal_source:
+        motifs.append("source-bound signal motif")
+    elif has_radio_source:
+        motifs.append("radio object motif")
     if not motifs:
         important_words = [word.strip(".,:;!?()[]{}") for word in lower.split() if len(word.strip(".,:;!?()[]{}")) >= 5]
         if important_words:
