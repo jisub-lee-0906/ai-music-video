@@ -69,7 +69,7 @@ def test_lighthouse_need_uses_source_bound_wind_cliff_stance_without_desert_radi
     )
 
     assert need["world_interaction"] == "standing in source-bound lighthouse cliff wind"
-    assert need["pose_family"] == "full_body"
+    assert need["pose_family"] == "lighthouse_cliff_stance"
     joined = " ".join(str(value) for value in need.values()).lower()
     assert "lighthouse" in joined
     assert "cliff" in joined

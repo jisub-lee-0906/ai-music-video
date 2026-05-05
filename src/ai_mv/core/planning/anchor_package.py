@@ -312,6 +312,33 @@ def _pose_anchor_bank(protagonist_anchor: str, wardrobe_anchor: str) -> list[dic
             "pose_instruction": "a medium performance pose holding a simple handheld microphone near the mouth, singing posture, shoulders and hands visible, face readable",
             "allowed_props": ["handheld_microphone"],
         },
+        {
+            "anchor_id": "ANCHOR_POSE_GREENHOUSE_TENDING",
+            "pose_family": "greenhouse_tending",
+            "framing": "medium",
+            "camera_angle": "front_three_quarter",
+            "subject_position": "center",
+            "intended_shot_functions": ["search", "greenhouse", "seedling_tending", "quiet_moment"],
+            "pose_instruction": "a medium white-background pose with careful empty-hand seedling-tending gesture, torso slightly leaned forward, hands readable, plant-free studio pose card",
+        },
+        {
+            "anchor_id": "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+            "pose_family": "lighthouse_cliff_stance",
+            "framing": "full",
+            "camera_angle": "front_three_quarter",
+            "subject_position": "center",
+            "intended_shot_functions": ["release", "world_bridge", "lighthouse", "cliff_wind"],
+            "pose_instruction": "a full-body braced standing pose as if facing strong cliff wind near a lighthouse, stable feet, coat or jacket silhouette readable, studio pose card",
+        },
+        {
+            "anchor_id": "ANCHOR_POSE_ARCTIC_ICE_CROSSING",
+            "pose_family": "arctic_ice_crossing",
+            "framing": "full",
+            "camera_angle": "front_three_quarter",
+            "subject_position": "center",
+            "intended_shot_functions": ["search", "movement", "arctic", "ice_crossing"],
+            "pose_instruction": "a full-body diagonal crossing step as if moving across an ice field, weight shifted forward, arms balanced naturally, face and outfit readable, studio pose card",
+        },
     ]
     return [_pose_anchor_spec(spec, protagonist_anchor, wardrobe_anchor) for spec in specs]
 

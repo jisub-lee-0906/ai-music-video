@@ -86,6 +86,36 @@ POSE_ANCHOR_CATALOG: dict[str, dict] = {
         "required_subject_position": "center",
         "reason": "microphone performance shots need a prop/action-matched pose card before IA2V",
     },
+    "ANCHOR_POSE_GREENHOUSE_TENDING": {
+        "pose_family": "greenhouse_tending",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "source_bound_seedling_tending",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "source-bound greenhouse/seedling shots need a tending gesture pose instead of generic walking grammar",
+    },
+    "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE": {
+        "pose_family": "lighthouse_cliff_stance",
+        "required_framing": "full",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "source_bound_cliff_wind_stance",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "source-bound lighthouse/cliff/wind shots need a stable cliff stance instead of generic release walking",
+    },
+    "ANCHOR_POSE_ARCTIC_ICE_CROSSING": {
+        "pose_family": "arctic_ice_crossing",
+        "required_framing": "full",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "source_bound_ice_field_crossing",
+        "required_motion_direction": "diagonal_forward",
+        "required_prop": "none",
+        "reason": "source-bound arctic/ice shots need crossing movement through the established world",
+    },
 }
 
 
@@ -100,11 +130,13 @@ def build_pose_anchor_selection(shot: dict) -> dict:
         return _selection("ANCHOR_POSE_SEATED_WAITING")
     if _has_expressive_hand_action(text):
         return _selection("ANCHOR_POSE_EXPRESSIVE_HAND_GESTURE")
-    departure_text = f"{text} {_positive_source_text(shot.get('concept_text', ''))}"
-    if _has_departure_payoff_intent(departure_text, story_function):
+    if _has_departure_payoff_intent(f"{text} {_positive_source_text(shot.get('concept_text', ''))}", story_function):
         return _selection("ANCHOR_POSE_WALKING_SIDE", decision=_departure_payoff_decision())
     if _has_final_payoff_intent(shot, text, story_function):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT", decision=_final_payoff_decision())
+    source_bound_selection = _source_bound_world_selection(shot, text)
+    if source_bound_selection:
+        return source_bound_selection
     if _has_face_critical_identity_intent(text, story_function):
         return _selection("ANCHOR_POSE_HERO_CLOSEUP")
     if _has_any_word(text, ("walk", "walking", "side", "movement")) or "forward motion" in text or story_function in {"search", "release"} and "close" not in text:
@@ -139,6 +171,76 @@ def _selection(anchor_id: str, decision: dict | None = None) -> dict:
         if key in spec:
             selection[key] = spec[key]
     return selection
+
+
+def _source_bound_world_selection(shot: dict, text: str) -> dict | None:
+    positive_source = _positive_source_text(shot.get("concept_text", ""))
+    if not positive_source:
+        return None
+    if _has_any_word(positive_source, ("greenhouse", "glasshouse", "seedling", "seedlings", "plant", "plants")) and _has_any_word(
+        text, ("tend", "tends", "tending", "seedling", "seedlings", "plant", "plants")
+    ):
+        return _selection(
+            "ANCHOR_POSE_GREENHOUSE_TENDING",
+            decision=_source_bound_world_decision("greenhouse_seedling_tending", _greenhouse_source_terms(positive_source)),
+        )
+    if _has_any_word(positive_source, ("lighthouse", "cliff", "cliffs", "ocean", "wind", "windbreaker")) and _has_any_word(
+        text, ("stand", "stands", "standing", "cliff", "cliffs", "lighthouse", "wind", "windbreaker")
+    ):
+        return _selection(
+            "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+            decision=_source_bound_world_decision("lighthouse_cliff_wind_stance", _lighthouse_source_terms(positive_source)),
+        )
+    if _has_any_word(positive_source, ("arctic", "ice", "snow", "aurora")) and _has_any_word(
+        text, ("cross", "crosses", "crossing", "move", "moves", "moving", "walk", "walking", "ice", "snow", "aurora")
+    ):
+        return _selection(
+            "ANCHOR_POSE_ARCTIC_ICE_CROSSING",
+            decision=_source_bound_world_decision("arctic_ice_field_crossing", _arctic_source_terms(positive_source)),
+        )
+    return None
+
+
+def _source_bound_world_decision(reason_code: str, source_bound_terms: list[str]) -> dict:
+    return {
+        "decision_method": "source_bound_pose_action_need",
+        "reason_codes": [reason_code, "positive_concept_source_terms_only"],
+        "source_bound_terms": source_bound_terms,
+    }
+
+
+def _greenhouse_source_terms(positive_source: str) -> list[str]:
+    terms = []
+    if _has_any_word(positive_source, ("greenhouse", "glasshouse")):
+        terms.append("greenhouse")
+    if _has_any_word(positive_source, ("seedling", "seedlings")):
+        terms.extend(["seedlings", "plants"])
+    elif _has_any_word(positive_source, ("plant", "plants")):
+        terms.append("plants")
+    return _dedupe(terms)
+
+
+def _lighthouse_source_terms(positive_source: str) -> list[str]:
+    terms = []
+    if _has_any_word(positive_source, ("lighthouse",)):
+        terms.append("lighthouse")
+    if _has_any_word(positive_source, ("cliff", "cliffs")):
+        terms.append("cliff")
+    if _has_any_word(positive_source, ("ocean", "wind", "windbreaker")):
+        terms.append("wind")
+    return _dedupe(terms)
+
+
+def _arctic_source_terms(positive_source: str) -> list[str]:
+    return [term for term in ("arctic", "ice", "snow", "aurora") if _has_any_word(positive_source, (term,))]
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    out: list[str] = []
+    for value in values:
+        if value and value not in out:
+            out.append(value)
+    return out
 
 
 def _has_any_word(text: str, words: tuple[str, ...]) -> bool:

@@ -28,8 +28,6 @@ def build_pose_action_need(shot: dict[str, Any], concept_text: str = "") -> dict
     anchor_id = str(selection.get("selected_pose_anchor_id", "")).strip()
     pose_family = str(selection.get("required_pose_family", "")).strip()
     world_interaction, source_terms = _world_interaction(text, positive_concept)
-    if world_interaction == "standing in source-bound lighthouse cliff wind":
-        pose_family = "full_body"
     risk_tier = _risk_tier(anchor_id, pose_family, world_interaction)
     camera_angle = str(selection.get("required_camera_angle", "")).strip() or "front_three_quarter"
     framing = str(selection.get("required_framing", "")).strip() or "medium"

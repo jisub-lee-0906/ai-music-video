@@ -244,6 +244,47 @@ def test_flux_ref_anchor_prompts_lock_wardrobe_without_promoting_full_body_as_pr
 
 
 
+def test_source_bound_pose_action_anchors_are_materialized_when_selected():
+    from ai_mv.core.planning.anchor_package import with_selected_pose_anchor_bank
+
+    package = build_anchor_package(
+        concept_text="k-indie greenhouse music video, one protagonist in a green apron tends small seedlings",
+        style_name="k_indie",
+        creative_direction={
+            "protagonist_anchor": "same solitary greenhouse protagonist",
+            "wardrobe_anchor": "green apron over a simple neutral underlayer",
+        },
+    )
+
+    package = with_selected_pose_anchor_bank(
+        package,
+        render_plan=[
+            {"selected_pose_anchor_id": "ANCHOR_POSE_GREENHOUSE_TENDING"},
+            {"selected_pose_anchor_id": "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE"},
+            {"selected_pose_anchor_id": "ANCHOR_POSE_ARCTIC_ICE_CROSSING"},
+        ],
+        style_name="k_indie",
+        creative_direction={
+            "protagonist_anchor": "same solitary greenhouse protagonist",
+            "wardrobe_anchor": "green apron over a simple neutral underlayer",
+        },
+    )
+
+    by_id = {anchor["anchor_id"]: anchor for anchor in package["pose_anchor_bank"]}
+    assert "ANCHOR_POSE_GREENHOUSE_TENDING" in by_id
+    assert "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE" in by_id
+    assert "ANCHOR_POSE_ARCTIC_ICE_CROSSING" in by_id
+    assert by_id["ANCHOR_POSE_GREENHOUSE_TENDING"]["pose_family"] == "greenhouse_tending"
+    assert by_id["ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE"]["pose_family"] == "lighthouse_cliff_stance"
+    assert by_id["ANCHOR_POSE_ARCTIC_ICE_CROSSING"]["pose_family"] == "arctic_ice_crossing"
+    assert package["pose_anchor_policy"]["materialized_pose_anchor_ids"] == [
+        "ANCHOR_CHARACTER_FULL_BODY",
+        "ANCHOR_POSE_GREENHOUSE_TENDING",
+        "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+        "ANCHOR_POSE_ARCTIC_ICE_CROSSING",
+    ]
+
+
 def test_flux_ref_pose_anchor_workflow_prompt_explicitly_locks_same_person_identity_features():
     package = build_anchor_package(
         concept_text="synthwave arctic solo music video, one protagonist in a silver parka crosses an ice field",
