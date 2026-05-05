@@ -20,7 +20,13 @@ _DEFAULT_VISUAL_NEGATIVES = [
     "split screen",
     "text overlay",
     "identity drift",
+    "different person",
+    "face morph",
     "face morphing",
+    "hairstyle change",
+    "hairline change",
+    "age change",
+    "wardrobe change",
     "extra limbs",
 ]
 
@@ -131,11 +137,13 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     wardrobe = _wardrobe_from_contract(contract)
     prompt = _join_sentences(
         [
-            "Use the reference character identity exactly.",
-            f"A solitary protagonist in {scene}, {action}.",
-            f"Scene continuity: source world, {wardrobe}, exact same shirt color and collar details from the reference image, one readable protagonist only.",
+            "Use the reference image as the character identity source.",
+            "Move the exact same person into the scene while preserving the same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same skin tone, and same wardrobe.",
             f"{camera}, {alignment}.",
             f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
+            f"Scene continuity: source world, {wardrobe}, exact same shirt color and collar details from the reference image, one readable protagonist only.",
+            f"A solitary protagonist in {scene}, {action}.",
+            "Only change the background, lighting, and cinematic staging required for this shot.",
             "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
         ]
     )
@@ -155,20 +163,22 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     if front_payoff_lock:
         action = _final_payoff_motion_action(world)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
+    action = _budget_text(action, 180)
     camera = _clip_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
     if front_payoff_lock:
         shot_grammar = _final_payoff_motion_staging(world)
+    shot_grammar = _budget_text(shot_grammar, 140)
     scene = _workflow_scene_description(world)
     motion_cue = _world_motion_cue(world)
     wardrobe = _wardrobe_from_contract(contract)
     prompt = _join_sentences(
         [
             f"scene: {scene}.",
-            f"character: same solo protagonist from the source still, {wardrobe} and clear face continuity.",
+            f"character: exact same solo protagonist from the source still; preserve face shape, facial proportions, hairline, hairstyle silhouette, age impression, wardrobe: {wardrobe}.",
+            f"camera: {camera}, single continuous shot, {motion_cue}.",
             f"action: {action}.",
             f"staging: {shot_grammar}." if shot_grammar else "",
-            f"camera: {camera}, single continuous shot, {motion_cue}.",
         ]
     )
     source_text = _model_source_text(render_item)

@@ -311,11 +311,12 @@ def _full_body_workflow_prompt(protagonist_anchor: str, wardrobe_anchor: str) ->
     subject = _workflow_safe_anchor_subject(protagonist_anchor)
     wardrobe_anchor = _workflow_safe_wardrobe_anchor(wardrobe_anchor)
     return (
-        "Use the reference character identity exactly. "
-        "Create a full-body white-background character model card with one centered subject, head-to-toe visibility, readable face, readable outfit, visible shoes, and generous white margins. "
-        f"Keep {subject} with the exact face identity, distinctive hairstyle, expressive readable eyes, and {wardrobe_anchor}. "
+        "Use the input reference image as the only character identity source. "
+        "Preserve the exact same person from the reference image: same face shape, same facial proportions, same eyes, same nose, same mouth, same jawline, same hairline, same hairstyle silhouette, same age impression, same skin tone, and same wardrobe. "
+        "Create a full-body white-background character model card with one centered subject, head-to-toe visibility, bright front-lit readable face, readable outfit, visible shoes, and generous white margins. "
+        f"Keep {subject} with {wardrobe_anchor}. "
         f"Preserve the same upper-body wardrobe from the identity anchor: {wardrobe_anchor}; keep wardrobe color palette, collar and shoulder details, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
-        "Use a pure white seamless studio background with soft even studio lighting."
+        "Only change the body scale and camera framing needed for the full-body card. Use a pure white seamless studio background with soft even studio lighting."
     )
 
 
@@ -336,11 +337,12 @@ def _pose_anchor_workflow_prompt(
     elif allow_neutral_seat:
         prop_clause = " Include only a minimal neutral seat needed for the seated pose."
     return (
-        "Use the reference character identity exactly. "
-        "Create a white-background pose reference card with one centered subject and stable identity. "
-        f"Depict {subject} with the exact face identity, distinctive hairstyle, bright front-lit readable face, and {wardrobe_anchor}. "
-        f"Preserve the same wardrobe from the identity anchor: {wardrobe_anchor}; exact same shirt or jacket color from the reference image, matching collar and shoulder details, keep wardrobe color palette, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
-        f"Pose and framing: {clean_pose_instruction}.{prop_clause} "
+        "Use the input reference image as the only character identity source. "
+        "Preserve the exact same person from the reference image: same face shape, same facial proportions, same eyes, same nose, same mouth, same jawline, same hairline, same hairstyle silhouette, same age impression, same skin tone, and same wardrobe. "
+        "Create a white-background pose reference card with one centered subject and bright front-lit readable face. "
+        f"Depict {subject}. "
+        f"Preserve wardrobe from the identity anchor: {wardrobe_anchor}; exact same shirt or jacket color from the reference image, matching collar and shoulder details, keep wardrobe color palette, fabric weight cues, sleeve shape, and main outfit silhouette stable. "
+        f"Only change the body pose, camera framing, and arm position required for this pose card. Pose and framing: {clean_pose_instruction}.{prop_clause} "
         "Use a pure white seamless studio background with soft even studio lighting."
     )
 

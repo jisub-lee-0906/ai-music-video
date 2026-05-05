@@ -244,6 +244,47 @@ def test_flux_ref_anchor_prompts_lock_wardrobe_without_promoting_full_body_as_pr
 
 
 
+def test_flux_ref_pose_anchor_workflow_prompt_explicitly_locks_same_person_identity_features():
+    package = build_anchor_package(
+        concept_text="synthwave arctic solo music video, one protagonist in a silver parka crosses an ice field",
+        style_name="synthwave",
+        creative_direction={
+            "protagonist_anchor": "same solitary arctic protagonist",
+            "wardrobe_anchor": "silver parka",
+        },
+    )
+    from ai_mv.core.planning.anchor_package import with_selected_pose_anchor_bank
+
+    package = with_selected_pose_anchor_bank(
+        package,
+        render_plan=[{"selected_pose_anchor_id": "ANCHOR_POSE_FINAL_PAYOFF_FRONT"}],
+        style_name="synthwave",
+        creative_direction={
+            "protagonist_anchor": "same solitary arctic protagonist",
+            "wardrobe_anchor": "silver parka",
+        },
+    )
+    pose_anchor = next(anchor for anchor in package["pose_anchor_bank"] if anchor["anchor_id"] == "ANCHOR_POSE_FINAL_PAYOFF_FRONT")
+
+    positive = pose_anchor["workflow_prompts"]["flux2_ref_anchor"]["positive_text"].lower()
+
+    assert "only character identity source" in positive
+    assert "preserve the exact same person from the reference image" in positive
+    assert "same face shape" in positive
+    assert "same facial proportions" in positive
+    assert "same eyes" in positive
+    assert "same nose" in positive
+    assert "same mouth" in positive
+    assert "same jawline" in positive
+    assert "same hairline" in positive
+    assert "same hairstyle silhouette" in positive
+    assert "same age impression" in positive
+    assert "only change the body pose" in positive
+    assert "do not" not in positive
+    assert "no new person" not in positive
+
+
+
 def test_plan_anchor_package_materializes_only_story_selected_pose_anchors():
     out = build_plan_preview_payload(
         {},

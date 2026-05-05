@@ -92,7 +92,14 @@ def test_flux2_reference_still_adapter_removes_meta_labels_and_keeps_visual_acti
     lower = text.lower()
 
     assert len(text) <= 1200
-    assert "use the reference character identity exactly" in lower
+    assert "use the reference image as the character identity source" in lower
+    assert "move the exact same person into the scene" in lower
+    assert "same face shape" in lower
+    assert "same facial proportions" in lower
+    assert "same hairline" in lower
+    assert "same hairstyle silhouette" in lower
+    assert "same age impression" in lower
+    assert "only change the background" in lower
     assert "radio signal" in lower
     assert "sunrise dunes" in lower
     assert not any(label in lower for label in META_LABELS)
@@ -122,6 +129,13 @@ def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
 
     assert len(payload["positive_text"]) <= 900
     assert positive.startswith("scene:")
+    assert "character:" in positive
+    assert "exact same solo protagonist from the source still" in positive
+    assert "preserve face shape" in positive
+    assert "facial proportions" in positive
+    assert "hairline" in positive
+    assert "hairstyle silhouette" in positive
+    assert "age impression" in positive
     assert "action:" in positive
     assert "camera:" in positive
     assert "raise the radio" in positive
@@ -129,6 +143,12 @@ def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
     assert not NEGATIVE_CLAUSE_RE.search(positive)
     assert "pc game" in negative
     assert "cartoon" in negative
+    assert "different person" in negative
+    assert "face morph" in negative
+    assert "hairstyle change" in negative
+    assert "hairline change" in negative
+    assert "age change" in negative
+    assert "wardrobe change" in negative
     assert "bystanders" not in negative
     assert "near-duplicate framing" not in negative
 
