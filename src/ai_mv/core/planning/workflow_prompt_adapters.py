@@ -327,8 +327,8 @@ def _wardrobe_info_from_text(positive_text: str) -> dict:
 def _explicit_wardrobe_garment(positive_text: str) -> str:
     text = str(positive_text or "")
     patterns = (
-        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
-        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bin\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|windbreaker|apron|scarf|hoodie|shirt|overshirt|suit))\b",
+        r"\bwear(?:s|ing)?\s+(?:a|an|the)?\s*([^,.]{2,80}?\b(?:dress|coat|raincoat|parka|jacket|windbreaker|apron|scarf|hoodie|shirt|overshirt|suit))\b",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.I)

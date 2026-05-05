@@ -747,6 +747,50 @@ def test_plan_mv_preserves_explicit_dark_outerwear_when_user_supplies_it():
     assert "dark raincoat" in model_facing_text
 
 
+
+def test_plan_mv_preserves_explicit_apron_and_windbreaker_as_identity_anchor_wardrobe():
+    samples = [
+        (
+            "k-indie greenhouse music video, one solitary protagonist in a green apron tends small seedlings under warm glasshouse light, no books, no library, no rain, no city",
+            "green apron",
+        ),
+        (
+            "j-rock lighthouse cliff music video, one solitary protagonist in a red windbreaker faces a white lighthouse above dark ocean spray, no desert, no radio, no city",
+            "red windbreaker",
+        ),
+    ]
+
+    for concept_text, wardrobe in samples:
+        out = build_plan_preview_payload(
+            {},
+            {
+                "concept_text": concept_text,
+                "audio_map": {
+                    "duration_sec": 18.0,
+                    "sections": [
+                        {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                        {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                        {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                        {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                    ],
+                },
+            },
+        )
+
+        assert out["creative_direction"]["wardrobe_anchor"] == wardrobe
+        assert all(shot["continuity_contract"]["wardrobe_anchor"] == wardrobe for shot in out["shot_plan"])
+        anchor_positive = " ".join(
+            anchor.get("workflow_prompts", {}).get("flux2_tti_anchor", {}).get("positive_text", "")
+            for anchor in out["anchor_package"]["anchors"]
+        ).lower()
+        pose_positive = " ".join(
+            anchor.get("workflow_prompts", {}).get("flux2_ref_anchor", {}).get("positive_text", "")
+            for anchor in out["anchor_package"]["pose_anchor_bank"]
+        ).lower()
+        assert wardrobe in anchor_positive
+        assert wardrobe in pose_positive
+
+
 def _all_positive_prompt_text(out: dict) -> str:
     fragments: list[str] = []
     fragments.append(str(out.get("creative_direction", {})))
