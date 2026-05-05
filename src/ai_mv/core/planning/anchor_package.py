@@ -99,6 +99,8 @@ def with_selected_pose_anchor_bank(
     protagonist_anchor = str(direction.get("protagonist_anchor", "")).strip() or "one lead protagonist with story-appropriate presentation"
     explicit_wardrobe = str(direction.get("wardrobe_anchor", "")).strip()
     usable_explicit_wardrobe = "" if explicit_wardrobe.lower() == "story-derived stable outfit silhouette" else explicit_wardrobe
+    if usable_explicit_wardrobe:
+        usable_explicit_wardrobe = _coverage_safe_wardrobe_anchor(usable_explicit_wardrobe)
     wardrobe_anchor = usable_explicit_wardrobe or str(anchor_package.get("wardrobe_anchor", "")).strip() or _wardrobe_anchor(style_name, direction)
     buildable_by_id = {anchor["anchor_id"]: anchor for anchor in _pose_anchor_bank(protagonist_anchor, wardrobe_anchor)}
     base_variants = [row for row in anchor_package.get("pose_anchor_bank", []) if isinstance(row, dict)]
@@ -135,12 +137,19 @@ def _wardrobe_anchor(style_name: str, creative_direction: dict | None = None, *,
     protagonist = contract.get("protagonist", {}) if isinstance(contract, dict) and isinstance(contract.get("protagonist"), dict) else {}
     contract_wardrobe = str(protagonist.get("wardrobe", "")).strip()
     if explicit and explicit.lower() != "story-derived stable outfit silhouette":
-        return explicit
+        return _coverage_safe_wardrobe_anchor(explicit)
     if contract_wardrobe and contract_wardrobe != "stable practical wardrobe silhouette":
-        return contract_wardrobe
+        return _coverage_safe_wardrobe_anchor(contract_wardrobe)
     if style_name == "idol_pop":
         return "a bright stage-ready outfit with a clear stable silhouette"
     return "a story-derived stable outfit silhouette with readable color and shape continuity"
+
+
+def _coverage_safe_wardrobe_anchor(wardrobe_anchor: str) -> str:
+    lower = wardrobe_anchor.lower()
+    if "apron" in lower and not any(term in lower for term in ("shirt", "top", "jacket", "coat", "dress", "hoodie", "overshirt", "underlayer")):
+        return f"{wardrobe_anchor} over a simple neutral underlayer"
+    return wardrobe_anchor
 
 
 def _wardrobe_anchor_source(creative_direction: dict | None = None, *, contract: dict | None = None) -> dict:

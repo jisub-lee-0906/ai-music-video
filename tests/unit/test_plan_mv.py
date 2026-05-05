@@ -783,12 +783,17 @@ def test_plan_mv_preserves_explicit_apron_and_windbreaker_as_identity_anchor_war
             anchor.get("workflow_prompts", {}).get("flux2_tti_anchor", {}).get("positive_text", "")
             for anchor in out["anchor_package"]["anchors"]
         ).lower()
-        pose_positive = " ".join(
-            anchor.get("workflow_prompts", {}).get("flux2_ref_anchor", {}).get("positive_text", "")
+        pose_prompt_texts = [
+            anchor.get("workflow_prompts", {}).get("flux2_ref_anchor", {}).get("positive_text", "").lower()
             for anchor in out["anchor_package"]["pose_anchor_bank"]
-        ).lower()
+        ]
+        pose_positive = " ".join(pose_prompt_texts)
         assert wardrobe in anchor_positive
         assert wardrobe in pose_positive
+        if wardrobe == "green apron":
+            assert "simple neutral underlayer" in anchor_positive
+            assert "simple neutral underlayer" in pose_positive
+            assert all("simple neutral underlayer" in text for text in pose_prompt_texts if "green apron" in text)
 
 
 def _all_positive_prompt_text(out: dict) -> str:

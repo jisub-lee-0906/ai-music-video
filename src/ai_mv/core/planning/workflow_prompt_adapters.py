@@ -346,7 +346,16 @@ def _wardrobe_from_text(positive_text: str) -> str:
 def _wardrobe_from_contract(contract: dict) -> str:
     protagonist = contract.get("protagonist", {}) if isinstance(contract, dict) else {}
     wardrobe = str(protagonist.get("wardrobe", "")).strip() if isinstance(protagonist, dict) else ""
-    return wardrobe or "stable practical wardrobe silhouette"
+    if wardrobe:
+        return _coverage_safe_wardrobe_for_workflow(wardrobe)
+    return "stable practical wardrobe silhouette"
+
+
+def _coverage_safe_wardrobe_for_workflow(wardrobe: str) -> str:
+    lower = wardrobe.lower()
+    if "apron" in lower and not any(term in lower for term in ("shirt", "top", "jacket", "coat", "dress", "hoodie", "overshirt", "underlayer")):
+        return f"{wardrobe} over a simple neutral underlayer"
+    return wardrobe
 
 
 def _primary_action_from_text(positive_text: str) -> str:
