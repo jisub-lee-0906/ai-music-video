@@ -22,6 +22,7 @@ def build_render_item_payload(
     variation_delta: dict,
     production_policy: dict | None = None,
     pose_anchor_selection: dict | None = None,
+    pose_action_need: dict | None = None,
     workflow_prompts: dict | None = None,
 ) -> dict:
     out = {
@@ -56,6 +57,7 @@ def build_render_item_payload(
         "anchor_reference_arm": (production_policy or {}).get("anchor_reference_arm", ""),
         "recommended_duration_sec": (production_policy or {}).get("recommended_duration_sec", {}),
         "pose_anchor_selection": dict(pose_anchor_selection or {}),
+        "pose_action_need": dict(pose_action_need or {}),
         "selected_pose_anchor_id": str((pose_anchor_selection or {}).get("selected_pose_anchor_id", "")).strip(),
         "workflow_prompts": dict(workflow_prompts or {}),
         "legacy_prompt_fields": {

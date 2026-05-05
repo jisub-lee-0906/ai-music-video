@@ -82,6 +82,43 @@ def test_pose_keyframe_diversity_audit_flags_anchor_concentration_and_missing_ma
     assert audit["risk_tier_counts"] == {"low": 3, "high": 1}
 
 
+def test_pose_keyframe_diversity_audit_counts_pose_action_need_world_interactions():
+    preview = {
+        "workflow_prompt_lint": {"status": "pass"},
+        "anchor_package": {
+            "pose_anchor_bank": [
+                {"anchor_id": "ANCHOR_POSE_FULL_BODY_STANDING"},
+                {"anchor_id": "ANCHOR_POSE_WALKING_SIDE"},
+            ]
+        },
+        "render_plan": [
+            {
+                "shot_id": "S001",
+                "selected_pose_anchor_id": "ANCHOR_POSE_FULL_BODY_STANDING",
+                "pose_action_need": {"world_interaction": "source-bound movement through established world"},
+            },
+            {
+                "shot_id": "S002",
+                "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE",
+                "pose_action_need": {"world_interaction": "tending source-bound seedlings or plants"},
+            },
+            {
+                "shot_id": "S003",
+                "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE",
+                "pose_action_need": {"world_interaction": "tending source-bound seedlings or plants"},
+            },
+        ],
+    }
+
+    audit = audit_pose_keyframe_diversity(preview)
+
+    assert audit["pose_action_need_world_interaction_counts"] == {
+        "source-bound movement through established world": 1,
+        "tending source-bound seedlings or plants": 2,
+    }
+    assert audit["rows"][1]["pose_action_need_world_interaction"] == "tending source-bound seedlings or plants"
+
+
 def test_pose_keyframe_diversity_audit_enriches_rows_from_shot_plan_and_extracts_still_camera():
     preview = {
         "workflow_prompt_lint": {"status": "pass"},

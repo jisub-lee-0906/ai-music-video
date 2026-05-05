@@ -1248,6 +1248,7 @@ def test_plan_mv_ignores_removed_legacy_clip_planning_keys():
         "anchor_reference_arm",
         "recommended_duration_sec",
         "pose_anchor_selection",
+        "pose_action_need",
         "selected_pose_anchor_id",
         "workflow_prompts",
         "legacy_prompt_fields",

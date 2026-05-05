@@ -12,6 +12,7 @@ from ai_mv.core.planning.prompt_assembly import (
     polish_prompt as prompt_assembly_polish_prompt,
 )
 from ai_mv.core.planning.production_policy import build_production_policy as production_policy_build_production_policy
+from ai_mv.core.planning.pose_action_need import build_pose_action_need as pose_action_need_build_pose_action_need
 from ai_mv.core.planning.pose_anchor_selection import build_pose_anchor_selection as pose_anchor_selection_build_pose_anchor_selection
 from ai_mv.core.planning.prompt_contracts import (
     build_clip_positive_prompt as prompt_contracts_build_clip_positive_prompt,
@@ -78,6 +79,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
     variation_delta = build_variation_delta_contract(shot, reference_policy)
     production_policy = production_policy_build_production_policy(shot, style_name=style_name)
     pose_anchor_selection = pose_anchor_selection_build_pose_anchor_selection({**shot, "concept_text": concept_text})
+    pose_action_need = pose_action_need_build_pose_action_need({**shot, "concept_text": concept_text}, concept_text)
     still_prompt_text = build_still_prompt_text(
         prompt_seed,
         prompt_draft,
@@ -123,6 +125,7 @@ def build_render_item(config: dict, concept_text: str, style_name_or_bible, styl
         variation_delta=variation_delta,
         production_policy=production_policy,
         pose_anchor_selection=pose_anchor_selection,
+        pose_action_need=pose_action_need,
         workflow_prompts=workflow_prompts,
     )
     return out

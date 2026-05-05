@@ -41,6 +41,9 @@ def audit_pose_keyframe_diversity(preview: dict[str, Any], *, concentration_warn
     selected_ids = [row["selected_pose_anchor_id"] for row in rows if row["selected_pose_anchor_id"]]
     selected_counts = dict(Counter(selected_ids))
     risk_tier_counts = dict(Counter(row["risk_tier"] for row in rows if row["risk_tier"]))
+    pose_action_need_world_interaction_counts = dict(
+        Counter(row["pose_action_need_world_interaction"] for row in rows if row.get("pose_action_need_world_interaction"))
+    )
     missing = sorted(anchor_id for anchor_id in set(selected_ids) if anchor_id not in set(materialized_ids))
 
     issues: list[dict[str, Any]] = []
@@ -62,6 +65,7 @@ def audit_pose_keyframe_diversity(preview: dict[str, Any], *, concentration_warn
         "materialized_pose_anchor_ids": materialized_ids,
         "missing_materialized_selected_pose_anchor_ids": missing,
         "risk_tier_counts": risk_tier_counts,
+        "pose_action_need_world_interaction_counts": pose_action_need_world_interaction_counts,
         "workflow_prompt_lint_status": str(lint.get("status", "unknown")).strip() or "unknown",
         "issues": issues,
         "rows": rows,
@@ -85,6 +89,12 @@ def format_pose_keyframe_diversity_markdown(audit: dict[str, Any], *, title: str
     if not audit.get("risk_tier_counts"):
         lines.append("- none")
     lines.append("")
+    lines.append("## pose_action_need_world_interaction_counts")
+    for key, value in sorted(dict(audit.get("pose_action_need_world_interaction_counts", {})).items()):
+        lines.append(f"- {key}: {value}")
+    if not audit.get("pose_action_need_world_interaction_counts"):
+        lines.append("- none")
+    lines.append("")
     lines.append("## materialized_pose_anchor_ids")
     for anchor_id in audit.get("materialized_pose_anchor_ids", []):
         lines.append(f"- {anchor_id}")
@@ -100,12 +110,25 @@ def format_pose_keyframe_diversity_markdown(audit: dict[str, Any], *, title: str
         lines.append("- none")
     lines.append("")
     lines.append("## shot rows")
-    lines.append("| shot | section | function | role | selected_pose_anchor_id | risk | still_camera | clip_camera |")
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("| shot | section | function | role | selected_pose_anchor_id | risk | world_interaction | still_camera | clip_camera |")
+    lines.append("|---|---|---|---|---|---|---|---|---|")
     for row in audit.get("rows", []) if isinstance(audit.get("rows"), list) else []:
         lines.append(
-            "| {shot_id} | {section_type} | {story_function} | {candidate_role} | {selected_pose_anchor_id} | {risk_tier} | {still_camera} | {clip_camera} |".format(
-                **{key: _md_cell(row.get(key, "")) for key in ("shot_id", "section_type", "story_function", "candidate_role", "selected_pose_anchor_id", "risk_tier", "still_camera", "clip_camera")}
+            "| {shot_id} | {section_type} | {story_function} | {candidate_role} | {selected_pose_anchor_id} | {risk_tier} | {pose_action_need_world_interaction} | {still_camera} | {clip_camera} |".format(
+                **{
+                    key: _md_cell(row.get(key, ""))
+                    for key in (
+                        "shot_id",
+                        "section_type",
+                        "story_function",
+                        "candidate_role",
+                        "selected_pose_anchor_id",
+                        "risk_tier",
+                        "pose_action_need_world_interaction",
+                        "still_camera",
+                        "clip_camera",
+                    )
+                }
             )
         )
     return "\n".join(lines).rstrip() + "\n"
@@ -137,7 +160,8 @@ def _row_for_render_item(item: dict[str, Any], shot: dict[str, Any] | None = Non
         "visual_mode": str(item.get("visual_mode", "") or shot.get("visual_mode", "")).strip(),
         "candidate_role": str(item.get("candidate_role", "")).strip(),
         "selected_pose_anchor_id": anchor_id,
-        "risk_tier": POSE_RISK_TIERS.get(anchor_id, "unknown" if anchor_id else ""),
+        "risk_tier": _risk_tier(item, anchor_id),
+        "pose_action_need_world_interaction": _pose_action_need_world_interaction(item),
         "still_camera": _extract_camera(still_positive, workflow="still"),
         "clip_camera": _extract_camera(clip_positive, workflow="clip"),
     }
@@ -146,6 +170,19 @@ def _row_for_render_item(item: dict[str, Any], shot: dict[str, Any] | None = Non
 def _prompt_text(prompts: dict[str, Any], workflow: str, field: str) -> str:
     payload = prompts.get(workflow, {}) if isinstance(prompts, dict) and isinstance(prompts.get(workflow), dict) else {}
     return str(payload.get(field, "")).strip()
+
+
+def _risk_tier(item: dict[str, Any], anchor_id: str) -> str:
+    need = item.get("pose_action_need", {}) if isinstance(item.get("pose_action_need"), dict) else {}
+    need_risk = str(need.get("risk_tier", "")).strip()
+    if need_risk:
+        return need_risk
+    return POSE_RISK_TIERS.get(anchor_id, "unknown" if anchor_id else "")
+
+
+def _pose_action_need_world_interaction(item: dict[str, Any]) -> str:
+    need = item.get("pose_action_need", {}) if isinstance(item.get("pose_action_need"), dict) else {}
+    return str(need.get("world_interaction", "")).strip()
 
 
 def _extract_camera(text: str, *, workflow: str = "") -> str:
