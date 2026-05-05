@@ -354,7 +354,14 @@ def _workflow_safe_wardrobe_anchor(wardrobe_anchor: str) -> str:
 
 def _workflow_safe_anchor_subject(protagonist_anchor: str) -> str:
     text = str(protagonist_anchor or "").strip() or "one lead protagonist with story-appropriate presentation"
-    blocked = ("no competing bystanders", "no bystanders", "no crowd", "no second protagonist", "no extra people")
+    blocked = (
+        "no competing bystanders",
+        "no competing co-stars",
+        "no bystanders",
+        "no crowd",
+        "no second protagonist",
+        "no extra people",
+    )
     for phrase in blocked:
         text = text.replace(phrase, "")
     text = ", ".join(part.strip() for part in text.split(",") if part.strip())

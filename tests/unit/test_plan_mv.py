@@ -925,6 +925,7 @@ def test_plan_mv_phase11_style_fixtures_do_not_override_positive_user_worlds():
                 },
             },
         )
+        assert out["workflow_prompt_lint"]["status"] == "pass", out["workflow_prompt_lint"]
         positive_text = _all_positive_prompt_text(out)
         for forbidden in forbidden_terms:
             assert not _contains_source_unbound_literal(positive_text, forbidden), (forbidden, positive_text)
