@@ -149,6 +149,8 @@ def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
     assert "hairline change" in negative
     assert "age change" in negative
     assert "wardrobe change" in negative
+    assert "extra person" in negative
+    assert "duplicate body" in negative
     assert "bystanders" not in negative
     assert "near-duplicate framing" not in negative
 

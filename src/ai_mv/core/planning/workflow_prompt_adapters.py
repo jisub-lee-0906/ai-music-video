@@ -14,8 +14,10 @@ _META_LABEL_RE = re.compile(
 
 _DEFAULT_VISUAL_NEGATIVES = [
     "duplicate person",
+    "duplicate body",
     "crowd",
     "second protagonist",
+    "extra person",
     "collage",
     "split screen",
     "text overlay",
