@@ -6,8 +6,8 @@ def build_idol_pop_prompt_seed(concept_text: str, style_bible: dict, shot: dict)
         part
         for part in [
             "idol pop music video",
-            str(concept_text or "").strip() or "bright idol pop city performance",
-            "same protagonist, same glossy performance-night world",
+            _positive_concept_phrase(concept_text) or "bright idol pop performance",
+            "same protagonist, same source-bound concept world" if _uses_source_bound_world(shot) else "same protagonist, same glossy performance-night world",
             _subject_anchor(shot),
             _environment_anchor(shot),
             ", ".join(style_bible.get("palette", [])[:2]),
@@ -29,13 +29,34 @@ def build_idol_pop_prompt_draft(shot: dict) -> str:
     )
 
 
+def _positive_concept_phrase(concept_text: str) -> str:
+    pieces = []
+    for raw_part in str(concept_text or "").split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.lower().startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)
+
+
+def _uses_source_bound_world(shot: dict) -> bool:
+    world_anchor = str(shot.get("world_anchor", "") or shot.get("continuity_contract", {}).get("world_anchor", "")).lower()
+    return "avoid urban or street-location substitution" in world_anchor
+
+
 def _subject_anchor(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "young performer with camera-readable face inside source-bound concept staging"
     if str(shot.get("visual_mode", "")) == "chorus_front_lights":
         return "young performer facing camera with bright confident idol-pop energy"
     return "young performer with camera-readable face and polished stage confidence"
 
 
 def _environment_anchor(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "source-bound concept environment with bright pop lighting and readable depth"
     mapping = {
         "boulevard_intro_glow": "glossy city boulevard with bright performance-night reflections",
         "city_chorus_walk": "late-night performance boulevard with polished urban light trails",
@@ -48,6 +69,8 @@ def _environment_anchor(shot: dict) -> str:
 
 
 def _framing_phrase(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "bright source-bound performance frame with one anchored subject and readable concept-world depth"
     return {
         "establishing_wide": "wide performance-led frame with bright city geometry and one anchored subject",
         "performance_medium": "front-facing performance medium shot with bright readable face",

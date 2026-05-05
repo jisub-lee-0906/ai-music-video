@@ -12,8 +12,8 @@ def idol_pop_section_shot_specs(section_type: str, duration_sec: float) -> list[
     if section_type == "bridge":
         return [_spec("bridge_close", "bridge_close_gloss", "medium", render_mode, 1.0)]
     if section_type == "outro":
-        return [_spec("afterglow_release", "afterglow_stride", "medium", render_mode, 1.0)]
-    return [_spec("verse_confidence", "city_chorus_walk", "medium", render_mode, 1.0)]
+        return [_spec("source_bound_release", "source_bound_release_stride", "medium", render_mode, 1.0)]
+    return [_spec("verse_confidence", "source_bound_pop_walk", "medium", render_mode, 1.0)]
 
 
 def apply_idol_pop_section_variants(section_type: str, parts: list[dict]) -> list[dict]:

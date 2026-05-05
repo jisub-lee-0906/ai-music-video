@@ -20,9 +20,10 @@ def build_citypop_prompt_seed(concept_text: str, citypop_bible: dict, shot: dict
         location=location,
         palette=palette,
     )
+    world_continuity = "source-bound concept-world continuity" if _uses_source_bound_world(shot) else _world_continuity_phrase(continuity_mode)
     tail_parts = [
         "cinematic live-action lighting",
-        _world_continuity_phrase(continuity_mode),
+        world_continuity,
         _identity_continuity_phrase(continuity_mode),
         "film grain",
     ]
@@ -56,14 +57,28 @@ def build_citypop_prompt_draft(shot: dict) -> str:
 
 
 def _concept_seed_phrase(concept_text: str) -> str:
-    text = str(concept_text or "").strip()
+    text = _positive_concept_phrase(concept_text)
     lower = text.lower()
     if "japanese" in lower and "city pop" in lower:
         return "Japanese 80s city pop music video"
     return text or "city pop music video"
 
 
+def _positive_concept_phrase(concept_text: str) -> str:
+    pieces = []
+    for raw_part in str(concept_text or "").split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.lower().startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)
+
+
 def _continuity_anchor(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "same protagonist, same source-bound concept world, continuity preserved"
     role = str(shot.get("shot_role", "")).strip()
     section_name = str(shot.get("section_name", "")).strip().lower()
     continuity_mode = str(shot.get("continuity_mode", "strict")).strip().lower()
@@ -118,9 +133,9 @@ def _world_continuity_phrase(continuity_mode: str) -> str:
 def _identity_continuity_phrase(continuity_mode: str) -> str:
     mode = str(continuity_mode or "strict").strip().lower()
     if mode == "expressive":
-        return "identity can restage while preserving emotional continuity"
+        return "identity can reframe while preserving emotional continuity"
     if mode == "moderate":
-        return "stable character identity with controlled staging variation"
+        return "stable character identity with controlled framing variation"
     return "stable character identity"
 
 
@@ -141,6 +156,8 @@ def _world_anchor_phrase(shot: dict) -> str:
 
 
 def _still_subject_phrase(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return f"{_protagonist_subject_stub(shot)} in source-bound concept-world framing"
     visual_mode = str(shot.get("visual_mode", "")).strip()
     protagonist_anchor = _protagonist_subject_stub(shot)
     if visual_mode == "empty_boulevard_anchor":
@@ -188,6 +205,8 @@ def _protagonist_subject_stub(shot: dict) -> str:
 
 
 def _still_location_phrase(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "source-bound concept location with readable scene depth and stable lighting"
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
         "empty_boulevard_anchor": "near-empty rain-slick boulevard with dominant roadway depth and distant traffic glow",
@@ -211,7 +230,14 @@ def _still_location_phrase(shot: dict) -> str:
     return mapping.get(visual_mode, "night city reflections")
 
 
+def _uses_source_bound_world(shot: dict) -> bool:
+    world_anchor = str(shot.get("world_anchor", "") or shot.get("continuity_contract", {}).get("world_anchor", "")).lower()
+    return "avoid urban or street-location substitution" in world_anchor
+
+
 def _still_palette_phrase(shot: dict, citypop_bible: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "source-bound color palette, natural concept light"
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode in {"night_drive", "window_reflection", "night_bridge", "chorus_performance"}:
         return "deep blue and neon magenta palette"
@@ -226,6 +252,8 @@ def _still_palette_phrase(shot: dict, citypop_bible: dict) -> str:
 
 
 def _still_framing_phrase(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "source-bound wide frame with one anchored subject and clear concept-world depth"
     framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
     specialized_mapping = {
@@ -266,6 +294,8 @@ def _still_framing_phrase(shot: dict) -> str:
 
 
 def _still_composition_constraints(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "source-bound composition, readable subject placement, controlled negative space, concept-world depth supports the subject"
     framing_intent = str(shot.get("framing_intent", "")).strip()
     visual_mode = str(shot.get("visual_mode", "")).strip()
     if visual_mode == "empty_boulevard_anchor":

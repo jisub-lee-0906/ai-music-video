@@ -237,7 +237,7 @@ def _sequence_diversity_prompt_clauses(item: dict, role: str) -> tuple[str, str]
             "sequence diversity symbolic insert motion: short held insert with subtle source-bound light movement; no new hero performance pose; preserve continuity as an editorial breaker",
         )
     return (
-        "sequence diversity world bridge: environment-led wide or over-shoulder frame with boulevard depth, smaller anchored figure, changed camera distance, and clear spatial reset; avoid another centered front street-performance pose",
+        "sequence diversity world bridge: environment-led wide or over-shoulder frame with source-bound world depth, smaller anchored figure, changed camera distance, and clear spatial reset; avoid another centered front performance pose",
         "sequence diversity world bridge motion: gentle environment-led camera drift or walking-away continuity beat; emphasize spatial reset, source-bound world texture, and changed camera distance rather than another hero performance hold",
     )
 
@@ -321,7 +321,7 @@ def _thread_continuity_anchor_bundle(shot_plan: list[dict], creative_direction: 
             shot["world_anchor"] = world_anchor
         wardrobe_anchor = str(creative_direction.get("wardrobe_anchor", "")).strip()
         if not wardrobe_anchor:
-            wardrobe_anchor = "stable bright stage outfit silhouette" if str(creative_direction.get("style_lane", "")).strip() == "idol_pop" else "story-derived stable outfit silhouette"
+            wardrobe_anchor = "stable bright performance outfit silhouette" if str(creative_direction.get("style_lane", "")).strip() == "idol_pop" else "story-derived stable outfit silhouette"
         shot["continuity_contract"] = {
             "protagonist_anchor": protagonist_anchor,
             "world_anchor": world_anchor,
@@ -508,7 +508,7 @@ def _story_action_grammar_for_shot(shot: dict, *, concept_text: str, sequence_in
     section_type = str(shot.get("section_type", "")).strip().lower()
     visual_mode = str(shot.get("visual_mode", "")).strip().lower()
     story_function = str(shot.get("story_function", "")).strip().lower()
-    concept = str(concept_text or "").lower()
+    concept = _positive_concept_text(concept_text)
     concept_cue = _concept_action_cue(concept)
 
     if visual_mode in {"empty_boulevard_anchor", "curbside_silhouette", "street_establishing", "roadway_overview"}:
@@ -516,7 +516,7 @@ def _story_action_grammar_for_shot(shot: dict, *, concept_text: str, sequence_in
     if ("message" in concept or "phone" in concept) and (section_type in {"verse", "pre_chorus"} or story_function in {"search", "threshold"}):
         return "uses a phone message or reflection cue as the visible decision trigger, then changes gaze or walking direction; do not default to a static centered portrait"
     if visual_mode in {"rain_window_detail", "window_reflection"}:
-        if any(token in concept for token in ("rain", "window", "glass", "reflection")):
+        if any(token in concept for token in ("rain", "window", "reflection")):
             return "reads a reflection cue through rain-streaked glass with partial face or hand detail, not a front-facing pose; do not default to a static centered portrait"
         return f"reads a source-bound detail inside {concept_cue} with partial face or hand detail, not a front-facing pose; do not default to a static centered portrait"
     if visual_mode == "partial_figure_transition" or section_type == "pre_chorus":
@@ -538,13 +538,25 @@ def _concept_action_cue(concept_text: str) -> str:
     cues: list[str] = []
     if any(token in text for token in ("desert", "dune", "sand")):
         cues.append("desert dune space")
+    if any(token in text for token in ("greenhouse", "glasshouse", "seedling", "seedlings")):
+        cues.append("greenhouse glasshouse space")
+    if any(token in text for token in ("forest", "mossy", "moss", "pier")):
+        cues.append("forest pier space")
+    if any(token in text for token in ("underwater", "aquarium", "glass tunnel")):
+        cues.append("underwater aquarium space")
+    if any(token in text for token in ("arctic", "ice", "snow")):
+        cues.append("arctic ice space")
+    if any(token in text for token in ("meadow", "grass", "kites")):
+        cues.append("meadow grass space")
+    if any(token in text for token in ("lighthouse", "cliff", "coast")):
+        cues.append("lighthouse cliff space")
     if any(token in text for token in ("radio", "tower", "antenna", "signal")):
         cues.append("radio signal motif")
     if any(token in text for token in ("sunrise", "dawn")):
         cues.append("sunrise horizon light")
     if any(token in text for token in ("rain", "wet")):
         cues.append("rain reflection texture")
-    if any(token in text for token in ("neon", "city", "night")):
+    if not cues and any(token in text for token in ("neon", "urban")):
         cues.append("night urban light")
     return "; ".join(dict.fromkeys(cues)) if cues else "concept-specific visual motif"
 
@@ -570,7 +582,7 @@ def _thread_shot_relation_contracts(shot_plan: list[dict], *, style_name: str = 
             shot["shot_relation_contract"] = {
                 "relation_to_previous_shot": "sequence opener",
                 "camera_distance_progression": "set baseline distance",
-                "same_block_vs_new_block": _opening_block_baseline(normalized_style),
+                "same_block_vs_new_block": _opening_block_baseline(normalized_style, shot),
                 "emotional_delta": _opening_emotional_delta(normalized_style, shot),
             }
         else:
@@ -583,7 +595,10 @@ def _thread_shot_relation_contracts(shot_plan: list[dict], *, style_name: str = 
         previous_shot = shot
 
 
-def _opening_block_baseline(style_name: str) -> str:
+def _opening_block_baseline(style_name: str, shot: dict | None = None) -> str:
+    world_anchor = str(shot.get("world_anchor", "")).strip().lower() if isinstance(shot, dict) else ""
+    if style_name == "idol_pop" and "avoid urban or street-location substitution" in world_anchor:
+        return "performance-ready concept-world baseline"
     if style_name == "idol_pop":
         return "stage-ready city baseline"
     return "same block baseline"
@@ -593,6 +608,8 @@ def _opening_emotional_delta(style_name: str, shot: dict | None = None) -> str:
     world_anchor = str(shot.get("world_anchor", "")).strip().lower() if isinstance(shot, dict) else ""
     if "desert" in world_anchor and any(token in world_anchor for token in ("radio", "signal", "tower")):
         return "establish desert radio sunrise baseline"
+    if "avoid urban or street-location substitution" in world_anchor:
+        return "establish bright source-bound concept-world baseline"
     if style_name == "idol_pop":
         return "establish bright performance-night baseline"
     return "establish opening emotional baseline"
@@ -614,6 +631,9 @@ def _camera_distance_progression(shot: dict) -> str:
 def _same_block_vs_new_block(current_shot: dict, previous_shot: dict, *, style_name: str = "") -> str:
     current_section = str(current_shot.get("section_type", "")).strip()
     previous_section = str(previous_shot.get("section_type", "")).strip()
+    world_anchor = str(current_shot.get("world_anchor", "")).strip().lower()
+    if style_name == "idol_pop" and "avoid urban or street-location substitution" in world_anchor and current_section == previous_section:
+        return "same source-bound concept lane, new move"
     if style_name == "idol_pop" and current_section == previous_section:
         return "same stage lane, new move"
     if current_section == previous_section:
@@ -624,6 +644,13 @@ def _same_block_vs_new_block(current_shot: dict, previous_shot: dict, *, style_n
 
 def _emotional_delta(shot: dict, *, style_name: str = "") -> str:
     section_type = str(shot.get("section_type", "")).strip().lower()
+    world_anchor = str(shot.get("world_anchor", "")).strip().lower()
+    if style_name == "idol_pop" and "avoid urban or street-location substitution" in world_anchor:
+        return {
+            "chorus": "open into source-bound hook lift without losing world continuity",
+            "bridge": "tighten focus before the next performance release",
+            "outro": "resolve into bright source-bound release light in the same concept world",
+        }.get(section_type, "increase performer confidence without losing world continuity")
     if style_name == "idol_pop":
         return {
             "chorus": "open into crowd-ready hook lift without losing world continuity",

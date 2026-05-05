@@ -865,6 +865,73 @@ def test_plan_mv_broad_static_breadth_fixtures_do_not_leak_into_model_prompts():
             assert forbidden not in story_grammar_text
 
 
+def _contains_source_unbound_literal(text: str, term: str) -> bool:
+    pattern = re.compile(re.escape(term), re.I) if " " in term or "-" in term else re.compile(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])", re.I)
+    for match in pattern.finditer(text):
+        prefix = text[max(0, match.start() - 40):match.start()].lower()
+        if re.search(r"(?:\bno\b|\bwithout\b|\bavoid\b|\bnot\b|\bexclude\b|\bexcluding\b)[^,.;:\n]{0,34}$", prefix):
+            continue
+        return True
+    return False
+
+
+def test_plan_mv_phase11_style_fixtures_do_not_override_positive_user_worlds():
+    samples = [
+        (
+            {"planning": {"default_style_name": "citypop"}},
+            "city-pop greenhouse music video, one solitary protagonist in a green apron tends seedlings under warm glasshouse light, no boulevard, no curb, no rain, no city, no neon",
+            ("boulevard", "wet asphalt", "rain", "neon", "afterglow"),
+            ("greenhouse", "green apron"),
+        ),
+        (
+            {"planning": {"default_style_name": "k_indie"}},
+            "k-indie greenhouse music video, one solitary protagonist in a green apron tends small seedlings under warm glasshouse light, no books, no library, no bookstore, no rain, no city",
+            ("book", "books", "bookstore", "library", "rain"),
+            ("greenhouse", "green apron"),
+        ),
+        (
+            {"planning": {"default_style_name": "dream_pop"}},
+            "dream-pop underwater glass tunnel music video, one solitary protagonist in a silver dress walks through blue aquarium light, no books, no library, no city rooftop, no rain, no afterglow",
+            ("book", "books", "bookstore", "library", "rooftop", "street", "afterglow"),
+            ("underwater", "aquarium", "silver dress"),
+        ),
+        (
+            {"planning": {"default_style_name": "synthwave"}},
+            "synthwave arctic research music video, one solitary protagonist in a silver parka crosses pale ice markers, no satellite, no satellite dish, no city, no rooftop, no dark outerwear, no neon",
+            ("satellite", "city", "rooftop", "dark outerwear"),
+            ("arctic", "silver parka"),
+        ),
+        (
+            {"planning": {"default_style_name": "idol_pop"}},
+            "idol-pop spring meadow music video, one solitary protagonist in a yellow cardigan follows paper kites across open grass, no stage, no crowd, no city, no neon, no dark outerwear",
+            ("stage", "crowd", "city", "neon", "dark outerwear"),
+            ("meadow", "yellow cardigan"),
+        ),
+    ]
+
+    for config, concept_text, forbidden_terms, preserved_terms in samples:
+        out = build_plan_preview_payload(
+            config,
+            {
+                "concept_text": concept_text,
+                "audio_map": {
+                    "duration_sec": 18.0,
+                    "sections": [
+                        {"name": "intro", "start_sec": 0.0, "end_sec": 3.0},
+                        {"name": "verse_1", "start_sec": 3.0, "end_sec": 8.0},
+                        {"name": "chorus", "start_sec": 8.0, "end_sec": 14.0},
+                        {"name": "outro", "start_sec": 14.0, "end_sec": 18.0},
+                    ],
+                },
+            },
+        )
+        positive_text = _all_positive_prompt_text(out)
+        for forbidden in forbidden_terms:
+            assert not _contains_source_unbound_literal(positive_text, forbidden), (forbidden, positive_text)
+        for preserved in preserved_terms:
+            assert _contains_source_unbound_literal(positive_text, preserved), (preserved, positive_text)
+
+
 def test_plan_mv_preserves_residual_terms_when_user_supplies_positive_source():
     out = build_plan_preview_payload(
         {"planning": {"default_style_name": "j_rock"}},

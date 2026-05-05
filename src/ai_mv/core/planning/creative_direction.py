@@ -9,27 +9,30 @@ def build_creative_direction(*, concept_text: str, style_name: str, sections: li
         mv_mode = "visualizer"
     else:
         mv_mode = "hybrid"
-    hook_visual = _hook_visual(text=text, style_name=style_name)
-    emotional_arc = _emotional_arc(text=text)
+    has_concept_world = bool(_concept_world_anchor(positive_text))
+    hook_visual = _hook_visual(text=positive_text, style_name=style_name, has_concept_world=has_concept_world)
+    emotional_arc = _emotional_arc(text=positive_text)
     normalized_continuity_mode = _normalize_continuity_mode(continuity_mode)
     return {
         "mv_mode": mv_mode,
         "hook_visual": hook_visual,
         "emotional_arc": emotional_arc,
-        "visual_rules": _visual_rules(style_name=style_name),
+        "visual_rules": _visual_rules(style_name=style_name, has_concept_world=has_concept_world),
         "chorus_intent": _chorus_intent(text=text),
         "bridge_intent": _bridge_intent(text=text),
         "continuity_mode": normalized_continuity_mode,
-        "continuity_rules": _continuity_rules(style_name=style_name, continuity_mode=normalized_continuity_mode),
-        "protagonist_anchor": _protagonist_anchor(text=positive_text, style_name=style_name),
+        "continuity_rules": _continuity_rules(style_name=style_name, continuity_mode=normalized_continuity_mode, has_concept_world=has_concept_world),
+        "protagonist_anchor": _protagonist_anchor(text=positive_text, style_name=style_name, has_concept_world=has_concept_world),
         "world_anchor": _world_anchor(text=positive_text, style_name=style_name),
-        "wardrobe_anchor": _wardrobe_anchor(text=positive_text, style_name=style_name),
+        "wardrobe_anchor": _wardrobe_anchor(text=positive_text, style_name=style_name, has_concept_world=has_concept_world),
         "style_lane": str(style_name).strip(),
         "section_count": len(sections),
     }
 
 
-def _hook_visual(*, text: str, style_name: str) -> str:
+def _hook_visual(*, text: str, style_name: str, has_concept_world: bool = False) -> str:
+    if has_concept_world:
+        return "concept-world hero image with source-bound framing and readable protagonist action"
     if style_name == "idol_pop":
         return "bright front-facing performance moments against a glossy city-night stage world"
     if "night drive" in text:
@@ -47,8 +50,14 @@ def _emotional_arc(*, text: str) -> str:
     return "builds from setup to release and closes on a clear final afterimage"
 
 
-def _visual_rules(*, style_name: str) -> list[str]:
+def _visual_rules(*, style_name: str, has_concept_world: bool = False) -> list[str]:
     if style_name == "idol_pop":
+        if has_concept_world:
+            return [
+                "preserve one coherent source-bound performance world",
+                "favor bright readable faces and performance-capable framing",
+                "avoid moody solitary drift or overly dark wardrobe collapse",
+            ]
         return [
             "preserve one coherent glossy performance-night world",
             "favor bright readable faces and stage-ready performance framing",
@@ -79,10 +88,12 @@ def _bridge_intent(*, text: str) -> str:
     return "use the bridge as a contrast beat before the final payoff"
 
 
-def _protagonist_anchor(*, text: str, style_name: str) -> str:
+def _protagonist_anchor(*, text: str, style_name: str, has_concept_world: bool = False) -> str:
     if _explicit_wardrobe_from_text(text):
         return "same lone protagonist, stable user-specified wardrobe, camera-readable face, no competing bystanders"
     if style_name == "idol_pop":
+        if has_concept_world:
+            return "same lead idol performer, stable bright performance outfit silhouette, camera-readable face, no competing co-stars"
         return "same lead idol performer, stable bright stage outfit silhouette, camera-readable face, no competing co-stars"
     if style_name == "synthwave":
         return "same lone synthwave protagonist, stable story-derived outfit silhouette, no competing bystanders"
@@ -91,11 +102,13 @@ def _protagonist_anchor(*, text: str, style_name: str) -> str:
     return "same lone protagonist, stable silhouette, no competing bystanders"
 
 
-def _wardrobe_anchor(*, text: str, style_name: str) -> str:
+def _wardrobe_anchor(*, text: str, style_name: str, has_concept_world: bool = False) -> str:
     explicit = _explicit_wardrobe_from_text(text)
     if explicit:
         return explicit
     if style_name == "idol_pop":
+        if has_concept_world:
+            return "stable bright performance outfit silhouette"
         return "stable bright stage outfit silhouette"
     return "story-derived stable outfit silhouette"
 
@@ -118,6 +131,18 @@ def _concept_world_anchor(text: str) -> str:
     motifs: list[str] = []
     if any(token in text for token in ("desert", "dune", "sand")):
         motifs.append("same desert dune world")
+    if any(token in text for token in ("greenhouse", "glasshouse", "seedling", "seedlings")):
+        motifs.append("same greenhouse glasshouse world")
+    if any(token in text for token in ("forest", "mossy", "moss", "pier")):
+        motifs.append("same forest pier world")
+    if any(token in text for token in ("underwater", "aquarium", "glass tunnel")):
+        motifs.append("same underwater aquarium world")
+    if any(token in text for token in ("arctic", "ice", "snow")):
+        motifs.append("same arctic ice world")
+    if any(token in text for token in ("meadow", "grass", "kites")):
+        motifs.append("same spring meadow world")
+    if any(token in text for token in ("lighthouse", "cliff", "coast")):
+        motifs.append("same lighthouse cliff world")
     has_tower_source = any(token in text for token in ("tower", "antenna"))
     has_signal_source = "signal" in text
     has_radio_source = "radio" in text
@@ -137,7 +162,7 @@ def _concept_world_anchor(text: str) -> str:
 
 
 
-def _continuity_rules(*, style_name: str, continuity_mode: str) -> list[str]:
+def _continuity_rules(*, style_name: str, continuity_mode: str, has_concept_world: bool = False) -> list[str]:
     mode = _normalize_continuity_mode(continuity_mode)
     if mode == "expressive":
         base = [
@@ -158,8 +183,12 @@ def _continuity_rules(*, style_name: str, continuity_mode: str) -> list[str]:
             "favor motion-safe source images over decorative complexity",
         ]
     if style_name == "idol_pop":
+        if has_concept_world:
+            return [*base, "keep bright performance energy and readable face framing inside the source-bound concept world"]
         return [*base, "keep bright stage energy, readable face framing, and polished city-night gloss stable across the sequence"]
     if style_name == "synthwave":
+        if has_concept_world:
+            return [*base, "keep synthwave palette texture stable without replacing the source-bound concept world"]
         return [*base, "keep neon palette and reflective night setting stable across the sequence"]
     return base
 

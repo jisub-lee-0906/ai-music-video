@@ -27,7 +27,7 @@ def build_still_prompt_text(
             str(relation.get("camera_distance_progression", "")).strip(),
             str(relation.get("same_block_vs_new_block", "")).strip(),
             *_narrative_progression_still_tokens(variation.get("narrative_progression")),
-            _reference_identity_token(reference),
+            _reference_identity_token(reference, context=" ".join([base, str(relation.get("same_block_vs_new_block", ""))])),
             _reference_delta_token(variation_delta),
             *story_contract_prompt_tokens(variation.get("story_contract")),
         ]
@@ -63,6 +63,8 @@ def build_clip_prompt_seed(
 
 def _clip_visual_mode_token(shot: dict) -> str:
     world_anchor = str(shot.get("world_anchor", "")).strip().lower()
+    if "avoid urban or street-location substitution" in world_anchor:
+        return "source-bound section beat"
     if "desert" in world_anchor and any(token in world_anchor for token in ("radio", "signal", "tower")):
         progression = shot.get("narrative_progression") if isinstance(shot.get("narrative_progression"), dict) else {}
         beat_role = str(progression.get("beat_role", "") or shot.get("beat_role", "")).replace("_", " ").strip()
@@ -107,7 +109,7 @@ def build_clip_positive_prompt(
     return _join_prompt_tokens(
         [
             clip_prompt_seed,
-            _reference_identity_token(reference),
+            _reference_identity_token(reference, context=" ".join([clip_prompt_seed, str(shot.get("world_anchor", "")), str(relation.get("same_block_vs_new_block", ""))])),
             _continuity_identity_token(str(variation.get("continuity_variant", "")).strip()),
             _framing_camera_token(framing_variant),
             _environment_motion_token(str(variation.get("environment_variant", "")).strip()),
@@ -233,12 +235,16 @@ def _section_emphasis_variant_token(variant: str) -> str:
 
 
 
-def _reference_identity_token(reference_policy: dict) -> str:
+def _reference_identity_token(reference_policy: dict, *, context: str = "") -> str:
     reference_mode = str(reference_policy.get("reference_mode", "")).strip().lower() if isinstance(reference_policy, dict) else ""
     identity_lock = str(reference_policy.get("identity_lock_strength", "")).strip().lower() if isinstance(reference_policy, dict) else ""
     if reference_mode == "performance_anchor_source" or identity_lock == "performance_anchor":
+        context_text = str(context or "").lower()
+        outfit = "stable bright performance outfit silhouette"
+        if "stage" in context_text and "avoid urban or street-location substitution" not in context_text:
+            outfit = "stable bright stage outfit silhouette"
         return (
-            "front-facing performance-ready face visibility, same lead performer identity, stable bright stage outfit silhouette, "
+            f"front-facing performance-ready face visibility, same lead performer identity, {outfit}, "
             "exact face fingerprint from the white-background identity anchor, coherent concept-world continuity, "
             "one clear solo performer only, upper-body or full-body readability, no ambiguous secondary silhouettes, "
             "no distant human silhouettes, no bystanders or same-outfit background doubles"

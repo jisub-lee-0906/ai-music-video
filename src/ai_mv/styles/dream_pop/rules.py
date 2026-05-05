@@ -12,7 +12,7 @@ def dream_pop_section_shot_specs(section_type: str, duration_sec: float) -> list
     if section_type == "bridge":
         return [_spec("bridge_hush", "bridge_hush", "medium", render_mode, 1.0)]
     if section_type == "outro":
-        return [_spec("outro_afterglow", "afterglow_walk", "low", render_mode, 1.0)]
+        return [_spec("outro_release", "source_bound_release_walk", "low", render_mode, 1.0)]
     return [_spec("verse_drift", "window_haze", "medium", render_mode, 1.0)]
 
 

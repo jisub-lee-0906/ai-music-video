@@ -67,6 +67,9 @@ def _environment_anchor(shot: dict, *, positive_concept: str = "") -> str:
             "bridge_glass": "glass skybridge with isolated backlight and drifting club spill",
             "chorus_front": "open rooftop edge with direct city backlight",
             "release_stride": "night street stride with chrome reflections",
+            "high_edge": "elevated edge composition with controlled geometry",
+            "transparent_passage": "transparent passage composition with controlled light spill",
+            "transparent_bridge": "isolated translucent passage with soft backlight",
         }
     else:
         mapping = {
@@ -76,6 +79,9 @@ def _environment_anchor(shot: dict, *, positive_concept: str = "") -> str:
             "bridge_glass": "isolated translucent passage with soft backlight",
             "chorus_front": "open front-facing composition with direct backlight",
             "release_stride": "forward stride composition with clean reflective texture",
+            "high_edge": "elevated edge composition with controlled geometry",
+            "transparent_passage": "transparent passage composition with controlled light spill",
+            "transparent_bridge": "isolated translucent passage with soft backlight",
         }
     return mapping.get(str(shot.get("visual_mode", "")), "modern style space with controlled edge lighting")
 

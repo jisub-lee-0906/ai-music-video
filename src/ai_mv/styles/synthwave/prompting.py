@@ -17,7 +17,7 @@ def build_synthwave_prompt_seed(concept_text: str, style_bible: dict, shot: dict
             environment,
             palette,
             "retro-futurist cinematic frame",
-            "single coherent night-drive world",
+            "source-bound concept-world continuity" if _uses_source_bound_world(shot) else "single coherent night-drive world",
             "stable character identity",
             "clean cinematic composition",
             "analog glow",
@@ -27,6 +27,17 @@ def build_synthwave_prompt_seed(concept_text: str, style_bible: dict, shot: dict
 
 
 def build_synthwave_prompt_draft(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        framing = "source-bound cinematic frame with one anchored subject and clean concept-world depth"
+        return ", ".join(
+            [
+                framing,
+                "no layered collage",
+                "no abstract overlay",
+                "no duplicate subject",
+                "motion-safe keyframe",
+            ]
+        )
     framing_intent = str(shot.get("framing_intent", "")).strip()
     intent_mapping = {
         "establishing_wide": "wide establishing frame with stable skyline depth and one anchored subject",
@@ -63,11 +74,30 @@ def build_synthwave_prompt_draft(shot: dict) -> str:
 
 
 def _normalize_concept_text(concept_text: str) -> str:
-    text = str(concept_text or "").strip()
+    text = _positive_concept_phrase(concept_text)
     return text or "retro synthwave night-drive music video"
 
 
+def _positive_concept_phrase(concept_text: str) -> str:
+    pieces = []
+    for raw_part in str(concept_text or "").split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.lower().startswith(("no ", "without ", "avoid ", "never ")):
+            continue
+        pieces.append(part)
+    return ", ".join(pieces)
+
+
+def _uses_source_bound_world(shot: dict) -> bool:
+    world_anchor = str(shot.get("world_anchor", "") or shot.get("continuity_contract", {}).get("world_anchor", "")).lower()
+    return "avoid urban or street-location substitution" in world_anchor
+
+
 def _continuity_anchor(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "same protagonist, same source-bound concept world, synthwave texture only"
     role = str(shot.get("shot_role", "")).strip()
     mapping = {
         "intro_glide": "same night, same expressway journey, opening approach",
@@ -91,6 +121,8 @@ def _continuity_anchor(shot: dict) -> str:
 
 
 def _subject_anchor(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "solitary protagonist with source-bound wardrobe and stable synthwave styling"
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
         "laser_horizon": "solitary protagonist with a sleek silhouette",
@@ -107,6 +139,8 @@ def _subject_anchor(shot: dict) -> str:
 
 
 def _environment_anchor(shot: dict) -> str:
+    if _uses_source_bound_world(shot):
+        return "source-bound concept environment with retro glow texture and stable depth"
     visual_mode = str(shot.get("visual_mode", "")).strip()
     mapping = {
         "laser_horizon": "elevated expressway, distant skyline, neon horizon lines",

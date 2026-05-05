@@ -98,8 +98,14 @@ def _concept_motif(text: str) -> str:
     keyword_map = [
         (("train", "station", "subway", "전철", "지하철"), "station timing and platform light"),
         (("rain", "wet", "umbrella", "비"), "rain/reflection texture"),
-        (("neon", "city", "night", "밤", "도시"), "urban night light"),
+        (("neon", "urban", "도시"), "urban night light"),
         (("desert", "dune", "sand"), "desert horizon space"),
+        (("greenhouse", "glasshouse", "seedling", "seedlings"), "greenhouse glasshouse motif"),
+        (("forest", "mossy", "moss", "pier"), "forest pier motif"),
+        (("underwater", "aquarium", "glass tunnel"), "underwater aquarium motif"),
+        (("arctic", "ice", "snow"), "arctic ice motif"),
+        (("meadow", "grass", "kites"), "meadow grass motif"),
+        (("lighthouse", "cliff", "coast"), "lighthouse cliff motif"),
         (("sunrise", "dawn", "새벽"), "sunrise transition light"),
         (("ocean", "sea", "beach", "바다"), "ocean horizon motif"),
         (("room", "bedroom", "apartment", "방"), "interior personal-object motif"),
@@ -127,6 +133,9 @@ def _concept_motif(text: str) -> str:
 
 def _section_alignment_visual_token(shot: dict, *, concept_text: str = "") -> str:
     raw_visual_mode = _clean(shot.get("visual_mode"))
+    world_anchor = _clean(shot.get("world_anchor")).lower()
+    if "avoid urban or street-location substitution" in world_anchor:
+        return "source-bound section beat"
     lower = " ".join(
         _clean(value).lower()
         for value in (
