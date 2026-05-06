@@ -52,6 +52,38 @@ def test_plan_preview_threads_flexible_story_contract_into_every_shot_and_render
         assert shot["story_contract"]["visual_payoff"] in prompt
 
 
+def test_arctic_research_station_story_contract_does_not_invent_transit_or_ocean_motifs():
+    out = build_plan_preview_payload(
+        {"planning": {"default_style_name": "synthwave", "max_shot_sec": 4.0}},
+        {
+            "concept_text": (
+                "synthwave arctic research station music video, one explorer in a silver parka "
+                "crosses wind-carved snow toward a warm signal beacon with no ocean and no lighthouse, "
+                "no city, no rooftop, no satellite, no dark outerwear"
+            ),
+            "audio_map": {"duration_sec": 32.0},
+        },
+    )
+
+    joined_contracts = " ".join(
+        " ".join(str(value) for value in shot["story_contract"].values())
+        for shot in out["shot_plan"]
+    ).lower()
+    joined_ltx = " ".join(
+        item["workflow_prompts"]["ltx_ia2v"]["positive_text"]
+        for item in out["render_plan"]
+    ).lower()
+
+    assert "arctic ice motif" in joined_contracts
+    assert "source-bound signal motif" in joined_contracts
+    assert "station timing and platform light" not in joined_contracts
+    assert "platform light" not in joined_ltx
+    assert "ocean horizon motif" not in joined_contracts
+    assert "ocean horizon motif" not in joined_ltx
+    assert "lighthouse cliff motif" not in joined_contracts
+    assert "lighthouse cliff motif" not in joined_ltx
+
+
 def test_plan_story_contract_is_not_fixed_to_neon_rain_or_train_scenes_for_other_concepts():
     out = build_plan_preview_payload(
         {"planning": {"default_style_name": "synthwave", "max_shot_sec": 4.0}},

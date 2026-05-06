@@ -6,6 +6,11 @@ from typing import Any
 from ai_mv.core.planning.pose_anchor_selection import build_pose_anchor_selection
 
 
+_NEGATIVE_CLAUSE_RE = re.compile(
+    r"\b(no|without|avoid|never|exclude|do not|not a)\b\s+(.+?)(?=\s+\b(?:and|or)\s+\b(?:no|without|avoid|never|exclude|do not|not a)\b|[,.;]|$)",
+    re.I,
+)
+_DANGLING_CONNECTOR_RE = re.compile(r"\b(with|and|or)(?:\s+(?:and|or))*\s*$", re.I)
 _DEFAULT_QA_REQUIREMENTS = [
     "same_identity",
     "same_wardrobe",
@@ -72,8 +77,18 @@ def _positive_source_text(text: object) -> str:
             continue
         if part.startswith(("no ", "without ", "avoid ", "never ")):
             continue
+        part = _clean_positive_source_clause(part)
+        if not part:
+            continue
         pieces.append(part)
     return _normalize(" ".join(pieces).replace("_", " "))
+
+
+def _clean_positive_source_clause(text: str) -> str:
+    cleaned = _NEGATIVE_CLAUSE_RE.sub("", str(text or ""))
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.;")
+    cleaned = _DANGLING_CONNECTOR_RE.sub("", cleaned).strip(" ,.;")
+    return cleaned
 
 
 def _world_interaction(text: str, positive_concept: str) -> tuple[str, list[str]]:

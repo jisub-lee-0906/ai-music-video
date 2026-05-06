@@ -4,7 +4,11 @@ import re
 from collections.abc import Iterable
 
 _NEGATIVE_PREFIX_RE = re.compile(r"^(no|without|avoid|never|exclude|do not)\b\s*", re.I)
-_NEGATIVE_CLAUSE_RE = re.compile(r"\b(no|without|avoid|never|exclude|do not|not a)\b\s+([^,.;]+)", re.I)
+_NEGATIVE_CLAUSE_RE = re.compile(
+    r"\b(no|without|avoid|never|exclude|do not|not a)\b\s+(.+?)(?=\s+\b(?:and|or)\s+\b(?:no|without|avoid|never|exclude|do not|not a)\b|[,.;]|$)",
+    re.I,
+)
+_DANGLING_CONNECTOR_RE = re.compile(r"\b(with|and|or)(?:\s+(?:and|or))*\s*$", re.I)
 _META_LABEL_RE = re.compile(
     r"\b(shot purpose|story function|story visual event|section alignment|story progression|visual payoff|"
     r"anti repetition|protagonist action|story action grammar|narrative beat role|narrative motif state|"
@@ -48,7 +52,10 @@ def parse_user_intent_contract(concept_text: str) -> dict:
         if _NEGATIVE_PREFIX_RE.search(clause):
             forbidden.extend(_forbidden_terms_from_clause(clause))
         else:
-            positive_clauses.append(clause)
+            forbidden.extend(_negative_constraints_from_text(clause))
+            positive_clause = _remove_negative_clauses_from_source_clause(clause)
+            if positive_clause:
+                positive_clauses.append(positive_clause)
     positive_text = ", ".join(positive_clauses)
     lower = positive_text.lower()
     motifs = _motifs_from_positive_text(lower)
@@ -165,7 +172,7 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     if front_payoff_lock:
         action = _final_payoff_motion_action(world)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
-    action = _budget_text(action, 180)
+    action = _budget_text(action, 180).strip(" .;")
     camera = _clip_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
     if front_payoff_lock:
@@ -707,6 +714,13 @@ def _split_negative_text(text: str) -> list[str]:
 def _remove_negative_clauses(text: str) -> str:
     cleaned = _NEGATIVE_CLAUSE_RE.sub("", text)
     return _finalize_prompt_text(cleaned)
+
+
+def _remove_negative_clauses_from_source_clause(text: str) -> str:
+    cleaned = _NEGATIVE_CLAUSE_RE.sub("", str(text or ""))
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.;")
+    cleaned = _DANGLING_CONNECTOR_RE.sub("", cleaned).strip(" ,.;")
+    return cleaned
 
 
 def _clean_model_sentence(text: object) -> str:

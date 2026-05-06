@@ -180,6 +180,28 @@ def test_negative_only_world_terms_do_not_select_specific_world_pose_anchor():
     }
 
 
+def test_inline_negative_world_terms_do_not_select_specific_world_pose_anchor():
+    selection = build_pose_anchor_selection(
+        _shot(
+            shot_role="protagonist crosses wind-carved snow toward a warm signal beacon",
+            story_contract={"protagonist_action": "crosses wind-carved snow with empty hands"},
+            story_function="search",
+            concept_text=(
+                "synthwave arctic research station music video, one explorer in a silver parka "
+                "crosses wind-carved snow with no ocean and no lighthouse"
+            ),
+        )
+    )
+
+    assert selection["selected_pose_anchor_id"] not in {
+        "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE",
+    }
+    assert "lighthouse" not in selection.get("source_bound_terms", [])
+    assert "ocean" not in selection.get("source_bound_terms", [])
+
+
 def test_render_item_selected_pose_anchor_follows_source_bound_pose_action_need():
     item = build_render_item(
         {},

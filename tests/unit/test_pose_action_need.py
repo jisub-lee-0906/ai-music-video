@@ -93,6 +93,30 @@ def test_windbreaker_wardrobe_alone_does_not_create_lighthouse_world_need():
     assert need["source_bound_terms"] == []
 
 
+def test_arctic_research_station_does_not_turn_research_into_ocean_lighthouse_need():
+    need = build_pose_action_need(
+        _shot(
+            shot_role="protagonist crosses wind-carved snow toward a warm signal beacon",
+            visual_mode="laser_horizon",
+            story_function="search",
+            story_contract={"protagonist_action": "crosses wind-carved snow with empty hands"},
+        ),
+        (
+            "synthwave arctic research station music video, one explorer in a silver parka "
+            "crosses wind-carved snow toward a warm signal beacon with no ocean and no lighthouse, "
+            "no city, no rooftop, no satellite, no dark outerwear"
+        ),
+    )
+
+    assert need["world_interaction"] == "moving through source-bound arctic ice field"
+    assert need["source_bound_terms"] == ["arctic", "snow"]
+    joined = " ".join(str(value) for value in need.values()).lower()
+    assert "lighthouse" not in joined
+    assert "cliff" not in joined
+    assert "ocean" not in joined
+    assert "wind" not in need["source_bound_terms"]
+
+
 def test_negative_only_world_terms_do_not_become_positive_pose_need_sources():
     need = build_pose_action_need(
         _shot(story_contract={"protagonist_action": "walks forward with empty hands, no microphone"}),

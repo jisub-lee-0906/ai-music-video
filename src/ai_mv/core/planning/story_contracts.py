@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import re
+
+_NEGATIVE_CLAUSE_RE = re.compile(
+    r"\b(no|without|avoid|never|exclude|do not|not a)\b\s+(.+?)(?=\s+\b(?:and|or)\s+\b(?:no|without|avoid|never|exclude|do not|not a)\b|[,.;]|$)",
+    re.I,
+)
+_DANGLING_CONNECTOR_RE = re.compile(r"\b(with|and|or)(?:\s+(?:and|or))*\s*$", re.I)
 
 def build_story_contract(shot: dict, *, previous_shot: dict | None = None, concept_text: str = "") -> dict:
     section_type = _clean(shot.get("section_type")) or "section"
@@ -96,7 +103,7 @@ def _concept_motif(text: str) -> str:
     lower = _positive_concept_text(text)
     motifs: list[str] = []
     keyword_map = [
-        (("train", "station", "subway", "전철", "지하철"), "station timing and platform light"),
+        (("train", "subway", "전철", "지하철", "train station", "subway station"), "station timing and platform light"),
         (("rain", "wet", "umbrella", "비"), "rain/reflection texture"),
         (("neon", "urban", "도시"), "urban night light"),
         (("desert", "dune", "sand"), "desert horizon space"),
@@ -111,11 +118,11 @@ def _concept_motif(text: str) -> str:
         (("room", "bedroom", "apartment", "방"), "interior personal-object motif"),
     ]
     for keys, motif in keyword_map:
-        if any(key in lower for key in keys):
+        if any(_has_source_term(lower, key) for key in keys):
             motifs.append(motif)
-    has_tower_source = any(token in lower for token in ("tower", "antenna"))
-    has_signal_source = "signal" in lower
-    has_radio_source = "radio" in lower
+    has_tower_source = any(_has_source_term(lower, token) for token in ("tower", "antenna"))
+    has_signal_source = _has_source_term(lower, "signal")
+    has_radio_source = _has_source_term(lower, "radio")
     if has_tower_source and (has_radio_source or has_signal_source):
         motifs.append("radio tower signal motif")
     elif has_tower_source:
@@ -187,11 +194,31 @@ def _clean(value: object) -> str:
 
 def _positive_concept_text(text: object) -> str:
     pieces: list[str] = []
-    for raw_part in str(text or "").lower().split(","):
+    for raw_part in str(text or "").lower().replace(";", ",").split(","):
         part = raw_part.strip()
         if not part:
             continue
         if part.startswith(("no ", "without ", "avoid ", "never ")):
             continue
+        part = _clean_positive_source_clause(part)
+        if not part:
+            continue
         pieces.append(part)
     return ", ".join(pieces)
+
+
+def _clean_positive_source_clause(text: str) -> str:
+    cleaned = _NEGATIVE_CLAUSE_RE.sub("", str(text or ""))
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.;")
+    cleaned = _DANGLING_CONNECTOR_RE.sub("", cleaned).strip(" ,.;")
+    return cleaned
+
+
+def _has_source_term(text: str, term: str) -> bool:
+    value = str(text or "").lower()
+    token = str(term or "").lower().strip()
+    if not token:
+        return False
+    if re.search(r"[가-힣]", token):
+        return token in value
+    return re.search(rf"(?<![a-z0-9_]){re.escape(token)}(?![a-z0-9_])", value) is not None

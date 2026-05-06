@@ -263,6 +263,54 @@ def test_plan_preview_publishes_workflow_prompt_lint_for_preflight_gate():
     assert lint["max_positive_chars_by_workflow"]["flux2_ref_still"] <= 1200
     assert lint["max_positive_chars_by_workflow"]["ltx_ia2v"] <= 900
 
+
+def test_arctic_signal_beacon_plan_preview_has_polished_workflow_prompt_lint():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "synthwave"}},
+        {
+            "concept_text": (
+                "synthwave arctic research station music video, one explorer in a silver parka "
+                "crosses wind-carved snow toward a warm signal beacon with no ocean and no lighthouse, "
+                "no city, no rooftop, no satellite, no dark outerwear"
+            ),
+            "audio_map": {"duration_sec": 32.0},
+        },
+    )
+
+    lint = preview.get("workflow_prompt_lint")
+    assert lint["status"] == "pass"
+    assert lint["violations"] == []
+    combined_ltx = "\n".join(
+        item["workflow_prompts"]["ltx_ia2v"]["positive_text"]
+        for item in preview["render_plan"]
+    )
+    assert ";." not in combined_ltx
+    assert "with  and" not in combined_ltx.lower()
+    assert "with and" not in combined_ltx.lower()
+    assert "no ocean" not in combined_ltx.lower()
+    assert "no lighthouse" not in combined_ltx.lower()
+
+
+def test_inline_negative_clause_cleanup_leaves_polished_positive_world_text():
+    contract = parse_user_intent_contract(
+        "synthwave arctic research station music video, one explorer in a silver parka "
+        "crosses wind-carved snow toward a warm signal beacon with no ocean and no lighthouse, "
+        "no city, no rooftop"
+    )
+
+    positive = contract["positive_text"].lower()
+    world = contract["world"]["positive_description"].lower()
+    combined = f"{positive} {world}"
+    assert "warm signal beacon" in combined
+    assert "with no" not in combined
+    assert "with  and" not in combined
+    assert "with and" not in combined
+    assert "no ocean" not in combined
+    assert "no lighthouse" not in combined
+    assert "ocean" not in world
+    assert "lighthouse" not in world
+
+
 def test_docs_default_adjacent_workflow_prompts_preserve_shot_diversity():
     preview = _docs_default_preview()
     stills = [item["workflow_prompts"]["flux2_ref_still"]["positive_text"] for item in preview["render_plan"]]
