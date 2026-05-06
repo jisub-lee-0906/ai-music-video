@@ -80,15 +80,15 @@ def _visual_event(*, story_function: str, text: str) -> str:
         token in lower for token in ("radio", "signal", "tower", "antenna")
     )
     if story_function == "wound_setup" and desert_radio:
-        return "establish the protagonist isolated with a silent radio in the desert signal world"
+        return "establish the protagonist isolated in the desert radio world with the distant tower as the destination"
     if story_function == "search" and desert_radio:
-        return "follow the first radio signal trace across the dunes instead of repeating the opener pose"
+        return "move across the dunes toward the distant radio tower instead of repeating the opener pose"
     if story_function == "threshold" and desert_radio:
-        return "tighten around the radio direction cue before the signal becomes unavoidable"
+        return "tighten around the protagonist turning toward the distant radio tower"
     if story_function == "release" and desert_radio:
-        return "make the hook visibly larger through radio static, sunrise light, and a stronger decision pose"
+        return "make the hook visibly larger through sunrise light, forward movement, and a stronger decision pose"
     if story_function == "payoff" and desert_radio:
-        return "show the radio signal resolved or released against the sunrise horizon"
+        return "show the protagonist resolved against the sunrise horizon with the distant radio tower direction clear"
     if story_function == "wound_setup":
         return "establish the protagonist isolated inside the concept-world hesitation"
     if story_function == "search":
@@ -136,8 +136,8 @@ def _motif_arc(*, text: str, style_name: str) -> dict:
     if any(token in lower for token in ("desert", "dune", "sand")) and any(
         token in lower for token in ("radio", "signal", "tower", "antenna")
     ):
-        motifs["radio_signal"] = "silent radio -> faint signal -> static confrontation -> released silence"
-        motifs["desert_sunrise"] = "pre-dawn dunes -> signal path -> sunrise horizon payoff"
+        motifs["radio_tower_direction"] = "uncertain orientation -> deliberate movement -> distant tower destination payoff"
+        motifs["desert_sunrise"] = "pre-dawn dunes -> directional movement -> sunrise horizon payoff"
     if any(token in lower for token in ("rain", "wet", "neon", "city")) or style_name in {"citypop", "synthwave"}:
         motifs["rain_reflection"] = "distorted memory -> active movement -> clearer final reflection"
         motifs["city_light"] = "background mood -> decision pressure -> release path"

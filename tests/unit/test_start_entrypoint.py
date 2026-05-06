@@ -28,13 +28,19 @@ def test_prepare_comfy_queue_interrupts_and_clears(monkeypatch):
     calls: list[tuple[str, str]] = []
     monkeypatch.setattr(entry, "interrupt_comfy", lambda url: calls.append(("interrupt", url)))
     monkeypatch.setattr(entry, "clear_comfy_queue", lambda url: calls.append(("clear", url)))
-    monkeypatch.setattr(entry, "comfy_queue_counts", lambda url: (0, 0))
+    monkeypatch.setattr(entry, "comfy_queue_counts", lambda url: calls.append(("counts", url)) or (0, 0))
+    monkeypatch.setattr(entry, "free_comfy_memory", lambda url: calls.append(("free", url)))
     cfg = {
         "integrations": {"comfyui_base_url": "http://127.0.0.1:8000"},
         "runtime": {"interrupt_comfy_before_start": True, "clear_comfy_queue_before_start": True},
     }
     entry._prepare_comfy_queue(cfg)
-    assert calls == [("interrupt", "http://127.0.0.1:8000"), ("clear", "http://127.0.0.1:8000")]
+    assert calls == [
+        ("interrupt", "http://127.0.0.1:8000"),
+        ("clear", "http://127.0.0.1:8000"),
+        ("counts", "http://127.0.0.1:8000"),
+        ("free", "http://127.0.0.1:8000"),
+    ]
 
 
 def test_prepare_comfy_queue_raises_when_not_empty(monkeypatch):

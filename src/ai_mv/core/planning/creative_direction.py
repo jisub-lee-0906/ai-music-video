@@ -147,11 +147,11 @@ def _concept_world_anchor(text: str) -> str:
     has_signal_source = "signal" in text
     has_radio_source = "radio" in text
     if has_tower_source and (has_radio_source or has_signal_source):
-        motifs.append("radio tower signal motif")
+        motifs.append("distant radio tower direction")
     elif has_tower_source:
         motifs.append("distant tower motif")
     elif has_signal_source:
-        motifs.append("source-bound signal motif")
+        motifs.append("source-bound direction cue")
     elif has_radio_source:
         motifs.append("radio object motif")
     if any(token in text for token in ("sunrise", "dawn")):

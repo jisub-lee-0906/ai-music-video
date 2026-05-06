@@ -77,7 +77,7 @@ def _protagonist_action(*, story_function: str, section_type: str, visual_event:
     if story_function == "wound_setup":
         verb = "holds back and reveals the starting wound"
     elif story_function == "search":
-        verb = "actively follows a trace instead of posing"
+        verb = "moves toward the visible destination instead of posing"
     elif story_function == "threshold":
         verb = "pauses at a visible decision point"
     elif story_function == "release":
@@ -124,11 +124,11 @@ def _concept_motif(text: str) -> str:
     has_signal_source = _has_source_term(lower, "signal")
     has_radio_source = _has_source_term(lower, "radio")
     if has_tower_source and (has_radio_source or has_signal_source):
-        motifs.append("radio tower signal motif")
+        motifs.append("distant radio tower direction")
     elif has_tower_source:
         motifs.append("distant tower motif")
     elif has_signal_source:
-        motifs.append("source-bound signal motif")
+        motifs.append("source-bound direction cue")
     elif has_radio_source:
         motifs.append("radio object motif")
     if not motifs:

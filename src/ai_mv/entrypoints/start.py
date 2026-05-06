@@ -7,7 +7,7 @@ from ai_mv.core.orchestration.pipeline import run_pipeline
 from ai_mv.core.orchestration.wsl_overrides import apply_wsl_runtime_overrides
 from ai_mv.core.state.state_store import ensure_run_dir, read_snapshot
 from ai_mv.entrypoints.doctor import run_doctor
-from ai_mv.infra.comfy_client import clear_comfy_queue, comfy_queue_counts, interrupt_comfy
+from ai_mv.infra.comfy_client import clear_comfy_queue, comfy_queue_counts, free_comfy_memory, interrupt_comfy
 from ai_mv.infra.single_flight_lock import acquire_lock, release_lock
 
 
@@ -67,6 +67,7 @@ def _prepare_comfy_queue(cfg: dict) -> None:
         return
     interrupt_before = bool(runtime.get("interrupt_comfy_before_start", False))
     clear_before = bool(runtime.get("clear_comfy_queue_before_start", False))
+    queue_stopped = interrupt_before or clear_before
     if interrupt_before:
         interrupt_comfy(base_url)
     if clear_before:
@@ -74,3 +75,5 @@ def _prepare_comfy_queue(cfg: dict) -> None:
     running, pending = comfy_queue_counts(base_url)
     if running or pending:
         raise RuntimeError(f"ComfyUI queue is not empty before start: running={running} pending={pending}")
+    if queue_stopped:
+        free_comfy_memory(base_url)

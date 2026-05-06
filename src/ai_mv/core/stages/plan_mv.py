@@ -551,7 +551,7 @@ def _concept_action_cue(concept_text: str) -> str:
     if any(token in text for token in ("lighthouse", "cliff", "coast")):
         cues.append("lighthouse cliff space")
     if any(token in text for token in ("radio", "tower", "antenna", "signal")):
-        cues.append("radio signal motif")
+        cues.append("distant radio tower direction" if "tower" in text else "radio object detail")
     if any(token in text for token in ("sunrise", "dawn")):
         cues.append("sunrise horizon light")
     if any(token in text for token in ("rain", "wet")):

@@ -75,7 +75,7 @@ def test_arctic_research_station_story_contract_does_not_invent_transit_or_ocean
     ).lower()
 
     assert "arctic ice motif" in joined_contracts
-    assert "source-bound signal motif" in joined_contracts
+    assert "source-bound direction cue" in joined_contracts
     assert "station timing and platform light" not in joined_contracts
     assert "platform light" not in joined_ltx
     assert "ocean horizon motif" not in joined_contracts

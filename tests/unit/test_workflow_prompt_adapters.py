@@ -7,6 +7,7 @@ from ai_mv.core.planning.workflow_prompt_adapters import (
     adapt_flux2_ref_still_prompt,
     adapt_flux2_tti_anchor_prompt,
     adapt_ltx_ia2v_prompt,
+    build_workflow_prompt_payloads,
     parse_user_intent_contract,
 )
 from ai_mv.core.planning.workflow_prompt_lint import lint_workflow_prompts
@@ -100,7 +101,8 @@ def test_flux2_reference_still_adapter_removes_meta_labels_and_keeps_visual_acti
     assert "same hairstyle silhouette" in lower
     assert "same age impression" in lower
     assert "only change the background" in lower
-    assert "radio signal" in lower
+    assert "distant radio tower" in lower
+    assert "radio signal" not in lower
     assert "sunrise dunes" in lower
     assert not any(label in lower for label in META_LABELS)
     assert "avoid" not in lower
@@ -368,6 +370,152 @@ def test_flux_ref_still_prompts_lock_source_world_before_staging_and_reject_stud
         assert "graphic signal icon" in negative
 
 
+def test_abstract_radio_signal_input_is_normalized_to_physical_world_and_actions():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},
+        {
+            "concept_text": (
+                "alt-pop desert radio music video, one solitary protagonist follows a fading signal "
+                "across sunrise dunes toward a distant radio tower, quiet uncertainty turning into calm resolve, "
+                "stable wardrobe silhouette, no crowd, no second protagonist, no city or neon"
+            ),
+            "audio_map": {"duration_sec": 168.0},
+        },
+    )
+
+    source_contract = preview["render_plan"][0]["workflow_prompts"]["source_contract"]
+    visual_brief = source_contract.get("visual_brief", {})
+    assert "fading signal" in visual_brief.get("nonliteral_terms", [])
+    assert "radio wave icon" in visual_brief.get("forbidden_interpretations", [])
+    assert "distant radio tower" in visual_brief.get("physical_motifs", [])
+    assert "sunrise dunes" in visual_brief.get("visible_setting", "")
+
+    joined_positive = "\n".join(
+        "\n".join(
+            item["workflow_prompts"][workflow]["positive_text"]
+            for workflow in ("flux2_ref_still", "ltx_ia2v")
+        )
+        for item in preview["render_plan"]
+    ).lower()
+    joined_contracts = " ".join(
+        " ".join(str(value) for value in shot["story_contract"].values())
+        for shot in preview["shot_plan"]
+    ).lower()
+    joined_negative = "\n".join(
+        item["workflow_prompts"]["ltx_ia2v"]["negative_text"]
+        for item in preview["render_plan"]
+    ).lower()
+
+    assert "distant radio tower" in joined_positive
+    assert "sunrise dunes" in joined_positive
+    assert "toward a distant radio tower" in joined_positive or "toward the distant radio tower" in joined_positive
+    for forbidden_positive in (
+        "fading signal",
+        "radio signal",
+        "signal trace",
+        "radio wave",
+        "radio signal motif",
+        "radio tower signal motif",
+        "floating broadcast icon",
+        "graphic signal icon",
+    ):
+        assert forbidden_positive not in joined_positive
+        assert forbidden_positive not in joined_contracts
+    assert "radio wave icon" in joined_negative
+    assert "graphic signal icon" in joined_negative
+
+
+def test_abstract_signal_variants_and_radio_waves_do_not_literalize_in_positive_prompts():
+    concepts = [
+        "alt-pop desert radio music video, one solitary protagonist follows a weak signal across dunes toward a distant radio tower, calm resolve, no crowd",
+        "alt-pop desert radio music video, one solitary protagonist follows a lost signal across dunes toward a distant radio tower, calm resolve, no crowd",
+        "alt-pop desert radio music video, one solitary protagonist follows a dying signal across dunes toward a distant radio tower, calm resolve, no crowd",
+        "alt-pop desert radio music video, one solitary protagonist follows radio waves across dunes toward a distant radio tower, calm resolve, no crowd",
+    ]
+    forbidden = (
+        "weak signal",
+        "lost signal",
+        "dying signal",
+        "fading signal",
+        "radio signal",
+        "radio wave",
+        "radio waves",
+        "waveform",
+        "frequency trail",
+        "signal trace",
+        "visible setting",
+    )
+    for concept in concepts:
+        preview = build_plan_preview_payload(
+            {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},
+            {"concept_text": concept, "audio_map": {"duration_sec": 32.0}},
+        )
+        positive = "\n".join(
+            "\n".join(
+                item["workflow_prompts"][workflow]["positive_text"].lower()
+                for workflow in ("flux2_ref_still", "ltx_ia2v")
+            )
+            for item in preview["render_plan"]
+        )
+        negative = "\n".join(item["workflow_prompts"]["ltx_ia2v"]["negative_text"].lower() for item in preview["render_plan"])
+        assert "distant radio tower" in positive
+        assert "toward a distant radio tower" in positive or "toward the distant radio tower" in positive
+        for phrase in forbidden:
+            assert phrase not in positive
+        assert "radio wave icon" in negative
+        assert "graphic signal icon" in negative
+
+
+def test_desert_radio_without_tower_does_not_invent_tower_destination():
+    contract = parse_user_intent_contract(
+        "alt-pop desert radio music video, one solitary protagonist carries a small radio across dunes, calm resolve, no crowd"
+    )
+    payload = adapt_ltx_ia2v_prompt(contract, {"story_contract": {}})
+    positive = payload["positive_text"].lower()
+    assert "radio" in positive
+    assert "desert" in positive or "dunes" in positive
+    assert "tower" not in positive
+
+
+def test_negative_tower_clause_prevents_tower_destination_from_visual_brief():
+    contract = parse_user_intent_contract(
+        "alt-pop desert radio music video, one solitary protagonist follows a weak signal across dunes with no tower, no crowd"
+    )
+    brief = contract["visual_brief"]
+    assert "tower" not in " ".join(brief.get("physical_motifs", [])).lower()
+    payload = adapt_ltx_ia2v_prompt(contract, {"story_contract": {}})
+    assert "tower" not in payload["positive_text"].lower()
+
+
+def test_model_facing_story_fields_are_normalized_even_if_story_contract_reintroduces_signal():
+    contract = parse_user_intent_contract(
+        "alt-pop desert radio music video, one solitary protagonist follows a fading signal across sunrise dunes toward a distant radio tower, calm resolve, no crowd"
+    )
+    render_item = {
+        "shot_id": "S01",
+        "section_type": "verse",
+        "story_contract": {
+            "protagonist_action": "The protagonist follows a fading signal.",
+            "visual_event": "The camera tracks the weak signal trace across dunes.",
+            "story_action_grammar": "the camera follows the weak signal trace across dunes",
+        },
+        "recommended_duration_sec": 4.0,
+    }
+
+    prompts = build_workflow_prompt_payloads(contract, render_item)
+    positive = "\n".join(
+        prompts[workflow]["positive_text"].lower()
+        for workflow in ("flux2_ref_still", "ltx_ia2v")
+    )
+
+    assert "fading signal" not in positive
+    assert "weak signal" not in positive
+    assert "signal trace" not in positive
+    assert "follows a fading signal" not in positive
+    assert "follows the weak across dunes" not in positive
+    assert "clear physical direction" in positive or "physical direction" in positive
+
+
 def test_flux_ref_still_prompt_uses_generic_world_lock_without_source_bound_desert_or_tower():
     contract = parse_user_intent_contract(
         "quiet acoustic room music video, one solitary protagonist sits near a window, calm resolve, no crowd"
@@ -401,10 +549,10 @@ def test_source_bound_motif_state_progression_improves_music_video_arc_without_i
         section_texts.setdefault(section_type, "")
         section_texts[section_type] += "\n" + item["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
 
-    assert "fading signal starts faint" in section_texts["intro"]
-    assert "fading signal is actively followed" in section_texts["verse"]
-    assert "fading signal opens wider" in section_texts["chorus"]
-    assert "fading signal settles into calm resolve" in section_texts["outro"]
+    assert "distant radio tower starts as a distant orientation point" in section_texts["intro"]
+    assert "distant radio tower becomes the direction of travel" in section_texts["verse"]
+    assert "distant radio tower reads clearer as the destination" in section_texts["chorus"]
+    assert "distant radio tower settles as the resolved destination" in section_texts["outro"]
     assert "distant radio tower" in "\n".join(section_texts.values())
 
     contract = parse_user_intent_contract(
@@ -426,8 +574,8 @@ def test_source_bound_motif_state_progression_improves_music_video_arc_without_i
             "story_contract": {"protagonist_action": "The protagonist holds still through an internal bridge turn."},
         },
     )["positive_text"].lower()
-    assert "fading signal feels more directional" in pre_chorus
-    assert "fading signal briefly feels suspended" in bridge
+    assert "distant radio tower pulls the protagonist into a visible turn" in pre_chorus
+    assert "distant radio tower holds the frame in a suspended decision" in bridge
 
     combined = "\n".join(section_texts.values()) + "\n" + pre_chorus + "\n" + bridge
     for invented in ("map", "canteen", "water bottle", "antenna spark", "footprints", "noon heat"):

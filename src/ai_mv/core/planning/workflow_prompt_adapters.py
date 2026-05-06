@@ -89,12 +89,15 @@ def parse_user_intent_contract(concept_text: str) -> dict:
             if positive_clause:
                 positive_clauses.append(positive_clause)
     positive_text = ", ".join(positive_clauses)
-    lower = positive_text.lower()
+    visual_brief = _ai_friendly_visual_brief(positive_text)
+    model_positive_text = visual_brief.get("model_positive_text", positive_text)
+    lower = model_positive_text.lower()
     motifs = _motifs_from_positive_text(lower)
     wardrobe_info = _wardrobe_info_from_text(positive_text)
     return {
         "source_text": raw,
         "positive_text": positive_text,
+        "visual_brief": visual_brief,
         "genre": _genre_from_text(lower),
         "protagonist": {
             "count": "one" if "one solitary" in lower or "solo" in lower or "one " in lower else "unspecified",
@@ -104,10 +107,10 @@ def parse_user_intent_contract(concept_text: str) -> dict:
             "wardrobe_source": wardrobe_info["source"],
             "wardrobe_source_text": wardrobe_info["source_text"],
             "wardrobe_inference_guard": wardrobe_info.get("guard", ""),
-            "primary_action": _primary_action_from_text(positive_text),
+            "primary_action": visual_brief.get("primary_visible_action") or _primary_action_from_text(positive_text),
         },
         "world": {
-            "positive_description": _world_description(lower, positive_text),
+            "positive_description": _world_description(lower, model_positive_text),
             "motifs": motifs,
             "forbidden": _dedupe(forbidden),
         },
@@ -161,6 +164,7 @@ def adapt_flux2_tti_anchor_prompt(contract: dict, anchor: dict | None = None) ->
 
 def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
+    visual_brief = contract.get("visual_brief", {}) if isinstance(contract, dict) and isinstance(contract.get("visual_brief"), dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=True)
     action = _still_safe_world_staging(action, world)
@@ -174,7 +178,7 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     ).strip(" .")
     alignment = _budget_text(alignment, 90).strip(" .")
     camera = _still_camera_for_item(render_item)
-    shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
+    shot_grammar = _model_facing_story_text(story.get("story_action_grammar", ""), contract)
     shot_grammar = _still_safe_world_staging(shot_grammar, world)
     shot_grammar = _budget_text(shot_grammar, 160).strip(" .;")
     if front_payoff_lock:
@@ -197,6 +201,8 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     negatives = _dedupe(
         [
             *world.get("forbidden", []),
+            *_visual_brief_nonliteral_terms(visual_brief),
+            *visual_brief.get("forbidden_interpretations", []),
             *_negative_constraints_from_text(_model_source_text(render_item)),
             *_REF_STILL_WORLD_NEGATIVES,
         ]
@@ -210,6 +216,7 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
 
 def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str = "") -> dict:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
+    visual_brief = contract.get("visual_brief", {}) if isinstance(contract, dict) and isinstance(contract.get("visual_brief"), dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=False)
     front_payoff_lock = _uses_front_payoff_anchor(render_item)
@@ -229,7 +236,7 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     variation_cue = _clip_variation_cue(render_item)
     if variation_cue:
         camera = f"{camera}, {variation_cue}"
-    shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
+    shot_grammar = _model_facing_story_text(story.get("story_action_grammar", ""), contract)
     if front_payoff_lock:
         shot_grammar = _final_payoff_motion_staging(world)
     shot_grammar = _budget_text(shot_grammar, 140)
@@ -250,6 +257,8 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
         [
             *_split_negative_text(base_negative),
             *world.get("forbidden", []),
+            *_visual_brief_nonliteral_terms(visual_brief),
+            *visual_brief.get("forbidden_interpretations", []),
             *_negative_constraints_from_text(source_text),
             *(_final_payoff_motion_negatives() if front_payoff_lock else []),
             *_DEFAULT_VISUAL_NEGATIVES,
@@ -267,9 +276,144 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
 
 def build_workflow_prompt_payloads(contract: dict, render_item: dict, *, base_ltx_negative: str = "") -> dict:
     return {
+        "source_contract": contract,
         "flux2_ref_still": adapt_flux2_ref_still_prompt(contract, render_item),
         "ltx_ia2v": adapt_ltx_ia2v_prompt(contract, render_item, base_negative=base_ltx_negative),
     }
+
+
+def _ai_friendly_visual_brief(positive_text: str) -> dict:
+    source = _clean_model_sentence(positive_text).strip(" .")
+    lower = source.lower()
+    model_text = source
+    nonliteral_terms: list[str] = []
+    forbidden: list[str] = []
+    physical_motifs: list[str] = []
+    actions: list[str] = []
+    visible_setting = ""
+
+    if _has_word_phrase(lower, "sunrise dunes"):
+        visible_setting = "sunrise dunes"
+    elif _has_word_phrase(lower, "dunes"):
+        visible_setting = "dunes"
+    elif _has_word_phrase(lower, "desert"):
+        visible_setting = "desert"
+
+    if _has_word_phrase(lower, "distant radio tower"):
+        physical_motifs.append("distant radio tower")
+    elif _has_word_phrase(lower, "radio tower"):
+        physical_motifs.append("radio tower")
+    elif _has_word_phrase(lower, "distant tower"):
+        physical_motifs.append("distant tower")
+
+    if _has_word_phrase(lower, "sunrise dunes"):
+        physical_motifs.append("sunrise dunes")
+    elif _has_word_phrase(lower, "dunes"):
+        physical_motifs.append("dunes")
+
+    signal_terms = [
+        term
+        for term in (
+            "fading signal",
+            "weak signal",
+            "lost signal",
+            "dying signal",
+            "faint signal",
+            "broken signal",
+            "intermittent signal",
+            "distant signal",
+            "vanishing signal",
+            "radio signal",
+            "signal trace",
+            "radio wave",
+            "radio waves",
+            "broadcast wave",
+            "broadcast waves",
+            "waveform",
+            "frequency",
+            "static trail",
+        )
+        if _has_word_phrase(lower, term)
+    ]
+    if signal_terms:
+        chosen = "fading signal" if "fading signal" in signal_terms else signal_terms[0]
+        nonliteral_terms.append(chosen)
+        forbidden.extend(
+            [
+                "radio wave icon",
+                "graphic signal icon",
+                "floating broadcast icon",
+                "ui signal symbol",
+                "glowing signal beam",
+                "signal trace",
+                "radio wave",
+                "radio waves",
+                "broadcast wave",
+                "broadcast waves",
+                "waveform",
+                "frequency trail",
+                "static trail",
+            ]
+        )
+        model_text = _rewrite_abstract_signal_to_physical_action(model_text)
+        if physical_motifs:
+            if visible_setting and any("tower" in motif for motif in physical_motifs):
+                actions.append(f"walks through {visible_setting} and turns toward the distant radio tower")
+            elif any("tower" in motif for motif in physical_motifs):
+                actions.append("turns toward the distant tower")
+            else:
+                actions.append("responds through readable posture and movement")
+
+    model_text = _clean_model_sentence(model_text).strip(" .") or source
+    return {
+        "model_positive_text": model_text,
+        "visible_setting": visible_setting,
+        "physical_motifs": _dedupe(physical_motifs),
+        "nonliteral_terms": _dedupe(nonliteral_terms),
+        "forbidden_interpretations": _dedupe(forbidden),
+        "primary_visible_action": actions[0] if actions else "",
+    }
+
+
+def _rewrite_abstract_signal_to_physical_action(text: str) -> str:
+    value = str(text or "")
+    signal_modifier = r"(?:fading|weak|lost|dying|faint|broken|intermittent|distant|vanishing)"
+    value = re.sub(
+        rf"\bfollows\s+(?:a\s+)?(?:{signal_modifier}\s+)?(?:radio\s+)?signal\s+across\s+(.+?)\s+toward\s+(a\s+)?distant\s+radio\s+tower\b",
+        r"walks across \1 toward a distant radio tower",
+        value,
+        flags=re.I,
+    )
+    value = re.sub(
+        r"\bfollows\s+(?:a\s+)?(?:radio\s+waves?|broadcast\s+waves?|waveform|frequency|static\s+trail)\s+across\s+(.+?)\s+toward\s+(a\s+)?distant\s+radio\s+tower\b",
+        r"walks across \1 toward a distant radio tower",
+        value,
+        flags=re.I,
+    )
+    value = re.sub(
+        rf"\bfollows\s+(?:a\s+)?(?:{signal_modifier}\s+)?(?:radio\s+)?signal\b",
+        "moves with a clear physical direction",
+        value,
+        flags=re.I,
+    )
+    value = re.sub(
+        r"\bfollows\s+(?:a\s+)?(?:radio\s+waves?|broadcast\s+waves?|waveform|frequency|static\s+trail)\b",
+        "moves with a clear physical direction",
+        value,
+        flags=re.I,
+    )
+    value = re.sub(rf"\b(?:{signal_modifier}\s+)?radio\s+signal\b", "radio direction", value, flags=re.I)
+    value = re.sub(rf"\b{signal_modifier}\s+signal\b", "physical direction", value, flags=re.I)
+    value = re.sub(r"\bsignal\s+trace\b", "path direction", value, flags=re.I)
+    value = re.sub(r"\b(?:radio\s+waves?|broadcast\s+waves?|waveform|frequency|static\s+trail)\b", "physical direction", value, flags=re.I)
+    return re.sub(r"\s+", " ", value).strip(" ,.;")
+
+
+def _visual_brief_nonliteral_terms(visual_brief: dict) -> list[str]:
+    if not isinstance(visual_brief, dict):
+        return []
+    terms = [str(term or "").strip() for term in visual_brief.get("nonliteral_terms", [])]
+    return _dedupe([term for term in terms if term])
 
 
 def _audio_genre_label(text: object) -> str:
@@ -497,8 +641,11 @@ def _world_motion_cue(world: dict) -> str:
 def _visible_fallback_action(contract: dict, render_item: dict, *, still: bool) -> str:
     world = contract.get("world", {}) if isinstance(contract, dict) and isinstance(contract.get("world"), dict) else {}
     description = str(world.get("positive_description", "")).lower()
-    if _is_desert_radio_world(world):
-        return "moves through the established desert radio landscape and follows the visible signal direction"
+    destination = _source_bound_destination_motif(world)
+    if _has_desert_terms(world) and destination:
+        return f"moves through the established desert radio landscape toward the {destination} direction"
+    if _has_desert_terms(world) and _has_radio_signal_terms(world):
+        return "moves through the established desert radio landscape while keeping the radio object readable"
     if _has_desert_terms(world):
         return "moves through the established desert landscape toward the visible horizon direction"
     if "arctic" in description or "observatory" in description or "aurora" in description:
@@ -524,14 +671,27 @@ def _workflow_action_for_item(contract: dict, render_item: dict, *, still: bool)
         story.get("visual_event"),
         primary,
     ]
-    forbidden = list(world.get("forbidden", [])) if isinstance(world, dict) else []
     for candidate in candidates:
-        action = _strip_forbidden_words(_strip_default_world_leaks(_workflow_safe_alignment(candidate), contract), forbidden).strip(" .")
+        action = _model_facing_story_text(candidate, contract)
         if action and not _looks_like_default_desert_radio_leak(action, contract):
             return action
     if primary:
-        return _strip_forbidden_words(_strip_default_world_leaks(_workflow_safe_alignment(primary), contract), forbidden).strip(" .")
+        return _model_facing_story_text(primary, contract)
     return _visible_fallback_action(contract, render_item, still=still)
+
+
+def _model_facing_story_text(text: object, contract: dict) -> str:
+    value = _workflow_safe_alignment(text)
+    value = _rewrite_abstract_signal_to_physical_action(value)
+    value = _strip_default_world_leaks(value, contract)
+    world = contract.get("world", {}) if isinstance(contract, dict) and isinstance(contract.get("world"), dict) else {}
+    visual_brief = contract.get("visual_brief", {}) if isinstance(contract, dict) and isinstance(contract.get("visual_brief"), dict) else {}
+    forbidden = _dedupe([
+        *world.get("forbidden", []),
+        *_visual_brief_nonliteral_terms(visual_brief),
+        *visual_brief.get("forbidden_interpretations", []),
+    ])
+    return _strip_forbidden_words(value, forbidden).strip(" .")
 
 
 def _looks_like_default_desert_radio_leak(text: str, contract: dict) -> bool:
@@ -567,8 +727,10 @@ def _motifs_from_positive_text(lower: str) -> list[str]:
     motifs: list[str] = []
     if "radio tower" in lower:
         motifs.append("distant radio tower")
-    if "radio" in lower or "signal" in lower:
-        motifs.append("fading radio signal")
+    if "radio" in lower and "tower" in lower:
+        motifs.append("radio tower direction")
+    elif "radio" in lower:
+        motifs.append("radio object")
     if "sunrise" in lower:
         motifs.append("sunrise horizon")
     if "desert" in lower or "dune" in lower:
@@ -610,15 +772,16 @@ def _extract_visual_action(text: object) -> str:
         idx = lowered.find(label)
         if idx >= 0:
             segment = raw[idx + len(label):]
-            return _clean_model_sentence(segment.split(",", 1)[0])
-    for phrase in (
-        "follow the first radio signal trace across the dunes",
-        "raise the radio toward the distant tower",
-        "turns toward the fading radio signal",
-        "follows the fading signal",
-    ):
+            return _clean_model_sentence(_rewrite_abstract_signal_to_physical_action(segment.split(",", 1)[0]))
+    phrase_rewrites = {
+        "follow the first radio signal trace across the dunes": "move across the dunes toward the distant radio tower",
+        "raise the radio toward the distant tower": "turns toward the distant radio tower",
+        "turns toward the fading radio signal": "turns toward the distant radio tower",
+        "follows the fading signal": "moves with a clear physical direction",
+    }
+    for phrase, replacement in phrase_rewrites.items():
         if phrase in lowered:
-            return phrase
+            return replacement
     return ""
 
 
@@ -658,16 +821,18 @@ def _uses_front_payoff_anchor(render_item: dict) -> bool:
 
 
 def _final_payoff_readable_action(world: dict) -> str:
-    if _is_desert_radio_world(world):
-        return "stands facing the viewer with the resolved radio signal held close to the body and calm resolve visible in the eyes"
+    destination = _source_bound_destination_motif(world)
+    if _has_desert_terms(world) and destination:
+        return f"stands facing the viewer with calm resolve visible in the eyes, oriented toward the {destination}"
     if _has_desert_terms(world):
         return "stands facing the viewer in the desert horizon light with calm resolve visible in the eyes"
     return "stands facing the viewer in a resolved still pose with calm emotion visible in the eyes"
 
 
 def _final_payoff_staging(world: dict) -> str:
-    if _is_desert_radio_world(world):
-        return "centered front-facing hold, bright sunrise light on the face, radio tower behind as a soft distant motif, eyes and upper wardrobe clearly readable"
+    destination = _source_bound_destination_motif(world)
+    if _has_desert_terms(world) and destination:
+        return f"centered front-facing hold, bright sunrise light on the face, {destination} behind as a soft distant motif, eyes and upper wardrobe clearly readable"
     if _has_desert_terms(world):
         return "centered front-facing hold, bright sunrise desert light on the face, horizon behind as a soft distant motif, eyes and upper wardrobe clearly readable"
     return "centered front-facing hold, bright key light on the face, eyes and upper wardrobe clearly readable"
@@ -682,8 +847,9 @@ def _final_payoff_motion_action(world: dict) -> str:
 
 
 def _final_payoff_motion_staging(world: dict) -> str:
-    if _is_desert_radio_world(world):
-        return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep the radio tower softly behind, keep face and upper wardrobe readable for the whole clip"
+    destination = _source_bound_destination_motif(world)
+    if _has_desert_terms(world) and destination:
+        return f"centered front-facing payoff hold, maintain direct viewer-facing gaze, keep the {destination} softly behind, keep face and upper wardrobe readable for the whole clip"
     if _has_desert_terms(world):
         return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep the desert horizon softly behind, keep face and upper wardrobe readable for the whole clip"
     return "centered front-facing payoff hold, maintain direct viewer-facing gaze, keep face and upper wardrobe readable for the whole clip"
@@ -734,6 +900,9 @@ def _clip_camera_for_item(render_item: dict) -> str:
 
 def _source_bound_motif_state_cue(world: dict, render_item: dict) -> str:
     motif = _primary_progression_motif(world)
+    destination = _source_bound_destination_motif(world)
+    if not motif and destination:
+        return _source_bound_destination_state_cue(destination, render_item)
     if not motif:
         return ""
     section = _render_section_type(render_item)
@@ -762,6 +931,29 @@ def _source_bound_motif_state_cue(world: dict, render_item: dict) -> str:
     return cue
 
 
+def _source_bound_destination_state_cue(destination: str, render_item: dict) -> str:
+    section = _render_section_type(render_item)
+    state_by_section = {
+        "intro": "starts as a distant orientation point",
+        "verse": "becomes the direction of travel",
+        "pre_chorus": "pulls the protagonist into a visible turn",
+        "chorus": "reads clearer as the destination",
+        "bridge": "holds the frame in a suspended decision",
+        "outro": "settles as the resolved destination",
+    }
+    state = state_by_section.get(section)
+    if not state:
+        story_function = _render_story_function(render_item)
+        state = {
+            "wound_setup": "starts as a distant orientation point",
+            "search": "becomes the direction of travel",
+            "threshold": "pulls the protagonist into a visible turn",
+            "release": "reads clearer as the destination",
+            "payoff": "settles as the resolved destination",
+        }.get(story_function, "changes the travel direction visibly")
+    return f"{destination} {state}"
+
+
 def _primary_progression_motif(world: dict) -> str:
     source = _world_source_text(world)
     if _has_word_phrase(source, "fading signal"):
@@ -773,7 +965,7 @@ def _primary_progression_motif(world: dict) -> str:
     if _has_word_phrase(source, "warm signal"):
         return "warm signal"
     if _has_word_phrase(source, "signal"):
-        return "signal"
+        return ""
     if _has_word_phrase(source, "beacon"):
         return "beacon"
     return ""
