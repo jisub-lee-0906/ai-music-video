@@ -291,6 +291,50 @@ def test_arctic_signal_beacon_plan_preview_has_polished_workflow_prompt_lint():
     assert "no lighthouse" not in combined_ltx.lower()
 
 
+def test_ltx_action_sentences_do_not_end_with_truncation_fragments():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},
+        {
+            "concept_text": (
+                "alt-pop desert radio music video, one solitary protagonist follows a fading signal "
+                "across sunrise dunes toward a distant radio tower, quiet uncertainty turning into calm resolve, "
+                "stable wardrobe silhouette, no crowd, no second protagonist, no city or neon"
+            ),
+            "audio_map": {"duration_sec": 168.0},
+        },
+    )
+
+    bad = []
+    for item in preview["render_plan"]:
+        text = item["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
+        if re.search(r"\b(action|staging):[^.]*\b(as|at|for|from|in|into|of|the|through|to|using|with)\.", text):
+            bad.append((item["shot_id"], text))
+    assert bad == []
+
+
+def test_default_fullrun_ltx_prompts_have_adjacent_shot_variation():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},
+        {
+            "concept_text": (
+                "alt-pop desert radio music video, one solitary protagonist follows a fading signal "
+                "across sunrise dunes toward a distant radio tower, quiet uncertainty turning into calm resolve, "
+                "stable wardrobe silhouette, no crowd, no second protagonist, no city or neon"
+            ),
+            "audio_map": {"duration_sec": 168.0},
+        },
+    )
+
+    previous = None
+    duplicates = []
+    for item in preview["render_plan"]:
+        text = item["workflow_prompts"]["ltx_ia2v"]["positive_text"]
+        if previous and previous[1] == text:
+            duplicates.append((previous[0], item["shot_id"]))
+        previous = (item["shot_id"], text)
+    assert duplicates == []
+
+
 def test_inline_negative_clause_cleanup_leaves_polished_positive_world_text():
     contract = parse_user_intent_contract(
         "synthwave arctic research station music video, one explorer in a silver parka "

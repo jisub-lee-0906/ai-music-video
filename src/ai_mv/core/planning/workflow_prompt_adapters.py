@@ -9,6 +9,24 @@ _NEGATIVE_CLAUSE_RE = re.compile(
     re.I,
 )
 _DANGLING_CONNECTOR_RE = re.compile(r"\b(with|and|or)(?:\s+(?:and|or))*\s*$", re.I)
+_TRUNCATION_WEAK_ENDINGS = {
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "for",
+    "from",
+    "in",
+    "into",
+    "of",
+    "or",
+    "the",
+    "through",
+    "to",
+    "using",
+    "with",
+}
 _META_LABEL_RE = re.compile(
     r"\b(shot purpose|story function|story visual event|section alignment|story progression|visual payoff|"
     r"anti repetition|protagonist action|story action grammar|narrative beat role|narrative motif state|"
@@ -174,6 +192,9 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
     action = _budget_text(action, 180).strip(" .;")
     camera = _clip_camera_for_item(render_item)
+    variation_cue = _clip_variation_cue(render_item)
+    if variation_cue:
+        camera = f"{camera}, {variation_cue}"
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
     if front_payoff_lock:
         shot_grammar = _final_payoff_motion_staging(world)
@@ -661,6 +682,59 @@ def _clip_camera_for_item(render_item: dict) -> str:
     return "locked medium shot with gentle forward movement"
 
 
+def _clip_variation_cue(render_item: dict) -> str:
+    if not isinstance(render_item, dict):
+        return ""
+    profile = render_item.get("variation_profile") if isinstance(render_item.get("variation_profile"), dict) else {}
+    relation = render_item.get("shot_relation_contract") if isinstance(render_item.get("shot_relation_contract"), dict) else {}
+    cues: list[str] = []
+    shot_cue = _shot_sequence_variation_cue(render_item.get("shot_id", ""))
+    if shot_cue:
+        cues.append(shot_cue)
+    framing = str(profile.get("framing_variant", "")).lower()
+    environment = str(profile.get("environment_variant", "")).lower()
+    motion = str(profile.get("motion_variant", "")).lower()
+    same_block = str(relation.get("same_block_vs_new_block", "")).lower()
+    if "environment_forward" in framing:
+        cues.append("offset protagonist with more readable world space")
+    elif "subject_forward" in framing:
+        cues.append("subject-forward frame with readable hands and face")
+    elif "balanced" in framing:
+        cues.append("balanced three-quarter framing with readable face")
+    if "spatial" in environment:
+        cues.append("layered dune horizon depth")
+    elif "atmospheric" in environment:
+        cues.append("fine dust shimmer in the light")
+    elif "textural" in environment:
+        cues.append("close world texture and gesture detail")
+    if "pulsed" in motion:
+        cues.append("small beat-synced push-in")
+    elif "restrained" in motion:
+        cues.append("nearly still body with subtle cloth and sand motion")
+    elif "gliding" in motion:
+        cues.append("slow gliding lateral movement")
+    if "new angle" in same_block:
+        cues.append("new angle from the previous clip")
+    elif "evolved" in same_block:
+        cues.append("evolved staging from the previous clip")
+    elif "baseline" in same_block:
+        cues.append("baseline establishing angle")
+    return ", ".join(_dedupe(cues[:4]))
+
+
+def _shot_sequence_variation_cue(shot_id: object) -> str:
+    match = re.search(r"(\d+)$", str(shot_id or ""))
+    if not match:
+        return ""
+    index = int(match.group(1))
+    mod = index % 3
+    if mod == 1:
+        return "baseline establishing angle"
+    if mod == 2:
+        return "alternate angle with readable hands and face"
+    return "wider offset angle with more world depth"
+
+
 def _duration_safe_action(action: str, duration: object) -> str:
     clean = _clean_model_sentence(action).strip(" .")
     max_sec = 0.0
@@ -786,7 +860,15 @@ def _budget_text(text: str, limit: int) -> str:
         out.append(sentence)
     if out:
         return " ".join(out)
-    return clean[:limit].rsplit(" ", 1)[0].strip(" ,.") + "."
+    truncated = clean[:limit].rsplit(" ", 1)[0].strip(" ,.")
+    return _trim_weak_truncation_ending(truncated) + "."
+
+
+def _trim_weak_truncation_ending(text: str) -> str:
+    words = str(text or "").strip(" ,.;").split()
+    while words and words[-1].strip(" ,.;:").lower() in _TRUNCATION_WEAK_ENDINGS:
+        words.pop()
+    return " ".join(words).strip(" ,.;")
 
 
 def _join_sentences(parts: list[str]) -> str:
