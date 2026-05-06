@@ -88,7 +88,7 @@ def _world_interaction(text: str, positive_concept: str) -> tuple[str, list[str]
         if _has_any(positive, ("plant", "plants")):
             terms.append("plants")
         return "tending source-bound seedlings or plants", _dedupe(terms)
-    if _has_any(positive, ("lighthouse", "cliff", "cliffs", "ocean", "wind", "windbreaker")):
+    if _has_any(positive, ("lighthouse", "cliff", "cliffs", "ocean")):
         terms = []
         if "lighthouse" in positive:
             terms.append("lighthouse")

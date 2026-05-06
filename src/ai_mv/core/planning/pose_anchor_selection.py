@@ -104,7 +104,27 @@ POSE_ANCHOR_CATALOG: dict[str, dict] = {
         "required_body_action": "source_bound_cliff_wind_stance",
         "required_motion_direction": "static",
         "required_prop": "none",
-        "reason": "source-bound lighthouse/cliff/wind shots need a stable cliff stance instead of generic release walking",
+        "reason": "source-bound lighthouse/cliff/wind search shots need a stable cliff stance instead of generic walking",
+    },
+    "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE": {
+        "pose_family": "lighthouse_lookout_stance",
+        "required_framing": "full",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "left_third",
+        "required_body_action": "source_bound_lighthouse_lookout_pause",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "source-bound lighthouse wound/setup shots need a lookout pause distinct from search walking grammar",
+    },
+    "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE": {
+        "pose_family": "lighthouse_wind_face",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "source_bound_wind_facing_release",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "source-bound lighthouse release shots need a wind-facing resolved stance distinct from search/cliff setup",
     },
     "ANCHOR_POSE_ARCTIC_ICE_CROSSING": {
         "pose_family": "arctic_ice_crossing",
@@ -114,7 +134,27 @@ POSE_ANCHOR_CATALOG: dict[str, dict] = {
         "required_body_action": "source_bound_ice_field_crossing",
         "required_motion_direction": "diagonal_forward",
         "required_prop": "none",
-        "reason": "source-bound arctic/ice shots need crossing movement through the established world",
+        "reason": "source-bound arctic/ice search shots need crossing movement through the established world",
+    },
+    "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP": {
+        "pose_family": "arctic_aurora_lookup",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "source_bound_aurora_lookup_pause",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "source-bound arctic wound/setup shots need an aurora lookup pause distinct from ice crossing",
+    },
+    "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE": {
+        "pose_family": "arctic_cold_field_pause",
+        "required_framing": "medium",
+        "required_camera_angle": "front_three_quarter",
+        "required_subject_position": "center",
+        "required_body_action": "source_bound_cold_field_release_pause",
+        "required_motion_direction": "static",
+        "required_prop": "none",
+        "reason": "source-bound arctic release shots need a cold-field pause distinct from search crossing",
     },
 }
 
@@ -134,7 +174,7 @@ def build_pose_anchor_selection(shot: dict) -> dict:
         return _selection("ANCHOR_POSE_WALKING_SIDE", decision=_departure_payoff_decision())
     if _has_final_payoff_intent(shot, text, story_function):
         return _selection("ANCHOR_POSE_FINAL_PAYOFF_FRONT", decision=_final_payoff_decision())
-    source_bound_selection = _source_bound_world_selection(shot, text)
+    source_bound_selection = _source_bound_world_selection(shot, text, story_function)
     if source_bound_selection:
         return source_bound_selection
     if _has_face_critical_identity_intent(text, story_function):
@@ -173,7 +213,7 @@ def _selection(anchor_id: str, decision: dict | None = None) -> dict:
     return selection
 
 
-def _source_bound_world_selection(shot: dict, text: str) -> dict | None:
+def _source_bound_world_selection(shot: dict, text: str, story_function: str) -> dict | None:
     positive_source = _positive_source_text(shot.get("concept_text", ""))
     if not positive_source:
         return None
@@ -184,21 +224,47 @@ def _source_bound_world_selection(shot: dict, text: str) -> dict | None:
             "ANCHOR_POSE_GREENHOUSE_TENDING",
             decision=_source_bound_world_decision("greenhouse_seedling_tending", _greenhouse_source_terms(positive_source)),
         )
-    if _has_any_word(positive_source, ("lighthouse", "cliff", "cliffs", "ocean", "wind", "windbreaker")) and _has_any_word(
-        text, ("stand", "stands", "standing", "cliff", "cliffs", "lighthouse", "wind", "windbreaker")
+    if _has_any_word(positive_source, ("lighthouse", "cliff", "cliffs", "ocean")) and _has_any_word(
+        text, ("stand", "stands", "standing", "cliff", "cliffs", "lighthouse", "ocean", "wind", "beacon", "lookout", "threshold", "pause", "pauses")
     ):
+        if _story_function_is_setup(story_function) or _has_any_word(text, ("entry", "threshold", "lookout", "pause", "pauses")):
+            return _selection(
+                "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE",
+                decision=_source_bound_world_decision("lighthouse_lookout_setup", _lighthouse_source_terms(positive_source)),
+            )
+        if story_function == "release" and _has_any_word(text, ("chorus", "charge", "wind", "beacon")):
+            return _selection(
+                "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE",
+                decision=_source_bound_world_decision("lighthouse_wind_facing_release", _lighthouse_source_terms(positive_source)),
+            )
         return _selection(
             "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
             decision=_source_bound_world_decision("lighthouse_cliff_wind_stance", _lighthouse_source_terms(positive_source)),
         )
     if _has_any_word(positive_source, ("arctic", "ice", "snow", "aurora")) and _has_any_word(
-        text, ("cross", "crosses", "crossing", "move", "moves", "moving", "walk", "walking", "ice", "snow", "aurora")
+        text, ("cross", "crosses", "crossing", "move", "moves", "moving", "walk", "walking", "ice", "snow", "aurora", "look", "looks", "pause", "holds")
     ):
+        if story_function == "release" or _has_any_word(text, ("hold", "holds", "still", "pause", "grid", "surge")):
+            return _selection(
+                "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE",
+                decision=_source_bound_world_decision("arctic_cold_field_release_pause", _arctic_source_terms(positive_source)),
+            )
+        if _story_function_is_setup(story_function) or (
+            _has_any_word(text, ("look", "looks", "horizon")) and not _has_any_word(text, ("cross", "crosses", "crossing"))
+        ):
+            return _selection(
+                "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP",
+                decision=_source_bound_world_decision("arctic_aurora_lookup_setup", _arctic_source_terms(positive_source)),
+            )
         return _selection(
             "ANCHOR_POSE_ARCTIC_ICE_CROSSING",
             decision=_source_bound_world_decision("arctic_ice_field_crossing", _arctic_source_terms(positive_source)),
         )
     return None
+
+
+def _story_function_is_setup(story_function: str) -> bool:
+    return story_function in {"wound_setup", "setup", "opening", "intro", "threshold"}
 
 
 def _source_bound_world_decision(reason_code: str, source_bound_terms: list[str]) -> dict:

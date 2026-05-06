@@ -77,6 +77,22 @@ def test_lighthouse_need_uses_source_bound_wind_cliff_stance_without_desert_radi
     assert "radio" not in joined
 
 
+def test_windbreaker_wardrobe_alone_does_not_create_lighthouse_world_need():
+    need = build_pose_action_need(
+        _shot(
+            shot_role="hero face closeup with direct gaze",
+            visual_mode="hero_face_performance",
+            story_function="release",
+        ),
+        "indie music video, one solitary protagonist wears a red windbreaker, no lighthouse, no cliff, no ocean",
+    )
+
+    joined = " ".join(str(value) for value in need.values()).lower()
+    assert "lighthouse" not in joined
+    assert "cliff" not in joined
+    assert need["source_bound_terms"] == []
+
+
 def test_negative_only_world_terms_do_not_become_positive_pose_need_sources():
     need = build_pose_action_need(
         _shot(story_contract={"protagonist_action": "walks forward with empty hands, no microphone"}),

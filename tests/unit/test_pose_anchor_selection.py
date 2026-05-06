@@ -39,12 +39,12 @@ def test_greenhouse_source_bound_need_selects_tending_pose_anchor():
     assert "books" not in joined
 
 
-def test_lighthouse_source_bound_need_selects_cliff_wind_pose_anchor():
+def test_lighthouse_search_need_selects_cliff_wind_pose_anchor():
     selection = build_pose_anchor_selection(
         _shot(
             shot_role="protagonist stands by a weathered lighthouse above ocean cliffs",
             visual_mode="world_bridge",
-            story_function="release",
+            story_function="search",
             concept_text="j-rock lighthouse music video, one solitary protagonist in a red windbreaker stands by a weathered lighthouse above ocean cliffs, no desert, no radio",
         )
     )
@@ -58,10 +58,37 @@ def test_lighthouse_source_bound_need_selects_cliff_wind_pose_anchor():
     assert "radio" not in joined
 
 
-def test_arctic_source_bound_need_selects_ice_crossing_pose_anchor_without_neon_rooftop_leak():
+def test_lighthouse_source_bound_need_uses_story_function_sub_anchors():
+    concept = "j-rock lighthouse music video, one solitary protagonist in a red windbreaker stands by a weathered lighthouse above ocean cliffs, no desert, no radio"
+
+    wound = build_pose_anchor_selection(
+        _shot(
+            shot_role="protagonist pauses at the lighthouse threshold above ocean cliffs",
+            visual_mode="live_house_entry",
+            story_function="wound_setup",
+            concept_text=concept,
+        )
+    )
+    release = build_pose_anchor_selection(
+        _shot(
+            shot_role="protagonist faces fierce wind by the lighthouse beacon above ocean cliffs",
+            visual_mode="chorus_charge",
+            story_function="release",
+            concept_text=concept,
+        )
+    )
+
+    assert wound["selected_pose_anchor_id"] == "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE"
+    assert wound["required_pose_family"] == "lighthouse_lookout_stance"
+    assert release["selected_pose_anchor_id"] == "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE"
+    assert release["required_pose_family"] == "lighthouse_wind_face"
+
+
+def test_arctic_search_need_selects_ice_crossing_pose_anchor_without_neon_rooftop_leak():
     selection = build_pose_anchor_selection(
         _shot(
             shot_role="protagonist crosses an ice field under aurora",
+            story_function="search",
             story_contract={"protagonist_action": "crosses an ice field with empty hands"},
             concept_text="synth arctic music video, one solitary protagonist crosses an ice field under aurora, no city, no neon, no rooftop, no stage, no crowd",
         )
@@ -78,6 +105,62 @@ def test_arctic_source_bound_need_selects_ice_crossing_pose_anchor_without_neon_
     assert "crowd" not in joined
 
 
+def test_arctic_source_bound_need_uses_story_function_sub_anchors():
+    concept = "synth arctic music video, one solitary protagonist crosses an ice field under aurora, no city, no neon, no rooftop, no stage, no crowd"
+
+    wound = build_pose_anchor_selection(
+        _shot(
+            shot_role="protagonist looks up under a faint aurora over the ice field",
+            visual_mode="laser_horizon",
+            story_function="wound_setup",
+            concept_text=concept,
+        )
+    )
+    release = build_pose_anchor_selection(
+        _shot(
+            shot_role="protagonist holds still in cold blue light after crossing the ice field",
+            visual_mode="grid_surge",
+            story_function="release",
+            concept_text=concept,
+        )
+    )
+
+    assert wound["selected_pose_anchor_id"] == "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP"
+    assert wound["required_pose_family"] == "arctic_aurora_lookup"
+    assert release["selected_pose_anchor_id"] == "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE"
+    assert release["required_pose_family"] == "arctic_cold_field_pause"
+
+
+def test_lighthouse_pose_anchor_requires_world_action_not_generic_face_or_wardrobe_only_source():
+    selection = build_pose_anchor_selection(
+        _shot(
+            shot_role="hero face closeup with direct gaze",
+            visual_mode="hero_face_performance",
+            story_function="release",
+            concept_text="indie music video, one solitary protagonist wears a red windbreaker, no lighthouse, no cliff, no ocean",
+        )
+    )
+
+    assert selection["selected_pose_anchor_id"] not in {
+        "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE",
+    }
+
+
+def test_lighthouse_wind_face_requires_release_world_action_not_search_face_closeup():
+    selection = build_pose_anchor_selection(
+        _shot(
+            shot_role="hero face closeup near the lighthouse",
+            visual_mode="hero_face_performance",
+            story_function="search",
+            concept_text="j-rock lighthouse music video, one solitary protagonist in a red windbreaker stands by a weathered lighthouse above ocean cliffs",
+        )
+    )
+
+    assert selection["selected_pose_anchor_id"] != "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE"
+
+
 def test_negative_only_world_terms_do_not_select_specific_world_pose_anchor():
     selection = build_pose_anchor_selection(
         _shot(
@@ -89,7 +172,11 @@ def test_negative_only_world_terms_do_not_select_specific_world_pose_anchor():
     assert selection["selected_pose_anchor_id"] not in {
         "ANCHOR_POSE_GREENHOUSE_TENDING",
         "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE",
         "ANCHOR_POSE_ARCTIC_ICE_CROSSING",
+        "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP",
+        "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE",
     }
 
 

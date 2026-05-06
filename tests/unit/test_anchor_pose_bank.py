@@ -261,7 +261,11 @@ def test_source_bound_pose_action_anchors_are_materialized_when_selected():
         render_plan=[
             {"selected_pose_anchor_id": "ANCHOR_POSE_GREENHOUSE_TENDING"},
             {"selected_pose_anchor_id": "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE"},
+            {"selected_pose_anchor_id": "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE"},
+            {"selected_pose_anchor_id": "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE"},
             {"selected_pose_anchor_id": "ANCHOR_POSE_ARCTIC_ICE_CROSSING"},
+            {"selected_pose_anchor_id": "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP"},
+            {"selected_pose_anchor_id": "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE"},
         ],
         style_name="k_indie",
         creative_direction={
@@ -273,15 +277,27 @@ def test_source_bound_pose_action_anchors_are_materialized_when_selected():
     by_id = {anchor["anchor_id"]: anchor for anchor in package["pose_anchor_bank"]}
     assert "ANCHOR_POSE_GREENHOUSE_TENDING" in by_id
     assert "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE" in by_id
+    assert "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE" in by_id
+    assert "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE" in by_id
     assert "ANCHOR_POSE_ARCTIC_ICE_CROSSING" in by_id
+    assert "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP" in by_id
+    assert "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE" in by_id
     assert by_id["ANCHOR_POSE_GREENHOUSE_TENDING"]["pose_family"] == "greenhouse_tending"
     assert by_id["ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE"]["pose_family"] == "lighthouse_cliff_stance"
+    assert by_id["ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE"]["pose_family"] == "lighthouse_lookout_stance"
+    assert by_id["ANCHOR_POSE_LIGHTHOUSE_WIND_FACE"]["pose_family"] == "lighthouse_wind_face"
     assert by_id["ANCHOR_POSE_ARCTIC_ICE_CROSSING"]["pose_family"] == "arctic_ice_crossing"
+    assert by_id["ANCHOR_POSE_ARCTIC_AURORA_LOOKUP"]["pose_family"] == "arctic_aurora_lookup"
+    assert by_id["ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE"]["pose_family"] == "arctic_cold_field_pause"
     assert package["pose_anchor_policy"]["materialized_pose_anchor_ids"] == [
         "ANCHOR_CHARACTER_FULL_BODY",
         "ANCHOR_POSE_GREENHOUSE_TENDING",
         "ANCHOR_POSE_LIGHTHOUSE_CLIFF_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_LOOKOUT_STANCE",
+        "ANCHOR_POSE_LIGHTHOUSE_WIND_FACE",
         "ANCHOR_POSE_ARCTIC_ICE_CROSSING",
+        "ANCHOR_POSE_ARCTIC_AURORA_LOOKUP",
+        "ANCHOR_POSE_ARCTIC_COLD_FIELD_PAUSE",
     ]
 
 
