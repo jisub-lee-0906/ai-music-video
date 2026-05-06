@@ -335,6 +335,52 @@ def test_default_fullrun_ltx_prompts_have_adjacent_shot_variation():
     assert duplicates == []
 
 
+def test_flux_ref_still_prompts_lock_source_world_before_staging_and_reject_studio_fallback():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},
+        {
+            "concept_text": (
+                "alt-pop desert radio music video, one solitary protagonist follows a fading signal "
+                "across sunrise dunes toward a distant radio tower, quiet uncertainty turning into calm resolve, "
+                "stable wardrobe silhouette, no crowd, no second protagonist, no city or neon"
+            ),
+            "audio_map": {"duration_sec": 168.0},
+        },
+    )
+
+    for item in preview["render_plan"]:
+        prompt = item["workflow_prompts"]["flux2_ref_still"]["positive_text"].lower()
+        negative = ", ".join(item["workflow_prompts"]["flux2_ref_still"].get("negative_constraints", [])).lower()
+        assert "background/world: alt-pop desert radio music video" in prompt
+        assert "sunrise dunes" in prompt
+        assert "distant radio tower" in prompt
+        assert "soft fill light keeps face and wardrobe readable" in prompt
+        assert "radio signal motif" not in prompt
+        assert "radio tower signal motif" not in prompt
+        assert "floating broadcast icon" not in prompt
+        assert "graphic signal icon" not in prompt
+        assert prompt.index("background/world:") < prompt.index("shot-specific staging:")
+        assert "shot action:" in prompt
+        assert "source world" not in prompt
+        assert "white background" in negative
+        assert "plain studio backdrop" in negative
+        assert "floating broadcast icon" in negative
+        assert "graphic signal icon" in negative
+
+
+def test_flux_ref_still_prompt_uses_generic_world_lock_without_source_bound_desert_or_tower():
+    contract = parse_user_intent_contract(
+        "quiet acoustic room music video, one solitary protagonist sits near a window, calm resolve, no crowd"
+    )
+    payload = adapt_flux2_ref_still_prompt(contract, {"story_contract": {"story_action_grammar": "hands rest still"}})
+    prompt = payload["positive_text"].lower()
+
+    assert "background/world: quiet acoustic room music video" in prompt
+    assert "desert" not in prompt
+    assert "radio tower" not in prompt
+    assert "floating broadcast icon" in ", ".join(payload["negative_constraints"]).lower()
+
+
 def test_source_bound_motif_state_progression_improves_music_video_arc_without_inventing_objects():
     preview = build_plan_preview_payload(
         {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},

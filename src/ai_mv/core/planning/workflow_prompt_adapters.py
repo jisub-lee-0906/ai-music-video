@@ -34,6 +34,20 @@ _META_LABEL_RE = re.compile(
     re.I,
 )
 
+_REF_STILL_WORLD_NEGATIVES = [
+    "white background",
+    "plain white background",
+    "plain studio backdrop",
+    "studio background",
+    "cutout character",
+    "reference sheet",
+    "floating broadcast icon",
+    "graphic signal icon",
+    "radio wave icon",
+    "ui signal symbol",
+    "text overlay",
+]
+
 _DEFAULT_VISUAL_NEGATIVES = [
     "duplicate person",
     "duplicate body",
@@ -149,32 +163,44 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     world = contract.get("world", {}) if isinstance(contract, dict) else {}
     story = render_item.get("story_contract") if isinstance(render_item, dict) and isinstance(render_item.get("story_contract"), dict) else {}
     action = _workflow_action_for_item(contract, render_item, still=True)
+    action = _still_safe_world_staging(action, world)
     front_payoff_lock = _uses_front_payoff_anchor(render_item)
     if front_payoff_lock:
         action = _final_payoff_readable_action(world)
+    action = _budget_text(action, 180).strip(" .;")
     alignment = _strip_default_world_leaks(
         _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression")),
         contract,
     ).strip(" .")
+    alignment = _budget_text(alignment, 90).strip(" .")
     camera = _still_camera_for_item(render_item)
     shot_grammar = _strip_default_world_leaks(_workflow_safe_alignment(story.get("story_action_grammar", "")), contract).strip(" .")
+    shot_grammar = _still_safe_world_staging(shot_grammar, world)
+    shot_grammar = _budget_text(shot_grammar, 160).strip(" .;")
     if front_payoff_lock:
         shot_grammar = _final_payoff_staging(world)
     scene = _workflow_scene_description(world)
+    world_lock = _still_world_lock_clause(scene)
     wardrobe = _wardrobe_from_contract(contract)
     prompt = _join_sentences(
         [
             "Use the reference image as the character identity source.",
-            "Move the exact same person into the scene while preserving the same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same skin tone, and same wardrobe.",
-            f"{camera}, {alignment}.",
+            f"Background/world: {world_lock}.",
+            "Move the exact same person into the scene and locked world; preserve same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same skin tone, same wardrobe, same shirt color and collar details from the reference image.",
+            f"{camera}, {alignment}; soft fill light keeps face and wardrobe readable.",
             f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
-            f"Scene continuity: source world, {wardrobe}, exact same shirt color and collar details from the reference image, one readable protagonist only.",
-            f"A solitary protagonist in {scene}, {action}.",
+            f"Shot action: {action}.",
             "Only change the background, lighting, and cinematic staging required for this shot.",
             "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
         ]
     )
-    negatives = _dedupe([*world.get("forbidden", []), *_negative_constraints_from_text(_model_source_text(render_item))])
+    negatives = _dedupe(
+        [
+            *world.get("forbidden", []),
+            *_negative_constraints_from_text(_model_source_text(render_item)),
+            *_REF_STILL_WORLD_NEGATIVES,
+        ]
+    )
     return {
         "workflow": "flux2_ref_still",
         "positive_text": _budget_text(_strip_forbidden_words(_clean_model_sentence(prompt), negatives), 1200),
@@ -412,6 +438,20 @@ def _primary_action_from_text(positive_text: str) -> str:
 def _workflow_scene_description(world: dict) -> str:
     description = _first_nonempty(world.get("positive_description") if isinstance(world, dict) else "", "concept-specific music-video world")
     return _clean_model_sentence(description).strip(" .")
+
+
+def _still_world_lock_clause(scene: str) -> str:
+    clean = _clean_model_sentence(scene).strip(" .") or "concept-specific music-video world"
+    return f"{clean}; cinematic location with environmental background continuity"
+
+
+def _still_safe_world_staging(text: str, world: dict) -> str:
+    clean = str(text or "")
+    source = _world_source_text(world)
+    if re.search(r"\bradio(?:\s+tower)?\s+signal\s+motif\b", clean, flags=re.I):
+        replacement = "distant radio tower in sunrise dune space" if _has_word_phrase(source, "distant radio tower") and _has_word_phrase(source, "sunrise dunes") else "source-bound destination detail"
+        clean = re.sub(r"\bradio(?:\s+tower)?\s+signal\s+motif\b", replacement, clean, flags=re.I)
+    return clean
 
 
 def _world_motion_cue(world: dict) -> str:
@@ -675,6 +715,8 @@ def _still_camera_for_item(render_item: dict) -> str:
     if "hero_closeup" in anchor or "hero" in role:
         return "medium close-up with readable face and three-quarter camera angle"
     if "walking_side" in anchor:
+        if str(render_item.get("shot_id", "")).upper().endswith("3"):
+            return "medium-wide side angle with readable face edge, clear walking-away body direction"
         return "medium-wide three-quarter profile with readable face and clear body direction"
     if "final_payoff" in anchor:
         return "front-facing medium shot with bright front-lit readable face, direct viewer-facing gaze, calm resolved posture"
