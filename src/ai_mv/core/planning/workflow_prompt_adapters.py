@@ -189,8 +189,16 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     front_payoff_lock = _uses_front_payoff_anchor(render_item)
     if front_payoff_lock:
         action = _final_payoff_motion_action(world)
+    full_motif_state = _source_bound_motif_state_cue(world, render_item)
+    motif_state = full_motif_state
+    if motif_state:
+        action = _strip_redundant_visible_cue_tail(action)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
-    action = _budget_text(action, 180).strip(" .;")
+    sequence_cue = "" if front_payoff_lock else _shot_sequence_variation_cue(render_item.get("shot_id", ""))
+    action_prefixes = [cue for cue in (motif_state, sequence_cue) if cue]
+    if action_prefixes:
+        action = "; ".join([*action_prefixes, action])
+    action = _budget_text(action, 170).strip(" .;")
     camera = _clip_camera_for_item(render_item)
     variation_cue = _clip_variation_cue(render_item)
     if variation_cue:
@@ -206,8 +214,8 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
         [
             f"scene: {scene}.",
             f"character: exact same solo protagonist from the source still; preserve face shape, facial proportions, hairline, hairstyle silhouette, age impression, wardrobe: {wardrobe}.",
-            f"camera: {camera}, single continuous shot, {motion_cue}.",
             f"action: {action}.",
+            f"camera: {camera}, single continuous shot, {motion_cue}.",
             f"staging: {shot_grammar}." if shot_grammar else "",
         ]
     )
@@ -627,10 +635,10 @@ def _final_payoff_staging(world: dict) -> str:
 
 def _final_payoff_motion_action(world: dict) -> str:
     if _is_desert_radio_world(world):
-        return "remain front-facing throughout while holding the resolved radio close, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
+        return "remain front-facing throughout, maintain direct viewer-facing gaze, minimal motion"
     if _has_desert_terms(world):
-        return "remain front-facing throughout in the desert horizon light, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
-    return "remain front-facing throughout in a resolved hold, maintain direct viewer-facing gaze, minimal motion in the hands and shoulders"
+        return "remain front-facing throughout, maintain direct viewer-facing gaze, minimal motion"
+    return "remain front-facing throughout, maintain direct viewer-facing gaze, minimal motion"
 
 
 def _final_payoff_motion_staging(world: dict) -> str:
@@ -682,6 +690,117 @@ def _clip_camera_for_item(render_item: dict) -> str:
     return "locked medium shot with gentle forward movement"
 
 
+def _source_bound_motif_state_cue(world: dict, render_item: dict) -> str:
+    motif = _primary_progression_motif(world)
+    if not motif:
+        return ""
+    section = _render_section_type(render_item)
+    state_by_section = {
+        "intro": "starts faint",
+        "verse": "is actively followed",
+        "pre_chorus": "feels more directional",
+        "chorus": "opens wider",
+        "bridge": "briefly feels suspended",
+        "outro": "settles into calm resolve",
+    }
+    state = state_by_section.get(section)
+    if not state:
+        story_function = _render_story_function(render_item)
+        state = {
+            "wound_setup": "starts faint",
+            "search": "is actively followed",
+            "threshold": "feels more directional",
+            "release": "opens wider",
+            "payoff": "settles into calm resolve",
+        }.get(story_function, "changes state visibly")
+    destination = _source_bound_destination_motif(world)
+    cue = f"{motif} {state}"
+    if destination and section in {"chorus", "outro"}:
+        cue = f"{cue}; {destination} reads clearer"
+    return cue
+
+
+def _primary_progression_motif(world: dict) -> str:
+    source = _world_source_text(world)
+    if _has_word_phrase(source, "fading signal"):
+        return "fading signal"
+    if _has_word_phrase(source, "signal beacon"):
+        return "signal beacon"
+    if _has_word_phrase(source, "radio signal"):
+        return "radio signal"
+    if _has_word_phrase(source, "warm signal"):
+        return "warm signal"
+    if _has_word_phrase(source, "signal"):
+        return "signal"
+    if _has_word_phrase(source, "beacon"):
+        return "beacon"
+    return ""
+
+
+def _source_bound_destination_motif(world: dict) -> str:
+    source = _world_source_text(world)
+    if _has_word_phrase(source, "distant radio tower"):
+        return "distant radio tower"
+    if _has_word_phrase(source, "radio tower"):
+        return "radio tower"
+    if _has_word_phrase(source, "distant tower"):
+        return "distant tower"
+    if _has_word_phrase(source, "tower"):
+        return "tower"
+    return ""
+
+
+def _world_source_text(world: dict) -> str:
+    if not isinstance(world, dict):
+        return ""
+    return str(world.get("positive_description", "") or "").lower()
+
+
+def _has_word_phrase(text: str, phrase: str) -> bool:
+    return re.search(rf"(?<![a-z0-9_]){re.escape(phrase.lower())}(?![a-z0-9_])", str(text or "").lower()) is not None
+
+
+def _render_section_type(render_item: dict) -> str:
+    if not isinstance(render_item, dict):
+        return ""
+    story = render_item.get("story_contract") if isinstance(render_item.get("story_contract"), dict) else {}
+    combined = " ".join(
+        str(value or "")
+        for value in (
+            render_item.get("section_type"),
+            render_item.get("visual_mode"),
+            render_item.get("section_id"),
+            story.get("why_this_shot"),
+            story.get("protagonist_action"),
+            story.get("section_alignment"),
+        )
+    ).lower()
+    if "pre_chorus" in combined or "pre chorus" in combined or "pre-chorus" in combined:
+        return "pre_chorus"
+    for section in ("intro", "verse", "chorus", "bridge", "outro"):
+        if re.search(rf"(?<![a-z0-9_]){section}(?![a-z0-9_])", combined):
+            return section
+    return ""
+
+
+def _render_story_function(render_item: dict) -> str:
+    if not isinstance(render_item, dict):
+        return ""
+    story = render_item.get("story_contract") if isinstance(render_item.get("story_contract"), dict) else {}
+    combined = " ".join(
+        str(value or "")
+        for value in (
+            render_item.get("story_function"),
+            story.get("why_this_shot"),
+            story.get("protagonist_action"),
+        )
+    ).lower()
+    for function in ("wound_setup", "search", "threshold", "release", "payoff"):
+        if function in combined:
+            return function
+    return ""
+
+
 def _clip_variation_cue(render_item: dict) -> str:
     if not isinstance(render_item, dict):
         return ""
@@ -702,15 +821,15 @@ def _clip_variation_cue(render_item: dict) -> str:
     elif "balanced" in framing:
         cues.append("balanced three-quarter framing with readable face")
     if "spatial" in environment:
-        cues.append("layered dune horizon depth")
+        cues.append("layered world depth")
     elif "atmospheric" in environment:
-        cues.append("fine dust shimmer in the light")
+        cues.append("fine atmospheric shimmer")
     elif "textural" in environment:
         cues.append("close world texture and gesture detail")
     if "pulsed" in motion:
         cues.append("small beat-synced push-in")
     elif "restrained" in motion:
-        cues.append("nearly still body with subtle cloth and sand motion")
+        cues.append("nearly still body with subtle cloth and environment motion")
     elif "gliding" in motion:
         cues.append("slow gliding lateral movement")
     if "new angle" in same_block:
@@ -733,6 +852,13 @@ def _shot_sequence_variation_cue(shot_id: object) -> str:
     if mod == 2:
         return "alternate angle with readable hands and face"
     return "wider offset angle with more world depth"
+
+
+def _strip_redundant_visible_cue_tail(action: str) -> str:
+    text = str(action or "").strip()
+    if "visible cue" not in text.lower():
+        return text
+    return re.split(r",\s+using\s+.+?\s+as\s+(?:the\s+)?visible\s+cue\b", text, maxsplit=1, flags=re.I)[0].strip(" ,.;") or text
 
 
 def _duration_safe_action(action: str, duration: object) -> str:

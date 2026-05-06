@@ -335,7 +335,89 @@ def test_default_fullrun_ltx_prompts_have_adjacent_shot_variation():
     assert duplicates == []
 
 
+def test_source_bound_motif_state_progression_improves_music_video_arc_without_inventing_objects():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "alt_pop"}},
+        {
+            "concept_text": (
+                "alt-pop desert radio music video, one solitary protagonist follows a fading signal "
+                "across sunrise dunes toward a distant radio tower, quiet uncertainty turning into calm resolve, "
+                "stable wardrobe silhouette, no crowd, no second protagonist, no city or neon"
+            ),
+            "audio_map": {"duration_sec": 168.0},
+        },
+    )
+
+    section_types = {section["section_id"]: section["section_type"] for section in preview["section_plan"]}
+    section_texts: dict[str, str] = {}
+    for item in preview["render_plan"]:
+        section_type = section_types[item["section_id"]]
+        section_texts.setdefault(section_type, "")
+        section_texts[section_type] += "\n" + item["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
+
+    assert "fading signal starts faint" in section_texts["intro"]
+    assert "fading signal is actively followed" in section_texts["verse"]
+    assert "fading signal opens wider" in section_texts["chorus"]
+    assert "fading signal settles into calm resolve" in section_texts["outro"]
+    assert "distant radio tower" in "\n".join(section_texts.values())
+
+    contract = parse_user_intent_contract(
+        "alt-pop desert radio music video, one solitary protagonist follows a fading signal "
+        "across sunrise dunes toward a distant radio tower, quiet uncertainty turning into calm resolve, "
+        "stable wardrobe silhouette, no crowd, no second protagonist, no city or neon"
+    )
+    pre_chorus = adapt_ltx_ia2v_prompt(
+        contract,
+        {
+            "section_type": "pre_chorus",
+            "story_contract": {"protagonist_action": "The protagonist pauses at a visible decision point in the pre_chorus."},
+        },
+    )["positive_text"].lower()
+    bridge = adapt_ltx_ia2v_prompt(
+        contract,
+        {
+            "section_type": "bridge",
+            "story_contract": {"protagonist_action": "The protagonist holds still through an internal bridge turn."},
+        },
+    )["positive_text"].lower()
+    assert "fading signal feels more directional" in pre_chorus
+    assert "fading signal briefly feels suspended" in bridge
+
+    combined = "\n".join(section_texts.values()) + "\n" + pre_chorus + "\n" + bridge
+    for invented in ("map", "canteen", "water bottle", "antenna spark", "footprints", "noon heat"):
+        assert invented not in combined
+    for forbidden in ("no crowd", "no second protagonist", "no city", "no neon"):
+        assert forbidden not in combined
+
+
+def test_motif_state_progression_falls_back_without_radio_or_tower_contamination():
+    preview = build_plan_preview_payload(
+        {"planning": {"max_shot_sec": 4.0, "default_style_name": "synthwave"}},
+        {
+            "concept_text": (
+                "synthwave arctic research station music video, one explorer in a silver parka "
+                "crosses wind-carved snow toward a warm signal beacon with no ocean and no lighthouse, "
+                "no city, no rooftop, no satellite, no dark outerwear"
+            ),
+            "audio_map": {"duration_sec": 32.0},
+        },
+    )
+
+    combined = "\n".join(
+        item["workflow_prompts"]["ltx_ia2v"]["positive_text"].lower()
+        for item in preview["render_plan"]
+    )
+    assert "signal beacon starts faint" in combined
+    assert "signal beacon opens wider" in combined or "signal beacon feels more directional" in combined
+    assert "radio" not in combined
+    assert "tower" not in combined
+    assert "ocean" not in combined
+    assert "lighthouse" not in combined
+    assert "satellite" not in combined
+
+
 def test_inline_negative_clause_cleanup_leaves_polished_positive_world_text():
+
     contract = parse_user_intent_contract(
         "synthwave arctic research station music video, one explorer in a silver parka "
         "crosses wind-carved snow toward a warm signal beacon with no ocean and no lighthouse, "
