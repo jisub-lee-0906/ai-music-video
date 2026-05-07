@@ -48,6 +48,22 @@ _REF_STILL_WORLD_NEGATIVES = [
     "text overlay",
 ]
 
+_REF_STILL_SOURCE_QUALITY_NEGATIVES = [
+    "extreme crop",
+    "cropped limbs",
+    "missing hands",
+    "missing fingers",
+    "unreadable face",
+    "unreadable wardrobe",
+    "fashion editorial pose",
+    "poster composition",
+    "mannequin face",
+    "plastic skin",
+    "over-smoothed face",
+    "heavy motion blur",
+    "extreme backlight",
+]
+
 _DEFAULT_VISUAL_NEGATIVES = [
     "duplicate person",
     "duplicate body",
@@ -171,7 +187,7 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     front_payoff_lock = _uses_front_payoff_anchor(render_item)
     if front_payoff_lock:
         action = _final_payoff_readable_action(world)
-    action = _budget_text(action, 180).strip(" .;")
+    action = _budget_text(action, 125).strip(" .;")
     alignment = _strip_default_world_leaks(
         _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression")),
         contract,
@@ -180,7 +196,7 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     camera = _still_camera_for_item(render_item)
     shot_grammar = _model_facing_story_text(story.get("story_action_grammar", ""), contract)
     shot_grammar = _still_safe_world_staging(shot_grammar, world)
-    shot_grammar = _budget_text(shot_grammar, 160).strip(" .;")
+    shot_grammar = _budget_text(shot_grammar, 120).strip(" .;")
     if front_payoff_lock:
         shot_grammar = _final_payoff_staging(world)
     scene = _workflow_scene_description(world)
@@ -190,10 +206,11 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
         [
             "Use the reference image as the character identity source.",
             f"Background/world: {world_lock}.",
-            "Move the exact same person into the scene and locked world; preserve same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same skin tone, same wardrobe, same shirt color and collar details from the reference image.",
+            "Move the exact same person into the scene; preserve same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same skin tone, same wardrobe, same shirt color and collar details from the reference image.",
             f"{camera}, {alignment}; soft fill light keeps face and wardrobe readable.",
-            f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
+            _ref_still_source_quality_clause(contract, render_item, action, front_payoff_lock),
             f"Shot action: {action}.",
+            f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
             "Only change the background, lighting, and cinematic staging required for this shot.",
             "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
         ]
@@ -205,6 +222,7 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
             *visual_brief.get("forbidden_interpretations", []),
             *_negative_constraints_from_text(_model_source_text(render_item)),
             *_REF_STILL_WORLD_NEGATIVES,
+            *_REF_STILL_SOURCE_QUALITY_NEGATIVES,
         ]
     )
     return {
@@ -212,6 +230,60 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
         "positive_text": _budget_text(_strip_forbidden_words(_clean_model_sentence(prompt), negatives), 1200),
         "negative_constraints": negatives,
     }
+
+
+def _ref_still_source_quality_clause(contract: dict, render_item: dict, action: str, front_payoff_lock: bool) -> str:
+    source = " ".join(
+        str(part or "")
+        for part in [
+            action,
+            render_item.get("still_prompt_text") if isinstance(render_item, dict) else "",
+            render_item.get("selected_pose_anchor_id") if isinstance(render_item, dict) else "",
+            _model_source_text(render_item),
+        ]
+    ).lower()
+    base = [
+        "IA2V source still frame",
+        "one clear physical action",
+        "natural grounded body pose",
+        "readable subject silhouette",
+        "concept world remains readable around the protagonist",
+    ]
+    if front_payoff_lock:
+        base = [
+            "payoff source still",
+            "face readable",
+            "wardrobe upper silhouette readable",
+            "background still recognizable but soft",
+        ]
+    elif _movement_source_need(source):
+        base.append("visible direction of travel")
+    if _interaction_source_need(source):
+        base.append("hands and source-proven object interaction are visible")
+        obj = _source_proven_interaction_object(contract, source)
+        if obj:
+            base.append(f"{obj} remains readable as the only device")
+    return "; ".join(_dedupe(base)) + "."
+
+
+def _movement_source_need(source: str) -> bool:
+    return any(term in source for term in ["walk", "move", "travel", "toward", "direction", "running", "crosses", "across"])
+
+
+def _interaction_source_need(source: str) -> bool:
+    return any(term in source for term in ["check", "checks", "raise", "raises", "carry", "carries", "object", "hands"])
+
+
+def _source_proven_interaction_object(contract: dict, source: str) -> str:
+    del contract
+    source_text = str(source or "").lower()
+    radio_object_patterns = [
+        r"\b(?:check|checks|raise|raises|carry|carries)\b[^.;,]{0,60}\b(?:handheld\s+)?radio\b(?!\s+tower)",
+        r"\b(?:handheld\s+)?radio\b(?!\s+tower)[^.;,]{0,60}\b(?:in\s+(?:the\s+)?hands?|held|carried|raised|checked)\b",
+    ]
+    if any(re.search(pattern, source_text) for pattern in radio_object_patterns):
+        return "radio"
+    return ""
 
 
 def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str = "") -> dict:
@@ -585,7 +657,7 @@ def _workflow_scene_description(world: dict) -> str:
 
 
 def _still_world_lock_clause(scene: str) -> str:
-    clean = _clean_model_sentence(scene).strip(" .") or "concept-specific music-video world"
+    clean = _budget_text(_clean_model_sentence(scene).strip(" .") or "concept-specific music-video world", 145).strip(" .")
     return f"{clean}; cinematic location with environmental background continuity"
 
 

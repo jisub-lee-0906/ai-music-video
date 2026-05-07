@@ -110,6 +110,81 @@ def test_flux2_reference_still_adapter_removes_meta_labels_and_keeps_visual_acti
     assert "distant human silhouettes" not in payload["negative_constraints"]
 
 
+def test_flux2_reference_still_prompt_declares_ia2v_source_frame_quality_contract():
+    contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
+    render_item = {
+        "shot_id": "S002",
+        "still_prompt_text": "protagonist walks across sunrise dunes toward the distant radio tower",
+        "story_contract": {"protagonist_action": "walk across sunrise dunes toward the distant radio tower"},
+        "selected_pose_anchor_id": "ANCHOR_POSE_WALKING_SIDE",
+    }
+
+    payload = adapt_flux2_ref_still_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+    negative = ", ".join(payload["negative_constraints"]).lower()
+
+    assert "ia2v source still frame" in positive
+    assert "one clear physical action" in positive
+    assert "natural grounded body pose" in positive
+    assert "readable subject silhouette" in positive
+    assert "visible direction of travel" in positive
+    assert "concept world remains readable around the protagonist" in positive
+    assert "extreme crop" in negative
+    assert "cropped limbs" in negative
+    assert "missing hands" in negative
+    assert "fashion editorial pose" in negative
+    assert "poster composition" in negative
+
+
+def test_flux2_reference_still_prompt_adds_interaction_visibility_without_inventing_objects():
+    contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
+    render_item = {
+        "shot_id": "S006",
+        "still_prompt_text": "the protagonist checks a handheld radio while facing the distant radio tower",
+    }
+
+    payload = adapt_flux2_ref_still_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+
+    assert "hands and source-proven object interaction are visible" in positive
+    assert "radio remains readable as the only device" in positive
+    assert "antenna spark" not in positive
+    assert "broadcast console" not in positive
+
+
+def test_flux2_reference_still_prompt_does_not_infer_device_from_radio_tower_world_text():
+    contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
+    render_item = {
+        "shot_id": "S006",
+        "still_prompt_text": "the protagonist checks the horizon while facing the distant radio tower",
+    }
+
+    payload = adapt_flux2_ref_still_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+
+    assert "hands and source-proven object interaction are visible" in positive
+    assert "radio remains readable as the only device" not in positive
+
+
+def test_flux2_reference_still_prompt_payoff_prioritizes_face_readability_without_full_body_requirement():
+    contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
+    render_item = {
+        "shot_id": "S025",
+        "still_prompt_text": "calm resolve visible near the sunrise dunes",
+        "story_contract": {"visual_payoff": "calm resolve visible"},
+        "selected_pose_anchor_id": "ANCHOR_POSE_FINAL_PAYOFF_FRONT",
+    }
+
+    payload = adapt_flux2_ref_still_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+
+    assert "payoff source still" in positive
+    assert "face readable" in positive
+    assert "wardrobe upper silhouette readable" in positive
+    assert "background still recognizable but soft" in positive
+    assert "full body visible" not in positive
+
+
 def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
     contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
     render_item = {
