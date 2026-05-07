@@ -62,6 +62,7 @@ _REF_STILL_SOURCE_QUALITY_NEGATIVES = [
     "over-smoothed face",
     "heavy motion blur",
     "extreme backlight",
+    "tiny distant figure",
 ]
 
 _DEFAULT_VISUAL_NEGATIVES = [
@@ -187,12 +188,12 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
     front_payoff_lock = _uses_front_payoff_anchor(render_item)
     if front_payoff_lock:
         action = _final_payoff_readable_action(world)
-    action = _budget_text(action, 125).strip(" .;")
+    action = _budget_text(action, 90).strip(" .;")
     alignment = _strip_default_world_leaks(
         _workflow_safe_alignment(_first_nonempty(story.get("section_alignment"), story.get("story_progression"), "quiet emotional progression")),
         contract,
     ).strip(" .")
-    alignment = _budget_text(alignment, 90).strip(" .")
+    alignment = _budget_text(alignment, 55).strip(" .")
     camera = _still_camera_for_item(render_item)
     shot_grammar = _model_facing_story_text(story.get("story_action_grammar", ""), contract)
     shot_grammar = _still_safe_world_staging(shot_grammar, world)
@@ -206,13 +207,13 @@ def adapt_flux2_ref_still_prompt(contract: dict, render_item: dict) -> dict:
         [
             "Use the reference image as the character identity source.",
             f"Background/world: {world_lock}.",
-            "Move the exact same person into the scene; preserve same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same skin tone, same wardrobe, same shirt color and collar details from the reference image.",
-            f"{camera}, {alignment}; soft fill light keeps face and wardrobe readable.",
-            _ref_still_source_quality_clause(contract, render_item, action, front_payoff_lock),
+            "Move the exact same person into the scene; preserve same face shape, same facial proportions, same hairline, same hairstyle silhouette, same age impression, same shirt color and collar details from the reference image.",
+            f"{camera}; soft fill light keeps face and wardrobe readable.",
             f"Shot action: {action}.",
             f"Shot-specific staging: {shot_grammar}." if shot_grammar else "",
-            "Only change the background, lighting, and cinematic staging required for this shot.",
-            "Single cinematic live-action still frame, one continuous scene, natural skin texture, clear readable subject.",
+            _ref_still_source_quality_clause(contract, render_item, action, front_payoff_lock),
+            "Only change the background.",
+            "Single live-action still frame, natural skin texture.",
         ]
     )
     negatives = _dedupe(
@@ -257,7 +258,17 @@ def _ref_still_source_quality_clause(contract: dict, render_item: dict, action: 
             "background still recognizable but soft",
         ]
     elif _movement_source_need(source):
-        base.append("visible direction of travel")
+        base.extend(
+            [
+                "medium-wide full-body IA2V source frame",
+                "head-to-toe visible with feet and ground margin",
+                "face and wardrobe still readable",
+                "meaningful subject frame height",
+                "visible direction of travel",
+            ]
+        )
+        if "tower" in source:
+            base.append("tower separated from head and body silhouette")
     if _interaction_source_need(source):
         base.append("hands and source-proven object interaction are visible")
         obj = _source_proven_interaction_object(contract, source)
@@ -271,7 +282,7 @@ def _movement_source_need(source: str) -> bool:
 
 
 def _interaction_source_need(source: str) -> bool:
-    return any(term in source for term in ["check", "checks", "raise", "raises", "carry", "carries", "object", "hands"])
+    return any(term in source for term in ["check", "checks", "raise", "raises", "carry", "carries", "hands"])
 
 
 def _source_proven_interaction_object(contract: dict, source: str) -> str:
@@ -657,8 +668,8 @@ def _workflow_scene_description(world: dict) -> str:
 
 
 def _still_world_lock_clause(scene: str) -> str:
-    clean = _budget_text(_clean_model_sentence(scene).strip(" .") or "concept-specific music-video world", 145).strip(" .")
-    return f"{clean}; cinematic location with environmental background continuity"
+    clean = _budget_text(_clean_model_sentence(scene).strip(" .") or "concept-specific music-video world", 125).strip(" .")
+    return f"{clean}; cinematic location continuity"
 
 
 def _still_safe_world_staging(text: str, world: dict) -> str:

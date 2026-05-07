@@ -128,7 +128,21 @@ def test_flux2_reference_still_prompt_declares_ia2v_source_frame_quality_contrac
     assert "natural grounded body pose" in positive
     assert "readable subject silhouette" in positive
     assert "visible direction of travel" in positive
+    assert "medium-wide full-body ia2v source frame" in positive
+    assert "head-to-toe visible with feet and ground margin" in positive
+    assert "face and wardrobe still readable" in positive
+    assert "meaningful subject frame height" in positive
+    assert "tiny distant figure" in negative
+    assert "tower separated from head and body silhouette" in positive
     assert "concept world remains readable around the protagonist" in positive
+    for forbidden in [
+        "signal trace",
+        "radio wave",
+        "glowing signal beam",
+        "broadcast icon",
+        "visible setting",
+    ]:
+        assert forbidden not in positive
     assert "extreme crop" in negative
     assert "cropped limbs" in negative
     assert "missing hands" in negative

@@ -8,6 +8,8 @@ LTX_IA2V_POS = "340:306"
 LTX_IA2V_NEG = "340:314"
 LTX_IA2V_SEED = "340:319"
 LTX_IA2V_FPS = "340:323"
+LTX_IA2V_HEIGHT = "340:324"
+LTX_IA2V_WIDTH = "340:330"
 LTX_IA2V_DURATION = "340:331"
 LTX_IA2V_TRIM = "340:332"
 LTX_IA2V_SAVE = "341"
@@ -15,7 +17,7 @@ LTX_IA2V_SAVE = "341"
 
 
 def map_ltx_ia2v_workflow(config: dict, item: dict) -> dict:
-    ltx_size(config, item, "ltx_ia2v_size")
+    width, height = ltx_size(config, item, "ltx_ia2v_size")
     fps = int_value(item.get("fps") or config.get("render", {}).get("ltx_fps"), 24)
     duration_sec = float_value(item.get("duration_sec"), 4.0)
     start_sec = non_negative_float(item.get("audio_start_sec"), 0.0)
@@ -29,6 +31,8 @@ def map_ltx_ia2v_workflow(config: dict, item: dict) -> dict:
             LTX_IA2V_NEG: {"text": str(item.get("negative_prompt", "")).strip()},
             LTX_IA2V_SEED: {"value": prompt_seed},
             LTX_IA2V_FPS: {"value": fps},
+            LTX_IA2V_HEIGHT: {"value": height},
+            LTX_IA2V_WIDTH: {"value": width},
             LTX_IA2V_DURATION: {"value": duration_sec},
             LTX_IA2V_TRIM: {"start_index": start_sec, "duration": duration_sec},
             LTX_IA2V_SAVE: {"filename_prefix": str(item["filename_prefix"]).strip()},
