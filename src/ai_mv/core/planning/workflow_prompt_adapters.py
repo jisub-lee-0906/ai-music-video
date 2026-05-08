@@ -310,11 +310,14 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
     if motif_state:
         action = _strip_redundant_visible_cue_tail(action)
     action = _duration_safe_action(action, render_item.get("recommended_duration_sec"))
-    sequence_cue = "" if front_payoff_lock else _shot_sequence_variation_cue(render_item.get("shot_id", ""))
+    short_movement_clip = _is_short_movement_clip(action, render_item.get("recommended_duration_sec"))
+    if short_movement_clip:
+        action = _grounded_micro_motion_action(action, world)
+    sequence_cue = "" if front_payoff_lock or short_movement_clip else _shot_sequence_variation_cue(render_item.get("shot_id", ""))
     action_prefixes = [cue for cue in (motif_state, sequence_cue) if cue]
     if action_prefixes:
         action = "; ".join([*action_prefixes, action])
-    action = _budget_text(action, 170).strip(" .;")
+    action = _budget_text(action, 210 if short_movement_clip else 170).strip(" .;")
     camera = _clip_camera_for_item(render_item)
     variation_cue = _clip_variation_cue(render_item)
     if variation_cue:
@@ -344,6 +347,7 @@ def adapt_ltx_ia2v_prompt(contract: dict, render_item: dict, base_negative: str 
             *visual_brief.get("forbidden_interpretations", []),
             *_negative_constraints_from_text(source_text),
             *(_final_payoff_motion_negatives() if front_payoff_lock else []),
+            *(_grounded_micro_motion_negatives() if short_movement_clip else []),
             *_DEFAULT_VISUAL_NEGATIVES,
         ]
     )
@@ -1176,6 +1180,34 @@ def _strip_redundant_visible_cue_tail(action: str) -> str:
     if "visible cue" not in text.lower():
         return text
     return re.split(r",\s+using\s+.+?\s+as\s+(?:the\s+)?visible\s+cue\b", text, maxsplit=1, flags=re.I)[0].strip(" ,.;") or text
+
+
+def _is_short_movement_clip(action: str, duration: object) -> bool:
+    max_sec = 0.0
+    if isinstance(duration, dict):
+        try:
+            max_sec = float(duration.get("max", 0.0) or 0.0)
+        except Exception:
+            max_sec = 0.0
+    if not max_sec or max_sec > 2.0:
+        return False
+    lower = str(action or "").lower()
+    if any(term in lower for term in ("raise", "raises", "hold", "holds", "front-facing", "walking away", "walks away")):
+        return False
+    return any(term in lower for term in ("walk", "walking", "moves forward", "move forward", "step", "stride"))
+
+
+def _grounded_micro_motion_action(action: str, world: dict) -> str:
+    destination = _source_bound_destination_motif(world)
+    direction = f" toward the {destination}" if destination else " in the source direction"
+    return (
+        f"one grounded half-step{direction}, controlled weight shift, "
+        "feet stay readable and grounded, stable wardrobe silhouette"
+    )
+
+
+def _grounded_micro_motion_negatives() -> list[str]:
+    return ["full walking cycle", "running stride", "skating feet", "foot sliding", "warped shoes", "blobby shoes", "broken ankles"]
 
 
 def _duration_safe_action(action: str, duration: object) -> str:

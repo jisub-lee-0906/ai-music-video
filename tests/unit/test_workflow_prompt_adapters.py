@@ -246,6 +246,34 @@ def test_ltx_adapter_separates_negative_constraints_from_short_motion_prompt():
     assert "near-duplicate framing" not in negative
 
 
+def test_ltx_short_movement_prompt_prefers_grounded_micro_motion_over_full_walk_cycle():
+    contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
+    render_item = {
+        "shot_id": "S012",
+        "candidate_role": "world_bridge",
+        "story_contract": {
+            "protagonist_action": "The protagonist moves forward with clearer hook energy across sunrise dunes toward the distant radio tower",
+            "story_action_grammar": "moves forward into hook release with a clear step, turn, or shoulder-line change while staying solo",
+        },
+        "recommended_duration_sec": {"min": 0.8, "max": 1.5},
+    }
+
+    payload = adapt_ltx_ia2v_prompt(contract, render_item)
+    positive = payload["positive_text"].lower()
+    negative = payload["negative_text"].lower()
+
+    assert "one grounded half-step" in positive
+    assert "controlled weight shift" in positive
+    assert "feet stay readable and grounded" in positive
+    assert "camera:" in positive
+    assert "single continuous shot" in positive
+    assert "full walking cycle" in negative
+    assert "skating feet" in negative
+    assert "foot sliding" in negative
+    assert "warped shoes" in negative
+    assert not NEGATIVE_CLAUSE_RE.search(positive)
+
+
 def test_acestep_audio_adapter_emits_short_music_tags_without_visual_forbidden_terms():
     contract = parse_user_intent_contract(DOCS_DEFAULT_CONCEPT)
     payload = adapt_acestep_audio_prompt(
