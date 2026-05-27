@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
-from pathlib import Path
 
 
 DEFAULT_CONFIG: dict = {
@@ -126,33 +124,3 @@ def _default_comfyui_base_url() -> str:
         return explicit
     host = str(os.getenv("AI_MV_COMFY_HOST") or "").strip() or "127.0.0.1"
     return f"http://{host}:8000"
-
-
-def _windows_gateway_host() -> str | None:
-    if not _is_wsl():
-        return None
-    try:
-        result = subprocess.run(
-            ["ip", "route", "show", "default"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-    except Exception:
-        return None
-    for line in result.stdout.splitlines():
-        parts = line.strip().split()
-        if len(parts) >= 3 and parts[0] == "default" and parts[1] == "via":
-            return parts[2].strip()
-    return None
-
-
-def _is_wsl() -> bool:
-    try:
-        version = Path('/proc/version')
-        if version.exists() and 'microsoft' in version.read_text(encoding='utf-8', errors='ignore').lower():
-            return True
-    except Exception:
-        pass
-    return Path('/proc/sys/fs/binfmt_misc/WSLInterop').exists()

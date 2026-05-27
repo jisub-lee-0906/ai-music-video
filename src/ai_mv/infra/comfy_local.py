@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -38,7 +37,7 @@ def _validate_local_base_url(raw: str) -> None:
     if parsed.scheme not in {"http", "https"}:
         raise ComfyRequestError("comfyui_base_url must use http or https")
     if parsed.hostname not in _allowed_comfy_hosts():
-        raise ComfyRequestError("comfyui_base_url must point to localhost or the Windows gateway host")
+        raise ComfyRequestError("comfyui_base_url must point to localhost or AI_MV_COMFY_HOST")
 
 
 def _allowed_comfy_hosts() -> set[str]:
@@ -46,40 +45,7 @@ def _allowed_comfy_hosts() -> set[str]:
     configured_host = str(os.getenv("AI_MV_COMFY_HOST") or "").strip()
     if configured_host:
         hosts.add(configured_host)
-    gateway = _windows_gateway_host()
-    if gateway:
-        hosts.add(gateway)
     return hosts
-
-
-def _windows_gateway_host() -> str | None:
-    if not _is_wsl():
-        return None
-    try:
-        result = subprocess.run(
-            ["ip", "route", "show", "default"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-    except Exception:
-        return None
-    for line in result.stdout.splitlines():
-        parts = line.strip().split()
-        if len(parts) >= 3 and parts[0] == "default" and parts[1] == "via":
-            return parts[2].strip()
-    return None
-
-
-def _is_wsl() -> bool:
-    try:
-        version = Path('/proc/version')
-        if version.exists() and 'microsoft' in version.read_text(encoding='utf-8', errors='ignore').lower():
-            return True
-    except Exception:
-        pass
-    return Path('/proc/sys/fs/binfmt_misc/WSLInterop').exists()
 
 
 def _require_dir(name: str, raw: str) -> Path:

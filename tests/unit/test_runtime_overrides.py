@@ -5,7 +5,7 @@ from pathlib import Path
 from ai_mv.core.orchestration.runtime_overrides import _default_codex_bin, _discover_comfy_dir, apply_runtime_overrides
 
 
-def test_apply_runtime_overrides_leaves_non_wsl_config_unchanged(monkeypatch):
+def test_apply_runtime_overrides_leaves_config_unchanged_without_override_env(monkeypatch):
     cfg = {
         "integrations": {
             "comfyui_base_url": "http://127.0.0.1:8000",
@@ -14,8 +14,6 @@ def test_apply_runtime_overrides_leaves_non_wsl_config_unchanged(monkeypatch):
             "codex_cli_path": "",
         }
     }
-    monkeypatch.setattr("ai_mv.core.orchestration.runtime_overrides._is_wsl", lambda: False)
-
     out = apply_runtime_overrides(cfg)
 
     assert out == cfg
@@ -31,17 +29,16 @@ def test_apply_runtime_overrides_rewrites_windows_paths_when_env_present(monkeyp
             "codex_cli_path": "",
         }
     }
-    monkeypatch.setattr("ai_mv.core.orchestration.runtime_overrides._is_wsl", lambda: True)
     monkeypatch.setenv("AI_MV_COMFY_HOST", "127.0.0.1")
-    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input")
-    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output")
+    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\Users\Desktop\Documents\ComfyUI\input")
+    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\Users\Desktop\Documents\ComfyUI\output")
     monkeypatch.setenv("AI_MV_CODEX_BIN", "C:/tools/codex.cmd")
 
     out = apply_runtime_overrides(cfg)
 
     assert out["integrations"]["comfyui_base_url"] == "http://127.0.0.1:8000"
-    assert out["integrations"]["comfyui_input_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input"
-    assert out["integrations"]["comfyui_output_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output"
+    assert out["integrations"]["comfyui_input_dir"] == r"C:\Users\Desktop\Documents\ComfyUI\input"
+    assert out["integrations"]["comfyui_output_dir"] == r"C:\Users\Desktop\Documents\ComfyUI\output"
     assert out["integrations"]["codex_cli_path"] == "C:/tools/codex.cmd"
 
 
@@ -55,8 +52,6 @@ def test_apply_runtime_overrides_uses_detected_defaults_when_env_missing(monkeyp
             "codex_cli_path": "",
         }
     }
-    monkeypatch.setattr("ai_mv.core.orchestration.runtime_overrides._is_wsl", lambda: True)
-    monkeypatch.setattr("ai_mv.core.orchestration.runtime_overrides._windows_gateway_host", lambda: "127.0.0.1")
     monkeypatch.setattr(
         "ai_mv.core.orchestration.runtime_overrides._default_comfy_input_dir",
         lambda: r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input",
@@ -73,8 +68,8 @@ def test_apply_runtime_overrides_uses_detected_defaults_when_env_missing(monkeyp
     out = apply_runtime_overrides(cfg)
 
     assert out["integrations"]["comfyui_base_url"] == "http://127.0.0.1:8000"
-    assert out["integrations"]["comfyui_input_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input"
-    assert out["integrations"]["comfyui_output_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output"
+    assert out["integrations"]["comfyui_input_dir"] == r"C:\Users\Desktop\Documents\ComfyUI\input"
+    assert out["integrations"]["comfyui_output_dir"] == r"C:\Users\Desktop\Documents\ComfyUI\output"
     assert out["integrations"]["codex_cli_path"] == "C:/tools/codex.cmd"
 
 
@@ -122,7 +117,7 @@ def test_default_codex_bin_uses_home_fallback(monkeypatch, tmp_path):
     assert _default_codex_bin() == str(codex)
 
 
-def test_apply_runtime_overrides_preserves_linux_safe_values(monkeypatch):
+def test_apply_runtime_overrides_replaces_linux_paths_with_windows_overrides(monkeypatch):
     cfg = {
         "integrations": {
             "comfyui_base_url": "http://10.0.0.9:8000",
@@ -131,18 +126,17 @@ def test_apply_runtime_overrides_preserves_linux_safe_values(monkeypatch):
             "codex_cli_path": "/usr/local/bin/codex",
         }
     }
-    monkeypatch.setattr("ai_mv.core.orchestration.runtime_overrides._is_wsl", lambda: True)
     monkeypatch.setenv("AI_MV_COMFY_HOST", "127.0.0.1")
-    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input")
-    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output")
+    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\Users\Desktop\Documents\ComfyUI\input")
+    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\Users\Desktop\Documents\ComfyUI\output")
     monkeypatch.setenv("AI_MV_CODEX_BIN", "C:/tools/codex.cmd")
 
     out = apply_runtime_overrides(cfg)
 
     assert out["integrations"]["comfyui_base_url"] == "http://10.0.0.9:8000"
-    assert out["integrations"]["comfyui_input_dir"] == "/opt/custom/input"
-    assert out["integrations"]["comfyui_output_dir"] == "/opt/custom/output"
-    assert out["integrations"]["codex_cli_path"] == "/usr/local/bin/codex"
+    assert out["integrations"]["comfyui_input_dir"] == r"C:\Users\Desktop\Documents\ComfyUI\input"
+    assert out["integrations"]["comfyui_output_dir"] == r"C:\Users\Desktop\Documents\ComfyUI\output"
+    assert out["integrations"]["codex_cli_path"] == "C:/tools/codex.cmd"
 
 
 def test_apply_runtime_overrides_enables_smoke_mode(monkeypatch):
@@ -161,10 +155,9 @@ def test_apply_runtime_overrides_enables_smoke_mode(monkeypatch):
             "codex_cli_path": "",
         },
     }
-    monkeypatch.setattr("ai_mv.core.orchestration.runtime_overrides._is_wsl", lambda: True)
     monkeypatch.setenv("AI_MV_COMFY_HOST", "127.0.0.1")
-    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input")
-    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output")
+    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\Users\Desktop\Documents\ComfyUI\input")
+    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\Users\Desktop\Documents\ComfyUI\output")
     monkeypatch.setenv("AI_MV_CODEX_BIN", "C:/tools/codex.cmd")
     monkeypatch.setenv("AI_MV_SMOKE_MODE", "1")
     monkeypatch.setenv("AI_MV_SMOKE_AUDIO_MIN_SEC", "15")

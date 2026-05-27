@@ -25,7 +25,7 @@ def test_run_doctor_uses_same_config_for_ping_and_assert(monkeypatch):
     assert seen["config"] == cfg
 
 
-def test_run_doctor_applies_wsl_runtime_overrides(monkeypatch):
+def test_run_doctor_applies_runtime_overrides(monkeypatch):
     seen = {}
     cfg = {"integrations": {"comfyui_base_url": "http://127.0.0.1:8000"}}
 
