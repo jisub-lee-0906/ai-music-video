@@ -141,7 +141,7 @@ When WSL drives a Windows-hosted ComfyUI backend, use the shared backend under:
 
 ```text
 C:\Users\Desktop\Documents\ComfyUI\
-/mnt/c/Users/Desktop/Documents/ComfyUI/
+C:\Users\Desktop\Documents\ComfyUI\
 ```
 
 Recommended wrapper commands:
@@ -154,7 +154,7 @@ Recommended wrapper commands:
 
 Notes:
 - wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
-- wrappers expect ComfyUI input/output under `/mnt/c/Users/Desktop/Documents/ComfyUI/`
+- wrappers expect ComfyUI input/output under `C:\Users\Desktop\Documents\ComfyUI\`
 - `start-wsl.sh` runs the real generation pipeline and will create outputs / consume time
 - the default runtime is shared-Comfy-safe and should not interrupt Krita/Blender jobs unless explicit runtime flags opt in
 - for Krita + Blender + ai-music-video sharing, keep one canonical backend on port `8000`; see `docs/shared-comfyui.md`
