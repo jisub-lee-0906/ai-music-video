@@ -63,7 +63,7 @@ def _apply_smoke_mode_overrides(config: dict) -> None:
 
 
 def _smoke_mode_enabled() -> bool:
-    return str(os.getenv("AI_MV_WSL_SMOKE_MODE") or "").strip().lower() in {"1", "true", "yes", "on"}
+    return str(os.getenv("AI_MV_SMOKE_MODE") or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_int(name: str, default: int) -> int:
