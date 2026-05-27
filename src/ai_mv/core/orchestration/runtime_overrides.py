@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
-def apply_wsl_runtime_overrides(config: dict) -> dict:
+def apply_runtime_overrides(config: dict) -> dict:
     if not isinstance(config, dict) or not _is_wsl():
         return config
     integrations = config.get("integrations")
@@ -19,24 +19,24 @@ def apply_wsl_runtime_overrides(config: dict) -> dict:
     base_url = str(integrations.get("comfyui_base_url") or "").strip()
     gateway = (
         os.getenv("AI_MV_COMFY_HOST")
-        or _wsl_windows_gateway_host()
+        or _windows_gateway_host()
         or ""
     ).strip()
     explicit_base_url = str(os.getenv("AI_MV_COMFY_BASE_URL") or "").strip()
-    if explicit_base_url and _needs_wsl_base_url_override(base_url):
+    if explicit_base_url and _needs_base_url_override(base_url):
         integrations["comfyui_base_url"] = explicit_base_url
-    elif gateway and _needs_wsl_base_url_override(base_url):
+    elif gateway and _needs_base_url_override(base_url):
         integrations["comfyui_base_url"] = f"http://{gateway}:8000"
 
-    explicit_input = str(os.getenv("AI_MV_COMFY_INPUT_DIR") or _default_wsl_comfy_input_dir() or "").strip()
-    explicit_output = str(os.getenv("AI_MV_COMFY_OUTPUT_DIR") or _default_wsl_comfy_output_dir() or "").strip()
-    explicit_codex = str(os.getenv("AI_MV_CODEX_BIN") or _default_wsl_codex_bin() or "").strip()
+    explicit_input = str(os.getenv("AI_MV_COMFY_INPUT_DIR") or _default_comfy_input_dir() or "").strip()
+    explicit_output = str(os.getenv("AI_MV_COMFY_OUTPUT_DIR") or _default_comfy_output_dir() or "").strip()
+    explicit_codex = str(os.getenv("AI_MV_CODEX_BIN") or _default_codex_bin() or "").strip()
 
-    if explicit_input and _needs_wsl_path_override(str(integrations.get("comfyui_input_dir") or "")):
+    if explicit_input and _needs_path_override(str(integrations.get("comfyui_input_dir") or "")):
         integrations["comfyui_input_dir"] = explicit_input
-    if explicit_output and _needs_wsl_path_override(str(integrations.get("comfyui_output_dir") or "")):
+    if explicit_output and _needs_path_override(str(integrations.get("comfyui_output_dir") or "")):
         integrations["comfyui_output_dir"] = explicit_output
-    if explicit_codex and _needs_wsl_codex_override(str(integrations.get("codex_cli_path") or "")):
+    if explicit_codex and _needs_codex_override(str(integrations.get("codex_cli_path") or "")):
         integrations["codex_cli_path"] = explicit_codex
 
     if _smoke_mode_enabled():
@@ -77,7 +77,7 @@ def _env_int(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-def _needs_wsl_base_url_override(raw: str) -> bool:
+def _needs_base_url_override(raw: str) -> bool:
     if not raw.strip():
         return True
     parsed = urlparse(raw.strip())
@@ -85,14 +85,14 @@ def _needs_wsl_base_url_override(raw: str) -> bool:
     return host in _LOCAL_HOSTS
 
 
-def _needs_wsl_path_override(raw: str) -> bool:
+def _needs_path_override(raw: str) -> bool:
     value = raw.strip()
     if not value:
         return True
     return _is_windows_path(value)
 
 
-def _needs_wsl_codex_override(raw: str) -> bool:
+def _needs_codex_override(raw: str) -> bool:
     value = raw.strip()
     if not value:
         return True
@@ -106,23 +106,23 @@ def _is_windows_path(raw: str) -> bool:
     return value.startswith("\\\\")
 
 
-def _default_wsl_comfy_input_dir() -> str | None:
+def _default_comfy_input_dir() -> str | None:
     win_default = Path(r"C:\Users\Desktop\Documents\ComfyUI\input")
     if win_default.is_dir():
         return str(win_default)
-    return _discover_wsl_comfy_dir("input")
+    return _discover_comfy_dir("input")
 
 
 
-def _default_wsl_comfy_output_dir() -> str | None:
+def _default_comfy_output_dir() -> str | None:
     win_default = Path(r"C:\Users\Desktop\Documents\ComfyUI\output")
     if win_default.is_dir():
         return str(win_default)
-    return _discover_wsl_comfy_dir("output")
+    return _discover_comfy_dir("output")
 
 
 
-def _discover_wsl_comfy_dir(kind: str, users_root: Path | None = None) -> str | None:
+def _discover_comfy_dir(kind: str, users_root: Path | None = None) -> str | None:
     root = users_root or Path("/mnt/c/Users")
     if not root.is_dir():
         return None
@@ -140,7 +140,7 @@ def _discover_wsl_comfy_dir(kind: str, users_root: Path | None = None) -> str | 
 
 
 
-def _default_wsl_codex_bin() -> str | None:
+def _default_codex_bin() -> str | None:
     home_fallback = str((Path.home() / ".hermes" / "node" / "bin" / "codex")).strip()
     for raw in (
         os.getenv("AI_MV_CODEX_BIN"),
@@ -154,7 +154,7 @@ def _default_wsl_codex_bin() -> str | None:
 
 
 
-def _wsl_windows_gateway_host() -> str | None:
+def _windows_gateway_host() -> str | None:
     try:
         result = subprocess.run(
             ["ip", "route", "show", "default"],

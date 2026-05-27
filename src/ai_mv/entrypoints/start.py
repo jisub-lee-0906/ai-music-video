@@ -4,7 +4,7 @@ from ai_mv.core.artifacts.paths import run_file
 from ai_mv.core.orchestration.bootstrap_guard import apply_input_defaults, validate_sizes, validate_templates
 from ai_mv.core.orchestration.config_defaults import apply_defaults, default_config
 from ai_mv.core.orchestration.pipeline import run_pipeline
-from ai_mv.core.orchestration.wsl_overrides import apply_wsl_runtime_overrides
+from ai_mv.core.orchestration.runtime_overrides import apply_runtime_overrides
 from ai_mv.core.state.state_store import ensure_run_dir, read_snapshot
 from ai_mv.entrypoints.doctor import run_doctor
 from ai_mv.infra.comfy_client import clear_comfy_queue, comfy_queue_counts, free_comfy_memory, interrupt_comfy
@@ -40,7 +40,7 @@ def _load_prepared_config(
     if str(concept_text or "").strip():
         cfg["concept_text"] = str(concept_text).strip()
     apply_defaults(cfg)
-    apply_wsl_runtime_overrides(cfg)
+    apply_runtime_overrides(cfg)
     apply_input_defaults(cfg)
     validate_sizes(cfg)
     validate_templates(cfg)

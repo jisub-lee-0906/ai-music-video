@@ -38,7 +38,7 @@ def _validate_local_base_url(raw: str) -> None:
     if parsed.scheme not in {"http", "https"}:
         raise ComfyRequestError("comfyui_base_url must use http or https")
     if parsed.hostname not in _allowed_comfy_hosts():
-        raise ComfyRequestError("comfyui_base_url must point to localhost or the WSL Windows host")
+        raise ComfyRequestError("comfyui_base_url must point to localhost or the Windows gateway host")
 
 
 def _allowed_comfy_hosts() -> set[str]:
@@ -46,13 +46,13 @@ def _allowed_comfy_hosts() -> set[str]:
     configured_host = str(os.getenv("AI_MV_COMFY_HOST") or "").strip()
     if configured_host:
         hosts.add(configured_host)
-    gateway = _wsl_windows_gateway_host()
+    gateway = _windows_gateway_host()
     if gateway:
         hosts.add(gateway)
     return hosts
 
 
-def _wsl_windows_gateway_host() -> str | None:
+def _windows_gateway_host() -> str | None:
     if not _is_wsl():
         return None
     try:

@@ -128,7 +128,7 @@ def _default_comfyui_base_url() -> str:
     return f"http://{host}:8000"
 
 
-def _wsl_windows_gateway_host() -> str | None:
+def _windows_gateway_host() -> str | None:
     if not _is_wsl():
         return None
     try:

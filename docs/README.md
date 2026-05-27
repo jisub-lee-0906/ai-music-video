@@ -11,7 +11,7 @@
    - 사용자-facing CLI 사용법
    - Flux TTI identity anchor → Flux reference pose/action anchors → IA2V-only generation canon
    - artifact contract
-   - WSL 기본 운영 주의점
+   - 레거시 Linux-bridge 운영 주의점
 2. `docs/full-run-default-inputs.md`
    - 현재 풀런 테스트에 사용할 기본 `concept_text`
    - 추천 `run_id`

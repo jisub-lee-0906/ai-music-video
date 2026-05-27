@@ -18,7 +18,7 @@ def test_prepare_fresh_validation_config_builds_canonical_short_wsl_smoke_shape(
         return _inner
 
     monkeypatch.setattr("ai_mv.core.orchestration.fresh_validation.apply_defaults", _record("apply_defaults"))
-    monkeypatch.setattr("ai_mv.core.orchestration.fresh_validation.apply_wsl_runtime_overrides", _record("apply_wsl_runtime_overrides"))
+    monkeypatch.setattr("ai_mv.core.orchestration.fresh_validation.apply_runtime_overrides", _record("apply_runtime_overrides"))
     monkeypatch.setattr("ai_mv.core.orchestration.fresh_validation.apply_input_defaults", _record("apply_input_defaults"))
     monkeypatch.setattr("ai_mv.core.orchestration.fresh_validation.validate_sizes", _record("validate_sizes"))
     monkeypatch.setattr("ai_mv.core.orchestration.fresh_validation.validate_templates", _record("validate_templates"))
@@ -43,7 +43,7 @@ def test_prepare_fresh_validation_config_builds_canonical_short_wsl_smoke_shape(
     assert cfg["planning"]["default_style_name"] == "citypop"
     assert calls == [
         "apply_defaults",
-        "apply_wsl_runtime_overrides",
+        "apply_runtime_overrides",
         "apply_input_defaults",
         "validate_sizes",
         "validate_templates",

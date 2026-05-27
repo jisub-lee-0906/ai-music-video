@@ -3,7 +3,7 @@ from __future__ import annotations
 from ai_mv.core.orchestration.bootstrap_guard import apply_input_defaults, validate_sizes, validate_templates
 from ai_mv.core.orchestration.config_defaults import apply_defaults, default_config
 from ai_mv.core.orchestration.pipeline import run_pipeline
-from ai_mv.core.orchestration.wsl_overrides import apply_wsl_runtime_overrides
+from ai_mv.core.orchestration.runtime_overrides import apply_runtime_overrides
 
 DEFAULT_CONCEPT_TEXT = "late-night city walk under wet neon lights with one protagonist moving through the same boulevard world"
 DEFAULT_AUDIO_BRIEF = (
@@ -51,7 +51,7 @@ def build_fresh_validation_config(
 def prepare_fresh_validation_config(**kwargs) -> dict:
     cfg = build_fresh_validation_config(**kwargs)
     apply_defaults(cfg)
-    apply_wsl_runtime_overrides(cfg)
+    apply_runtime_overrides(cfg)
     apply_input_defaults(cfg)
     validate_sizes(cfg)
     validate_templates(cfg)

@@ -15,7 +15,7 @@ def test_validate_local_comfy_config_accepts_wsl_windows_host(tmp_path, monkeypa
     cfg = _config(tmp_path)
     cfg["integrations"]["comfyui_base_url"] = "http://127.0.0.1:8000"
     monkeypatch.setenv("WSL_INTEROP", "/tmp/wsl")
-    monkeypatch.setattr("ai_mv.infra.comfy_local._wsl_windows_gateway_host", lambda: "127.0.0.1")
+    monkeypatch.setattr("ai_mv.infra.comfy_local._windows_gateway_host", lambda: "127.0.0.1")
     validate_local_comfy_config(cfg)
 
 

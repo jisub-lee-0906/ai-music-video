@@ -10,7 +10,7 @@ def test_run_doctor_uses_same_config_for_ping_and_assert(monkeypatch):
     }
     seen = {}
 
-    monkeypatch.setattr(doctor, "apply_wsl_runtime_overrides", lambda passed_cfg: passed_cfg)
+    monkeypatch.setattr(doctor, "apply_runtime_overrides", lambda passed_cfg: passed_cfg)
     monkeypatch.setattr(doctor, "assert_runtime_ready", lambda _cfg: None)
     monkeypatch.setattr(doctor, "assert_codex_ready", lambda _cfg: None)
     monkeypatch.setattr(doctor, "ping_comfy", lambda _url: True)
@@ -33,7 +33,7 @@ def test_run_doctor_applies_wsl_runtime_overrides(monkeypatch):
         seen["before"] = passed_cfg
         return {"integrations": {"comfyui_base_url": "http://127.0.0.1:8000", "codex_cli_path": "C:/tools/codex.cmd"}}
 
-    monkeypatch.setattr(doctor, "apply_wsl_runtime_overrides", _fake_apply)
+    monkeypatch.setattr(doctor, "apply_runtime_overrides", _fake_apply)
     monkeypatch.setattr(doctor, "assert_runtime_ready", lambda _cfg: None)
     monkeypatch.setattr(doctor, "assert_codex_ready", lambda _cfg: None)
     monkeypatch.setattr(doctor, "ping_comfy", lambda _url: True)
