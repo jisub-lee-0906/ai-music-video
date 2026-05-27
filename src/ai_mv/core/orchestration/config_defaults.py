@@ -121,8 +121,10 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 def _default_comfyui_base_url() -> str:
-    gateway = _wsl_windows_gateway_host()
-    host = gateway or "127.0.0.1"
+    explicit = str(os.getenv("AI_MV_COMFY_BASE_URL") or "").strip()
+    if explicit:
+        return explicit
+    host = str(os.getenv("AI_MV_COMFY_HOST") or "").strip() or "127.0.0.1"
     return f"http://{host}:8000"
 
 

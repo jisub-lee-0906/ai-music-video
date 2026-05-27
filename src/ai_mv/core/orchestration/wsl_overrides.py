@@ -17,7 +17,12 @@ def apply_wsl_runtime_overrides(config: dict) -> dict:
         return config
 
     base_url = str(integrations.get("comfyui_base_url") or "").strip()
-    gateway = (os.getenv("AI_MV_WSL_GATEWAY_HOST") or _wsl_windows_gateway_host() or "").strip()
+    gateway = (
+        os.getenv("AI_MV_COMFY_HOST")
+        or os.getenv("AI_MV_WSL_GATEWAY_HOST")
+        or _wsl_windows_gateway_host()
+        or ""
+    ).strip()
     explicit_base_url = str(os.getenv("AI_MV_COMFY_BASE_URL") or "").strip()
     if explicit_base_url and _needs_wsl_base_url_override(base_url):
         integrations["comfyui_base_url"] = explicit_base_url
@@ -103,11 +108,17 @@ def _is_windows_path(raw: str) -> bool:
 
 
 def _default_wsl_comfy_input_dir() -> str | None:
+    win_default = Path(r"C:\Users\Desktop\Documents\ComfyUI\input")
+    if win_default.is_dir():
+        return str(win_default)
     return _discover_wsl_comfy_dir("input")
 
 
 
 def _default_wsl_comfy_output_dir() -> str | None:
+    win_default = Path(r"C:\Users\Desktop\Documents\ComfyUI\output")
+    if win_default.is_dir():
+        return str(win_default)
     return _discover_wsl_comfy_dir("output")
 
 

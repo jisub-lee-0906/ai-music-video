@@ -144,8 +144,9 @@ ai_mv_bootstrap_wsl_env() {
     echo "error: python executable not found (.venv/bin/python preferred, fallback python3 missing)" >&2
     exit 1
   fi
-  export AI_MV_WSL_GATEWAY_HOST="$(ai_mv_detect_gateway_host)"
-  if [ -z "${AI_MV_WSL_GATEWAY_HOST}" ]; then
+  export AI_MV_COMFY_HOST="$(ai_mv_detect_gateway_host)"
+  export AI_MV_WSL_GATEWAY_HOST="$AI_MV_COMFY_HOST"
+  if [ -z "${AI_MV_COMFY_HOST}" ]; then
     echo "error: could not determine the Windows WSL gateway from 'ip route show default'" >&2
     exit 1
   fi
@@ -176,7 +177,7 @@ ai_mv_print_wsl_env() {
   local label="$1"
   echo "[$label] repo=$AI_MV_REPO_ROOT"
   echo "[$label] python_bin=$AI_MV_PYTHON_BIN"
-  echo "[$label] comfyui_base_url=http://${AI_MV_WSL_GATEWAY_HOST}:8000"
+  echo "[$label] comfyui_base_url=http://${AI_MV_COMFY_HOST}:8000"
   echo "[$label] comfyui_input_dir=$AI_MV_COMFY_INPUT_DIR"
   echo "[$label] comfyui_output_dir=$AI_MV_COMFY_OUTPUT_DIR"
   echo "[$label] codex_cli_path=$AI_MV_CODEX_BIN"

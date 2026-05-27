@@ -32,16 +32,16 @@ def test_apply_wsl_runtime_overrides_rewrites_windows_paths_when_env_present(mon
         }
     }
     monkeypatch.setattr("ai_mv.core.orchestration.wsl_overrides._is_wsl", lambda: True)
-    monkeypatch.setenv("AI_MV_WSL_GATEWAY_HOST", "172.28.224.1")
-    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", "/mnt/c/Users/Desktop/Documents/ComfyUI/input")
-    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", "/mnt/c/Users/Desktop/Documents/ComfyUI/output")
+    monkeypatch.setenv("AI_MV_COMFY_HOST", "127.0.0.1")
+    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input")
+    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output")
     monkeypatch.setenv("AI_MV_CODEX_BIN", "/home/jisub-lee/.hermes/node/bin/codex")
 
     out = apply_wsl_runtime_overrides(cfg)
 
-    assert out["integrations"]["comfyui_base_url"] == "http://172.28.224.1:8000"
-    assert out["integrations"]["comfyui_input_dir"] == "/mnt/c/Users/Desktop/Documents/ComfyUI/input"
-    assert out["integrations"]["comfyui_output_dir"] == "/mnt/c/Users/Desktop/Documents/ComfyUI/output"
+    assert out["integrations"]["comfyui_base_url"] == "http://127.0.0.1:8000"
+    assert out["integrations"]["comfyui_input_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input"
+    assert out["integrations"]["comfyui_output_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output"
     assert out["integrations"]["codex_cli_path"] == "/home/jisub-lee/.hermes/node/bin/codex"
 
 
@@ -56,14 +56,14 @@ def test_apply_wsl_runtime_overrides_uses_detected_defaults_when_env_missing(mon
         }
     }
     monkeypatch.setattr("ai_mv.core.orchestration.wsl_overrides._is_wsl", lambda: True)
-    monkeypatch.setattr("ai_mv.core.orchestration.wsl_overrides._wsl_windows_gateway_host", lambda: "172.28.224.1")
+    monkeypatch.setattr("ai_mv.core.orchestration.wsl_overrides._wsl_windows_gateway_host", lambda: "127.0.0.1")
     monkeypatch.setattr(
         "ai_mv.core.orchestration.wsl_overrides._default_wsl_comfy_input_dir",
-        lambda: "/mnt/c/Users/Desktop/Documents/ComfyUI/input",
+        lambda: r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input",
     )
     monkeypatch.setattr(
         "ai_mv.core.orchestration.wsl_overrides._default_wsl_comfy_output_dir",
-        lambda: "/mnt/c/Users/Desktop/Documents/ComfyUI/output",
+        lambda: r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output",
     )
     monkeypatch.setattr(
         "ai_mv.core.orchestration.wsl_overrides._default_wsl_codex_bin",
@@ -72,9 +72,9 @@ def test_apply_wsl_runtime_overrides_uses_detected_defaults_when_env_missing(mon
 
     out = apply_wsl_runtime_overrides(cfg)
 
-    assert out["integrations"]["comfyui_base_url"] == "http://172.28.224.1:8000"
-    assert out["integrations"]["comfyui_input_dir"] == "/mnt/c/Users/Desktop/Documents/ComfyUI/input"
-    assert out["integrations"]["comfyui_output_dir"] == "/mnt/c/Users/Desktop/Documents/ComfyUI/output"
+    assert out["integrations"]["comfyui_base_url"] == "http://127.0.0.1:8000"
+    assert out["integrations"]["comfyui_input_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input"
+    assert out["integrations"]["comfyui_output_dir"] == r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output"
     assert out["integrations"]["codex_cli_path"] == "/home/jisub-lee/.hermes/node/bin/codex"
 
 
@@ -132,9 +132,9 @@ def test_apply_wsl_runtime_overrides_preserves_linux_safe_values(monkeypatch):
         }
     }
     monkeypatch.setattr("ai_mv.core.orchestration.wsl_overrides._is_wsl", lambda: True)
-    monkeypatch.setenv("AI_MV_WSL_GATEWAY_HOST", "172.28.224.1")
-    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", "/mnt/c/Users/Desktop/Documents/ComfyUI/input")
-    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", "/mnt/c/Users/Desktop/Documents/ComfyUI/output")
+    monkeypatch.setenv("AI_MV_COMFY_HOST", "127.0.0.1")
+    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input")
+    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output")
     monkeypatch.setenv("AI_MV_CODEX_BIN", "/home/jisub-lee/.hermes/node/bin/codex")
 
     out = apply_wsl_runtime_overrides(cfg)
@@ -162,9 +162,9 @@ def test_apply_wsl_runtime_overrides_enables_smoke_mode(monkeypatch):
         },
     }
     monkeypatch.setattr("ai_mv.core.orchestration.wsl_overrides._is_wsl", lambda: True)
-    monkeypatch.setenv("AI_MV_WSL_GATEWAY_HOST", "172.28.224.1")
-    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", "/mnt/c/Users/Desktop/Documents/ComfyUI/input")
-    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", "/mnt/c/Users/Desktop/Documents/ComfyUI/output")
+    monkeypatch.setenv("AI_MV_COMFY_HOST", "127.0.0.1")
+    monkeypatch.setenv("AI_MV_COMFY_INPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\input")
+    monkeypatch.setenv("AI_MV_COMFY_OUTPUT_DIR", r"C:\\Users\\Desktop\\Documents\\ComfyUI\\output")
     monkeypatch.setenv("AI_MV_CODEX_BIN", "/home/jisub-lee/.hermes/node/bin/codex")
     monkeypatch.setenv("AI_MV_WSL_SMOKE_MODE", "1")
     monkeypatch.setenv("AI_MV_SMOKE_AUDIO_MIN_SEC", "15")

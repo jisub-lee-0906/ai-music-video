@@ -31,7 +31,7 @@ def test_run_doctor_applies_wsl_runtime_overrides(monkeypatch):
 
     def _fake_apply(passed_cfg):
         seen["before"] = passed_cfg
-        return {"integrations": {"comfyui_base_url": "http://172.28.224.1:8000", "codex_cli_path": "/home/jisub-lee/.hermes/node/bin/codex"}}
+        return {"integrations": {"comfyui_base_url": "http://127.0.0.1:8000", "codex_cli_path": "/home/jisub-lee/.hermes/node/bin/codex"}}
 
     monkeypatch.setattr(doctor, "apply_wsl_runtime_overrides", _fake_apply)
     monkeypatch.setattr(doctor, "assert_runtime_ready", lambda _cfg: None)

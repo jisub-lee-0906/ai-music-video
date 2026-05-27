@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -42,6 +43,9 @@ def _validate_local_base_url(raw: str) -> None:
 
 def _allowed_comfy_hosts() -> set[str]:
     hosts = set(LOCAL_HOSTS)
+    configured_host = str(os.getenv("AI_MV_COMFY_HOST") or "").strip()
+    if configured_host:
+        hosts.add(configured_host)
     gateway = _wsl_windows_gateway_host()
     if gateway:
         hosts.add(gateway)
