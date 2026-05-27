@@ -135,27 +135,27 @@ Important:
 - instead, read `final_video` from `artifacts/latest/manifest.json` or `artifacts/latest_success/manifest.json`
 - `manifest.json` also records canonical sections such as `input`, `song`, `plan`, `stills`, `clips`, `assembly`, `review`, and `artifacts`
 
-## WSL usage
+## Windows native usage
 
-When WSL drives a Windows-hosted ComfyUI backend, use the shared backend under:
+Use the shared ComfyUI backend under:
 
 ```text
 C:\Users\Desktop\Documents\ComfyUI\
 C:\Users\Desktop\Documents\ComfyUI\
 ```
 
-Recommended wrapper commands:
+Recommended PowerShell wrapper commands:
 
-```bash
-./scripts/doctor-wsl.sh
-./scripts/preflight-wsl.sh --concept-text 'dreamy synthwave night drive with lonely neon romance'
-./scripts/start-wsl.sh --concept-text 'dreamy synthwave night drive with lonely neon romance'
+```powershell
+./scripts/doctor.ps1
+./scripts/preflight.ps1 --concept-text 'dreamy synthwave night drive with lonely neon romance'
+./scripts/start.ps1 --concept-text 'dreamy synthwave night drive with lonely neon romance'
 ```
 
 Notes:
-- wrappers auto-detect the Windows WSL gateway for `comfyui_base_url`
-- wrappers expect ComfyUI input/output under `C:\Users\Desktop\Documents\ComfyUI\`
-- `start-wsl.sh` runs the real generation pipeline and will create outputs / consume time
+- wrappers default `comfyui_base_url` to `http://127.0.0.1:8000`
+- wrappers default ComfyUI input/output to `C:\Users\Desktop\Documents\ComfyUI\input|output`
+- `start.ps1` runs the real generation pipeline and will create outputs / consume time
 - the default runtime is shared-Comfy-safe and should not interrupt Krita/Blender jobs unless explicit runtime flags opt in
 - for Krita + Blender + ai-music-video sharing, keep one canonical backend on port `8000`; see `docs/shared-comfyui.md`
 

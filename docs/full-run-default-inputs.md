@@ -60,7 +60,7 @@ ai-mv start \
   --concept-text "$CONCEPT_TEXT"
 ```
 
-This is the normal full-duration path. Do not use `scripts/start-wsl.sh` for a full-duration validation run unless smoke mode is intentionally desired; that wrapper currently enables WSL smoke mode and shortens audio to about 15-20 seconds.
+This is the normal full-duration path. Do not use `scripts/start.ps1` for a full-duration validation run unless smoke mode is intentionally desired; that wrapper enables smoke mode and shortens audio to about 15-20 seconds.
 
 ## Preflight command
 

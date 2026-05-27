@@ -19,7 +19,6 @@ def apply_wsl_runtime_overrides(config: dict) -> dict:
     base_url = str(integrations.get("comfyui_base_url") or "").strip()
     gateway = (
         os.getenv("AI_MV_COMFY_HOST")
-        or os.getenv("AI_MV_WSL_GATEWAY_HOST")
         or _wsl_windows_gateway_host()
         or ""
     ).strip()
