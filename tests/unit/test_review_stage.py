@@ -9,7 +9,7 @@ def test_review_stage_accepts_injected_duration_fn(monkeypatch):
     original_exists = Path.exists
 
     def _fake_exists(self):
-        if str(self) in existing:
+        if self.as_posix() in existing:
             return True
         return original_exists(self)
 
@@ -52,7 +52,7 @@ def test_review_stage_builds_material_aware_rerender_execution_payloads(monkeypa
     original_exists = Path.exists
 
     def _fake_exists(self):
-        if str(self) in existing:
+        if self.as_posix() in existing:
             return True
         return original_exists(self)
 
