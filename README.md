@@ -1,6 +1,12 @@
 # ai-mv
 
-`ai-mv` is a Python 3.11 CLI for concept-text-first music-video generation using local ComfyUI workflows, ACE-Step music generation, Flux still generation, IA2V video generation, assembly, and review artifacts.
+`ai-mv` is a Python 3.11 local CLI under development for concept-text-first music-video pipeline orchestration. It coordinates local ComfyUI workflows, ACE-Step, Flux, IA2V, assembly, and review artifacts; it is not a completed video-generation product.
+
+## Public-readiness status (2026-09-23)
+
+- **This environment:** documentation/configuration review only. No application, external API, model, GPU, or end-to-end run was performed. The user-input-to-final-video path is unverified here.
+- **Earlier records:** the 2026-09-23 security follow-up recorded 16 focused Comfy transport/redaction/state tests passing. It also recorded that full-suite collection was blocked by absent `jsonschema` and `numpy`; that is historical evidence, not a fresh run.
+- **Not verified:** GPU/ComfyUI availability, ACE-Step/Flux/IA2V workflow compatibility, media generation, and any end-to-end output or quality claim.
 
 ## Current product canon
 
@@ -71,6 +77,7 @@ Still in progress before a reliable one-prompt 3-minute MV product:
 ## Requirements
 
 - Python `>=3.11`
+- `uv` for the maintained wrapper path (or `pip` for the portable editable-install alternative below)
 - local ComfyUI reachable from this environment
 - `ffmpeg` and `ffprobe` on `PATH`
 - workflow JSON templates in `workflows/`
@@ -80,10 +87,20 @@ Default integration values live in `src/ai_mv/core/orchestration/config_defaults
 
 ## Install
 
+From a normal clone of this repository:
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
+uv sync --extra dev
+uv run ai-mv --help
+```
+
+Portable editable-install alternative:
+
+```bash
+python -m venv .venv
+# Activate the environment using your platform's normal command.
+python -m pip install -e ".[dev]"
+ai-mv --help
 ```
 
 ## Main commands
@@ -137,11 +154,13 @@ Important:
 
 ## Windows native usage
 
-Use the shared ComfyUI backend under:
+The checked-in PowerShell wrappers preserve the existing shared-ComfyUI contract and default to:
 
 ```text
 C:\Users\Desktop\Documents\ComfyUI\
 ```
+
+For another clone or machine, use the portable CLI path above and set `AI_MV_COMFY_BASE_URL`, `AI_MV_COMFY_INPUT_DIR`, and `AI_MV_COMFY_OUTPUT_DIR` to that machine's local ComfyUI installation. Do not change the wrapper defaults merely to reuse this README.
 
 Recommended PowerShell wrapper commands:
 
@@ -161,6 +180,11 @@ Notes:
 ## Tests
 
 ```bash
-source .venv/bin/activate
-pytest -q
+uv run pytest -q
 ```
+
+Do not interpret a selected unit-test result as an end-to-end media-generation result. See the dated public-readiness status above for the verification boundary.
+
+## Automated verification (2026-09-23)
+
+No GitHub Actions workflows or runs are configured/recorded. The local test/build records above are not a remote CI pass.
