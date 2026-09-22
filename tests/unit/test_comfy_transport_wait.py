@@ -95,11 +95,13 @@ def test_free_memory_posts_comfy_free_payload(monkeypatch):
     calls = []
 
     class _Response:
+        status_code = 200
+
         def raise_for_status(self):
             return None
 
-    def _fake_post(url, json, timeout):
-        calls.append((url, json, timeout))
+    def _fake_post(url, json, timeout, allow_redirects):
+        calls.append((url, json, timeout, allow_redirects))
         return _Response()
 
     monkeypatch.setattr(ct.requests, "post", _fake_post)
@@ -111,5 +113,22 @@ def test_free_memory_posts_comfy_free_payload(monkeypatch):
             "http://127.0.0.1:8000/free",
             {"unload_models": True, "free_memory": True},
             5,
+            False,
         )
     ]
+
+
+def test_queue_state_disables_and_rejects_redirects(monkeypatch):
+    class _Response:
+        status_code = 302
+
+    seen = {}
+
+    def _fake_get(url, timeout, allow_redirects):
+        seen.update(url=url, timeout=timeout, allow_redirects=allow_redirects)
+        return _Response()
+
+    monkeypatch.setattr(ct.requests, "get", _fake_get)
+    with pytest.raises(ct.ComfyRequestError, match="redirect is not allowed"):
+        ct.queue_state("http://127.0.0.1:8000")
+    assert seen["allow_redirects"] is False

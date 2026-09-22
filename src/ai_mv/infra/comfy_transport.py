@@ -13,9 +13,23 @@ class RecoverableComfyError(ComfyRequestError):
     pass
 
 
+def _reject_redirect(res: requests.Response) -> requests.Response:
+    if 300 <= res.status_code < 400:
+        raise ComfyRequestError(f"Comfy redirect is not allowed (HTTP {res.status_code})")
+    return res
+
+
+def _request_get(url: str, **kwargs) -> requests.Response:
+    return _reject_redirect(requests.get(url, allow_redirects=False, **kwargs))
+
+
+def _request_post(url: str, **kwargs) -> requests.Response:
+    return _reject_redirect(requests.post(url, allow_redirects=False, **kwargs))
+
+
 def ping_comfy(base_url: str) -> bool:
     try:
-        res = requests.get(f"{base_url.rstrip('/')}/history", timeout=3)
+        res = _request_get(f"{base_url.rstrip('/')}/history", timeout=3)
         if res.status_code != 200:
             return False
         return isinstance(res.json(), dict)
@@ -25,7 +39,7 @@ def ping_comfy(base_url: str) -> bool:
 
 def queue_state(base_url: str, timeout: int | float | None = 5) -> dict[str, Any]:
     try:
-        res = requests.get(f"{base_url.rstrip('/')}/queue", timeout=timeout)
+        res = _request_get(f"{base_url.rstrip('/')}/queue", timeout=timeout)
         res.raise_for_status()
         data = res.json()
     except Exception as exc:
@@ -37,7 +51,7 @@ def queue_state(base_url: str, timeout: int | float | None = 5) -> dict[str, Any
 
 def interrupt(base_url: str, timeout: int | float | None = 5) -> None:
     try:
-        res = requests.post(f"{base_url.rstrip('/')}/interrupt", timeout=timeout)
+        res = _request_post(f"{base_url.rstrip('/')}/interrupt", timeout=timeout)
         res.raise_for_status()
     except Exception as exc:
         raise ComfyRequestError(f"Comfy interrupt failed: {exc}") from exc
@@ -45,7 +59,7 @@ def interrupt(base_url: str, timeout: int | float | None = 5) -> None:
 
 def clear_queue(base_url: str, timeout: int | float | None = 5) -> None:
     try:
-        res = requests.post(f"{base_url.rstrip('/')}/queue", json={"clear": True}, timeout=timeout)
+        res = _request_post(f"{base_url.rstrip('/')}/queue", json={"clear": True}, timeout=timeout)
         res.raise_for_status()
     except Exception as exc:
         raise ComfyRequestError(f"Comfy queue clear failed: {exc}") from exc
@@ -53,7 +67,7 @@ def clear_queue(base_url: str, timeout: int | float | None = 5) -> None:
 
 def free_memory(base_url: str, timeout: int | float | None = 5) -> None:
     try:
-        res = requests.post(
+        res = _request_post(
             f"{base_url.rstrip('/')}/free",
             json={"unload_models": True, "free_memory": True},
             timeout=timeout,
@@ -152,7 +166,7 @@ def extract_files(history: dict[str, Any]) -> list[str]:
 
 def _queue_prompt(base_url: str, workflow: dict[str, Any], timeout: int | None) -> dict:
     url = f"{base_url.rstrip('/')}/prompt"
-    res = requests.post(url, json={"prompt": workflow}, timeout=timeout)
+    res = _request_post(url, json={"prompt": workflow}, timeout=timeout)
     if res.status_code >= 400:
         raise ComfyRequestError(f"Comfy prompt failed: {res.status_code} {_safe_response_body(res)}")
     return res.json()
@@ -194,7 +208,7 @@ def _safe_history_get(url: str, timeout: float | None, prompt_id: str) -> dict[s
 
 
 def _get_json(url: str, timeout: float | None) -> dict[str, Any]:
-    res = requests.get(url, timeout=timeout)
+    res = _request_get(url, timeout=timeout)
     res.raise_for_status()
     data = res.json()
     if not isinstance(data, dict):

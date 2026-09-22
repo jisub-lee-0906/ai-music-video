@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import traceback
 
+from ai_mv.utils.redaction import redact_secrets
+
 from ai_mv.core.artifacts.publish import write_pipeline_artifacts
 from ai_mv.core.contracts.stage_io import StageInput
 from ai_mv.core.orchestration.input_gate import validate_stage_input
@@ -28,8 +30,8 @@ def run_preflight(config: dict, run_id: str = "", allow_existing_run: bool = Fal
         state["status"] = "done"
     except Exception as exc:
         state["status"] = "failed"
-        state["failure_reason"] = f"{state['current_stage']}: {exc}" if state["current_stage"] else str(exc)
-        state["failure_traceback"] = traceback.format_exc()
+        state["failure_reason"] = redact_secrets(f"{state['current_stage']}: {exc}" if state["current_stage"] else str(exc))
+        state["failure_traceback"] = redact_secrets(traceback.format_exc())
         save_snapshot(state, stage_input.payload)
         write_pipeline_artifacts(state, stage_input.payload, cfg)
         raise

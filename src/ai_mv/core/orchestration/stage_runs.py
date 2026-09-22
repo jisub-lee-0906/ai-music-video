@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import traceback
+
+from ai_mv.utils.redaction import redact_secrets
 from collections.abc import Callable
 
 from ai_mv.core.contracts.errors import StageFailure
@@ -66,8 +68,8 @@ def run_result_stage(
             return False
     except Exception as exc:
         state["status"] = "failed"
-        state["failure_reason"] = f"{name}: {exc}"
-        state["failure_traceback"] = traceback.format_exc()
+        state["failure_reason"] = redact_secrets(f"{name}: {exc}")
+        state["failure_traceback"] = redact_secrets(traceback.format_exc())
         return False
     save_snapshot(state, stage_input.payload)
     return True
