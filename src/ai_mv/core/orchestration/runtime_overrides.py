@@ -131,7 +131,8 @@ def _discover_comfy_dir(kind: str, users_root: Path | None = None) -> str | None
 
 
 def _default_codex_bin() -> str | None:
-    home_fallback = str((Path.home() / ".hermes" / "node" / "bin" / "codex")).strip()
+    home_dir = Path(str(os.getenv("HOME") or "").strip() or Path.home())
+    home_fallback = str(home_dir / ".hermes" / "node" / "bin" / "codex").strip()
     for raw in (
         os.getenv("AI_MV_CODEX_BIN"),
         shutil.which("codex"),

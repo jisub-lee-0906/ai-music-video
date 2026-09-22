@@ -5,11 +5,11 @@ from ai_mv.core.stages.review_stage import run_review_stage
 
 
 def test_review_stage_accepts_injected_duration_fn(monkeypatch):
-    existing = {"D:/renders/final.mp4", "D:/renders/song.mp3", "D:/renders/S001.png", "D:/renders/S001.mp4"}
+    existing = {Path("D:/renders/final.mp4"), Path("D:/renders/song.mp3"), Path("D:/renders/S001.png"), Path("D:/renders/S001.mp4")}
     original_exists = Path.exists
 
     def _fake_exists(self):
-        if str(self) in existing:
+        if self in existing:
             return True
         return original_exists(self)
 
@@ -44,15 +44,15 @@ def test_review_stage_accepts_injected_duration_fn(monkeypatch):
 
 def test_review_stage_builds_material_aware_rerender_execution_payloads(monkeypatch):
     existing = {
-        "D:/renders/final.mp4",
-        "D:/renders/song.mp3",
-        "D:/renders/S001.png",
-        "D:/renders/S001.mp4",
+        Path("D:/renders/final.mp4"),
+        Path("D:/renders/song.mp3"),
+        Path("D:/renders/S001.png"),
+        Path("D:/renders/S001.mp4"),
     }
     original_exists = Path.exists
 
     def _fake_exists(self):
-        if str(self) in existing:
+        if self in existing:
             return True
         return original_exists(self)
 

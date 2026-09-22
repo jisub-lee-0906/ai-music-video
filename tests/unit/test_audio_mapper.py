@@ -164,7 +164,7 @@ def test_map_audio_workflow_omits_acestep_quality_controls_when_plan_uses_offici
 
 def test_audio_checkpoint_workflow_template_carries_required_official_advanced_text_defaults():
     workflow_path = Path(__file__).resolve().parents[2] / "workflows" / "audio_ace_step_1_5_checkpoint.json"
-    workflow = json.loads(workflow_path.read_text())
+    workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
     text_inputs = workflow[audio_mapper.AUDIO_TEXT]["inputs"]
 
     assert text_inputs["generate_audio_codes"] is True

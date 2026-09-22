@@ -141,7 +141,6 @@ Use the shared ComfyUI backend under:
 
 ```text
 C:\Users\Desktop\Documents\ComfyUI\
-C:\Users\Desktop\Documents\ComfyUI\
 ```
 
 Recommended PowerShell wrapper commands:
@@ -157,7 +156,7 @@ Notes:
 - wrappers default ComfyUI input/output to `C:\Users\Desktop\Documents\ComfyUI\input|output`
 - `start.ps1` runs the real generation pipeline and will create outputs / consume time
 - the default runtime is shared-Comfy-safe and should not interrupt Krita/Blender jobs unless explicit runtime flags opt in
-- for Krita + Blender + ai-music-video sharing, keep one canonical backend on port `8000`; see `docs/shared-comfyui.md`
+- for Krita + Blender + ai-music-video sharing, keep one canonical backend on port `8000`; do not start or stop the shared backend from this project unless you explicitly intend to manage that runtime.
 
 ## Tests
 
